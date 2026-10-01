@@ -19,7 +19,7 @@
 - Tra cứu email theo dạng normalized; thông báo lỗi chung, không tiết lộ tài khoản có tồn tại hay không.
 - So sánh hash bằng ASP.NET Core `PasswordHasher<TUser>`; không tự hash bằng MD5/SHA-256 thuần và không lưu plaintext.
 - Rate limit theo IP và định danh normalized; tăng `failed_login_count`, khóa tạm theo ngưỡng cấu hình và audit login failure/success với redaction.
-- Tài khoản `is_active = 0` hoặc đang lockout không nhận token.
+- Tài khoản `is_active = false` hoặc đang lockout không nhận token.
 - Nếu hasher báo cần rehash, nâng hash an toàn sau login thành công.
 
 ### 2.2 Chính sách mật khẩu
@@ -44,7 +44,7 @@
 - Phiên bản đầu **không dùng refresh token** để tránh thêm bảng/token rotation/reuse detection ngoài 18 bảng. Token hết hạn thì người dùng đăng nhập lại.
 - Logout phía client xóa access token, không phát sinh server revoke event. Disable/admin lock/password change/role change tăng `users.token_version` trong transaction; **mỗi protected request** đối chiếu account active/unlocked và token version để vô hiệu đồng loạt token cũ.
 - Không có deny-list theo từng token, nên client-only logout không vô hiệu token đã bị sao chép; token đó còn hiệu lực tối đa bằng TTL nếu account/version không đổi. Đây là trade-off MVP phải được ghi rõ.
-- Không lưu token trong browser `localStorage` nếu có frontend nhạy cảm; cách lưu cụ thể cần threat model frontend. API hiện không triển khai frontend.
+- Frontend M1 giữ token trong bộ nhớ của một `index.html` shell; không dùng localStorage/sessionStorage/cookie hoặc URL/DOM để lưu/truyền token. Login/admin navigation đổi view trong cùng document; reload/tab mới cần login lại. Xóa session và dữ liệu nhạy cảm khi logout/401. Thiết kế đã chốt theo ADR-017; frontend runtime vẫn **PLANNED**.
 
 ## 3. Authorization: RBAC + permission + scope
 
@@ -85,7 +85,7 @@
 
 - Dùng EF Core LINQ/parameterized query; không nối chuỗi SQL từ input.
 - Raw SQL chỉ khi cần, luôn parameterize và code review; identifier động phải lấy từ allow-list.
-- Runtime DB identity không có `db_owner`, DDL hoặc quyền ngoài schema cần dùng; migration identity tách riêng.
+- Runtime PostgreSQL role chỉ có `CONNECT`, `USAGE` schema/identity sequence và quyền DML cần thiết; không là database/table owner, không có DDL/`CREATE`, `CREATEDB`, `CREATEROLE`, `BYPASSRLS` hoặc membership `neon_superuser`. Migration identity tách riêng do Thủy quản lý.
 - Không đưa database exception thô ra response/log công khai.
 
 ## 6. Mass assignment / over-posting
@@ -130,13 +130,22 @@
 - Secret gồm JWT signing key, DB credential, encryption key, API credential và bootstrap password.
 - Có owner, rotation, expiry và revocation; ứng dụng không in secret lúc startup/error.
 - `.gitignore` và secret scanning chạy trước commit/CI; nếu secret lộ phải revoke/rotate, không chỉ xóa khỏi Git.
-- Connection string production không nằm trong README/screenshot.
+- Neon connection string, username/password và API key không nằm trong Git, README, screenshot, chat, source hoặc log ở bất kỳ môi trường nào.
+
+### 9.1 Neon shared development — PLANNED
+
+- Thủy và Thiện dùng cùng Neon PostgreSQL development database qua backend; frontend không nhận DB credential. Tên logical dự kiến `it_asset_management_dev` phải được đối chiếu database thật từ Neon, không giả định host/database/role đã tồn tại.
+- Runtime dùng cấu hình `ConnectionStrings:DefaultConnection`, lưu trên từng máy bằng .NET User Secrets hoặc environment variable `ConnectionStrings__DefaultConnection`; không hard-code trong `Program.cs` hoặc commit giá trị vào `appsettings`. Direct migration credential nằm trong secret riêng và chỉ được inject cho lượt migration do Thủy điều phối, không dùng làm runtime secret.
+- PostgreSQL runtime identities của hai người tách riêng để revoke/rotate và kiểm quyền; dùng chung database không có nghĩa dùng chung owner password. Quyền Neon Console/project và quyền PostgreSQL object là hai lớp riêng, cần kiểm cả hai.
+- Role tạo qua Neon Console/CLI/API được cấp membership `neon_superuser`; runtime least-privilege role cần tạo bằng SQL và grant tường minh sau khi setup được phép. Kiểm quyền `PUBLIC`, default privileges, sequence và table/history/audit privileges trước khi xác nhận least privilege; history/audit chỉ có quyền insert/read theo nhu cầu, không update/delete. Đây là kế hoạch, chưa tạo role hoặc grant. [Neon roles](https://neon.com/docs/manage/roles).
+- Thủy giữ primary database/migration coordination và credential DDL riêng; Thiện sync trước tạo/apply migration theo [database change lock](git-collaboration.md#database-change-lock--neon-shared-development-planned). Automated integration tests có credential/target cô lập theo [testing strategy](testing-strategy.md), không reset database shared development.
+- **NEON SETUP: PLANNED; NEON CONNECTION: NOT CONFIGURED; DATABASE CONNECTION: NOT VERIFIED.** Không có credentials hoặc lần kết nối Neon trong phase này.
 
 ## 10. HTTPS, CORS, CSRF và security headers
 
 M1 web UI và API được phục vụ cùng origin. JWT Bearer chỉ giữ **in-memory** trong JS, không localStorage/sessionStorage/cookie; reload phải login lại. `api-client.js` không log token hoặc chèn vào URL. Vì không dùng auth cookie cho M1, CSRF dựa trên cookie không phải cơ chế xác thực hiện tại; nếu đổi sang cookie phải thiết kế CSRF lại. UI render dữ liệu API bằng `textContent`/DOM safe APIs thay vì `innerHTML`, pin Bootstrap local, dùng CSP và headers phù hợp sau khi kiểm tương thích. Không xem ẩn nút trên UI là authorization; API phải trả 403 cho thao tác bị cấm.
 
-- HTTPS bắt buộc, redirect/HSTS ở production và TLS hiện đại tại reverse proxy/API; kết nối SQL dùng encryption và certificate validation phù hợp.
+- HTTPS bắt buộc, redirect/HSTS ở production và TLS hiện đại tại reverse proxy/API. Npgsql→Neon phải dùng TLS với `SSL Mode=VerifyFull` để xác minh certificate chain và hostname; không tắt kiểm certificate hoặc dùng `Trust Server Certificate`. `Require` chỉ bảo đảm encryption theo Npgsql, không thay thế hostname/certificate validation. `Channel Binding=Require` được kiểm tương thích với driver chọn sau này và endpoint thực tế; không tự hạ bảo vệ để né lỗi kết nối. Đây là planned configuration, chưa được kiểm chứng. [Npgsql TLS](https://www.npgsql.org/doc/security.html), [Neon secure connections](https://neon.com/docs/connect/connect-securely).
 - CORS dùng allow-list origin/method/header theo môi trường; không `AllowAnyOrigin` cùng credentials.
 - Bearer token trong Authorization header không tự động bị browser gửi như cookie nên giảm CSRF; nếu frontend chuyển sang cookie auth thì phải dùng `SameSite`, anti-forgery token và origin checks.
 - Security headers dự kiến: HSTS, `X-Content-Type-Options: nosniff`, CSP/frame policy cho Swagger/UI nếu public, `Referrer-Policy` phù hợp.
@@ -147,12 +156,12 @@ M1 web UI và API được phục vụ cùng origin. JWT Bearer chỉ giữ **in
 - Operational log và audit log tách mục đích nhưng dùng chung `correlation_id`.
 - Không log body authentication, Authorization/Cookie headers, password/hash, JWT, full key/ciphertext, connection string, reset token hoặc PII không cần thiết.
 - Logging dùng field allow-list/redaction tập trung; giới hạn User-Agent/path và không tin header proxy ngoài danh sách proxy tin cậy.
-- Audit append-only, quyền ghi/đọc tách biệt, JSON có `ISJSON`, retention và integrity monitoring theo `audit-log.md`.
+- Audit append-only, quyền ghi/đọc tách biệt, snapshot dùng `jsonb` với CHECK object/array theo database design; sanitize/retention/integrity monitoring theo `audit-log.md`. `jsonb` không giữ raw whitespace/key order, nên hash tương lai dựa canonical payload đã redact, không hash raw JSON string.
 - Log access bị kiểm soát và audit; môi trường production không bật sensitive EF logging.
 
 ## 12. Data protection, concurrency và integrity
 
-- `rowversion` + conditional update chống lost update; conflict không được silently overwrite.
+- `row_version bytea` gồm 16 random bytes do application quản lý, EF `IsConcurrencyToken()` và conditional update chống lost update; token được tạo mới khi mutable row đổi, stale write vẫn trả `409`. Giữ opaque Base64/ETag ở API; không dùng SQL Server-native `rowversion`, PostgreSQL `xmin` hoặc EF `IsRowVersion()`. Conflict không được silently overwrite.
 - Unique/check/FK/index bảo vệ duplicate và XOR; transaction/locking bảo vệ double assignment/capacity license.
 - History không update/delete; master/transaction root archive/deactivate thay xóa cứng.
 - Backup mã hóa, least privilege, restore drill và retention cần được phê duyệt; dữ liệu test không lấy nguyên production.
@@ -179,7 +188,7 @@ M1 web UI và API được phục vụ cùng origin. JWT Bearer chỉ giữ **in
 | XSS/stored content | Chạy script tại client | JSON encoding, không raw HTML, CSP nếu có UI | Payload encode tests ở consumer |
 | CSRF | Command ngoài ý muốn | Bearer header; cookie future phải anti-forgery/SameSite | Architecture review/test khi có cookie |
 | License key/secret disclosure | Mất bản quyền/credential | Encryption, masking, key ngoài DB, reveal permission/audit, redaction | Response/log/audit leakage tests |
-| Double assignment/race | Dữ liệu mâu thuẫn | Filtered unique index, transaction, rowversion | Concurrent integration test |
+| Double assignment/race | Dữ liệu mâu thuẫn | Partial unique index, transaction, app-managed row_version | Concurrent integration test |
 | License over-allocation race | Vi phạm license | Row lock/serializable transaction + capacity recalculation | Concurrent allocation test |
 | History/audit tampering | Mất khả năng truy cứu | Append-only permission, NO ACTION FK, retention, optional hash chain | DB permission/integrity test |
 | Malicious Excel/zip bomb/formula injection | DoS/RCE/data exfiltration | Signature/limits/safe parser/no macro/external link/formula escaping | Adversarial fixture tests |

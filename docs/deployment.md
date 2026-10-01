@@ -4,15 +4,17 @@
 
 ## 1. Mục tiêu
 
-M1 phục vụ web UI tĩnh Bootstrap 5/JavaScript từ `Api/wwwroot` cùng origin với `/api/v1`; không có frontend dev server/CDN dependency khi demo. Deployment và cache headers phải giữ `login.html`/shell cập nhật được, JS/CSS pin version, API/auth/key-reveal responses `no-store` phù hợp. UI và API cùng HTTPS origin; không cần mở CORS cho UI nội bộ này. Mọi nội dung ở đây vẫn **PLANNED**.
+M1 phục vụ web UI Bootstrap 5/JavaScript từ một `Api/wwwroot/index.html` shell có Login/admin views cùng origin với `/api/v1`; hash navigation không tải HTML mới để giữ token in-memory. Không có frontend dev server/CDN dependency khi demo. Deployment/cache headers phải giữ shell cập nhật được, JS/CSS pin version, API/auth/key-reveal responses `no-store` phù hợp. Reload/tab mới cần đăng nhập lại. UI/API cùng HTTPS origin; không cần mở CORS cho UI nội bộ này. Mọi nội dung ở đây vẫn **PLANNED**.
 
-Thiết kế triển khai ưu tiên một ứng dụng ASP.NET Core modular monolith và một SQL Server riêng biệt. Thiết kế đủ đơn giản cho dự án thực tập, nhưng tách cấu hình/secret và có đường nâng cấp cho môi trường demo hoặc production sau này.
+Thiết kế triển khai ưu tiên một ứng dụng ASP.NET Core modular monolith dùng EF Core/Npgsql và PostgreSQL hosted on Neon. Thủy và Thiện chạy backend trên máy của mình, cùng kết nối shared Neon development database; local database không là development target chính. Kiến trúc UI/API và milestone MVP **10/10/2026** giữ nguyên.
 
 ```text
 Client
   -> HTTPS / Reverse proxy (môi trường demo/production)
   -> ASP.NET Core API (.NET 10)
-  -> SQL Server
+  -> Entity Framework Core
+  -> Npgsql.EntityFrameworkCore.PostgreSQL
+  -> PostgreSQL hosted on Neon
 ```
 
 Không có microservice, message broker, distributed cache hoặc Kubernetes trong MVP.
@@ -21,18 +23,18 @@ Không có microservice, message broker, distributed cache hoặc Kubernetes tro
 
 | Environment | Mục đích | Database | Secret/config | Trạng thái |
 |---|---|---|---|---|
-| Local Development | Lập trình và debug | SQL Server local, database riêng theo developer | .NET User Secrets + environment variables | PLANNED |
-| Test/CI | Integration test tự động | Database cô lập, tạo mới theo test run | CI secret store | PLANNED |
-| Demo/Staging | Mentor review và demo | SQL Server riêng, không dùng dữ liệu production | Secret store của nền tảng | PLANNED |
-| Production | Chỉ khi scope được phê duyệt | SQL Server managed/dedicated, backup | Managed secret store | OUT OF SCOPE hiện tại |
+| Local Backend / Shared Development | Thủy/Thiện lập trình và debug trên máy riêng | Cùng Neon PostgreSQL development database, runtime roles riêng | .NET User Secrets hoặc environment variables trên từng máy | PLANNED / NOT YET CONNECTED |
+| Test/CI | Integration test tự động | PostgreSQL disposable database hoặc Neon test branch cô lập từng run, khác shared dev | Dedicated test secret; CI secret store khi có CI | PLANNED |
+| MVP Demo / Manual Integration | Mentor review và demo | Shared Neon development database, demo records đã kiểm; không reset toàn cục | Runtime secrets riêng của backend demo | PLANNED |
+| Staging / Production | Chỉ khi scope được phê duyệt | Neon PostgreSQL environment/branch riêng, recovery plan theo khả năng thực tế | Managed secret store | OUT OF SCOPE hiện tại |
 
-Mọi environment phải có database và credential riêng. Không copy dữ liệu thật sang local/test nếu chưa ẩn danh.
+Shared development/MVP demo là cùng target theo quyết định hiện tại; test/CI và môi trường staging/production tương lai phải cô lập khỏi target này. Không copy dữ liệu thật sang test nếu chưa ẩn danh. **NEON SETUP: PLANNED; NEON CONNECTION: NOT CONFIGURED; DATABASE CONNECTION: NOT VERIFIED.** Chưa có thông tin project/branch/host/database/roles/version thực tế; application physical schema và EF migrations chưa được tạo.
 
 ## 3. Runtime và package **PLANNED**
 
 - Target framework: .NET 10.
 - ASP.NET Core Web API chạy bằng Kestrel; reverse proxy/TLS termination tùy hạ tầng được Mentor xác nhận.
-- EF Core SQL Server provider cùng major version với target framework.
+- EF Core provider `Npgsql.EntityFrameworkCore.PostgreSQL`; chọn version sau khi đối chiếu `dotnet --version`, `dotnet --list-sdks`, target framework, EF Core version và compatibility/dependency của Npgsql provider. Không suy version provider chỉ từ số SDK; chưa chọn/cài package trong phase này.
 - OpenAPI/Swagger chỉ bật có kiểm soát; production không cho phép thao tác không xác thực.
 - xUnit cho unit/integration test.
 
@@ -44,8 +46,8 @@ Thứ tự nguồn cấu hình **PLANNED**:
 
 1. `appsettings.json`: chỉ giá trị không nhạy cảm và default an toàn.
 2. `appsettings.{Environment}.json`: cấu hình môi trường không có secret.
-3. Environment variables / managed secret store.
-4. User Secrets chỉ cho local development.
+3. User Secrets chỉ cho Development trên máy developer, sau khi project skeleton tồn tại.
+4. Environment variables / managed secret injection ghi đè cấu hình theo host ASP.NET Core mặc định; kiểm precedence thực tế khi triển khai.
 
 Không commit:
 
@@ -54,18 +56,37 @@ Không commit:
 - License key thực tế.
 - `.env`, certificate private key hoặc database backup.
 
-Tên cấu hình nhạy cảm dự kiến gồm `ConnectionStrings__DefaultConnection`, `Jwt__SigningKey` và key-encryption material. Log cấu hình phải redact toàn bộ giá trị này.
+ASP.NET Core connection key là `ConnectionStrings:DefaultConnection`, có thể inject bằng .NET User Secrets hoặc environment variable `ConnectionStrings__DefaultConnection`. Giá trị runtime lấy từ actual Neon .NET pooled connection string; không ghi fake host, username hoặc password vào tài liệu. `Jwt__SigningKey` và key-encryption material cũng là secrets. Không log connection string, username/password hoặc secret values.
+
+Runtime ưu tiên **Neon pooled endpoint**; Npgsql client pool được giới hạn theo compute/concurrency thực tế của hai backend. Migration dùng **direct endpoint với credential riêng**, inject vào configuration chỉ trong migration process do Thủy điều phối; API không nhận DDL credential. Đây là lựa chọn vận hành để tránh phụ thuộc session/advisory lock trong PgBouncer transaction pooling, không phải khẳng định mọi EF migration đều không thể chạy pooled. Không dùng session-level `SET`/`search_path` làm điều kiện cho runtime; schema/table mapping tường minh theo database design. [Neon connection pooling](https://neon.com/docs/connect/connection-pooling), [Npgsql pooling parameters](https://www.npgsql.org/doc/connection-string-parameters).
+
+TLS Npgsql→Neon dùng `SSL Mode=VerifyFull` và certificate/hostname validation; kiểm `Channel Binding=Require` với driver/endpoint thực tế khi setup. Không dùng `Trust Server Certificate`, không in secret lúc connection failure. [Npgsql TLS](https://www.npgsql.org/doc/security.html), [Neon secure connections](https://neon.com/docs/connect/connect-securely).
+
+### 4.1 Manual Neon setup needed — PLANNED
+
+1. Người dùng tạo/chọn Neon account và project, region phù hợp đường mạng demo, PostgreSQL major version được Neon hỗ trợ; ghi non-secret metadata thực tế. Task này chưa tạo account/project hoặc kết nối.
+2. Chọn shared-development branch/compute/database dùng chung cho Thủy/Thiện. `it_asset_management_dev` chỉ là tên logical đề xuất; dùng database thật được chọn/tạo trong Neon, không giả định Neon mặc định dùng tên này.
+3. Cấp quyền project/Console phù hợp cho hai thành viên qua tài khoản riêng. Thủy điều phối database; sau khi được phép setup, provision owner/migration identity riêng và runtime least-privilege roles bằng SQL với grants tường minh. Role tạo bằng Console/CLI/API có thể mang `neon_superuser`, không dùng trực tiếp làm runtime role. [Neon roles](https://neon.com/docs/manage/roles).
+4. Trong **Connect**, chọn đúng actual Branch/Compute/Database/Role và phương thức .NET: pooled cho runtime, direct cho migration. Mỗi người tự lưu connection secret trên máy qua User Secrets/environment; migration secret do Thủy quản lý riêng. **Không gửi password, full connection string hoặc API key vào chat**; chỉ chia sẻ non-secret inventory và trạng thái đã cấu hình.
+5. Trước automated integration tests, provision disposable test branch/database và dedicated test secret theo [testing isolation](testing-strategy.md#31-database-isolation--planned). Không chuyển fixture sang shared dev nếu chưa có test target.
+6. Week 3 sau khi implementation được phép: xác minh actual PostgreSQL version/database/TLS/permissions/network, initial migration trên test target trước khi Thủy apply lên shared Neon; kiểm schema/seed/health và ghi evidence sanitized. Chưa bước nào ở đây được ghi VERIFIED.
 
 ## 5. Database release strategy **PLANNED**
 
-Migration chỉ bắt đầu sau khi kế hoạch Week 2 được phê duyệt.
+**Migration: NOT CREATED.** Migration chỉ bắt đầu sau khi kế hoạch Week 2 được phê duyệt, schema/module được phép triển khai và Neon setup có credentials thật. Thủy là primary migration owner; Thiện review, mọi lượt tạo/apply tuân thủ [database change lock](git-collaboration.md#database-change-lock--neon-shared-development-planned).
 
-1. Tạo migration nhỏ, có tên mô tả thay đổi.
-2. Review generated SQL và tác động dữ liệu/index.
-3. Chạy migration trên database test mới.
-4. Chạy integration test và kiểm tra rollback/recovery.
-5. Backup trước thay đổi destructive ở staging/production.
-6. Áp dụng migration như một bước release có kiểm soát; API runtime không tự ý migrate production khi startup.
+1. Xác định requirement/schema change.
+2. Cập nhật `database-design.md`.
+3. Cập nhật `erd.md` nếu schema/relationships bị ảnh hưởng.
+4. Review với Thiện và nhận migration lock của Thủy.
+5. Sửa Entity/Configuration theo contract đã review.
+6. Thủy tạo EF migration nhỏ từ Git/schema baseline đã đồng bộ.
+7. Review generated migration/SQL, dữ liệu/index/quyền; apply và integration test trên disposable target, kiểm recovery cho thay đổi có rủi ro.
+8. Thủy apply qua direct endpoint lên đúng shared Neon target đã xác minh trong maintenance window đã sync; không có hai schema-changing migrations độc lập cùng lúc.
+9. Smoke test schema/migration history/seed/API và thông báo kết quả để cả hai sync.
+10. Commit migration cùng schema/docs sau gate/review trong phase implementation được phép; nhả lock. Task đổi design hiện tại không tạo hoặc commit migration.
+
+API runtime không tự migrate shared database lúc startup. Backup/recovery trước thay đổi destructive được kiểm theo Neon plan/retention thực tế; không tuyên bố backup/restore có sẵn khi chưa kiểm.
 
 Migration đã áp dụng không bị sửa nội dung; sửa bằng migration tiếp theo. Dữ liệu history/audit không bị drop nếu chưa có migration plan và phê duyệt.
 
@@ -108,7 +129,7 @@ Quality gate:
 - Structured application log có correlation ID; không log password, token, full license key hoặc nội dung file nhạy cảm.
 - Audit log nghiệp vụ tách khỏi diagnostic log; retention được xác nhận trước production.
 - Theo dõi request error rate, latency, database timeout và import failure.
-- SQL Server backup định kỳ cho staging/production; kiểm thử restore, không chỉ kiểm tra file backup tồn tại.
+- Neon restore/backup retention và khả năng phục hồi phụ thuộc project/plan thực tế, cần xác nhận và restore drill trước staging/production; `pg_dump`/`pg_restore` nếu được chọn dùng direct endpoint và backup artifact mã hóa, quyền hạn chế. Không giả định fixed retention hoặc một branch thay thế đầy đủ backup.
 - Recovery point/time objective là open question vì chưa có yêu cầu vận hành production.
 
 ## 9. Rollback **PLANNED**

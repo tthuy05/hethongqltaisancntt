@@ -5,7 +5,7 @@
 
 ## 1. Quy ước enforcement
 
-- **DB:** ưu tiên FK, unique/filtered index, check constraint, rowversion và transaction cho invariant có thể biểu diễn an toàn.
+- **DB:** ưu tiên FK, unique/partial unique index, check constraint, application-managed `row_version` (`bytea`, EF concurrency token) và transaction cho invariant có thể biểu diễn an toàn.
 - **Service:** state machine, cross-entity invariant, authorization scope và calculation.
 - **Policy/DTO:** role, object/field-level access và masking.
 - **API:** trả ProblemDetails; validation 400, unauthorized 401, forbidden 403, not found 404, conflict/business invariant 409 và file quá giới hạn 413 khi phù hợp.
@@ -15,21 +15,21 @@
 
 | ID | Rule **PLANNED** | Lý do | Enforcement dự kiến | Trace |
 |---|---|---|---|---|
-| BR-001 | Một Asset chỉ có tối đa một AssetAssignment active tại một thời điểm. | Ngăn double assignment. | Filtered unique index theo `AssetId` khi active + transaction/service check; conflict 409. | FR-012; UC-003–UC-005 |
+| BR-001 | Một Asset chỉ có tối đa một AssetAssignment active tại một thời điểm. | Ngăn double assignment. | Partial unique index theo `AssetId` khi active + transaction/service check; conflict 409. | FR-012; UC-003–UC-005 |
 | BR-002 | Cấp phát **lần đầu** chỉ cho Asset active, không archived và có status `InStock`; Asset `Maintenance`, `Broken` hoặc `Retired` không được cấp phát. Transfer của Asset `InUse` có active assignment được xử lý riêng theo BR-005. | Tránh cấp thiết bị không sẵn sàng nhưng vẫn cho phép điều chuyển trực tiếp. | Service validation trong transaction; 409. | FR-012, FR-014; UC-003, UC-005 |
 | BR-003 | Không được retire/archive Asset khi còn active assignment hoặc maintenance ticket chưa terminal. | Không làm mất trách nhiệm/trạng thái đang xử lý. | Service check + transaction; 409. | FR-010–FR-011; UC-018 |
 | BR-004 | Mỗi active assignment phải có đúng một target: `UserId` XOR `DepartmentId`; target còn active. | Chủ thể nhận phải không mơ hồ. | DB check constraint + FK + service validation. | FR-012; UC-003 |
 | BR-005 | Transfer chỉ cho Asset `InUse` có đúng một active assignment, không archived/đang Maintenance/Broken/Retired; target mới active và khác target cũ. Trong một transaction, đóng assignment cũ rồi tạo assignment mới, giữ Asset `InUse`; nếu bước nào lỗi thì rollback toàn bộ. | Không tạo khoảng lịch sử sai hoặc double assignment. | Database transaction/isolation + BR-001/BR-004/BR-009. | FR-014; UC-005 |
 | BR-006 | Assignment đã đóng là immutable và không được xóa; return/transfer chỉ ghi `ReturnedAt`, `ReturnedBy`/reason/status trên record active theo transition kiểm soát. | Bảo toàn lịch sử cấp phát. | No hard-delete/update endpoint cho closed record; authorization + audit. | FR-013–FR-015; UC-004–UC-005 |
 | BR-007 | Asset status chỉ đổi theo transition hợp lệ và mỗi lần đổi tạo AssetStatusHistory append-only với from/to, source, actor, timestamp và reason. | Đồng bộ trạng thái và truy vết. | Service-owned transition + transaction; DB history FK. | FR-011; UC-003–UC-007 |
-| BR-008 | `AssetCode` sau normalize là bắt buộc và unique toàn hệ thống; `SerialNumber` khi có được normalize và unique bằng filtered unique index theo baseline, trừ khi OQ-002 được quyết định khác. | Định danh nhất quán và chống duplicate/import lỗi. | Required/length validation + unique/filtered index; 409. | FR-008, FR-034; UC-002, UC-011 |
-| BR-009 | Update entity mutable quan trọng (Asset, Ticket, License, rule) phải gửi concurrency token/rowversion; stale update bị từ chối 409. | Ngăn silent overwrite. | SQL Server `rowversion` + EF concurrency handling. | NFR-008; UC-002, UC-007–UC-008 |
+| BR-008 | `AssetCode` sau normalize là bắt buộc và unique toàn hệ thống; `SerialNumber` khi có được normalize và unique bằng partial unique index theo baseline, trừ khi OQ-002 được quyết định khác. | Định danh nhất quán và chống duplicate/import lỗi. | Required/length validation + unique/partial unique index; 409. | FR-008, FR-034; UC-002, UC-011 |
+| BR-009 | Update entity mutable quan trọng (Asset, Ticket, License, rule) phải gửi concurrency token `rowVersion`; stale update bị từ chối 409. | Ngăn silent overwrite. | PostgreSQL `row_version bytea`: application tạo 16 random bytes mới khi insert và mọi update, EF `IsConcurrencyToken()` so token cũ; API giữ opaque Base64 và concurrency handling/409. | NFR-008; UC-002, UC-007–UC-008 |
 
 ## 3. Maintenance
 
 | ID | Rule **PLANNED** | Lý do | Enforcement dự kiến | Trace |
 |---|---|---|---|---|
-| BR-010 | Chỉ Asset tồn tại, active, không `Retired` mới được mở maintenance ticket; không được bắt đầu ticket thứ hai nếu Asset đã có ticket `InProgress`. | Tránh xử lý thiết bị không hợp lệ hoặc hai quy trình đồng thời. | Service validation + filtered uniqueness/transaction cho active InProgress. | FR-016; UC-006 |
+| BR-010 | Chỉ Asset tồn tại, active, không `Retired` mới được mở maintenance ticket; không được bắt đầu ticket thứ hai nếu Asset đã có ticket `InProgress`. | Tránh xử lý thiết bị không hợp lệ hoặc hai quy trình đồng thời. | Service validation + partial unique index/transaction cho active InProgress. | FR-016; UC-006 |
 | BR-011 | Maintenance transition hợp lệ: `Pending → InProgress/Cancelled`; `InProgress → Resolved/Failed/Cancelled`; terminal state không đổi lại. Muốn xử lý lại phải mở ticket mới có liên kết nếu cần. | State machine rõ, lịch sử tin cậy. | Service state machine; 409 cho transition sai. | FR-017–FR-018; UC-006–UC-007 |
 | BR-012 | `Resolved` hoặc `Failed` yêu cầu result/resolution và `ResolvedAt`; `InProgress` yêu cầu technician và `StartedAt`; timestamp phải theo thứ tự thời gian. | Ticket kết thúc có đủ bằng chứng. | DTO + service + DB check khả thi. | FR-017–FR-019; UC-007 |
 | BR-013 | Khi ticket vào `InProgress`, Asset chuyển `Maintenance`; khi terminal, Asset trở về `InUse` nếu còn active assignment, nếu không về `InStock`, hoặc `Broken` khi kết quả xác định không sử dụng được. Cập nhật ticket, asset và history trong cùng transaction. | Tránh inconsistency ticket/status. | Service transaction + BR-007. | FR-011, FR-018; UC-006–UC-007 |
@@ -41,7 +41,7 @@
 |---|---|---|---|---|
 | BR-015 | Mỗi `LicenseAssignment` là một seat; `COUNT(*)` active allocation không được vượt `software_licenses.total_quantity`, kể cả license `VOLUME`. Capacity check và insert/revoke/transfer phải chống race condition. `UsedQuantity` là derived value, không cập nhật tay. | Tuân thủ số lượng license. | Transaction/isolation + aggregate/check strategy; concurrency integration test; 409. | FR-021–FR-023; UC-008 |
 | BR-016 | Mỗi LicenseAssignment có đúng một target: `UserId` XOR `AssetId`. `PER_USER` chỉ nhận User, `PER_DEVICE` chỉ nhận Asset; `VOLUME`/`SUBSCRIPTION`/`OTHER` dùng target User hoặc Asset theo cấu hình hợp đồng, mỗi row vẫn một seat. | Không cấp một seat mơ hồ/sai loại cho hai target. | DB check constraint + FK + service validation loại license. | FR-022; UC-008 |
-| BR-017 | Chỉ SoftwareLicense có `is_active = 1`, trong khoảng hiệu lực và còn capacity mới được assign; target phải active và Asset không archived/retired. | Ngăn phân bổ license không sử dụng được. | Service validation trong transaction; 409. | FR-022–FR-024; UC-008–UC-009 |
+| BR-017 | Chỉ SoftwareLicense có `is_active = true`, trong khoảng hiệu lực và còn capacity mới được assign; target phải active và Asset không archived/retired. | Ngăn phân bổ license không sử dụng được. | Service validation trong transaction; 409. | FR-022–FR-024; UC-008–UC-009 |
 | BR-018 | License key luôn masked trong response/list/report/export. Chỉ Admin IT được gọi explicit reveal với reason; mỗi reveal/change được audit nhưng audit không chứa full key. | Giảm rủi ro lộ secret. | Field policy + endpoint riêng + protected storage + audit redaction. | FR-025; UC-022 |
 | BR-019 | `Quantity > 0`, `Cost >= 0`, `StartDate < ExpirationDate` khi cả hai có giá trị; status expired/active được suy ra nhất quán từ ngày và `is_active`. | Dữ liệu license hợp lệ. | DB check + service validation. | FR-021, FR-024; UC-009, UC-020 |
 
@@ -58,7 +58,7 @@
 
 | ID | Rule **PLANNED** | Lý do | Enforcement dự kiến | Trace |
 |---|---|---|---|---|
-| BR-024 | Chỉ account active, không bị khóa quản trị (`is_admin_locked = 0`), không trong thời hạn lockout tự động và có role hợp lệ mới login; mọi trạng thái sai/không tồn tại dùng thông báo 401 chung, không tiết lộ email có tồn tại. | Chống truy cập trái phép/enumeration. | Auth service + generic 401 + rate/lock policy. | FR-001, FR-004; UC-001 |
+| BR-024 | Chỉ account active, không bị khóa quản trị (`is_admin_locked = false`), không trong thời hạn lockout tự động và có role hợp lệ mới login; mọi trạng thái sai/không tồn tại dùng thông báo 401 chung, không tiết lộ email có tồn tại. | Chống truy cập trái phép/enumeration. | Auth service + generic 401 + rate/lock policy. | FR-001, FR-004; UC-001 |
 | BR-025 | Password chỉ lưu bằng adaptive salted hashing (ưu tiên ASP.NET PasswordHasher); cấm plain text, MD5 hoặc SHA256 thuần. | Bảo vệ credential. | Identity/password service; không log/request persistence. | FR-001; UC-001 |
 | BR-026 | Authorization deny-by-default theo ba role, action, object và field. User biết ID không đồng nghĩa có quyền truy cập; response/update dùng allow-listed DTO. | Chống broken access control/BOLA/mass assignment. | Policy/resource authorization + projection/DTO. | FR-003; mọi UC protected |
 | BR-027 | MVP dùng JWT access token ngắn hạn, không refresh token. Logout phía client xóa token; server không tuyên bố revoke access token đã phát hành. | Giữ MVP đơn giản và mô tả đúng giới hạn. | JWT validation + documented client behavior. | FR-002; UC-001 |
@@ -110,7 +110,7 @@
 | BR-048 | License allocation đã thu hồi là immutable; transfer đóng allocation cũ rồi tạo allocation mới trong transaction. | Giữ lịch sử seat. | Transaction + no edit/delete closed allocation. | FR-023; UC-008, UC-021 |
 | BR-049 | Alert window warranty/license là cấu hình; `Expired` khi expiration trước thời điểm đánh giá, `ExpiringSoon` khi nằm trong window. Không có key trong alert. | Cảnh báo nhất quán. | Query/evaluator + configuration. | FR-024, FR-030–FR-031; UC-009, UC-013 |
 | BR-050 | Asset age tính từ PurchaseDate đến thời điểm evaluation theo ngày UTC; dữ liệu thiếu được đánh dấu `InsufficientData`, không tự suy đoán. | Recommendation có căn cứ. | Lifecycle calculation service. | FR-027; UC-010 |
-| BR-051 | Estimated replacement cost phải không âm và lấy từ `replacement_rules.estimated_unit_cost` của rule thắng; nếu chưa cấu hình thì để null, không suy đoán từ giá mua. Tại một thời điểm chỉ một recommendation hiện hành (`ACTIVE` hoặc `PLANNED`) cho mỗi Asset; evaluator chọn rule thắng theo priority/severity, lưu mọi điều kiện khớp trong snapshot, supersede bản cũ trong transaction. Evaluation gán `planned_replacement_year` mặc định bằng năm business calendar hiện tại; Admin IT/System Manager có thể đổi năm qua disposition/note (không phải approval). Budget chỉ cộng một estimate hiện hành/Asset đúng năm kế hoạch, đồng thời báo phần thiếu dữ liệu. | Không tạo ngân sách giả hoặc đếm trùng một Asset khớp nhiều rule. | Filtered unique index theo Asset + transaction + budget query/test. | FR-027–FR-029; UC-010, UC-024 |
+| BR-051 | Estimated replacement cost phải không âm và lấy từ `replacement_rules.estimated_unit_cost` của rule thắng; nếu chưa cấu hình thì để null, không suy đoán từ giá mua. Tại một thời điểm chỉ một recommendation hiện hành (`ACTIVE` hoặc `PLANNED`) cho mỗi Asset; evaluator chọn rule thắng theo priority/severity, lưu mọi điều kiện khớp trong snapshot, supersede bản cũ trong transaction. Evaluation gán `planned_replacement_year` mặc định bằng năm business calendar hiện tại; Admin IT/System Manager có thể đổi năm qua disposition/note (không phải approval). Budget chỉ cộng một estimate hiện hành/Asset đúng năm kế hoạch, đồng thời báo phần thiếu dữ liệu. | Không tạo ngân sách giả hoặc đếm trùng một Asset khớp nhiều rule. | Partial unique index theo Asset + transaction + budget query/test. | FR-027–FR-029; UC-010, UC-024 |
 | BR-052 | Export áp dụng đúng permission/filter/masking như API; formula-like text phải được neutralize để chống spreadsheet injection; không export full key. | Bảo mật file đầu ra. | Export projection/sanitizer. | FR-033; UC-012 |
 | BR-053 | Date range phải có `from <= to`; timestamp lưu UTC và API dùng ISO 8601. Báo cáo phải công bố timezone dùng để group theo ngày. | Kết quả báo cáo nhất quán. | Query validation + UTC conversion. | FR-031–FR-033; UC-012–UC-013 |
 | BR-054 | MVP không có formal approval. Action đã authorize/validate (assign, return, transfer, import, rule publish) có hiệu lực ngay và critical action được audit. | Tránh mô hình nửa approval, nửa trực tiếp. | Không tạo approval state/entity; audit theo BR-035. | ASM-002; UC-003–UC-005, UC-011, UC-023 |
@@ -147,7 +147,7 @@ Pending ──► InProgress ──► Resolved
 
 | Rule range | Database | API/Service | Permission/Security | Test **PLANNED** |
 |---|---|---|---|---|
-| BR-001–BR-009 | FK/check/filtered unique/rowversion/history | Assignment + asset transition transaction | Asset/assignment policy | Double assignment, invalid status, transfer rollback, stale update |
+| BR-001–BR-009 | FK/check/partial unique/`row_version`/history | Assignment + asset transition transaction | Asset/assignment policy | Double assignment, invalid status, transfer rollback, stale update |
 | BR-010–BR-014 | Ticket/history/status FK/check | Maintenance state machine transaction | Ticket scope, cost filtering | Invalid transition, resolution required, status consistency |
 | BR-015–BR-019 | Allocation XOR/FK/date/check/index | Capacity/date/reveal services | Key field policy | Concurrent capacity, expiry, reveal deny/audit |
 | BR-020–BR-023 | Rule version/recommendation snapshot | Deterministic evaluator | Rule admin only | Threshold boundaries, priority/explanation, no side effect |
@@ -160,7 +160,7 @@ Business-rule coverage phải tiếp tục khớp `database-design.md`, `erd.md`
 
 ## 14. BR → entity → API → test case cho hai người triển khai
 
-Các `TC-BR-xxx` là **PLANNED test cases**, chưa có test project hoặc pass result. Test có thể là unit/integration/UI tùy invariant; database/concurrency/transaction phải được chứng minh bằng SQL Server integration test, không chỉ mock. API nhiều nhóm nghĩa rule được áp dụng ở tất cả command/query tương ứng.
+Các `TC-BR-xxx` là **PLANNED test cases**, chưa có test project hoặc pass result. Test có thể là unit/integration/UI tùy invariant; database/concurrency/transaction phải được chứng minh bằng PostgreSQL integration test trên target isolated, không chỉ mock. Shared Neon development phục vụ development/manual integration/demo; automated tests không drop database/schema hoặc truncate toàn bộ bảng ở đó. API nhiều nhóm nghĩa rule được áp dụng ở tất cả command/query tương ứng.
 
 | Rule | Entity / dữ liệu chính | API EP | Test case **PLANNED** |
 |---|---|---|---|

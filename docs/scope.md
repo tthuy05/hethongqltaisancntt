@@ -5,9 +5,9 @@
 
 ## 1. Product boundary
 
-Sản phẩm MVP gồm web UI quản trị **và** backend REST API cho một doanh nghiệp quản lý tài sản và hạ tầng CNTT. API phục vụ ba authenticated role: **Admin IT**, **System Manager** và **Technical Support**. M1 ngày **10/10/2026** phải demo login → dashboard → asset list → create/detail/edit → search/filter trên dữ liệu SQL Server thật.
+Sản phẩm MVP gồm web UI quản trị **và** backend REST API cho một doanh nghiệp quản lý tài sản và hạ tầng CNTT. API phục vụ ba authenticated role: **Admin IT**, **System Manager** và **Technical Support**. M1 ngày **10/10/2026** phải demo login → dashboard → asset list → create/detail/edit → search/filter trên dữ liệu PostgreSQL hosted on Neon thật.
 
-Baseline công nghệ **PLANNED**: ASP.NET Core Web API trên .NET 10, Entity Framework Core, SQL Server, JWT access token, Swagger/OpenAPI và xUnit. Việc tạo solution/code/migration chỉ được bắt đầu sau khi kế hoạch Week 2 được `APPROVED`.
+Baseline công nghệ **PLANNED**: ASP.NET Core Web API trên .NET 10, Entity Framework Core với `Npgsql.EntityFrameworkCore.PostgreSQL`, PostgreSQL hosted on Neon, JWT access token, Swagger/OpenAPI và xUnit. Neon là shared development database của Thủy/Thiện; automated integration tests dùng PostgreSQL target isolated. Việc tạo solution/code/migration chỉ được bắt đầu sau khi kế hoạch Week 2 được `APPROVED`.
 
 ## 2. In Scope
 
@@ -185,7 +185,7 @@ Import/export + hardening + integration tests + finalization (Week 7)
 | RSK-006 | License key bị lộ | Rất cao: security/compliance | Trung bình | Encrypt/protect at-rest, masked response, Admin-only explicit reveal, audit/sanitize; FR-025, BR-018, BR-035–BR-036. |
 | RSK-007 | Dashboard/report chậm | Trung bình/Cao | Trung bình | DB aggregate, projection, index, pagination, execution-plan/load test; NFR-005–NFR-006, BR-033–BR-034. |
 | RSK-008 | Duplicate AssetCode/SerialNumber | Cao: sai định danh | Trung bình | Normalize, unique index, import prevalidation, conflict 409; BR-008, BR-030. |
-| RSK-009 | Double assignment do race condition | Cao: sai quyền sở hữu | Trung bình | Filtered unique constraint, transaction, concurrency test; BR-001, BR-009, NFR-008. |
+| RSK-009 | Double assignment do race condition | Cao: sai quyền sở hữu | Trung bình | Partial unique index, transaction, concurrency test; BR-001, BR-009, NFR-008. |
 | RSK-010 | License over-allocation do concurrent request | Cao: vi phạm license | Trung bình | Transaction/isolation + capacity check/constraint strategy + concurrency test; BR-009, BR-015. |
 | RSK-011 | Data inconsistency giữa status và active workflow | Cao: báo cáo sai | Trung bình | Service-owned transition, status history, transaction và reconciliation tests; BR-007, BR-011–BR-013. |
 | RSK-012 | Thiếu thời gian/test/evidence | Cao: không đạt demo/DoD | Cao | Timebox, ưu tiên core/risk-first tests, daily status, không lấy nice-to-have trước core. |

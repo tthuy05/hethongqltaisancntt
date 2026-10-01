@@ -1,6 +1,10 @@
 # Week 03 — M1: Identity + Asset Core + Web UI
 
-> **PLANNED — NOT IMPLEMENTED.** Chỉ bắt đầu sau review/approval. M1 10/10/2026 bắt buộc có API + SQL Server + UI thật. Mỗi ngày Thủy 3M+2S (7h đại diện), Thiện 2M+1S (4,5h); M=1–3h, S<1h. Task quá 3h phải tách. Không thêm framework frontend; Bootstrap 5/JS cùng origin.
+> **PLANNED — NOT IMPLEMENTED.** Chỉ bắt đầu sau review/approval. M1 10/10/2026 bắt buộc có API + PostgreSQL hosted on Neon + UI thật. Mỗi ngày Thủy 3M+2S (7h đại diện), Thiện 2M+1S (4,5h); M=1–3h, S<1h. Task quá 3h phải tách. Không thêm framework frontend; Bootstrap 5/JS cùng origin.
+
+**Database readiness — PLANNED:** Neon project/access, actual database/endpoint và secret storage trên hai máy cần sẵn trước **05/10**, theo [deployment setup](../deployment.md). Chưa có credentials: **NEON SETUP: PLANNED; NEON CONNECTION: NOT CONFIGURED; DATABASE CONNECTION: NOT VERIFIED**. Runtime dùng pooled endpoint với credential riêng/TLS; migration dùng direct endpoint và migration credential do Thủy điều phối. Không gửi password vào chat, không ghi host giả hoặc hard-code connection trong source.
+
+**Test/migration boundary:** mọi automated integration/clean migration/fixture dưới đây dùng PostgreSQL test target isolated, fail-closed nếu cấu hình trỏ shared Neon dev hoặc chưa xác minh isolation. Shared Neon là development/manual integration/demo target; không drop database/schema, reset hoặc truncate toàn bộ tables ở đó. Thủy là primary migration coordinator; Thiện sync trước `dotnet ef migrations add`/`dotnet ef database update`. Giữ task ID, ownership, estimate và mốc M1.
 
 ## Thứ Hai — 05/10/2026
 
@@ -10,7 +14,7 @@
 **Objective:** mở critical path M1.  
 **Task List (theo thứ tự):**
 - W3-THUY-D1-01 [BACKEND] [M] [PLANNED] Tạo solution/API/Application/Domain/Infrastructure/test projects và project references theo architecture.
-- W3-THUY-D1-02 [BACKEND] [M] [PLANNED] Cấu hình `Program.cs` DI/config, health endpoint và OpenAPI/Swagger development.
+- W3-THUY-D1-02 [BACKEND] [M] [PLANNED] Cấu hình `Program.cs` DI/config, health endpoint và OpenAPI/Swagger development; kiểm SDK/EF Core major để chọn Npgsql provider version tương thích, plan `UseNpgsql`/`ConnectionStrings:DefaultConnection` qua User Secrets/env/TLS, xác nhận Neon access đã sẵn.
 - W3-THUY-D1-03 [FRONTEND] [M] [PLANNED] Tạo `wwwroot` shell, Bootstrap 5 local, header/sidebar responsive và Dashboard asset section skeleton không số giả.
 - W3-THUY-D1-04 [TEST] [S] [PLANNED] Tạo test host/smoke health đầu tiên.
 - W3-THUY-D1-05 [VERIFY] [S] [PLANNED] Chạy restore/Release build, ghi output; không đánh pass nếu lỗi.
@@ -34,20 +38,20 @@
 
 ## Thứ Ba — 06/10/2026
 
-**Mục tiêu chung:** SQL Server connection + initial migration thật và master service foundation.
+**Mục tiêu chung:** Neon PostgreSQL connection + initial migration thật và master service foundation.
 
 ### THỦY
 **Objective:** database nền M1 có thể tái tạo.  
 **Task List (theo thứ tự):**
-- W3-THUY-D2-01 [DATA] [M] [PLANNED] Tạo core entity skeleton + `AppDbContext` mapping Users/Roles/Permissions/Departments/AssetTypes/Assets/StatusHistory và indexes/rowVersion.
-- W3-THUY-D2-02 [DATA] [M] [PLANNED] Tạo/review một initial migration; chạy trên test DB sạch, kiểm FK/unique/check và kết nối SQL Server.
-- W3-THUY-D2-03 [BACKEND] [M] [PLANNED] Thêm centralized ProblemDetails/validation/correlation pipeline và DI repository contracts.
-- W3-THUY-D2-04 [SECURITY] [S] [PLANNED] Seed role/permission + demo account qua secret/dev-only bootstrap, không hard-code password.
-- W3-THUY-D2-05 [VERIFY] [S] [PLANNED] Chạy migration/build smoke và kiểm source không chứa connection secret.
+- W3-THUY-D2-01 [DATA] [M] [PLANNED] Map 10 bảng M1: Users/Roles/UserRoles/Permissions/RolePermissions/Departments/AssetTypes/Assets/StatusHistory/AuditLogs vào `AppDbContext` với Npgsql/`UseNpgsql`, PostgreSQL FK/index/check/types và application-managed `row_version bytea`/API rowVersion theo database design.
+- W3-THUY-D2-02 [DATA] [M] [PLANNED] Verify actual Neon TLS/secret connection; tạo/review một initial migration, apply/kiểm tables/FK/unique/check trên isolated PostgreSQL test target sạch, sau Thiện review Thủy apply shared Neon qua direct endpoint dưới database change lock; không reset shared DB.
+- W3-THUY-D2-03 [BACKEND] [M] [PLANNED] Thêm ProblemDetails/validation/correlation pipeline, DI repository contracts và minimal transactional AuditWriter đã redact cho login/master/Asset; endpoint truy vấn audit mở rộng Week 4.
+- W3-THUY-D2-04 [SECURITY] [S] [PLANNED] Seed role/permission + demo account qua secret/dev-only bootstrap trên Neon đã verify; thống nhất namespace demo data với Thiện, không hard-code password hoặc reset shared dataset.
+- W3-THUY-D2-05 [VERIFY] [S] [PLANNED] Chạy migration/build/Neon schema smoke và kiểm source/log không chứa connection string/credential.
 **Files / Modules:** `Infrastructure/Data/AppDbContext.cs`, `Migrations/*`, `Api/Program.cs`, `Api/Middleware/*`, config template.  
-**End-of-Day Outcome:** clean DB + schema M1 và ProblemDetails/health chạy; chưa claim Auth/Asset.
-**Verification Plan:** migration lên DB trống, inspect tables/indexes, health/Swagger, Release build, duplicate constraint test sớm.  
-**Dependency:** mapping proposal của Thiện. **Fallback Task:** tích hợp core schema đã freeze; Thiện giữ master code/test độc lập cho đến migration pass. **Reviewer:** Thiện.
+**End-of-Day Outcome:** Neon shared schema M1 + isolated PostgreSQL migration checks và ProblemDetails/health chạy; chưa claim Auth/Asset.
+**Verification Plan:** migration lên isolated test DB trống, inspect PostgreSQL tables/indexes/constraints; Neon TLS/connection/schema verification riêng, health/Swagger, Release build, duplicate constraint test sớm.  
+**Dependency:** mapping proposal của Thiện + Neon setup/access/secret và isolated test target. **Fallback Task:** nếu Neon chưa sẵn, tích hợp mapping/provider config + unit tests trên core contract đã freeze; ghi CONNECTION NOT VERIFIED/blocker, Thiện giữ master code/test độc lập, không dùng local DB làm dev chính hoặc nhận migration pass giả. **Reviewer:** Thiện.
 
 ### THIỆN
 **Objective:** master service/controller không đụng migration.  
@@ -137,7 +141,7 @@
 **Files / Modules:** Asset query service, `wwwroot/js/assets.js`, `dashboard.js`, API/UI tests, docs/status.  
 **End-of-Day Outcome:** flow demo có thể diễn tập, không còn blocker critical đã biết hoặc báo rõ.
 **Verification Plan:** browser flow, DB persistence sau refresh, filter/page, Support write 403, 320/768/1280px, tests.  
-**Dependency:** Asset API/master/login từ D3–D4. **Fallback Task:** cắt archive/user-admin non-M1, ưu tiên Create/Edit/Search/UI thật; báo blocker nếu DB/API fail. **Reviewer:** Thiện.
+**Dependency:** Asset API/master/login từ D3–D4. **Fallback Task:** hoãn archive UI/status admin nâng cao và user-admin đầy đủ; giữ EP-028 archive API trong M1, báo missing criterion nếu chưa đạt. **Reviewer:** Thiện.
 
 ### THIỆN
 **Objective:** kiểm M1 độc lập và hỗ trợ sửa mismatch.  
@@ -159,7 +163,7 @@
 ### THỦY
 **Objective:** dẫn demo trên build/DB thật.  
 **Task List (theo thứ tự):**
-- W3-THUY-D6-01 [INTEGRATION] [M] [PLANNED] Pull/merge PR đã review, chạy Release build + clean migration + M1 unit/integration suite.
+- W3-THUY-D6-01 [INTEGRATION] [M] [PLANNED] Pull/merge PR đã review, chạy Release build + clean migration trên isolated PostgreSQL test target + M1 unit/integration suite; verify shared Neon dev schema riêng, không reset.
 - W3-THUY-D6-02 [TEST] [M] [PLANNED] Chạy Swagger/Postman health/login/Asset và UI smoke cả flow; xác minh 400/401/403/409/DB rows.
 - W3-THUY-D6-03 [DEMO] [M] [PLANNED] Rehearsal cuối, sửa blocker an toàn, demo Mentor với login/dashboard/list/create/edit/filter và responsive.
 - W3-THUY-D6-04 [DOC] [S] [PLANNED] Cập nhật README/PROJECT_STATUS/CHANGELOG theo actual evidence, không tự claim pass.
@@ -172,7 +176,7 @@
 ### THIỆN
 **Objective:** xác minh master/DB/UI độc lập trước demo.  
 **Task List (theo thứ tự):**
-- W3-THIEN-D6-01 [TEST] [M] [PLANNED] Chạy master/Asset integration negative tests, clean DB FK/unique và UI master smoke sau merge.
+- W3-THIEN-D6-01 [TEST] [M] [PLANNED] Chạy master/Asset integration negative tests, clean isolated PostgreSQL FK/unique và UI master smoke trên shared Neon sau merge, không reset shared dataset.
 - W3-THIEN-D6-02 [REVIEW] [M] [PLANNED] Kiểm M1 checklist từng tiêu chí, screenshot sanitization và bug fix nhỏ thuộc master.
 - W3-THIEN-D6-03 [DOC] [S] [PLANNED] Ghi test evidence/failure/skip và review status report của Thủy.
 **Files / Modules:** master API/UI/tests, M1 checklist, `PROJECT_STATUS.md` review.  

@@ -2,6 +2,8 @@
 
 > Trạng thái: **PLANNED — Week 2.** ERD mô tả thiết kế dự kiến; chưa có migration hoặc database vật lý.
 
+> Database Engine: **PostgreSQL**. Hosting: **Neon** — PLANNED / NOT YET CONNECTED (ADR-018). Schema Baseline V1 giữ **18 tables / 41 relationships**; Mermaid block dùng logical types và được giữ nguyên byte-for-byte. `binary row_version` map sang app-managed bytea, `json` map jsonb, `datetime` map timestamptz UTC trong database-design; không đổi entity/FK/cardinality.
+
 ## 1. Sơ đồ quan hệ
 
 ```mermaid
@@ -273,11 +275,11 @@ Ký hiệu Mermaid được hiểu như sau: `||` là đúng một, `o|` là kh�
 - Một department sở hữu nhiều asset; mỗi asset có đúng một department sở hữu tại một thời điểm.
 - Một asset có nhiều dòng trạng thái, assignment, maintenance ticket, license assignment và replacement recommendation trong lịch sử.
 - Mỗi `asset_assignment` nhắm **đúng một** user hoặc department. Hai FK đều optional trên ERD để biểu diễn XOR; `CHECK` ở database bắt buộc đúng một FK có giá trị.
-- Mỗi asset có tối đa một assignment đang hiệu lực; filtered unique index trên `asset_id` bảo đảm bất biến này.
+- Mỗi asset có tối đa một assignment đang hiệu lực; PostgreSQL partial unique index trên `asset_id` bảo đảm bất biến này.
 - Một maintenance ticket có nhiều history; mỗi history thuộc đúng một ticket. Ticket và history không bị cascade-delete.
 - Một software có nhiều software license; mỗi license có nhiều lượt phân bổ.
 - Mỗi `license_assignment` nhắm **đúng một** user hoặc asset, đại diện một seat. `CHECK` bảo đảm XOR; `COUNT(*)` active allocation không vượt `software_licenses.total_quantity`, được service bảo đảm bằng transaction có khóa hàng license.
-- Một replacement rule có thể áp dụng cho một asset type hoặc cho tất cả loại khi `asset_type_id` null; rule tạo nhiều recommendation. `(code, version)` là unique ghép; chỉ một phiên bản hiện hành cho mỗi `code` theo filtered unique index. ERD không gắn `UK` riêng lẻ cho hai cột này.
+- Một replacement rule có thể áp dụng cho một asset type hoặc cho tất cả loại khi `asset_type_id` null; rule tạo nhiều recommendation. `(code, version)` là unique ghép; chỉ một phiên bản hiện hành cho mỗi `code` theo PostgreSQL partial unique index. ERD không gắn `UK` riêng lẻ cho hai cột này.
 - User có unique index trên `normalized_username` và `normalized_email`; `username`/`email` là giá trị hiển thị. Mỗi Asset có tối đa một recommendation hiện hành (`ACTIVE` hoặc `PLANNED`); chỉ một estimate/năm/Asset đi vào annual budget.
 - User là actor tùy chọn của history/audit để cho phép system job và anonymous login failure. Dữ liệu lịch sử vẫn được giữ khi user bị deactivate.
 
@@ -291,5 +293,5 @@ Các FK người tạo/người sửa tùy chọn trong `departments`, `users` v
 - Mỗi bảng có PK; mọi FK nghiệp vụ cốt lõi và cardinality đều được thể hiện.
 - Hai quan hệ target đa hình dùng hai FK nullable kèm XOR constraint, không dùng chuỗi `target_type/target_id` thiếu toàn vẹn tham chiếu.
 - ERD khớp tên bảng/cột chính trong `database-design.md`.
-- Block ERD được Mermaid parser 11.17.2 kiểm tra cú pháp thành công ngày 29/09/2026; chưa xuất/rà hình render PNG/SVG.
+- Block ERD được Mermaid parser 11.17.2 kiểm tra cú pháp thành công ngày 29/09 và kiểm lại ngày 01/10/2026; 18 entity/41 FK columns/41 relationships được đối chiếu database design. Chưa xuất/rà hình render PNG/SVG.
 - Toàn bộ ERD là **PLANNED**; chưa xác nhận bằng migration hoặc database thực tế.

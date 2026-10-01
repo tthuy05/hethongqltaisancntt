@@ -1,6 +1,8 @@
 # Kiểm tra repository và môi trường
 
-> Trạng thái tài liệu: **VERIFIED** cho audit ban đầu 28/09/2026 và re-audit planning 01/10/2026; mọi thành phần ứng dụng được nêu là **PLANNED**.
+> Trạng thái tài liệu: **VERIFIED** cho các snapshot audit được ghi dưới đây. Snapshot mới nhất ngày 01/10/2026 khi thực hiện phần việc Tuần 2 của Thủy; mọi thành phần ứng dụng vẫn **PLANNED**.
+
+> **Historical snapshots:** mục 2–7 bảo toàn evidence đã có, kể cả quyết định SQL Server cũ. Current platform decision là **ADR-018 — PostgreSQL hosted on Neon**; mục 8 bên dưới supersede target DB, không phủ nhận environment audit hoặc coi repo hiện tại là project trống.
 
 ## 1. Phạm vi kiểm tra
 
@@ -77,4 +79,34 @@ Re-audit 01/10: `dotnet --version`/`--list-sdks` vẫn là 10.0.400; service `MS
 - Docker engine không chạy nhưng kiến trúc không phụ thuộc Docker.
 - Cần thống nhất connection string phát triển qua User Secrets hoặc biến môi trường; tuyệt đối không commit secret.
 - Không tạo project skeleton trong Week 2 theo chỉ đạo hiện tại.
+
+## 7. Re-audit bàn giao phần việc Thủy — 01/10/2026
+
+Các snapshot ở mục 2–5 giữ nguyên ý nghĩa lịch sử; repository hiện không còn là unborn branch.
+
+| Kiểm tra read-only | Kết quả lần bàn giao |
+|---|---|
+| `git status --short --branch` trước thay đổi | `## main...origin/main`, working tree sạch. |
+| Branch/remote | `main`; fetch/push origin đều đúng repository chính thức. |
+| `git log -1` và `git ls-remote origin refs/heads/main` | Cùng commit `0c9937493b8531954765ae0419374296210c9531`, message `add project plan and technical docs`. |
+| Inventory trước bàn giao | 33 Markdown files, không solution/project/source/migration/frontend/test manifest. Sau bàn giao thêm một Markdown handoff; chưa có app code. |
+| `dotnet --version`, `dotnet --list-sdks` | SDK 10.0.400; không cài thêm SDK/package/tool. |
+| PowerShell/Git/Node | 7.6.5 / 2.55.0.windows.3 / v24.19.0; Node dùng kiểm tài liệu. |
+| `sqlcmd -S localhost -E -l 5 -b` và SELECT SERVERPROPERTY | Kết nối thành công; SQL Server 17.0.1000.7 Standard Developer, server collation `Vietnamese_CI_AS`. Chỉ SELECT metadata; không tạo database nghiệp vụ. |
+| Services | MSSQLSERVER Running; SQLBrowser/SQLSERVERAGENT Stopped. Kết nối local đã kiểm thành công. |
+| Docker | Client 29.7.2; `docker info` không kết nối được Linux engine pipe, engine chưa sẵn sàng. Stack hiện không bắt buộc Docker. |
+| `dotnet tool list --global` | Không có global tools; dotnet-ef chưa được cài. |
+| Mermaid | Tái sử dụng parser 11.17.2 đã có trong thư mục tạm ngoài repo; ERD syntax parse thành công. Không cài dependency vào repository. |
+
+Audit này không bao gồm build/test ứng dụng, migration, API request hoặc screenshot UI vì chưa có project. Kết quả task và các giới hạn review tại [bàn giao Thủy](week-02-thuy-handoff.md).
+
+## 8. Database platform update audit — 01/10/2026
+
+- Đã chạy git status, git diff --stat, git diff và đọc toàn bộ WIP trước khi sửa: **24 tracked modified + một untracked handoff = 25 files**, không coi working tree sạch/trống. Baseline diff là 246 insertions / 63 deletions; untracked handoff không nằm trong diff --stat.
+- Sao lưu copy toàn bộ **34 Markdown files** trước đổi Neon ngoài repo tại `C:/Users/nguye/AppData/Local/Temp/codex-neon-wip-1fd6d499747540b7a23a14b7c7f22c33`; dùng đối chiếu bảo toàn. Không reset/restore/checkout/clean hoặc sửa index/history.
+- Recheck `dotnet --version` và `dotnet --list-sdks`: **10.0.400**, duy nhất SDK trong `C:/Program Files/dotnet/sdk`. Chưa có csproj/package lock để kiểm EF Core installed version; exact EF/Npgsql version selection/compatibility/restore/build vẫn PLANNED.
+- Schema review giữ 18 tables / 41 FK/relationships; không source/entity/migration/physical schema, không production data để migrate. Previous 21 documentation checks PASS giữ nguyên evidence; chỉ affected checks/consistency được chạy sau update.
+- Current stack: ASP.NET Core → EF Core → Npgsql.EntityFrameworkCore.PostgreSQL → PostgreSQL hosted on Neon. Local SQL Server/PostgreSQL cài trên máy không còn là development primary target.
+- Credentials Neon chưa được cung cấp: **NEON SETUP: PLANNED; NEON CONNECTION: NOT CONFIGURED; DATABASE CONNECTION: NOT VERIFIED**. Không thử host giả, tạo account/project hoặc kết nối Neon; không cài package/tool, commit/push hoặc thực thi Week 3.
+- Chi tiết decision/compatibility tại [ADR-018–020](../DECISIONS.md), [database design](database-design.md#12-postgresql-compatibility-review--database-platform-change-addendum) và [handoff addendum](week-02-thuy-handoff.md#database-platform-change-addendum).
 

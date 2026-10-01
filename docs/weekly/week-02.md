@@ -2,6 +2,8 @@
 
 > Toàn bộ task dưới đây **PLANNED**; ngày 28–30/09 là lịch baseline cần đối chiếu với status thực tế, không tự ghi DONE. Tuần này chỉ audit/tài liệu/kế hoạch, **không tạo app, migration, commit hoặc push**. Estimate M=1–3h, S<1h; mỗi ngày Thủy 3M+2S, Thiện 2M+1S. Reviewer chéo theo [ownership](../team-responsibilities.md).
 
+Kết quả thực hiện phần Thủy ngày **01/10/2026** được ghi riêng tại [bàn giao 30 task](../week-02-thuy-handoff.md): artifact **DOCUMENTED — REVIEW PENDING**. Các ngày dưới đây giữ vai trò baseline; không đổi sang DONE, không giả lập đã làm việc trong ngày 02–03/10 hoặc đã được Thiện review.
+
 ## Thứ Hai — 28/09/2026
 
 **Mục tiêu chung:** xác minh repo/môi trường; xác định yêu cầu và mốc M1.
@@ -181,3 +183,11 @@
 **Dependency:** bản plan của Thủy. **Fallback Task:** review critical path M1 trước các tuần xa. **Reviewer:** Thủy.
 
 **Cuối ngày — Sync / Integration:** chốt M0 findings/ADR/OQ, không merge/commit/push; chỉ sau user approval mới bắt đầu skeleton Week 3. Không sửa đồng thời README/status ở checkpoint.
+
+## Database Platform Change Addendum — 01/10/2026
+
+Quyết định database planned chuyển từ SQL Server sang **PostgreSQL hosted on Neon**, EF Core provider `Npgsql.EntityFrameworkCore.PostgreSQL`. Shared Neon development phục vụ Thủy/Thiện; **NEON SETUP: PLANNED; NEON CONNECTION: NOT CONFIGURED; DATABASE CONNECTION: NOT VERIFIED**. Không chạy Week 3, tạo code/migration hoặc kết nối Neon trong addendum này.
+
+Giữ nguyên toàn bộ task ID, ngày, estimate, owner, reviewer và task lines của baseline Week 2; 30 artifact Thủy giữ **DOCUMENTED — REVIEW PENDING**, 21 check PASS trước thay đổi và evidence nằm ở [handoff](../week-02-thuy-handoff.md). SQL Server trong W2-THUY-D1-02 là audit môi trường lịch sử, không còn là development target. Thiết kế **SCHEMA BASELINE V1: 18 bảng / 41 quan hệ** giữ nguyên; database-dependent type/index/concurrency ở W2-THUY-D3-01–05 và review W2-THIEN-D3-02 đọc theo [database design](../database-design.md) đã cập nhật PostgreSQL (partial unique index, application-managed `row_version bytea`, UTC timestamps). API `rowVersion` vẫn opaque Base64 và stale update 409.
+
+Week 3 chỉ điều chỉnh các bước database tại task hiện có: Neon access/setup trước 05/10, Npgsql/`UseNpgsql`, TLS/secret, verify connection, review migration trên isolated PostgreSQL rồi Thủy apply shared Neon dưới database change lock, seed và smoke. Không đổi mốc MVP **10/10/2026**, workload hoặc ownership. Automated tests/clean migration không reset/drop/truncate shared development DB.

@@ -2,6 +2,8 @@
 
 > **PLANNED — NOT IMPLEMENTED.** Entry: M2 Asset/Maintenance history and auth stable. Thủy owns key-protection/shared migration/security/API consistency; Thiện owns Software/License/Replacement API/UI. Daily capacity: Thủy 3M+2S, Thiện 2M+1S (7h/4,5h đại diện); M=1–3h, S<1h.
 
+**Database boundary — PLANNED:** development/manual integration/demo dùng shared Neon PostgreSQL; clean migration/automated integration/fixture dùng PostgreSQL target isolated theo [testing strategy](../testing-strategy.md), fail-closed nếu trỏ shared dev. Không drop/reset schema/database hoặc truncate toàn bộ tables trên shared DB. Thủy review/test rồi điều phối apply migration qua direct endpoint; Thiện sync trước mọi EF migration command.
+
 ## Thứ Hai — 19/10/2026
 
 **Mục tiêu chung:** schema/key-protector contract trước license persistence.
@@ -11,7 +13,7 @@
 **Task List (theo thứ tự):**
 - W5-THUY-D1-01 [SECURITY] [M] [PLANNED] Chốt secret source/encryption interface/version; không lưu key/JWT secret trong source/DB plaintext.
 - W5-THUY-D1-02 [DATA] [M] [PLANNED] Map Software/License/Allocation/Replacement tables, XOR/capacity/current unique và tạo một migration review.
-- W5-THUY-D1-03 [TEST] [M] [PLANNED] Chạy clean migration/constraint tests, key protector roundtrip/redaction/unit tests.
+- W5-THUY-D1-03 [TEST] [M] [PLANNED] Chạy clean migration/constraint tests trên isolated PostgreSQL rồi Thủy apply reviewed migration shared Neon dưới change lock; key protector roundtrip/redaction/unit tests.
 - W5-THUY-D1-04 [DOC] [S] [PLANNED] Ghi OQ key/currency/threshold còn mở trước seed rule.
 - W5-THUY-D1-05 [REVIEW] [S] [PLANNED] Giao mapping/secret contract cho Thiện sau review.
 **Files / Modules:** `Infrastructure/Data/*`, `Migrations/*`, `Infrastructure/Security/LicenseKeyProtector*`, tests, OQ/ADR.  
@@ -70,7 +72,7 @@
 **Objective:** chống race/leak ở allocation.
 **Task List (theo thứ tự):**
 - W5-THUY-D3-01 [DATA] [M] [PLANNED] Review transaction/isolation cho COUNT active allocation + insert/revoke/transfer khi tranh seat cuối.
-- W5-THUY-D3-02 [TEST] [M] [PLANNED] Viết/chạy concurrent allocation/capacity/rollback integration tests trên SQL Server thật.
+- W5-THUY-D3-02 [TEST] [M] [PLANNED] Viết/chạy concurrent allocation/capacity/rollback integration tests trên isolated PostgreSQL thật, không shared Neon development.
 - W5-THUY-D3-03 [FRONTEND] [M] [PLANNED] Tạo License list/detail/allocation page dùng asset/user lookup, maskedKey và shared 409 refresh handler; Thiện review UI module.
 - W5-THUY-D3-04 [SECURITY] [S] [PLANNED] So field cost/key scope qua API và UI, kiểm audit allocation.
 - W5-THUY-D3-05 [REVIEW] [S] [PLANNED] Review EP-057–062/seat transfer PR.
@@ -159,7 +161,7 @@
 ### THỦY
 **Objective:** chốt quality gate License/Lifecycle.
 **Task List (theo thứ tự):**
-- W5-THUY-D6-01 [INTEGRATION] [M] [PLANNED] Merge PR reviewed, clean migration + Release build + Week 3–5 full test suite.
+- W5-THUY-D6-01 [INTEGRATION] [M] [PLANNED] Merge PR reviewed, clean migration trên isolated PostgreSQL + Release build + Week 3–5 full test suite; shared Neon chỉ schema/manual smoke, không reset.
 - W5-THUY-D6-02 [TEST] [M] [PLANNED] Swagger/Postman/UI smoke License allocation/key/reveal + rule/evaluation, race/capacity/permission.
 - W5-THUY-D6-03 [FIX] [M] [PLANNED] Sửa blocker, rerun tests, kiểm ciphertext/secret/log/audit và DB integrity.
 - W5-THUY-D6-04 [DOC] [S] [PLANNED] Cập nhật README/PROJECT_STATUS/CHANGELOG/API/ERD với evidence.

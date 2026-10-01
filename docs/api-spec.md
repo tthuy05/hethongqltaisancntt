@@ -62,8 +62,10 @@ Sử dụng RFC 7807 ProblemDetails; validation có thêm `errors`, conflict có
 | Authenticated but denied | 403 | Không tiết lộ resource nhạy cảm |
 | Resource absent/out of visible scope | 404 | Có thể dùng 404 để chống enumeration |
 | Unique/state/concurrency conflict | 409 | Stable machine-readable `code` |
+| Archive thiếu `If-Match` | 428 | Yêu cầu đọc lại resource để lấy version trước khi archive |
 | File too large | 413 | Không parse file |
 | Unsupported media/file type | 415 | Allowlist định dạng |
+| Login/request vượt rate limit | 429 | Thông báo an toàn và `Retry-After` khi có |
 | Database/unexpected error | 500 | Generic detail; diagnostic ở server log đã redact |
 
 ## 2. Endpoint inventory
@@ -243,9 +245,9 @@ Export áp dụng row limit cấu hình; nếu vượt giới hạn trả 413/Pr
 
 ### Asset
 
-`CreateAssetRequest` gồm `assetCode`, `assetTypeId`, `owningDepartmentId`, optional `serialNumber`, `name`, `brand`, `model`, `specification`, `operatingSystem`, `purchaseDate`, `purchasePrice`, `warrantyExpirationDate`, `location`, `note`; server luôn đặt initial status `InStock`. `UpdateAssetRequest` chỉ cho phép các metadata trên và `rowVersion`, không cho đổi `status`; đổi status chỉ qua EP-027/workflow được quyền. Currency là cấu hình chung của MVP, không có field per-record.
+`CreateAssetRequest` bắt buộc `assetCode`, `name`, `assetTypeId`, `owningDepartmentId`; optional `serialNumber`, `brand`, `model`, `specification`, `operatingSystem`, `purchaseDate`, `purchasePrice`, `warrantyExpirationDate`, `location`, `note`. Server luôn đặt initial status `InStock`. `UpdateAssetRequest` chỉ cho phép các metadata trên và `rowVersion`, không cho đổi `status`; đổi status chỉ qua EP-027/workflow được quyền. Currency là cấu hình chung của MVP, không có field per-record.
 
-Validation: non-negative money, warranty không trước purchase date, active asset type và owning department, max lengths, asset code/serial normalized. Current assigned user/department không cập nhật qua Asset DTO mà qua assignment service; `owningDepartmentId` là department sở hữu riêng và có thể đổi qua metadata update sau resource authorization/audit.
+Validation: non-negative money, warranty không trước purchase date, max lengths, asset code/serial normalized. Create cần asset type/owning department active; update chỉ kiểm active với reference được chọn mới, giữ reference inactive không đổi theo BR-043. Current assigned user/department không cập nhật qua Asset DTO mà qua assignment service; `owningDepartmentId` là department sở hữu riêng và có thể đổi qua metadata update sau resource authorization/audit.
 
 ### Assignment
 
@@ -282,6 +284,7 @@ Validation: non-negative money, warranty không trước purchase date, active a
 - Endpoint permission and object/department scope are both enforced server-side; filters supplied by client never widen scope.
 - Technical Support changes asset status only through maintenance transitions, not EP-027.
 - Cost fields require cost-specific permission. Unauthorized cost fields are omitted from role-specific response DTO/projection, not merely hidden by UI.
+- Asset purchasePrice/cost projection kiểm `assets.cost.read` (Admin IT/System Manager). Technical Support vẫn đọc asset nhưng field tài chính bị loại khỏi JSON.
 - Full license key only exists in EP-056, which requires Admin IT permission, a reason, no-store response and an audit event.
 - Audit log access is Admin IT only and still redacts password, token, password hash, connection string, encryption material and full license key.
 - List/report/export queries apply the same scope and field-level projection.
@@ -300,3 +303,50 @@ Validation: non-negative money, warranty không trước purchase date, active a
 - Last endpoint ID: `EP-094`.
 - Expected unique, contiguous endpoint IDs: **94**.
 - This count must be rechecked during consistency review and whenever an endpoint is added/removed.
+
+## 7. Hợp đồng M1 bàn giao giữa Thủy và Thiện — PLANNED
+
+Phần này cụ thể hóa EP-001/002, EP-013/018 và EP-023–026/028 trước implementation. Tên DTO/field là contract thiết kế, chưa phải generated OpenAPI; thay đổi cần đồng bộ UI/test. Master write EP-014–017/019–022 vẫn theo inventory và do Thiện sở hữu.
+
+### 7.1 Auth và master lookup
+
+- `LoginRequest`: `email` bắt buộc, trim/normalize, tối đa 320 ký tự; `password` bắt buộc, không trim/normalize password. Password policy/TTL/lockout theo OQ-001 và cấu hình được review.
+- `LoginResponse`: `accessToken`, `tokenType: "Bearer"`, `expiresAt` UTC; `user` gồm `id`, `displayName` (map `users.full_name`), `roles` là mảng role code, `permissions` là mảng named policy code.
+- `CurrentUserResponse` giữ cùng safe user shape, thêm `departmentId` nullable. Không trả hash, failed-login counter, signing material hoặc token version nội bộ; token version là claim được server kiểm.
+- `Department`: `id`, `code`, `name`, `parentDepartmentId` nullable, `description` nullable, `isActive`, `rowVersion`. `AssetType`: `id`, `code`, `name`, `description` nullable, `defaultUsefulLifeMonths` nullable, `isActive`, `rowVersion`.
+- EP-013/018: `status=Active|Inactive` (bỏ qua nghĩa cả hai theo scope), `keyword` trim, `sortBy=code|name`, default `name`; `sortDirection=asc|desc`, default `asc`; paging chuẩn. Dropdown gửi `status=Active`, `pageSize=100`, xử lý đủ `totalPages` hoặc tìm theo keyword, không coi trang đầu là toàn danh mục. Detail asset vẫn hiển thị reference inactive cũ.
+
+### 7.2 Asset request và ánh xạ PostgreSQL
+
+Database platform đổi theo ADR-018 không đổi endpoint path, request/response DTO, field/null/length/precision semantics hoặc HTTP codes. `rowVersion` vẫn Base64 opaque; physical bytea token do backend quản lý (ADR-019), không phụ thuộc native SQL Server rowversion.
+
+| JSON field | Bắt buộc Create/Update | SQL column | Validation / semantics |
+|---|---|---|---|
+| `assetCode` | Có / Có | `asset_code` | Trim/normalize, 1–50 ký tự, unique; update mã được phép nếu vẫn unique và có audit. |
+| `name` | Có / Có | `name` | Trim, 1–200 ký tự. |
+| `assetTypeId` | Có / Có | `asset_type_id` | ID dương, reference tồn tại; reference mới phải active. |
+| `owningDepartmentId` | Có / Có | `owning_department_id` | ID dương, owning department tồn tại; reference mới phải active. |
+| `serialNumber` | Không / Không | `serial_number` | Null/empty thành null; nếu có trim/normalize, tối đa 200, partial unique theo OQ-002. |
+| `brand`, `model` | Không / Không | `manufacturer`, `model` | Tối đa 200 ký tự mỗi field. |
+| `specification`, `operatingSystem` | Không / Không | `specification`, `operating_system` | Tối đa 4000 / 250 ký tự. |
+| `purchaseDate`, `warrantyExpirationDate` | Không / Không | `purchase_date`, `warranty_end_date` | Date-only; khi cả hai có giá trị thì warranty >= purchase. |
+| `purchasePrice` | Không / Không | `purchase_cost` | Decimal không âm, tối đa 2 chữ số thập phân; physical mapping `numeric(18,2)` giữ precision/scale; null nghĩa chưa biết, không tự đổi thành 0. |
+| `location`, `note` | Không / Không | `location`, `notes` | Tối đa 500 / 2000 ký tự. |
+| `rowVersion` | Không / Có | `row_version` | Base64 opaque từ lần đọc hiện tại; không tự sinh. |
+
+EP-026 là `PUT` thay thế metadata: gửi đầy đủ field bắt buộc; nullable field bị bỏ/đặt null sẽ được xóa. UI phải tải detail rồi gửi lại metadata đầy đủ; không dùng partial-update semantics. Reference inactive không bị đổi vẫn được giữ để chỉnh metadata khác; chỉ reference được chọn mới phải active (BR-043). Client không ghi `status`, current assignment, archived flag hoặc audit fields.
+
+Asset response M1:
+
+- `AssetSummary`: `id`, `assetCode`, `name`, `serialNumber`, `assetType { id, code, name, isActive }`, `owningDepartment { id, code, name, isActive }`, `status`, `location`, `createdAt`, `updatedAt` nullable; `purchasePrice` nullable chỉ có khi được `assets.cost.read`.
+- `AssetDetail`: toàn bộ summary, các metadata ở bảng trên, `assetTypeId`, `owningDepartmentId`, `rowVersion`, `isArchived`, `currentAssignment` nullable. M1 chưa có Assignment workflow, nên currentAssignment thực tế là null; Week 4 mở rộng theo active row, không nhập current user qua Asset DTO.
+- `status` JSON dùng `InStock`, `InUse`, `Maintenance`, `Broken`, `Retired`, map tường minh sang SQL `IN_STOCK`, `IN_USE`, `MAINTENANCE`, `BROKEN`, `RETIRED`. Timestamp JSON `createdAt`/`updatedAt` map cột UTC và trả ISO 8601 UTC.
+- POST thành công trả 201 + `Location: /api/v1/assets/{id}` + detail/version. GET detail và PUT trả 200 cùng detail shape; GET detail trả ETag có version tương ứng.
+
+### 7.3 Asset list, conflicts và archive
+
+- EP-023 M1 bắt buộc keyword/type/department/status/page/sort. `departmentId` filter theo owning department, không theo department target của assignment. `keyword` tối đa 200 ký tự, tìm literal trong assetCode/name/serialNumber; query được parameterize.
+- `sortBy` allow-list M1: `assetCode`, `name`, `status`, `createdAt`, `updatedAt`; default `assetCode`, `sortDirection=asc`. Thêm `id` làm tie-breaker cùng chiều để page ổn định. Dashboard yêu cầu rõ `sortBy=createdAt&sortDirection=desc`; không suy rằng default list là mới nhất.
+- Status sai/ID filter không dương/page hoặc sort sai trả 400; page vượt trang cuối trả 200 với items rỗng. Mặc định không lấy archived assets. Filter nâng cao `purchaseYear`, `warrantyState`, `userId` vẫn **PLANNED** sau M1, phải bổ sung semantics/test trước khi quảng bá trong generated contract.
+- Error code M1: `VALIDATION_ERROR` (400), `ASSET_NOT_FOUND` (404), `ASSET_CODE_CONFLICT`, `ASSET_SERIAL_CONFLICT`, `CONCURRENCY_CONFLICT`, `ASSET_ACTIVE_WORKFLOW` (409), `PRECONDITION_REQUIRED` (428). Unique race phải map đúng 409 và rollback, không trả SQL exception. Reference không hợp lệ trong POST/PUT trả 400 field error; GET ID không tồn tại/ngoài scope trả 404.
+- EP-028 nhận strong `If-Match: "<base64-rowVersion>"` lấy từ detail; thiếu trả 428, malformed trả 400, stale trả 409. Không chấp nhận wildcard `*` để bỏ version check. Thành công 204, đặt `is_archived`/thời điểm, giữ history và audit trong transaction; active assignment/ticket chưa terminal trả 409. Archive API là Must/M1, archive UI là Should sau M1.

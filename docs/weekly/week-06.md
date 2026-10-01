@@ -2,6 +2,8 @@
 
 > **PLANNED — NOT IMPLEMENTED.** Entry: M3 data/history/cost/recommendations trustworthy. Thủy owns API/report/budget/UI; Thiện owns independent fixture/reconciliation/chart helper/query validation. Daily capacity: Thủy 3M+2S, Thiện 2M+1S (7h/4,5h đại diện); M=1–3h, S<1h. Không tuyên bố performance pass nếu chưa đo dataset thực.
 
+**Database boundary — PLANNED:** development/manual integration/demo dùng shared Neon PostgreSQL; clean migration/automated integration/performance fixture dùng PostgreSQL target isolated theo [testing strategy](../testing-strategy.md), fail-closed nếu trỏ shared dev. Không drop/reset schema/database hoặc truncate toàn bộ tables trên shared DB. Thủy review/test rồi điều phối apply migration qua direct endpoint; Thiện sync trước mọi EF migration command. Performance evidence ghi PostgreSQL/Neon target/load thực tế và không gây tải cạnh tranh ngoài thỏa thuận trên shared dev.
+
 ## Thứ Hai — 26/10/2026
 
 **Mục tiêu chung:** định nghĩa report query/metric/fixture trước implementation.
@@ -135,8 +137,8 @@
 **Objective:** tối ưu dựa trên evidence, không suy đoán.
 **Task List (theo thứ tự):**
 - W6-THUY-D5-01 [PERF] [M] [PLANNED] Đo p95/query count/dashboard/report trên dataset/load/environment đã ghi, lưu raw results.
-- W6-THUY-D5-02 [DATA] [M] [PLANNED] Inspect SQL execution plans, chọn projection/index change có rationale; tạo migration duy nhất nếu cần.
-- W6-THUY-D5-03 [TEST] [M] [PLANNED] Re-run accuracy/permission/performance before/after và migration clean nếu đổi index.
+- W6-THUY-D5-02 [DATA] [M] [PLANNED] Inspect PostgreSQL EXPLAIN/EXPLAIN ANALYZE trên isolated performance target đã thống nhất, chọn projection/index change có rationale; Thủy tạo migration duy nhất nếu cần.
+- W6-THUY-D5-03 [TEST] [M] [PLANNED] Re-run accuracy/permission/performance before/after và migration clean trên isolated PostgreSQL nếu đổi index; shared Neon chỉ apply reviewed migration dưới change lock.
 - W6-THUY-D5-04 [DOC] [S] [PLANNED] Ghi target đạt/chưa đạt và dataset vào docs/status, không khái quát hóa.
 - W6-THUY-D5-05 [REVIEW] [S] [PLANNED] Review report query/export handoff với Thiện.
 **Files / Modules:** Reporting queries, optional migration, perf evidence, DB design/status.
@@ -166,7 +168,7 @@
 ### THỦY
 **Objective:** đóng gate Dashboard/Report/Budget.
 **Task List (theo thứ tự):**
-- W6-THUY-D6-01 [INTEGRATION] [M] [PLANNED] Merge PR reviewed, Release build + clean migration + Week 3–6 full unit/integration suite.
+- W6-THUY-D6-01 [INTEGRATION] [M] [PLANNED] Merge PR reviewed, Release build + clean migration trên isolated PostgreSQL + Week 3–6 full unit/integration suite; shared Neon chỉ schema/manual smoke, không reset.
 - W6-THUY-D6-02 [TEST] [M] [PLANNED] Swagger/Postman/UI smoke dashboard/reports/budget, fixture accuracy, financial 403 và DB integrity.
 - W6-THUY-D6-03 [FIX] [M] [PLANNED] Fix blocker, rerun affected/full tests, verify measured performance notes.
 - W6-THUY-D6-04 [DOC] [S] [PLANNED] Cập nhật README/PROJECT_STATUS/CHANGELOG/API/DB/testing theo actual.

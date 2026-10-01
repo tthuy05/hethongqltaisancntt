@@ -48,7 +48,7 @@
 | Assets | View purchase price/cost | ✓ | ✓ | ✗ |
 | Assets | Create | ✓ | ✓ | ✗ |
 | Assets | Update metadata | ✓ | ✓ | ✗ |
-| Assets | Archive/reactivate | ✓ Theo rule | ✓ Theo rule, không active workflow | ✗ |
+| Assets | Archive | ✓ Theo rule | ✓ Theo rule, không active workflow | ✗ |
 | Assets | Delete/hard delete | ✗ | ✗ | ✗ |
 | Assets | Change status directly | △ Chỉ transition nghiệp vụ cho phép + history | △ Chỉ transition nghiệp vụ cho phép + history | ✗ Phải qua maintenance workflow |
 | Assets | View status history | ✓ | ✓ | △ Non-financial history cần cho support |
@@ -219,6 +219,7 @@ Các code sau là permission dự kiến dùng trong `api-spec.md`; nhiều code
 | `asset-types.read` | A, M, T | Không có cost/secret. |
 | `asset-types.create`, `asset-types.update`, `asset-types.archive` | A | Master data. |
 | `assets.read`, `assets.history.read` | A, M, T* | T đọc non-financial/support fields. |
+| `assets.cost.read` | A, M | Field policy cho purchasePrice/cost; T không nhận field trong list/detail/report projection. Không chặn toàn bộ asset read khi thiếu policy này. |
 | `assets.create`, `assets.update`, `assets.archive`, `assets.status.manage` | A, M | Status phải qua transition hợp lệ. |
 | `assignments.read` | A, M, T* | T chỉ current/history cần support. |
 | `assignments.assign`, `assignments.return`, `assignments.transfer` | A, M | Không có approval MVP. |

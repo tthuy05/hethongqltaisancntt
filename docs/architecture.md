@@ -4,7 +4,7 @@
 
 ## 1. Lựa chọn kiến trúc
 
-Hệ thống dự kiến là **layered modular monolith** trên **.NET 10 / ASP.NET Core Web API**, Entity Framework Core và SQL Server. Một tiến trình triển khai và một database giúp dự án thực tập dễ học, dễ debug và đủ thời gian hoàn thiện, trong khi ranh giới module/layer vẫn cho phép mở rộng sau này.
+Hệ thống dự kiến là **layered modular monolith** trên **.NET 10 / ASP.NET Core Web API**, Entity Framework Core, `Npgsql.EntityFrameworkCore.PostgreSQL` và PostgreSQL hosted on Neon (ADR-018). Controller–Service–Repository và ranh giới module/layer không thay đổi. Một database development Neon được Thủy và Thiện dùng chung từ hai backend local; không dùng local database làm development chính.
 
 Không đưa microservices, CQRS, message broker, Redis, Elasticsearch, event bus, Kubernetes hoặc GraphQL vào giai đoạn hiện tại. Chỉ bổ sung hạ tầng mới khi có yêu cầu/đo lường thực tế và ADR được phê duyệt.
 
@@ -18,7 +18,8 @@ flowchart LR
     Service --> Authorization[Permission and Scope Check]
     Service --> Repository[Repository / Query Repository]
     Repository --> DbContext[EF Core DbContext]
-    DbContext --> Database[(SQL Server)]
+    DbContext --> Npgsql[Npgsql EF Core Provider]
+    Npgsql --> Database[(Neon PostgreSQL)]
     Service --> Audit[Audit Writer]
     Audit --> DbContext
     Controller --> ProblemDetails[ProblemDetails Mapping]
@@ -33,7 +34,8 @@ Request
 → Service
 → Repository
 → DbContext / EF Core
-→ SQL Server
+→ Npgsql.EntityFrameworkCore.PostgreSQL
+→ PostgreSQL hosted on Neon
 ```
 
 Authorization có hai lớp: policy tại endpoint chặn quyền chức năng; service/repository tiếp tục kiểm tra scope đối tượng để ngăn BOLA. Audit của thay đổi nghiệp vụ được ghi trong cùng transaction khi cần tính atomic.
@@ -76,11 +78,23 @@ Ví dụ `TransferAsset` phải đóng assignment cũ, mở assignment mới, c�
 
 ### 3.5 DbContext / EF Core / Data
 
-- Khai báo mapping, PK/FK, check constraints, filtered unique indexes, global conventions và optimistic concurrency `rowversion`.
+- Khai báo mapping tường minh snake_case, PK/FK, CHECK/partial unique indexes, global conventions và optimistic concurrency `row_version bytea` app-managed theo ADR-019. Không thêm native PostgreSQL enum, extension hoặc entity.
 - Quản lý transaction do service yêu cầu; cấu hình retry chỉ với chiến lược an toàn/idempotent.
 - Tạo migration có review trong Week 3+ sau khi kế hoạch được phê duyệt.
 - Không lazy-load; query đọc ưu tiên `AsNoTracking()` và projection.
 - `SaveChanges` interceptor có thể bổ sung timestamp/audit metadata, nhưng không được che giấu business history quan trọng.
+
+#### Provider và DbContext registration — PLANNED ONLY
+
+Package provider là `Npgsql.EntityFrameworkCore.PostgreSQL`; không còn planned `UseSqlServer`. Exact version chưa chọn: đối chiếu SDK 10.0.400 / `dotnet --list-sdks`, EF Core major, target framework và official provider dependencies trong Week 3 trước pin/restore/build. Pattern sau chỉ là tài liệu, chưa tạo Program.cs hoặc AppDbContext:
+
+```csharp
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("DefaultConnection")));
+```
+
+`ConnectionStrings:DefaultConnection` nhận secret từ user-secrets hoặc `ConnectionStrings__DefaultConnection`; không hard-code. Neon setup **PLANNED**, connection **NOT CONFIGURED / NOT VERIFIED**. Runtime pooled endpoint; migration direct endpoint/credential riêng, Thủy điều phối theo [database change lock](git-collaboration.md#database-change-lock--neon-shared-development-planned). [Npgsql official configuration](https://www.npgsql.org/efcore/).
 
 ### 3.6 Domain models / Entities
 
@@ -196,7 +210,7 @@ docs/
 
 ### Frontend M1 và API integration — PLANNED
 
-Web UI ở `Api/wwwroot` được ASP.NET Core phục vụ cùng origin với `/api/v1`; không mở project framework, dev server hoặc CORS riêng. Bootstrap 5 pin phiên bản và giữ local để demo offline. `login.html`/`index.html` cùng `js/api-client.js`, `js/auth.js`, `js/assets.js`, `js/masters.js`, `css/app.css` là cấu trúc dự kiến, không phải file đã tồn tại. `api-client.js` xử lý Bearer, JSON, ProblemDetails và 401/403/409; page modules không tự ghép endpoint tùy ý. JWT chỉ ở bộ nhớ JavaScript, reload phải login lại; logout xóa state. Không có server cookie auth nên không có CSRF cookie flow cho M1; XSS vẫn là rủi ro chính, phải escape/render text an toàn và áp CSP phù hợp. Chi tiết màn hình/field/API tại [UI/UX spec](ui-ux-spec.md).
+Web UI ở `Api/wwwroot` được ASP.NET Core phục vụ cùng origin với `/api/v1`; không mở project framework, dev server hoặc CORS riêng. Bootstrap 5 pin phiên bản và giữ local để demo offline. Một `index.html` chứa Login và admin shell, cùng `js/api-client.js`, `js/auth.js`, `js/assets.js`, `js/masters.js`, `css/app.css` là cấu trúc dự kiến. Login thành công đổi view trong cùng document; Dashboard/List/Create/Detail/Edit dùng hash navigation như `#/assets/12/edit`, không tải trang HTML khác. Cách này giữ token in-memory trong suốt demo flow mà không thêm framework. Nếu cần alias `login.html`, alias chỉ redirect về shell trước khi đăng nhập và không nhận/chuyển token. `api-client.js` xử lý Bearer, JSON, ProblemDetails và 401/403/409; page modules không tự ghép endpoint tùy ý. Reload hoặc mở tab mới phải login lại; logout xóa token/state và đổi về Login trong shell. Không có server cookie auth nên không có CSRF cookie flow cho M1; XSS protection, CSP và safe DOM rendering vẫn bắt buộc. Chi tiết màn hình/field/API tại [UI/UX spec](ui-ux-spec.md).
 
 Week 3 Dashboard cơ bản dùng EP-023 để hiển thị tổng/asset gần nhất. EP-072–075 dashboard aggregates đầy đủ được triển khai Week 6; UI không hiển thị số giả hay mặc định zero cho metric chưa tồn tại. Shared frontend layout/API client do Thủy sở hữu; Thiện thêm page module của mình trong file riêng theo [team responsibilities](team-responsibilities.md).
 
@@ -220,7 +234,7 @@ flowchart LR
 
 ## 7. Read/write và hiệu năng
 
-- Command tải aggregate cần thiết, kiểm tra `rowversion`, thực thi transaction và ghi history/audit.
+- Command tải aggregate cần thiết, kiểm tra `rowVersion` opaque/app-managed `row_version`, thực thi transaction và ghi history/audit.
 - Query danh sách dùng projection thẳng DTO, filter/sort/pagination tại SQL; không load toàn bảng rồi xử lý memory.
 - Dashboard/report dùng aggregate SQL (`COUNT`, `SUM`, `GROUP BY`) và index đã thiết kế; chỉ cache khi đo được nhu cầu.
 - Mặc định `pageSize=20`, tối đa theo API spec; sort field phải allow-list.
@@ -230,15 +244,15 @@ flowchart LR
 ## 8. Transaction, concurrency và consistency
 
 - Service sở hữu transaction cho use case nhiều bước: transfer asset, thay đổi status + history, resolve maintenance, cấp license, import all-or-nothing.
-- `rowversion` bảo vệ lost update; API trả 409/412 theo chuẩn được chọn trong API spec.
-- Filtered unique index là lớp bảo vệ cuối cho một active assignment.
-- Capacity license cần khóa hàng/transaction `SERIALIZABLE`; không thể chỉ kiểm tra ở memory.
+- `row_version bytea` với EF `IsConcurrencyToken()` bảo vệ lost update; central SaveChanges tạo 16 random bytes mới cho mọi insert/update mutable row theo ADR-019. Stale write trả `409`; archive thiếu `If-Match` trả `428`, token sai định dạng trả `400`. Không dùng SQL Server `IsRowVersion()` hoặc xmin thay column baseline.
+- Partial unique index là lớp bảo vệ cuối cho một active assignment; giữ business invariants và 18 tables / 41 relationships.
+- Capacity license khóa parent license bằng `SELECT ... FOR UPDATE` trong transaction trước count/write; mọi allocation/revoke/transfer/quantity change theo cùng lock. SERIALIZABLE là alternative có xử lý serialization failure; không dùng SQL Server locking hints.
 - Audit/history cùng transaction với thay đổi nghiệp vụ khi yêu cầu bằng chứng atomic; login failure có transaction audit riêng.
 - Không dùng distributed transaction vì kiến trúc một database.
 
 ## 9. Xử lý lỗi
 
-- Middleware ánh xạ lỗi validation 400, authentication 401, authorization 403, not found 404, concurrency/business conflict 409/412, unsupported media 415, payload too large 413, rate limit 429 và unexpected 500.
+- Middleware ánh xạ lỗi validation 400, authentication 401, authorization 403, not found 404, concurrency/business conflict 409, thiếu precondition archive 428, unsupported media 415, payload too large 413, rate limit 429 và unexpected 500.
 - Response dùng RFC ProblemDetails với stable error code/correlation ID; không lộ stack trace, SQL hoặc secret.
 - Service trả typed result/exception có chủ đích; không bắt `Exception` rồi bỏ qua.
 - Database transient retry phải tránh lặp side effect/audit; command idempotency được xem xét cho import và request retry.
@@ -260,7 +274,9 @@ Chi tiết tại `security.md` và `audit-log.md`.
 flowchart LR
     User[Client] -->|HTTPS| Proxy[Reverse Proxy]
     Proxy --> Api[ASP.NET Core API]
-    Api -->|TLS| Sql[(SQL Server)]
+    Api --> EF[EF Core]
+    EF --> Provider[Npgsql]
+    Provider -->|TLS certificate validation| Database[(Neon PostgreSQL)]
     Api --> Secrets[Secret Manager or Environment]
     Api --> Logs[Centralized Structured Logs]
 ```
@@ -269,6 +285,16 @@ flowchart LR
 - Migration chạy bằng deployment identity riêng trước rollout, không tự chạy với quyền cao mỗi lần API khởi động ở production.
 - Health checks tách liveness/readiness; không trả secret hoặc chi tiết hạ tầng.
 - Hạ tầng triển khai cụ thể còn **PLANNED** trong `deployment.md`.
+
+Shared development topology **PLANNED**:
+
+```text
+Thủy: ASP.NET Core backend -> EF Core/Npgsql --TLS--+
+                                                  +-> Neon PostgreSQL shared development
+Thiện: ASP.NET Core backend -> EF Core/Npgsql --TLS-+
+```
+
+`it_asset_management_dev` chỉ là logical-name proposal, không phải tên Neon đã xác minh. Automated tests dùng isolated PostgreSQL target riêng, không drop/schema/truncate shared development/demo database.
 
 ## 12. Observability
 
@@ -281,7 +307,7 @@ flowchart LR
 ## 13. Kiểm thử theo layer
 
 - Unit: validator, state transition, service business rule, replacement calculation.
-- Integration: repository/constraint với SQL Server test database, transaction, concurrency, auth policy và API ProblemDetails.
+- Integration: repository/constraint với PostgreSQL test target cô lập khỏi shared Neon development/demo, transaction, concurrency, auth policy và API ProblemDetails. Chưa có test harness; phải fail closed nếu chưa cấu hình isolation.
 - Không mock EF Core để khẳng định constraint/index hoạt động; dùng database engine thật cho integration test quan trọng.
 - xUnit là framework chuẩn dự kiến; chưa có test project trong Week 2.
 

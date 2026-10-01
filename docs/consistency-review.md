@@ -1,12 +1,12 @@
 # Week 2 Consistency Review — 2-person Replan
 
-> Baseline review 29/09/2026; planning/UI review cập nhật **01/10/2026**. **VERIFIED** ở đây chỉ là kiểm tra tài liệu/ID/link/ERD grammar và cấu trúc 36-day plan. Application, migration, UI, API, build, test và deployment vẫn **PLANNED — NOT IMPLEMENTED**.
+> Baseline review 29/09/2026; planning/UI review và bàn giao phần việc Thủy cập nhật **01/10/2026**. **VERIFIED** ở đây chỉ là kiểm tra tài liệu/ID/link/ERD grammar và cấu trúc 36-day plan. Application, migration, UI, API, build, test và deployment vẫn **PLANNED — NOT IMPLEMENTED**. Review độc lập của Thiện/Mentor chưa có sign-off.
 
 ## 1. Chuỗi đối chiếu
 
 ```text
 Requirements (45 FR, 23 NFR)
-  -> Use Cases (25, gồm 13 đặc tả đầy đủ)
+  -> Use Cases (25, gồm 15 đặc tả đầy đủ)
   -> Business Rules (56)
   -> Database (18 tables) / ERD (18 entities)
   -> API (/api/v1, 94 planned endpoints)
@@ -29,7 +29,7 @@ Requirements (45 FR, 23 NFR)
 | FR-036–FR-037 Audit | UC-025 và side effect của critical UC | BR-035–BR-038 | audit_logs + correlation IDs trong history | `/audit-logs` | Admin-only sanitized read; append-only | Design Week 2, implementation Week 4 |
 | FR-038–FR-045 Web UI | UC-001–UC-013, UC-016–UC-024 theo screen | Kế thừa BR của API nguồn; BR-024–027 auth, BR-032/034 field/page, BR-053 date | Không thêm UI table; dùng API/DB nghiệp vụ | M1 EP-001/002, EP-013/018, EP-023–026/028; các module sau theo `ui-ux-spec.md` | UI hide action + server 401/403/409, token in-memory | M1 Week 3; module UI Weeks 4–7 |
 
-Mọi endpoint có purpose, permission, query/body, response, success/error status và BR trong `api-spec.md`. Tất cả 67 code permission xuất hiện ở cột policy API đều được liệt kê trong `permission-matrix.md`; `maintenance.cost.write` là field policy bổ sung. Không có endpoint CRUD role definition, approval, refresh token, hard-delete history hay audit export trong MVP.
+Mọi endpoint có purpose, permission, query/body, response, success/error status và BR trong `api-spec.md`. Tất cả 67 code permission xuất hiện ở cột policy API đều được liệt kê trong `permission-matrix.md`; `maintenance.cost.write` và `assets.cost.read` là field policy bổ sung. Không có endpoint CRUD role definition, approval, refresh token, hard-delete history hay audit export trong MVP.
 
 ## 2. Kiểm tra bắt buộc
 
@@ -39,8 +39,8 @@ Mọi endpoint có purpose, permission, query/body, response, success/error stat
 | ID FR/NFR/UC/BR/EP | PASS ở lần kiểm 01/10 | FR-001..045, NFR-001..023, UC-001..025, BR-001..056, EP-001..094; UI chỉ tham chiếu EP đã định nghĩa. |
 | Endpoint count | PASS | 94 dòng `EP-xxx` duy nhất; method/path không dùng action-style route. |
 | Entity inventory | PASS | 18 tên bảng trong database design khớp 18 entity ERD. |
-| PK/FK/cardinality | PASS ở mức thiết kế | Core PK/FK/relationship/cardinality được thể hiện; audit metadata FK chi tiết ở database design và cố ý không vẽ tất cả để ERD đọc được. Chưa có migration/DB để chứng minh vật lý. |
-| Mermaid ERD grammar | PASS | Mermaid parser 11.17.2 parse block `docs/erd.md` thành công ngày 29/09/2026; chưa xác nhận render PNG/SVG. |
+| PK/FK/cardinality | PASS ở mức thiết kế | 18 entities và 41 FK columns khớp database table sections; ERD có 41 relationships, gồm audit metadata FK. Review cardinality/XOR/NO ACTION ở mức tài liệu; chưa có migration/DB để chứng minh vật lý. |
+| Mermaid ERD grammar | PASS | Mermaid parser 11.17.2 parse block `docs/erd.md` thành công lại ngày 01/10/2026; chưa xác nhận render PNG/SVG. |
 | Daily plans | PASS ở lần kiểm 01/10 | Sáu file Week 2–7: đúng 36 ngày/weekday 28/09–07/11, 288 task ID duy nhất, Thủy 180 (108M+72S), Thiện 108 (72M+36S), mỗi ngày có objective/task/files/outcome/verification/dependency/fallback/reviewer/sync; không có Daily Report Template. |
 | Workload | PASS ở mức estimate | S=0,5h, M=2h; Thủy 252h/60,9%, Thiện 162h/39,1%. Không có task L/XL; actual capacity phải cập nhật khi triển khai. |
 | Frontend M1 | PASS ở mức plan | UI-01–08 có Login, Dashboard, Asset List/Create/Edit/Detail, Department/Type; API thật + DB thật là acceptance M1. Chưa có UI runtime/screenshot. |
@@ -76,16 +76,68 @@ Mọi endpoint có purpose, permission, query/body, response, success/error stat
 | CR-20 | Daily plans cũ không chia Thủy/Thiện, không estimate/reviewer/dependency/fallback và có Daily Report Template trái yêu cầu mới | Viết lại 36 ngày/288 task, 60,9/39,1% estimate, một owner/reviewer/module, sync/shared-file lock; bỏ report template. |
 | CR-21 | Dashboard M1 có thể hiển thị số 0 giả cho ticket/license/replacement chưa implement | Dashboard M1 dùng EP-023 Asset data thật; EP-072–075 triển khai Week 6 và UI ghi unavailable cho metric chưa có. |
 | CR-22 | BR catalogue trước chỉ map test theo nhóm, chưa đủ để hai người kiểm từng rule | Thêm TC-BR-001–056 với entity/API/scenario, nối testing strategy và daily plan. |
+| CR-23 | Login HTML riêng redirect sang shell làm mất JWT in-memory; flow persistence nói refresh nhưng thiếu re-login | ADR-017/architecture/UI/security/FR-038 chốt một shell với hash views; thêm test navigation giữ session và reload → re-login → đọc ID thật. |
+| CR-24 | UI dùng assets.cost.read chưa có trong named policy catalog; FR-006 chưa ghi Support read | Thêm field policy Admin/Manager và thống nhất FR-006 với matrix/master lookup; Support response không có cost. |
+| CR-25 | Architecture còn 409/412 trong khi ADR/API/DB đã chốt 409; conventions thiếu 428/429 | Thống nhất stale=409, missing If-Match=428, malformed=400 và rate-limit=429. |
+| CR-26 | View/Search và Update/Archive chỉ có dòng use case; Asset name bị ghi optional; DTO/sort/mapping còn mơ hồ | Bổ sung UC-017/018 đầy đủ và mục 7 API M1: required/length/null/PUT semantics, field mapping, stable sort, paging lookup, response/error contract. |
+| CR-27 | Roadmap/fallback gọi archive API là non-M1 trái Must/M1 và task Thiện đã có EP-028 | Chỉ hoãn archive UI/status admin và user-admin nâng cao; giữ EP-028 trong M1 và báo missing criterion nếu trễ. |
+| CR-28 | Login/master/Asset yêu cầu audit từ Week 3 nhưng schema/writer plan chưa explicit, có thể chờ Week 4 | Chốt 10 bảng M1 gồm audit_logs và minimal transactional AuditWriter; Week 4 mở rộng workflow/query, không tạo trùng bảng. |
+| CR-29 | Git current status vẫn unborn sau commit/push; readiness đặt policy Week 4–7 trước initial migration | Ghi snapshot hiện tại 0c99374/main đồng bộ remote, giữ audit lịch sử; tách schema decision checkpoints theo module. |
 
 ## 4. Các giới hạn còn mở
 
 - `OQ-001` đến `OQ-013` là các quyết định cần Mentor/owner xác nhận trước các tuần tương ứng. Safe defaults đã ghi rõ ở `open-questions.md`; chúng không chứng minh business approval.
 - `asOfDate` ở replacement evaluation là thời điểm đánh giá rule; report grouped by department/type là current snapshot. Nếu yêu cầu báo cáo ownership/type lịch sử, phải thiết kế thêm history/snapshot và scope change.
 - Bảng `roles`/`permissions` chứa metadata `is_active` cho seed/migration nhưng không có runtime mutation API trong MVP.
-- ERD grammar đã parse ở vòng 29/09; ảnh render và screenshot chưa có. Architecture/task-dependency Mermaid diagrams chưa được render bằng công cụ UI; sơ đồ vẫn là thiết kế.
+- ERD grammar đã parse lại 01/10; ảnh render và screenshot chưa có. Flowchart parse với Node thuần bị hạn chế do thiếu DOM cho DOMPurify; không coi đó là bằng chứng lỗi cú pháp của sơ đồ. Architecture/task-dependency diagrams vẫn chưa được kiểm chứng đầy đủ hoặc render bằng browser.
 - M1 10/10/2026 phụ thuộc review/approval kịp thời và Week 3 chỉ có sáu ngày; nếu gate trễ phải báo timeline risk, không giảm acceptance bằng mock UI/DB.
 - Chưa có DB thật, OpenAPI generated spec, code, build, test, benchmark hoặc deployment; các phần này hoàn toàn **PLANNED**.
 
 ## 5. Exit gate
 
 Week 2 planning review hoàn tất ở mức tài liệu khi file/ID/link/date/task/workload/traceability/ERD grammar đã kiểm tra và mâu thuẫn đã biết được sửa hoặc ghi giới hạn. Bước tiếp theo là người dùng/Mentor review và trả lời open questions cần thiết. Task lập kế hoạch không implement/commit/push; yêu cầu xuất bản tài liệu lên Git đến sau báo cáo này và không đồng nghĩa approval Week 3.
+
+## 6. Bàn giao phần việc Thủy — 01/10/2026
+
+[Báo cáo bàn giao](week-02-thuy-handoff.md) nối 30 task W2-THUY tới artifact và evidence; đây là kết quả thực hiện theo lịch baseline, không ghi lùi ngày hoặc nhận thay sign-off của Thiện. Các kiểm tra cấu trúc/document đã chạy bằng Node/PowerShell; heuristic scan Markdown không có mẫu secret thực tế được nhận diện. Không có code/build/test runtime để chứng minh M1. Tất cả task implementation và review độc lập chưa làm vẫn **PLANNED**.
+
+## 7. Post-change affected checks — PostgreSQL/Neon 01/10/2026
+
+Đối chiếu copy snapshot 34 Markdown trước task với working tree sau đổi database; previous **21 PASS / 0 FAIL** được giữ nguyên ở handoff, không chạy lại toàn suite cũ. Review chỉ thay engine/provider/types/enforcement/shared-DB workflow, không requirements nghiệp vụ/API/actor/permission redesign. Kết quả selective checks được ghi sau khi chạy kiểm chứng, không phải application test.
+
+Chuỗi cuối: Requirements → Business Rules → Schema Baseline V1 18 tables → 41 FK/Relationships → ERD → Architecture/Npgsql → API không đổi → Security/secrets/TLS → Roadmap → Week 3 Neon setup/initial migration/seed/auth/Asset/UI → M1 10/10/2026. SQL Server/UseSqlServer còn trong lịch sử audit/ADR đã superseded/handoff gốc/negative comparison/mapping OLD→NEW, không còn planned primary DB hoặc planned provider.
+
+Review độc lập Thiện/Mentor và actual Neon setup chưa thực hiện. **NEON SETUP: PLANNED; NEON CONNECTION: NOT CONFIGURED; DATABASE CONNECTION: NOT VERIFIED.** Physical schema/migration NOT CREATED; Auth/JWT/Asset CRUD NOT IMPLEMENTED. ERD block không đổi nên kết quả parser cũ vẫn hợp lệ, không rerun hoặc tuyên bố render mới. Architectural flowcharts chỉ cập nhật provider labels; runtime/flowchart render chưa verified.
+
+**Previous checks: 21 PASS / 0 FAIL. Post-change affected checks: 24 PASS / 0 FAIL.** Đã chạy selective Node/PowerShell snapshot comparison + Git whitespace check sau update; không chạy app tests/Neon connection hoặc toàn bộ 21 checks cũ.
+
+| Check | Nội dung bị ảnh hưởng | Kết quả / evidence |
+|---|---|---|
+| N01 | Handoff append-only; 30 deliverables/evidence retained | PASS — original sections 1–14 unchanged; 30 rows retained |
+| N02 | Previous 21 PASS/parser evidence retained, not rerun | PASS — historical 21 PASS/0 FAIL preserved |
+| N03 | Existing WIP retained and changed-file manifest scoped | PASS — 34 Markdown retained; 32 changed this task |
+| N04 | 18 table names/order, all columns/nullability preserved | PASS — 18 tables; 245 columns unchanged in identity/nullability |
+| N05 | ERD block and 41 FK/relationships unchanged | PASS — 18 entities / 41 FK / 41 relationships; same block |
+| N06 | All PK/FK definitions and NO ACTION retained | PASS — 18 PK/FK clauses identical |
+| N07 | PK identity/non-ID integral types retained | PASS — 18 bigint identity PKs; no UUID redesign |
+| N08 | Bounded Unicode string lengths retained | PASS — 76 bounded strings, same n/API limits |
+| N09 | Decimal precision/scale and NaN guard | PASS — 9 numeric mappings retained |
+| N10 | Boolean defaults/CHECK predicates mapped | PASS — 17 boolean columns/defaults |
+| N11 | UTC timestamptz/business dates retained | PASS — 49 UTC instants; date-only retained |
+| N12 | 13 binary concurrency tokens/API semantics retained | PASS — 13 bytea16 tokens; opaque Base64/ETag/409/428 |
+| N13 | Four jsonb fields/object-array/nullability retained | PASS — 3 nullable audit + 1 required evaluation snapshot |
+| N14 | Index inventory/INCLUDE payload retained | PASS — 58 labels; INCLUDE unchanged |
+| N15 | Checks/status/XOR/binary constraints maintained | PASS — XOR/status/quantity/date/NO ACTION and hash length guards |
+| N16 | Naming/case/literal search without extensions | PASS — existing names; lower unique; literal ILIKE; no extension |
+| N17 | 94 endpoint rows/DTO/response/error contract retained | PASS — 94 identical endpoint rows; DTO/response/HTTP retained |
+| N18 | Business requirements/actor/permissions/BR traces retained | PASS — 45 FR unchanged; actors/permissions unchanged; 56 BR IDs/traces retained |
+| N19 | Week2 task lines/36-day metadata/ownership retained | PASS — 48 Week2 lines same; 36 days/288 task prefixes; owners/estimates unchanged |
+| N20 | M1 and Week3 DB task sequence retained, PLANNED | PASS — M1 10/10; setup05/10/migration06/10 remain PLANNED |
+| N21 | Secret/TLS/pool roles/coordinated migration documented | PASS — runtime pooled/TLS; migration direct/Thủy lock; no secret values |
+| N22 | Test isolation guards shared Neon | PASS — dedicated target/allow-list/fail closed; no shared reset/drop/truncate |
+| N23 | Affected Markdown links/tables/whitespace/secret heuristic | PASS — 129 valid local file links; tables/whitespace/secret heuristic PASS |
+| N24 | Provider/status/Git no-code/no-commit gate | PASS — HEAD/index unchanged; no app/migration; old DB refs historical/negative |
+
+Các kết quả trên chỉ chứng minh documentation/preservation/consistency, không physical PostgreSQL constraints/indexes/TLS/permissions/runtime. N23 chỉ kiểm file-target links (không render/anchor toàn bộ) và secret heuristic, không security scan đầy đủ. N24 kiểm HEAD/index/source scope và current target; full-repo SQL Server/SQLServer/MSSQL/SqlServer/UseSqlServer/Microsoft.EntityFrameworkCore.SqlServer search được đọc/phân loại: historical audit/ADR superseded/old handoff/Week2 audit hoặc explicit OLD→NEW/negative comparison, không planned primary DB. Documentation flowcharts chưa render.
+
+Git cuối task vẫn main/HEAD 0c99374, **32 tracked modified + một untracked handoff (33 WIP files)**; số Git này bao gồm thay đổi bàn giao cũ. Trong riêng lượt platform có **32 file** (không actors/permission-matrix), không file mới hoặc staged change/commit/push. Handoff original sections 1–14 và mọi Week2 task lines được giữ nguyên; scope dừng Week2, không execute Week3.

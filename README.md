@@ -2,9 +2,9 @@
 
 Hệ thống Quản lý & Tối ưu Hạ tầng CNTT Doanh nghiệp là web UI quản trị + REST API **PLANNED** để quản lý tài sản, phân bổ, bảo trì, phần mềm/license, vòng đời, đề xuất thay thế, ngân sách, dashboard, báo cáo và audit log.
 
-> **Current phase:** WEEK 2 — AUDIT + 2-PERSON PLANNING / TECHNICAL DESIGN  
+> **Current phase:** WEEK 2 — THỦY TECHNICAL-DESIGN HANDOFF / REVIEW PENDING  
 > **Implementation status:** **PLANNED — NO APPLICATION CODE, DATABASE OR MIGRATION EXISTS**  
-> M1: **10/10/2026 MVP demo với UI/API/SQL Server thật** là mục tiêu, chưa đạt. Chỉ bắt đầu Week 3 sau review/approval.
+> M1: **10/10/2026 MVP demo với UI/API/Neon PostgreSQL thật** là mục tiêu, chưa đạt. Chỉ bắt đầu Week 3 sau review/approval.
 
 ## Main features **PLANNED**
 
@@ -23,14 +23,17 @@ Hệ thống Quản lý & Tối ưu Hạ tầng CNTT Doanh nghiệp là web UI q
 |---|---|---|
 | Runtime/API | ASP.NET Core Web API, .NET 10 | PLANNED |
 | ORM | Entity Framework Core 10 | PLANNED |
-| Database | SQL Server | PLANNED; local engine verified only |
+| Database | PostgreSQL hosted on Neon | PLANNED / NOT YET CONNECTED |
+| EF Core provider | Npgsql.EntityFrameworkCore.PostgreSQL | PLANNED; exact compatible package version not selected |
 | Authentication | Short-lived JWT access token | PLANNED |
 | Authorization | Permission-policy RBAC | PLANNED |
 | API documentation | OpenAPI/Swagger | PLANNED |
 | Testing | xUnit unit + integration tests | PLANNED |
 | Web UI | Bootstrap 5 local + HTML/CSS/JavaScript trong `Api/wwwroot`, cùng origin với API | PLANNED |
 
-Stack selection is based on the verified environment recorded in [Repository Audit](docs/repository-audit.md). PostgreSQL is installed but is not selected, avoiding two database providers.
+Database platform changed at design level on 01/10/2026 under [ADR-018](DECISIONS.md#adr-018---use-postgresql-on-neon-instead-of-planned-sql-server). Neon will be the shared primary development database for Thủy and Thiện; installed local database engines remain historical environment evidence, not the development target. SDK 10.0.400 is verified; EF Core/Npgsql/tool versions must be checked together and pinned during the approved Week 3 skeleton step, not guessed here.
+
+**NEON SETUP: PLANNED. NEON CONNECTION: NOT CONFIGURED. DATABASE CONNECTION: NOT VERIFIED.** No credentials were provided and no Neon connection was attempted. Secret configuration uses `ConnectionStrings:DefaultConnection`, supplied locally through user-secrets or `ConnectionStrings__DefaultConnection`; never commit a connection string. Manual setup is documented in [Deployment](docs/deployment.md).
 
 ## Architecture **PLANNED**
 
@@ -41,7 +44,8 @@ HTTP Request
   -> Service (business rules + transaction orchestration)
   -> Repository (data access)
   -> EF Core / DbContext
-  -> SQL Server
+  -> Npgsql EF Core provider
+  -> PostgreSQL hosted on Neon
 ```
 
 The system is a layered modular monolith. Web UI được phục vụ cùng origin, dùng JWT in-memory, không tạo frontend framework/dev server riêng. Controllers do not contain large business rules or query `DbContext` directly; repositories do not own business decisions; entities are not exposed as API contracts when DTOs are appropriate.
@@ -105,6 +109,7 @@ The application solution/project structure is intentionally not created in Week 
 - [Git collaboration và shared-file lock](docs/git-collaboration.md)
 - [Task dependency graph và critical path](docs/task-dependencies.md)
 - [Week 2 plan](docs/weekly/week-02.md)
+- [Week 2 — bàn giao 30 nhiệm vụ của Thủy](docs/week-02-thuy-handoff.md)
 - [Week 3 plan](docs/weekly/week-03.md)
 - [Week 4 plan](docs/weekly/week-04.md)
 - [Week 5 plan](docs/weekly/week-05.md)
@@ -129,9 +134,9 @@ Full dependencies, daily deliverables and verification criteria are in [Roadmap]
 
 ## Current project status
 
-- Branch: `main`. At the 01/10 planning audit it had no commit; use `git log` for the latest publication state.
-- Remote: configured to the official GitHub repository; it advertised no refs at the 01/10 audit.
-- Week 2 technical docs and two-person 36-day plan: prepared on 01/10, awaiting user/Mentor review; no approval implied. Planned workload Thủy 60,9% / Thiện 39,1% by representative estimate.
+- Branch: `main`; baseline documentation commit `0c99374` matches `origin/main` at the 01/10 handoff audit. Handoff changes remain local and uncommitted.
+- Remote: official GitHub repository, `refs/heads/main` verified at the same baseline commit; earlier empty-remote audit is historical.
+- Week 2: 30 Thủy task deliverables documented and checked on 01/10; independent Thiện/user/Mentor review pending. [Handoff report](docs/week-02-thuy-handoff.md) preserves evidence, fixes and the original 21 PASS checks; its Database Platform Change Addendum records the new design-level decision. Schema Baseline V1 remains **18 tables / 41 relationships**, with no entity/relationship redesign. Planned workload Thủy 60,9% / Thiện 39,1% by representative estimate.
 - Build/test/migration: **PLANNED — NOT APPLICABLE** because no application code exists.
 - Git publication is separate from plan approval and implementation; consult Git history for its actual state. A documentation commit does not imply a feature is implemented.
 

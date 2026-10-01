@@ -1,12 +1,12 @@
 # Git Collaboration — PLANNED
 
-> Repository hiện tại là `main` chưa có commit; tài liệu đang ở working tree. Workflow bên dưới áp dụng **sau khi** kế hoạch được review và hai thành viên bắt đầu implementation. Task hiện tại **không commit, push hay merge**.
+> Snapshot 01/10/2026: tài liệu đã được xuất bản ở `main`/`origin/main`, commit `0c99374`. Các thay đổi bàn giao Tuần 2 hiện ở working tree. Workflow code bên dưới áp dụng sau review và bắt đầu implementation; lượt bàn giao Tuần 2 này không commit, push hay merge.
 
 ## Nhánh và review
 
 - `main`: nhánh tích hợp, chỉ nhận thay đổi đã build/test/review; không force-push.
 - `feature/thuy-<module>-<short-task>` và `feature/thien-<module>-<short-task>`: mỗi workstream/PR nhỏ. Tên ngắn, không trộn module độc lập.
-- Một PR có một Primary Owner theo [team responsibilities](team-responsibilities.md), reviewer là người còn lại. Người tạo PR không tự duyệt PR của mình; merge sau review và gate. Nếu GitHub chưa có remote commit/branch, bootstrap repository phải được hai người thống nhất riêng sau planning.
+- Một PR có một Primary Owner theo [team responsibilities](team-responsibilities.md), reviewer là người còn lại. Người tạo PR không tự duyệt PR của mình; merge sau review và gate. `origin/main` đã có documentation baseline; nhánh implementation bắt đầu từ baseline được đồng bộ, không bootstrap lịch sử mới.
 - Review trong cùng ngày nếu PR đang nằm trên critical path M1. PR chưa đủ điều kiện không được merge chỉ để có Git history/screenshot.
 
 ## Chu trình mỗi task code
@@ -27,6 +27,16 @@
 - API DTO/route đổi phải cập nhật `docs/api-spec.md`, `docs/ui-ux-spec.md`, permission matrix, test và thông báo người dùng contract trước code phụ thuộc. Không đổi field/enum ngầm.
 - Nếu có conflict: dừng merge, chốt semantic contract với reviewer, giải conflict trên branch của tác giả, chạy lại build/test; không dùng chiến lược “chọn ours/theirs” mù.
 - Nếu critical dependency trễ: dùng fallback trong daily plan (DTO/mock fixture/test/docs trên contract đã freeze); không merge stub giả là feature DONE.
+
+## Database change lock — Neon shared development (PLANNED)
+
+- **Primary database/migration coordinator: Thủy.** Thủy và Thiện dùng chung Neon PostgreSQL development database; database local không là development target chính. Thiện vẫn sở hữu module đã phân công, được sửa entity module, đề xuất schema và review DB; Thủy tích hợp mapping/DbContext/migrations. Không đổi ownership hoặc tạo lại task Tuần 2.
+- Trước `dotnet ef migrations add` **hoặc** `dotnet ef database update`, Thiện phải sync với Thủy và có lock tường minh. Thủy cũng xác nhận lock trước lượt của mình. Lock record gồm owner, Git branch/base, schema/migration change, actual Neon project/branch/database và khoảng thời gian; chỉ ghi metadata không nhạy cảm, không credential.
+- Một thời điểm chỉ có một schema-changing migration đang được tạo/apply trên baseline shared DB. Schema proposal phải cập nhật database design/ERD và được review trước Entity/Configuration; generated migration/SQL được kiểm trên PostgreSQL test target cô lập trước khi apply shared Neon.
+- Thủy apply migration qua **direct endpoint/identity riêng** sau khi cả hai sync baseline, xác nhận target/version và tạm dừng writes nếu change yêu cầu. Runtime dùng pooled endpoint với least-privilege roles; không cấp DDL credential cho backend để tự migrate khi startup. Direct endpoint tránh giới hạn session/advisory locks của PgBouncer transaction pooling. [Neon pooling](https://neon.com/docs/connect/connection-pooling).
+- Sau apply: smoke schema/seed/API, ghi kết quả sanitized, commit migration/docs khi workflow implementation cho phép; cả hai sync Git và schema, sau đó Thủy nhả lock. Migration đã apply không được sửa/reorder trên nhánh khác; xử lý thay đổi bằng migration tiếp theo đã review.
+- Không merge/apply hai migration độc lập cùng base, không chạy global drop/schema/truncate/reset test trên shared-development/demo DB. Automated tests nhận dedicated disposable PostgreSQL/Neon branch target và fail closed nếu isolation chưa cấu hình; không fallback runtime connection.
+- Hiện **NEON SETUP: PLANNED; NEON CONNECTION: NOT CONFIGURED; DATABASE CONNECTION: NOT VERIFIED; MIGRATION: NOT CREATED**. Đây là quy trình tương lai, không evidence tạo/apply migration hoặc mở Tuần 3.
 
 ## Definition of Done và checkpoint Thứ 7
 

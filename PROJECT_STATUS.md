@@ -7,19 +7,20 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Current Week | Week 2 |
-| Current Phase | Week 2 — audit + redesign kế hoạch 2 thành viên / technical documentation; chờ người dùng/Mentor review |
-| Current Branch | `main`; tại audit lập kế hoạch 01/10 là unborn, xem `git log` cho trạng thái xuất bản mới nhất |
-| Remote | `origin` trỏ `https://github.com/tthuy05/hethongqltaisancntt.git`; remote không quảng bá ref tại lần audit |
+| Current Phase | Week 2 — bàn giao phần việc Thủy và database-platform addendum: DOCUMENTED — REVIEW PENDING |
+| Technical Documentation | COMPLETED phần Thủy / UNDER REVIEW bởi Thiện/Mentor; không phải implementation hoàn tất |
+| Current Branch | `main`; HEAD `0c9937493b8531954765ae0419374296210c9531`, tài liệu bàn giao sửa cục bộ chưa commit |
+| Remote | `origin` đúng repository chính thức; `refs/heads/main` khớp HEAD baseline ở audit bàn giao 01/10 |
 | Next phase gate | M1 10/10/2026 là mục tiêu có UI/API/DB thật; Week 3 chỉ bắt đầu sau review/approval của người dùng |
 
 ## Completed Modules
 
-**Không có module ứng dụng nào được implement.** Bộ tài liệu phân tích/thiết kế và kế hoạch Thủy/Thiện 36 ngày đã được chuẩn bị trong repository. [Consistency review](docs/consistency-review.md) có vòng kiểm mới cho UI/task/test; tài liệu tồn tại hoặc được commit không đồng nghĩa Mentor phê duyệt.
+**Không có module ứng dụng nào được implement.** 30 nhiệm vụ tài liệu Tuần 2 của Thủy đã có artifact và bằng chứng tại [bàn giao Thủy](docs/week-02-thuy-handoff.md), trạng thái **DOCUMENTED — REVIEW PENDING**. Kế hoạch 36 ngày giữ PLANNED; chưa có review độc lập/sign-off của Thiện hoặc phê duyệt Week 3. [Consistency review](docs/consistency-review.md) ghi các sửa contract CR-23–29 và kết quả kiểm tài liệu.
 
 ## In Progress
 
-- Week 2: hoàn thiện audit/planning/report và chờ review người dùng.
-- 36 ngày Week 2–7: task riêng Thủy/Thiện, toàn bộ **PLANNED**, không daily-report template.
+- Week 2: phần tài liệu Thủy sẵn review; còn phản biện độc lập của Thiện và review người dùng/Mentor.
+- Kế hoạch baseline 36 ngày Week 2–7 được giữ nguyên ID/estimate/ownership; 30 deliverable tài liệu Thủy Week 2 đã hoàn thành ở mức DOCUMENTED — REVIEW PENDING, không đặt lại thành PLANNED. Implementation tương lai và review chưa thực hiện vẫn **PLANNED**.
 - M1 ngày 10/10/2026: **PLANNED — NOT IMPLEMENTED / NOT VERIFIED**.
 
 ## Pending
@@ -32,17 +33,27 @@
 
 | Hạng mục | Trạng thái thực tế |
 |---|---|
-| Database design | 18 entity và ERD **DOCUMENTED — PLANNED**; chưa tạo database nghiệp vụ |
-| SQL Server environment | SQL Server 17 Developer service chạy; `sqlcmd` kết nối `localhost` thành công tại audit |
+| Database design | Schema Baseline V1: **18 tables / 41 relationships**, documentation COMPLETED / UNDER REVIEW; physical implementation PLANNED |
+| Database Engine | PostgreSQL |
+| Cloud Provider / primary development DB | Neon; shared development cho Thủy và Thiện, không dùng local DB làm database development chính |
+| EF Core provider | `Npgsql.EntityFrameworkCore.PostgreSQL` — PLANNED; chưa chọn/cài phiên bản package |
+| NEON SETUP | **PLANNED** |
+| NEON CONNECTION | **NOT CONFIGURED** — chưa có credentials |
+| DATABASE CONNECTION | **NOT VERIFIED** — chưa thử kết nối Neon |
+| Physical DB / application schema | **NOT CREATED**; Neon project/branch/database thực tế chưa được cung cấp/kiểm chứng |
+| Local SQL Server audit (historical only) | Local engine đã được kiểm chứng trước đổi platform; không còn là primary development DB |
 | Migration | **PLANNED — NOT CREATED** |
+| Authentication / JWT | **PLANNED — NOT IMPLEMENTED** |
+| Asset CRUD | **PLANNED — NOT IMPLEMENTED** |
+| MVP Milestone | **10/10/2026** — giữ nguyên |
 | Project skeleton / API | **PLANNED — NOT CREATED** |
 | Build | **NOT RUN / NOT APPLICABLE** vì chưa có `.csproj` |
 | Unit/integration tests | **NOT RUN / NOT APPLICABLE** vì chưa có code/test project |
 | API runtime/Swagger | **PLANNED — NOT IMPLEMENTED** |
 | Web UI/Bootstrap | **PLANNED — NOT CREATED** |
 | M1 demo evidence | **PLANNED — NONE YET**; không có screenshot UI/Swagger/DB app/test hoặc Git history triển khai tính năng |
-| Mermaid ERD | Mermaid parser 11.17.2 kiểm tra syntax thành công; PNG/SVG render chưa xác nhận |
-| Git commit/push | Người dùng yêu cầu xuất bản tài liệu riêng sau báo cáo planning; `git log` và remote là nguồn xác nhận thực tế, không suy từ file này |
+| Mermaid ERD | Parser 11.17.2 kiểm lại 01/10 thành công; 18 entity/41 FK/41 relationships; PNG/SVG render chưa xác nhận |
+| Git commit/push | Baseline tài liệu đã push ở 0c99374 theo yêu cầu trước; lượt bàn giao này không stage/commit/push |
 
 ## Known Issues / Open Questions
 
@@ -60,8 +71,9 @@
 
 ## Next Tasks
 
-1. Trả planning report: repo audit, owner/workload, M1, Week 2–7 summaries, critical path, docs/risks/files/Git status.
-2. **STOP** chờ review; không implement hoặc bắt đầu Week 3 chỉ vì tài liệu được xuất bản lên Git.
+1. Thiện review bộ bàn giao/CR-23–29, M1 DTO/schema/UI/test và tính khả thi theo checklist handoff; trạng thái review **PLANNED**.
+2. Người dùng/Mentor review OQ-001/OQ-002/OQ-011 và checkpoint schema trước implementation M1; các OQ khác theo module tương ứng.
+3. **STOP** tại Week 2; chỉ mở Week 3 khi người dùng yêu cầu/phê duyệt triển khai.
 
 ## Daily update log
 
@@ -71,5 +83,7 @@
 | 29/09/2026 | Hoàn thiện toàn bộ tài liệu, sửa mâu thuẫn thiết kế và chạy consistency review/ERD parser. | Markdown ID/link/table/weekly checks và ERD grammar pass; không có build/test vì không có project. |
 | 01/10/2026 | Đọc yêu cầu kế hoạch 2 người; audit lại Git/.NET; cập nhật UI/UX, ownership, Git/dependency, roadmap và 36 daily plans trong working tree. | Chỉ tài liệu; M1 và task còn PLANNED. Các kết quả consistency review mới ghi trong `docs/consistency-review.md`. |
 | 01/10/2026 | Người dùng yêu cầu đưa bộ tài liệu lên Git sau báo cáo planning. | Commit/push chỉ xuất bản tài liệu, không phải `APPROVED` cho Week 3; kiểm `git log` và remote để biết kết quả. |
+| 01/10/2026 | Theo yêu cầu thực hiện tuần đầu dự án của Thủy (Week 2), kiểm lại 30 task, sửa contract Login/Asset/audit/permissions, bổ sung UC-017/018 và báo cáo bàn giao. | Local/remote baseline 0c99374 khớp; kiểm Markdown/IDs/36 ngày/288 task/DB-ERD/secret heuristic và ERD parser. Artifact DOCUMENTED — REVIEW PENDING; không code/stage/commit/push hoặc tự nhận Thiện review. |
+| 01/10/2026 | Đổi database PLANNED từ SQL Server sang PostgreSQL hosted on Neon theo yêu cầu, giữ 30 deliverable/evidence và Schema Baseline V1 18 bảng/41 quan hệ. | Chỉ docs/type/provider/connection/migration/test-isolation plan; không credentials/kết nối/schema/migration/business code. Handoff chỉ thêm addendum; previous checks 21 PASS giữ nguyên. Affected checks tại consistency review; không stage/commit/push hoặc mở Week 3. |
 
 File này cần cập nhật sau mỗi ngày làm việc tiếp theo bằng kết quả thực tế, không bằng kết quả dự kiến.

@@ -8,7 +8,7 @@
 
 Doanh nghiệp cần một nguồn dữ liệu thống nhất để quản lý tài sản CNTT, người đang sử dụng, bộ phận chịu trách nhiệm, phần mềm/giấy phép, bảo trì, chi phí và toàn bộ lịch sử vòng đời. Khi dữ liệu nằm rải rác trong bảng tính hoặc được cập nhật không có ràng buộc, doanh nghiệp dễ gặp các vấn đề: trùng mã tài sản, cấp phát đồng thời một thiết bị cho nhiều đối tượng, thất thoát lịch sử, dùng vượt số lượng license, lộ license key, bỏ lỡ thời hạn bảo hành/license và dự toán thay thế không có căn cứ.
 
-Hệ thống web quản trị và backend được **PLANNED** để cung cấp giao diện demo, API có phân quyền, kiểm soát toàn vẹn dữ liệu, audit trail và báo cáo phục vụ vận hành lẫn lập ngân sách. M1 ngày 10/10/2026 phải là MVP chạy thật với login, asset UI/API và SQL Server; tài liệu này không tuyên bố M1 đã đạt.
+Hệ thống web quản trị và backend được **PLANNED** để cung cấp giao diện demo, API có phân quyền, kiểm soát toàn vẹn dữ liệu, audit trail và báo cáo phục vụ vận hành lẫn lập ngân sách. M1 ngày 10/10/2026 phải là MVP chạy thật với login, asset UI/API và PostgreSQL hosted on Neon; tài liệu này không tuyên bố M1 đã đạt.
 
 ## 2. Project Goals
 
@@ -40,7 +40,7 @@ Tiến trình nội bộ như bộ đánh giá cảnh báo/khuyến nghị là s
 | ASM-003 | Một user thuộc tối đa một department; có thể chưa thuộc department. | `DepartmentId` của user nullable. |
 | ASM-004 | Một active asset assignment có đích là đúng một user **hoặc** một department. | XOR constraint và validation. |
 | ASM-005 | Dữ liệu business/master có lịch sử được archive/deactivate thay vì hard delete. | API, FK và chiến lược delete. |
-| ASM-006 | Database mục tiêu là SQL Server. | Kiểu dữ liệu, filtered unique index, transaction và migration **PLANNED**. |
+| ASM-006 | Database mục tiêu là PostgreSQL hosted on Neon, dùng chung development cho Thủy/Thiện; setup/kết nối chưa cấu hình. | Npgsql provider, PostgreSQL types, partial unique index, transaction và migration **PLANNED**; 18 bảng/41 quan hệ baseline giữ nguyên. |
 | ASM-007 | Target framework mục tiêu là .NET 10 theo SDK đã audit; chưa có project/code ở Week 2. | Implementation từ Week 3 sau APPROVED. |
 | ASM-008 | MVP dùng JWT access token, chưa dùng refresh token. Logout là xóa token phía client; token ngắn hạn giảm cửa sổ rủi ro. | Auth API và security tests. |
 | ASM-009 | Mọi import dùng all-or-nothing transaction. | Không có trạng thái import một phần. |
@@ -64,7 +64,7 @@ Tất cả yêu cầu dưới đây có trạng thái **PLANNED**.
 | FR-003 | Mọi endpoint protected áp dụng authentication và role/permission policy. | Unauthorized trả 401; authenticated nhưng thiếu quyền trả 403. |
 | FR-004 | Admin IT tạo, cập nhật, deactivate/reactivate, lock/unlock tài khoản. | Không hard delete user có lịch sử; password không bao giờ được trả lại. |
 | FR-005 | Admin IT gán/bỏ các role cố định cho tài khoản. | Chỉ ba role baseline; thay đổi role được audit. |
-| FR-006 | Admin IT quản lý department; System Manager chỉ được xem để vận hành. | Department đang được tham chiếu chỉ được deactivate/archive, không hard delete. |
+| FR-006 | Admin IT quản lý department; System Manager xem để vận hành, Technical Support đọc thông tin tổ chức cần support theo scope. | Chỉ Admin IT được viết; Department đang được tham chiếu chỉ được deactivate/archive, không hard delete. |
 
 ### 5.2 Asset inventory và master data
 
@@ -141,7 +141,7 @@ Tất cả yêu cầu dưới đây có trạng thái **PLANNED**.
 
 | ID | Name / description | Actor | Priority | Acceptance criteria | Module |
 |---|---|---|---|---|---|
-| FR-038 | Login UI gửi credential đến API thật và nhận session in-memory. | Ba role | Must/M1 | Sai credential báo lỗi chung; đúng credential vào Dashboard; reload/logout xóa token phía client. | Frontend/Auth |
+| FR-038 | Login UI gửi credential đến API thật và nhận session in-memory. | Ba role | Must/M1 | Sai credential báo lỗi chung; đúng credential đổi view sang Dashboard trong cùng document; navigation không làm mất token, reload/logout xóa token phía client. | Frontend/Auth |
 | FR-039 | Admin shell có header, sidebar theo quyền và navigation. | Ba role | Must/M1 | Điều hướng Login→Dashboard→Assets; action không có quyền không hiện, API vẫn tự kiểm quyền. | Frontend/Shell |
 | FR-040 | Dashboard M1 hiển thị dữ liệu asset thật hoặc empty state; phần tổng hợp nâng cao thêm Week 6. | Ba role | Must/M1 | Hiển thị ít nhất tổng số asset và asset gần nhất từ EP-023; không hiện metric giả cho module chưa có. | Frontend/Dashboard |
 | FR-041 | Asset List UI có search/filter/page và mở Detail. | Ba role | Must/M1 | Dữ liệu từ EP-023, filter keyword/type/department/status hoạt động; Support không thấy cost. | Frontend/Asset |
@@ -216,7 +216,7 @@ Tất cả yêu cầu dưới đây có trạng thái **PLANNED**; target địn
 | NFR-012 | Reliability | Assignment transfer, license allocation và import all-or-nothing dùng transaction; lỗi không để dữ liệu ở trạng thái nửa chừng. |
 | NFR-013 | Testing | xUnit **PLANNED** cho unit/integration; ưu tiên business rule, authorization, database constraint, transaction và các happy/negative path quan trọng. |
 | NFR-014 | Observability | Structured application log, severity phù hợp, correlation ID; log không chứa dữ liệu nhạy cảm. |
-| NFR-015 | Compatibility | ASP.NET Core/.NET 10, EF Core tương ứng và SQL Server **PLANNED**, chỉ triển khai sau APPROVED. |
+| NFR-015 | Compatibility | ASP.NET Core/.NET 10, EF Core tương ứng, `Npgsql.EntityFrameworkCore.PostgreSQL` và PostgreSQL hosted on Neon **PLANNED**; version provider phải kiểm tương thích SDK/EF Core trước implementation, chỉ triển khai sau APPROVED. |
 | NFR-016 | Time/money | Timestamp lưu UTC; API dùng ISO 8601; monetary data dùng decimal và một currency cấu hình trong MVP. |
 | NFR-017 | File safety | Upload Excel có allow-list extension/content signature, giới hạn kích thước/dòng, tên file an toàn và không thực thi macro. |
 | NFR-018 | Recoverability | Có chiến lược backup/restore database theo môi trường triển khai; restore drill và RPO/RTO cần Mentor xác nhận trước production. |
@@ -238,7 +238,7 @@ Các NFR áp dụng cho hệ thống/nhóm phát triển, không phải một va
 | NFR-004 | Thủy | Must/M1 | Asset list 400/default/max tests |
 | NFR-005 | Thủy | Must/W6 | p95 với dataset/load ghi rõ |
 | NFR-006 | Thủy | Must/W6 | SQL plan/query count review |
-| NFR-007 | Thủy | Must/M1 core, mở rộng W4–W5 | Clean migration/FK/unique/check tests |
+| NFR-007 | Thủy | Must/M1 core, mở rộng W4–W5 | Clean migration/FK/unique/check tests trên PostgreSQL test target isolated, không reset shared Neon development |
 | NFR-008 | Thủy | Must/M1 Asset, mở rộng W4–W5 | rowVersion 409 tests |
 | NFR-009 | Thủy | Must/M1 auth, hardening W7 | Auth/policy/BOLA/security tests |
 | NFR-010 | Thủy | Must/W5 | key/cost/log/response negative tests |
@@ -264,7 +264,7 @@ Các NFR áp dụng cho hệ thống/nhóm phát triển, không phải một va
 - **CON-004:** Không commit secret, password, production connection string, `.env` hoặc database local không cần thiết.
 - **CON-005:** MVP dùng ba role cố định và không có formal approval workflow.
 - **CON-006:** MVP bắt buộc có web UI quản trị thật cùng backend API; mobile/native app và SPA framework phức tạp ngoài phạm vi.
-- **CON-007:** SQL Server và .NET 10 là baseline **PLANNED** theo audit môi trường, không đồng nghĩa database/API đã tồn tại.
+- **CON-007:** .NET 10 theo audit SDK và PostgreSQL hosted on Neon theo quyết định platform mới là baseline **PLANNED**; SQL Server audit cũ chỉ là evidence môi trường. Neon chưa cấu hình/kết nối, migration và schema vật lý chưa tạo.
 - **CON-008:** Giải pháp phải phù hợp thời lượng Week 2–7 và năng lực bàn giao của dự án thực tập.
 
 ## 8. Security Requirements

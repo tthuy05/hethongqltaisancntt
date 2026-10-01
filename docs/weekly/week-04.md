@@ -2,6 +2,8 @@
 
 > **PLANNED — NOT IMPLEMENTED.** Entry: M1 identity/asset/master data/DB gate đạt hoặc blocker có owner. Mỗi ngày Thủy 3M+2S, Thiện 2M+1S (7h/4,5h đại diện); M=1–3h, S<1h. Thủy giữ DbContext/migration/shared status/audit; Thiện giữ Assignment/Maintenance API/UI.
 
+**Database boundary — PLANNED:** development/manual integration/demo dùng shared Neon PostgreSQL; clean migration/automated integration/fixture dùng PostgreSQL target isolated theo [testing strategy](../testing-strategy.md), fail-closed nếu trỏ shared dev. Không drop/reset schema/database hoặc truncate toàn bộ tables trên shared DB. Thủy review/test rồi điều phối apply migration qua direct endpoint; Thiện sync trước mọi EF migration command.
+
 ## Thứ Hai — 12/10/2026
 
 **Mục tiêu chung:** schema Assignment/Maintenance/Audit và user lookup trước workflow.
@@ -9,14 +11,14 @@
 ### THỦY
 **Objective:** cung cấp shared data/authorization contract.  
 **Task List (theo thứ tự):**
-- W4-THUY-D1-01 [DATA] [M] [PLANNED] Map assignment XOR + filtered active unique, ticket/history/audit FKs/indexes vào DbContext từ proposal Thiện.
-- W4-THUY-D1-02 [DATA] [M] [PLANNED] Tạo/review một migration Week 4, chạy clean test DB, kiểm unique/FK/check/rollback.
+- W4-THUY-D1-01 [DATA] [M] [PLANNED] Map assignment XOR + partial active unique index, ticket/history FKs/indexes vào DbContext từ proposal Thiện; kiểm lại AuditLogs đã có từ M1, không tạo trùng bảng.
+- W4-THUY-D1-02 [DATA] [M] [PLANNED] Tạo/review một migration Week 4, chạy clean isolated PostgreSQL test target, kiểm unique/FK/check/rollback rồi Thủy apply shared Neon dưới change lock.
 - W4-THUY-D1-03 [API] [M] [PLANNED] Tạo EP-004 user lookup + permission/scope để assignment/technician dropdown dùng.
 - W4-THUY-D1-04 [DOC] [S] [PLANNED] Freeze status transition/audit correlation interface cho Thiện.
 - W4-THUY-D1-05 [VERIFY] [S] [PLANNED] Chạy build + migration/schema smoke và giao DB contract.
 **Files / Modules:** `AppDbContext`, `Migrations/*`, `Api/Controllers/UsersController.cs`, `Application/Contracts/*`, tests.  
 **End-of-Day Outcome:** schema Week 4 và lookup sẵn cho Thiện.  
-**Verification Plan:** clean migration, filtered unique index, XOR, lookup 401/403, build.  
+**Verification Plan:** clean isolated PostgreSQL migration, partial unique index, XOR, lookup 401/403, build.  
 **Dependency:** entity mapping proposal Thiện + M1 schema. **Fallback Task:** map Assignment trước, Maintenance/Audit proposal review tiếp; báo migration blocker. **Reviewer:** Thiện.
 
 ### THIỆN
@@ -54,7 +56,7 @@
 **Task List (theo thứ tự):**
 - W4-THIEN-D2-01 [BACKEND] [M] [PLANNED] Implement assign/return service transaction: active check, status history, close fields và 409 conflict.
 - W4-THIEN-D2-02 [API] [M] [PLANNED] Tạo EP-030–033/035 list/detail/assign/return/history với policy/object scope.
-- W4-THIEN-D2-03 [TEST] [S] [PLANNED] Chạy assign/return integration + filtered index double-assign race smoke.
+- W4-THIEN-D2-03 [TEST] [S] [PLANNED] Chạy assign/return integration + partial unique index double-assign race smoke trên isolated PostgreSQL.
 **Files / Modules:** Assignment service/repository/controller, status history, tests.  
 **End-of-Day Outcome:** assign/return lưu DB, history không overwrite.  
 **Verification Plan:** 201/200/409, one active row, returnedAt, asset status, 403, rollback.  
@@ -159,7 +161,7 @@
 ### THỦY
 **Objective:** chốt gate M2 và quality evidence.  
 **Task List (theo thứ tự):**
-- W4-THUY-D6-01 [INTEGRATION] [M] [PLANNED] Merge PR đã review, chạy clean migration + Release build và Week 3–4 unit/integration suite.
+- W4-THUY-D6-01 [INTEGRATION] [M] [PLANNED] Merge PR đã review, chạy clean migration trên isolated PostgreSQL + Release build và Week 3–4 unit/integration suite; shared Neon chỉ schema/manual smoke, không reset.
 - W4-THUY-D6-02 [TEST] [M] [PLANNED] Swagger/Postman/UI smoke assign→transfer→return + ticket→resolve, race/rollback/403/audit.
 - W4-THUY-D6-03 [FIX] [M] [PLANNED] Sửa blocker phát hiện, rerun affected tests và kiểm DB integrity/history.
 - W4-THUY-D6-04 [DOC] [S] [PLANNED] Cập nhật README/PROJECT_STATUS/CHANGELOG/API/ERD theo kết quả thật.

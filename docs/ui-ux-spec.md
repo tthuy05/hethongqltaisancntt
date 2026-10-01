@@ -5,7 +5,7 @@
 ## 1. Phạm vi và công nghệ
 
 - Web quản trị đơn giản trong `src/ItAssetManagement.Api/wwwroot/`: HTML semantic, CSS, JavaScript ES modules và Bootstrap 5 được pin phiên bản, lưu local để demo không lệ thuộc CDN. Không thêm build pipeline/framework frontend trong MVP. API và UI cùng origin; không cần CORS cho UI này.
-- `index.html` là shell; trang đăng nhập có thể là `login.html`. Điều hướng bằng link/history nhỏ, không tự xây router/framework. `api-client.js` là nơi duy nhất ghép `/api/v1`, Bearer token, ProblemDetails và xử lý 401/403/409.
+- `index.html` chứa cả Login và admin shell; điều hướng hash trong cùng document (`#/login`, `#/dashboard`, `#/assets`, `#/assets/new`, `#/assets/{id}`, `#/assets/{id}/edit`). Login thành công đổi view, không redirect sang HTML khác vì sẽ mất token in-memory. Back/Forward đổi view; direct link/reload khi chưa có session hiện Login. `api-client.js` là nơi duy nhất ghép `/api/v1`, Bearer token, ProblemDetails và xử lý 401/403/409; không thêm router/framework.
 - Access token chỉ giữ trong bộ nhớ JavaScript, không localStorage/sessionStorage/cookie; reload yêu cầu đăng nhập lại. Không render token vào DOM/log/URL. 401 đưa về login và xóa state; 403 hiện thông báo thiếu quyền; 409 yêu cầu tải lại bản ghi; lỗi mạng có retry rõ ràng. Server vẫn kiểm quyền trên từng API.
 - Bootstrap 5 grid, table responsive, form feedback, focus states, label/aria, contrast đủ đọc, không dùng `innerHTML` với dữ liệu API. Khi viewport hẹp: sidebar collapse/offcanvas, bộ lọc xếp dọc, bảng cuộn ngang; nút chính luôn hiển thị.
 - `rowVersion` của asset được giữ opaque và gửi trong Update DTO; Create luôn server đặt `InStock`. Không có nút đổi status tùy tiện trong form metadata.
@@ -32,7 +32,7 @@ Mọi screen dưới đây có trạng thái **PLANNED**. “Cột” là cột 
 
 ### UI-02 Dashboard cơ bản — M1; nâng cao Week 6
 
-- Mục tiêu/actor: điểm vào sau login cho ba role. M1 hiển thị lời chào, link Assets, tối đa 5 asset mới nhất và tổng số từ `GET /assets?page=1&pageSize=5`; không hiển thị số ticket/license/budget giả. Week 6 thay/đưa thêm card tổng số theo status, maintenance, warranty/license, replacement và cost theo quyền.
+- Mục tiêu/actor: điểm vào sau login cho ba role. M1 hiển thị lời chào, link Assets, tối đa 5 asset mới nhất và tổng số từ `GET /assets?page=1&pageSize=5&sortBy=createdAt&sortDirection=desc`; không hiển thị số ticket/license/budget giả. Week 6 thay/đưa thêm card tổng số theo status, maintenance, warranty/license, replacement và cost theo quyền.
 - Fields/cột: M1 assetCode, name, status, owningDepartment; Week 6 chart/card theo response. Buttons: Xem tài sản, Refresh. Filter: Week 6 department/date nếu API hỗ trợ. Loading/empty/error theo layout chung. API M1: EP-002, EP-023; Week 6: EP-072–075. Cost widget chỉ khi `dashboard.cost.read`.
 
 ### UI-03 Asset List — M1
@@ -43,12 +43,12 @@ Mọi screen dưới đây có trạng thái **PLANNED**. “Cột” là cột 
 ### UI-04 Create Asset — M1
 
 - Mục tiêu/actor: tạo asset `InStock`; Admin IT/System Manager. Fields: assetCode, name, assetTypeId, owningDepartmentId bắt buộc; serialNumber, `brand` (API, ánh xạ `manufacturer` ở DB), model, specification, operatingSystem, purchaseDate, purchasePrice, warrantyExpirationDate, location, note tùy chọn. Buttons: Save, Cancel. Cột/filter: —.
-- Validation: required, length, nonnegative price, warranty >= purchase date, option active; lỗi unique 409 chỉ vào assetCode/serial khi code lỗi cho biết. Loading: disable Save; empty dropdown: hướng dẫn tạo master data; error: 400 fields, 403, 409, 5xx. API: EP-024, EP-013, EP-018. Thành công điều hướng Detail với ID thật và thông báo 201.
+- Validation: required, length, nonnegative price, warranty >= purchase date, option active; lỗi unique 409 chỉ vào assetCode/serial khi code lỗi cho biết. Loading: disable Save; dropdown xử lý đủ trang active theo API contract, empty dropdown hướng dẫn tạo master data; error: 400 fields, 403, 409, 5xx. API: EP-024, EP-013, EP-018. Thành công điều hướng Detail với ID thật và thông báo 201.
 
 ### UI-05 Edit Asset — M1
 
-- Mục tiêu/actor: cập nhật metadata; Admin IT/System Manager. Fields như Create cộng `rowVersion` opaque từ detail; assetCode sửa theo API nếu được phép, status chỉ đọc. Buttons: Save, Cancel. Cột/filter: —. Validation giống Create; 409 version cũ hiển thị “Dữ liệu đã thay đổi, tải lại”; không silently overwrite.
-- Loading: tải detail và dropdown trước khi cho sửa; empty: 404 có link về list; error: 400/403/404/409/5xx. API: EP-025, EP-026, EP-013, EP-018. Không dùng EP-027 trong form metadata.
+- Mục tiêu/actor: cập nhật metadata; Admin IT/System Manager. Fields như Create cộng `rowVersion` opaque từ detail; assetCode sửa theo API nếu được phép, status chỉ đọc. `PUT` gửi metadata đầy đủ, optional field bỏ/null nghĩa xóa; form phải giữ giá trị đã tải cho field người dùng chưa đổi. Buttons: Save, Cancel. Cột/filter: —. Validation giống Create; 409 version cũ hiển thị “Dữ liệu đã thay đổi, tải lại”; không silently overwrite.
+- Loading: tải detail và dropdown trước khi cho sửa; empty: 404 có link về list; error: 400/403/404/409/5xx. API: EP-025, EP-026, EP-013, EP-018. Không dùng EP-027 trong form metadata. Dropdown lấy các trang active từ EP-013/018 đến `totalPages`, không coi trang đầu là toàn danh mục; detail giữ label của reference inactive cũ, chỉ target mới cần active.
 
 ### UI-06 Asset Detail — M1, mở rộng Week 4
 
@@ -94,14 +94,14 @@ Mọi screen dưới đây có trạng thái **PLANNED**. “Cột” là cột 
 
 1. Mở Login → đăng nhập Admin IT bằng account demo an toàn; token chỉ in-memory.
 2. Dashboard hiển thị asset thật hoặc empty state, không số liệu giả.
-3. Asset List tải từ SQL Server qua API thật; search/filter/page hoạt động.
-4. Create Asset hợp lệ → Detail hiển thị ID/dữ liệu thật; Edit metadata → refresh vẫn còn.
+3. Asset List tải từ Neon PostgreSQL qua API thật; search/filter/page hoạt động.
+4. Create Asset hợp lệ → Detail hiển thị ID/dữ liệu thật; Edit metadata → reload, đăng nhập lại và mở cùng ID để chứng minh dữ liệu vẫn còn trong database.
 5. Vào Department/Asset Type list; kiểm tra Bootstrap ở 320/768/1280px.
 6. Gọi cùng asset action bằng Technical Support: UI không hiện Create/Edit và API trả 403 khi gọi trực tiếp.
 7. Bằng chứng cần chụp sau khi chạy: Login, Dashboard, List/filter, Create/Edit/Detail, Swagger/Postman, database rows, build/test. Git history chỉ chụp nếu commit thực tế được thực hiện theo workflow sau này; task planning này không commit.
 
 ## 5. UI test và Definition of Done
 
-- `UI-SMOKE-M1`: login đúng/sai, reload token mất, list empty/populated, create/edit/409, filter/page, 403 trực tiếp, mobile overflow và keyboard focus; dùng browser thật trên API + DB test.
+- `UI-SMOKE-M1`: login đúng/sai; Login→Dashboard→List→Create→Detail→Edit và Back/Forward giữ session trong cùng document; reload/tab mới cần login lại; sau re-login mở cùng asset chứng minh persistence; list empty/populated, create/edit/409, filter/page, 403 trực tiếp, mobile overflow và keyboard focus. Dùng browser thật trên API + DB test.
 - Week 4–7: smoke mỗi screen cùng ngày module được nối UI; negative 401/403/409 và masking/cost vẫn phải test API.
 - Một screen chỉ DONE khi dữ liệu API thật, loading/empty/error, responsive, validation, authorization, build/test liên quan, reviewer và docs đã kiểm tra. Mọi screen trong tài liệu này hiện **PLANNED**.

@@ -2,6 +2,8 @@
 
 > **PLANNED — NOT IMPLEMENTED.** Entry: M4 report query/schema/permissions stable. Thiện owns Excel import/export + UI/test; Thủy owns security/full integration/performance/final demo. Daily capacity: Thủy 3M+2S, Thiện 2M+1S (7h/4,5h đại diện); M=1–3h, S<1h. Không mở scope mới; Week 8 là review/report/demo/final fixes nếu cần.
 
+**Database boundary — PLANNED:** development/manual integration/demo dùng shared Neon PostgreSQL; clean setup/migration, automated integration/rollback/regression fixture dùng PostgreSQL target isolated theo [testing strategy](../testing-strategy.md), fail-closed nếu trỏ shared dev. Không drop/reset schema/database hoặc truncate toàn bộ tables trên shared DB. Thủy review/test rồi điều phối apply migration qua direct endpoint; Thiện sync trước mọi EF migration command. Demo dùng synthetic records đã thống nhất, không reset dữ liệu/lịch sử của thành viên khác.
+
 ## Thứ Hai — 02/11/2026
 
 **Mục tiêu chung:** Excel parser/validation an toàn, không ghi DB khi dry run.
@@ -40,7 +42,7 @@
 **Objective:** kiểm authorization/transaction boundary.
 **Task List (theo thứ tự):**
 - W7-THUY-D2-01 [SECURITY] [M] [PLANNED] Review import authorization/BOLA/master scope/anti-mass-assignment và file path outside webroot.
-- W7-THUY-D2-02 [TEST] [M] [PLANNED] Integration invalid row/duplicate race/persistence failure rollback trên SQL Server test.
+- W7-THUY-D2-02 [TEST] [M] [PLANNED] Integration invalid row/duplicate race/persistence failure rollback trên isolated PostgreSQL test target, không shared Neon development.
 - W7-THUY-D2-03 [AUDIT] [M] [PLANNED] Nối import summary audit với actor/count/correlation, không chứa workbook plaintext.
 - W7-THUY-D2-04 [REVIEW] [S] [PLANNED] Review import service gọi Asset command đúng BR và không bỏ status history.
 - W7-THUY-D2-05 [DOC] [S] [PLANNED] Đồng bộ import API/BR/testing theo behavior actual.
@@ -134,7 +136,7 @@
 ### THỦY
 **Objective:** chứng minh end-to-end và chuẩn bị final demo.
 **Task List (theo thứ tự):**
-- W7-THUY-D5-01 [INTEGRATION] [M] [PLANNED] Restore/Release build, clean SQL Server migration/seed và full unit/integration/security suite.
+- W7-THUY-D5-01 [INTEGRATION] [M] [PLANNED] Restore dependencies/Release build, clean isolated PostgreSQL migration/seed và full unit/integration/security suite; verify shared Neon demo schema riêng, không reset.
 - W7-THUY-D5-02 [TEST] [M] [PLANNED] Browser + Swagger/Postman smoke Login→Asset→Assignment→Maintenance→License→Report→Import/Export.
 - W7-THUY-D5-03 [PERF] [M] [PLANNED] Đo critical report/import workload trên dataset/load ghi rõ, fix regression và rehearsal final demo.
 - W7-THUY-D5-04 [EVIDENCE] [S] [PLANNED] Lưu raw commands/results/screenshot đã che secret; ghi failed/skipped thật.
@@ -166,7 +168,7 @@
 ### THỦY
 **Objective:** giao dự án/báo cáo với trạng thái xác minh trung thực.
 **Task List (theo thứ tự):**
-- W7-THUY-D6-01 [INTEGRATION] [M] [PLANNED] Merge reviewed fixes, Release build + clean migration + full suite + Swagger/Postman/UI/DB smoke lần cuối.
+- W7-THUY-D6-01 [INTEGRATION] [M] [PLANNED] Merge reviewed fixes, Release build + clean isolated PostgreSQL migration + full suite + Swagger/Postman/UI/shared Neon DB smoke lần cuối, không reset shared DB.
 - W7-THUY-D6-02 [FIX] [M] [PLANNED] Sửa blocker còn trong timebox, rerun affected tests; phân loại known issues/debt còn lại.
 - W7-THUY-D6-03 [DEMO] [M] [PLANNED] Final demo rehearsal + evidence index/screenshot/mentor handoff, không tuyên bố production-ready thiếu kiểm chứng.
 - W7-THUY-D6-04 [DOC] [S] [PLANNED] Đồng bộ README/PROJECT_STATUS/CHANGELOG/ADR/API/ERD/security/testing/deployment.

@@ -2,6 +2,8 @@
 
 > Week 2 status: decisions are **ACCEPTED FOR DESIGN — PLANNED FOR IMPLEMENTATION**. A decision being accepted does not mean its code, migration or test exists.
 
+> Current database decision: **ADR-018 — PostgreSQL hosted on Neon**, 01/10/2026. ADR-002 is superseded; database-specific wording in ADR-003/007/010/011/012/015 is historical and mapped by ADR-018–020. Their business/architecture intent remains valid; no SQL Server provider or native rowversion is planned going forward.
+
 ## ADR-001 - Target .NET 10
 
 **Decision ID:** ADR-001  
@@ -12,6 +14,8 @@
 **Consequences:** Project skeleton and exact package versions remain **PLANNED**. Version changes require an ADR update and build/test evidence.
 
 ## ADR-002 - Use SQL Server as the primary database
+
+**Status:** SUPERSEDED by ADR-018 on 2026-10-01. Original environment evidence and decision text below are retained as history.
 
 **Decision ID:** ADR-002  
 **Date:** 2026-09-28  
@@ -94,6 +98,8 @@
 
 ## ADR-011 - Optimistic concurrency with `rowversion`
 
+**Status:** SQL Server-specific mechanism SUPERSEDED by ADR-019; opaque version/HTTP 409 contract retained.
+
 **Decision ID:** ADR-011  
 **Date:** 2026-09-28  
 **Context:** Users may update assets, tickets, licenses or rules concurrently. Last-write-wins can silently lose data.  
@@ -151,6 +157,44 @@
 **Decision ID:** ADR-017  
 **Date:** 2026-10-01  
 **Context:** Yêu cầu mới bắt buộc demo Login→Dashboard→Asset List/Create/Detail/Edit/Search qua giao diện thật vào 10/10/2026. Baseline cũ backend-only mâu thuẫn mốc này; repository chưa có frontend framework và thời gian Week 3 rất ngắn.  
-**Decision:** Phục vụ HTML/CSS/JavaScript ES modules + Bootstrap 5 pinned local từ `ItAssetManagement.Api/wwwroot` cùng origin với `/api/v1`. Dùng API client chung, JWT access token in-memory (reload/login lại), no frontend framework/build pipeline trong M1. Dashboard M1 dùng Asset API thật; dashboard aggregates nâng cao vào Week 6.  
+**Decision:** Phục vụ HTML/CSS/JavaScript ES modules + Bootstrap 5 pinned local từ `ItAssetManagement.Api/wwwroot` cùng origin với `/api/v1`. Một `index.html` chứa Login/admin shell; đổi view bằng hash navigation trong cùng document để giữ JWT in-memory từ Login qua Dashboard/Assets. Reload/tab mới yêu cầu login lại; không chuyển token qua URL, storage hoặc trang HTML khác. Dùng API client chung, không thêm frontend framework/build pipeline trong M1. Dashboard M1 dùng Asset API thật; dashboard aggregates nâng cao vào Week 6.  
 **Reason:** Đáp ứng UI/DB/API demo thật với ít moving parts, không cần CORS/dev server riêng và tránh giả số liệu từ module chưa tồn tại.  
 **Consequences:** XSS protection/CSP/safe DOM rendering quan trọng; token không bền qua reload. `docs/ui-ux-spec.md`, scope/requirements/architecture/security/test và 36-day plan là contract. Nếu chuyển framework/cookie auth phải review ADR/API/security/deployment và ảnh hưởng M1.
+
+**Design review 01/10/2026:** Bỏ lựa chọn login trên một document rồi redirect sang document khác; toàn bộ protected navigation phải giữ cùng shell. Persistence được kiểm bằng reload → re-login → mở lại ID thật, không bằng việc giữ token qua reload. Đây là sửa contract, implementation vẫn **PLANNED**.
+
+## ADR-018 - Use PostgreSQL on Neon instead of planned SQL Server
+
+**Decision ID:** ADR-018  
+**Date:** 2026-10-01  
+**Status:** ACCEPTED FOR DESIGN — IMPLEMENTATION PLANNED.  
+**Context:** Project vẫn ở technical-design phase. Phần Thủy Week 2 có 30 deliverable tài liệu/evidence, Schema Baseline V1 18 bảng/41 quan hệ và 21 previous documentation checks PASS. Chưa có physical application schema, EF entities/migration hoặc production data. Người dùng yêu cầu đổi platform, không thiết kế lại dự án.  
+**Previous Decision:** ADR-002 chọn SQL Server với EF Core SQL Server provider dựa trên local environment audit.  
+**New Decision:** ASP.NET Core Web API → Entity Framework Core → `Npgsql.EntityFrameworkCore.PostgreSQL` → PostgreSQL hosted on Neon. Neon là primary shared development database của Thủy và Thiện, không dùng local DB làm development chính. `UseNpgsql`/`ConnectionStrings:DefaultConnection` sẽ được cấu hình sau approval; exact compatible package/tool versions phải kiểm SDK (hiện 10.0.400), EF Core major và official provider release requirements trước khi pin.  
+**Reason:** Theo quyết định platform mới của người dùng; dùng một database cloud chung cho development/manual integration/demo. Đổi ở design phase có impact thấp hơn sau khi có schema/data/migrations.  
+**Consequences:** Giữ 18 bảng, 41 FK/relationships, tên/cột/nullable/PK/FK/cardinality/precision/length/status/business rules và toàn bộ API contract. Chỉ chuyển physical mapping sang bigint identity, varchar UTF8, numeric, boolean, timestamptz UTC, uuid, bytea/jsonb; giữ business dates là date, license expiry hiện hữu là instant. Enum vẫn varchar + CHECK, không thêm native enum/extension/bảng. Partial unique indexes và expression uniqueness giữ invariant case-insensitive; UTC timestamp precision là microsecond, không còn hứa 100ns. Controller–Service–Repository không đổi. M1 **10/10/2026** và 36-day task ownership/estimate giữ nguyên.  
+**Migration Impact:** Không migrate dữ liệu/provider code vì chưa có implementation; EF migration vẫn **NOT CREATED**. Thủy là primary DB/migration coordinator, Thiện sync trước `dotnet ef migrations add`/`database update`; review docs/ERD → mapping → migration SQL → apply thử isolated target → apply Neon shared dưới lock → smoke → commit chỉ ở phase được phép. Không chạy các bước này trong task hiện tại. Runtime pooled endpoint/least-privilege roles; migration direct endpoint/identity riêng; automated integration test trên PostgreSQL isolated target, tuyệt đối không reset shared database.  
+**Connection Status:** **NEON SETUP: PLANNED; NEON CONNECTION: NOT CONFIGURED; DATABASE CONNECTION: NOT VERIFIED.** `it_asset_management_dev` chỉ là logical-name proposal; actual branch/database/host/role dùng thông tin thật sau setup. Secrets ở user-secrets/env, không chat/source/log.  
+**Sources:** [Npgsql provider configuration](https://www.npgsql.org/efcore/), [PostgreSQL identity columns](https://www.postgresql.org/docs/current/ddl-identity-columns.html), [Neon connection pooling](https://neon.com/docs/connect/connection-pooling). Compatibility findings chi tiết tại [database design](docs/database-design.md); manual setup tại [deployment](docs/deployment.md).
+
+## ADR-019 - Preserve opaque concurrency with application-managed bytea
+
+**Decision ID:** ADR-019  
+**Date:** 2026-10-01  
+**Context / Previous Decision:** SQL Server tự cập nhật native `rowversion`; PostgreSQL không có kiểu tương đương. Baseline có 13 cột `row_version`, API Base64/ETag/If-Match và stale=409.  
+**New Decision:** Giữ nguyên 13 cột/tên/nullable, map sang `bytea` NOT NULL + `CHECK (octet_length(row_version) = 16)`. Backend tạo 16 cryptographically random bytes khi insert và tạo token mới trên mọi update của mutable row trong central SaveChanges/interceptor; EF dùng `IsConcurrencyToken()` và so token gốc ở WHERE. Không lấy token từ client làm giá trị mới; không dùng `IsRowVersion()`/`[Timestamp]`, PostgreSQL xmin hoặc trigger/extension mới.  
+**Reason:** Không bỏ/thêm cột hay đổi API để theo provider; xmin không được chọn vì baseline đã có binary column và opaque contract.  
+**Consequences:** Token không phải timestamp/counter; API giữ Base64 opaque, strong ETag, malformed=400, stale=409, missing archive If-Match=428. Mọi write path/seed/bulk/direct SQL được phép sau này phải quản lý token nhất quán, nếu không sẽ bypass conflict protection; role-change vẫn touch user và tăng token_version. Không retry tự ghi đè version cũ. Cross-row capacity vẫn cần parent row lock/transaction, không được thay bằng token đơn lẻ.  
+**Migration Impact:** Physical mapping/length CHECK thay đổi ở design-only; không migration/source được tạo. [EF Core application-managed concurrency](https://learn.microsoft.com/en-us/ef/core/saving/concurrency) là cơ chế tham chiếu; tests chống lost update còn **PLANNED**.
+
+**Implementation guard — PLANNED:** compare/set OriginalValue từ version client đã đọc, không dùng fresh-query token thay token request; regenerate CurrentValue giữ OriginalValue cho WHERE. Direct/bulk writes không được bypass token protocol.
+
+## ADR-020 - Use jsonb for existing sanitized audit and evaluation snapshots
+
+**Decision ID:** ADR-020  
+**Date:** 2026-10-01  
+**Context / Previous Decision:** Ba field old/new/metadata ở audit_logs và evaluation_snapshot_json đang là nvarchar(max) + ISJSON; yêu cầu là structured sanitized snapshot, không giữ nguyên formatting JSON.  
+**New Decision:** Giữ bốn cột/cùng nullable, dùng PostgreSQL `jsonb` với `CHECK jsonb_typeof(...) IN ('object','array')` khi non-null để giữ object/array semantics, thay validation ISJSON vốn không tồn tại trên PostgreSQL.  
+**Reason:** JSON hợp lệ được database enforce, tránh unbounded string không có type check; không thêm GIN index, extension hoặc entity khi chưa có truy vấn cần thiết.  
+**Consequences:** Whitespace/key order không được bảo toàn; serializer không tạo duplicate keys. Hash-chain nếu được phê duyệt phải hash canonical redacted payload theo schemaVersion trước khi lưu, không hash `jsonb::text` hoặc phụ thuộc thứ tự DB. Không có business/API/action/permission change; hash-chain vẫn **PLANNED**.  
+**Migration Impact:** Chỉ physical type/CHECK của audit_logs và replacement_recommendations; chưa có data để convert, không tạo migration. [PostgreSQL JSON types](https://www.postgresql.org/docs/current/datatype-json.html).

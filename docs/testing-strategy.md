@@ -5,10 +5,10 @@
 ## 1. Mục tiêu
 
 - Kiểm chứng business rule, state transition và phép tính theo cách lặp lại được.
-- Kiểm chứng API, SQL Server, authentication, authorization và database constraint cùng hoạt động đúng.
+- Kiểm chứng API, PostgreSQL hosted on Neon, authentication, authorization và database constraint cùng hoạt động đúng.
 - Ưu tiên negative path có rủi ro cao: truy cập sai quyền, double assignment, license over-allocation, mất history, import một phần và lộ dữ liệu nhạy cảm.
 - Tạo bằng chứng chạy thực tế cho báo cáo; không coi test được viết là test đã pass.
-- Kiểm chứng UI M1 trên browser thật và API/SQL Server thật ở môi trường test; không coi HTML tĩnh/mock response là demo thành công.
+- Kiểm chứng UI M1 trên browser thật và API/Neon PostgreSQL thật ở môi trường manual integration/demo; automated test dùng PostgreSQL target cô lập. Không coi HTML tĩnh/mock response là demo thành công.
 
 Stack kiểm thử dự kiến là xUnit trên .NET 10. Tên project, package và command chính xác chỉ được ghi vào README sau khi project skeleton được tạo và các command đã chạy thành công.
 
@@ -25,11 +25,11 @@ Unit test chạy nhanh, cô lập database/network và tập trung vào:
 - Masking/redaction helper cho license key, token và audit payload.
 - Pagination/filter/sort validation và mapping lỗi miền.
 
-Không mock toàn bộ EF Core để chứng minh database constraint. Quy tắc phụ thuộc filtered unique index, transaction, isolation hoặc `rowversion` phải có integration test với SQL Server thật.
+Không mock toàn bộ EF Core để chứng minh database constraint. Quy tắc phụ thuộc partial unique index, transaction, isolation hoặc app-managed `row_version` phải có integration test với PostgreSQL thật qua Npgsql.
 
 ### 2.2 Integration test — PLANNED
 
-Integration test khởi động API test host và dùng SQL Server database cô lập để kiểm tra:
+Integration test khởi động API test host và dùng PostgreSQL database/Neon branch cô lập để kiểm tra:
 
 - REST endpoint, model binding, validation và ProblemDetails.
 - EF Core mapping, migration, PK/FK/unique/check/index và transaction.
@@ -38,7 +38,7 @@ Integration test khởi động API test host và dùng SQL Server database cô 
 - Assignment, transfer, maintenance, license allocation và import qua toàn bộ luồng.
 - Audit record được tạo, sanitize và không thể sửa/xóa qua API.
 
-Không dùng EF Core InMemory provider để thay thế các test integrity vì provider đó không phản ánh đầy đủ SQL Server constraint, transaction và concurrency.
+Không dùng EF Core InMemory hoặc SQLite provider để thay thế các test integrity vì chúng không phản ánh PostgreSQL types/partial indexes/constraints, transaction và concurrency qua Npgsql.
 
 ### 2.3 Contract, security và performance review — PLANNED
 
@@ -46,11 +46,11 @@ Không dùng EF Core InMemory provider để thay thế các test integrity vì 
 - Kiểm tra 400/401/403/404/409/500 theo ProblemDetails; response không lộ stack trace hoặc secret.
 - Kiểm tra allow-list CORS/HTTPS/configuration ở môi trường phù hợp.
 - Đo query count/execution plan và p95 trên dataset/load được ghi rõ trước khi kết luận hiệu năng.
-- Secret/dependency scan là quality gate; chưa có kết quả scan trong Week 2.
+- Secret/dependency scan là quality gate. Week 2 chỉ có heuristic scan tài liệu được ghi trong [bàn giao Thủy](week-02-thuy-handoff.md); chưa có dependency manifest, CI scanner hoặc kết quả scan ứng dụng.
 
 ### 2.4 UI smoke test — PLANNED
 
-- Week 3: login success/failure, token in-memory và reload/logout, Dashboard cơ bản, Asset List search/filter/page, Create→Detail→Edit→refresh, 400/403/409, Department/Asset Type lookup, 320/768/1280px và keyboard focus. `UI-SMOKE-M1` chỉ pass khi API/DB thật.
+- Week 3: login success/failure; đổi view Login→Dashboard→Asset List→Create→Detail→Edit và Back/Forward trong cùng document giữ token in-memory; reload/tab mới cần login lại; re-login rồi mở cùng ID để kiểm dữ liệu vẫn persisted. Kiểm search/filter/page, 400/403/409, Department/Asset Type lookup nhiều trang, 320/768/1280px và keyboard focus. `UI-SMOKE-M1` chỉ pass khi API/DB thật.
 - Week 4–7: smoke Assignment/Maintenance, License/Replacement, Dashboard/Reports, Import/Export ngay gần ngày module nối UI; empty/loading/error và field permission được kiểm từng screen.
 - Browser automation nếu khả thi; nếu manual phải ghi môi trường, bước, expected/actual và ảnh thật. Negative authorization vẫn cần integration test phía server.
 
@@ -58,13 +58,13 @@ Không dùng EF Core InMemory provider để thay thế các test integrity vì 
 
 ### 3.1 Database isolation — PLANNED
 
-1. Mỗi test run dùng database SQL Server riêng có tên ngẫu nhiên hoặc database disposable do fixture quản lý.
-2. Tạo schema từ migration đã review; không dùng database development chứa dữ liệu thủ công.
-3. Reset dữ liệu giữa test class/case theo fixture đã chọn; không dựa vào thứ tự chạy.
-4. Không chạy song song các test dùng chung database nếu chưa chứng minh isolation.
-5. Luôn cleanup trong `finally`/fixture disposal; failure cleanup phải được báo rõ.
+1. Shared Neon development database dành cho development, manual integration và MVP demo của Thủy/Thiện. Automated fixture **không được drop database, drop schema, truncate toàn bộ tables, reset branch hoặc reset dữ liệu toàn cục** trên shared target này.
+2. Automated integration target là database disposable hoặc Neon test branch riêng mỗi run từ baseline test đã sanitize/schema-only; tạo physical schema ban đầu từ migration đã review trên target mới. Neon branch cô lập thay đổi khỏi parent, nhưng có thể copy schema/data/roles của parent, nên kiểm dữ liệu và cấp/rotate test credential riêng; không xem việc tạo branch tự động là credential isolation. [Neon branching workflows](https://neon.com/docs/get-started-with-neon/workflow-primer), [Neon roles](https://neon.com/docs/manage/roles).
+3. Fixture chỉ nhận dedicated test connection secret và non-secret target inventory được cấu hình rõ. Trước migration/reset/cleanup phải kiểm host/endpoint, branch mapping, actual database và run ownership thuộc allow-list test, khác shared development/demo target. Thiếu secret hoặc không chứng minh được isolation thì fail closed, báo **NOT RUN / isolation not configured**; không fallback sang `ConnectionStrings:DefaultConnection`.
+4. Reset dữ liệu giữa test class/case chỉ trên disposable target đã qua guard, theo fixture; không dựa vào thứ tự chạy. Không chạy song song các test dùng chung target nếu chưa chứng minh isolation.
+5. Cleanup trong `finally`/fixture disposal chỉ được tác động đúng disposable resource của run; không cleanup parent/shared branch. Failure cleanup được báo rõ và Thủy xử lý target đã xác minh, không dùng lệnh rộng để dọn.
 
-Docker không phải dependency bắt buộc vì engine hiện chưa chạy. Có thể dùng SQL Server local đã được audit; CI/demo phải có database test và credential riêng trong secret store.
+Trong MVP có thể tạo test branch/database thủ công và inject test secret để fixture không cần Neon API key. PostgreSQL disposable local/container là phương án test tùy chọn khi khả dụng, không thay Neon làm development database chính; Docker engine hiện chưa chạy. PostgreSQL major version/extensions của test phải đối chiếu Neon thực tế khi setup; chưa pin version hoặc tạo target/fixture trong task tài liệu này. Manual integration trên shared database dùng demo records có namespace/owner, cleanup đúng records qua workflow được phép, không reset history/audit.
 
 ### 3.2 Test data — PLANNED
 
@@ -73,6 +73,16 @@ Docker không phải dependency bắt buộc vì engine hiện chưa chạy. Có
 - Tiền dùng decimal/currency cấu hình; không dùng số thực dấu phẩy động.
 - Fixture phải gồm archived/inactive record, active assignment, ticket ở mỗi status, expired license và concurrent version token.
 - Không dùng password, license key hoặc dữ liệu nhân sự thật trong source/test artifact.
+
+### 3.3 PostgreSQL/Neon compatibility checks bị ảnh hưởng — PLANNED
+
+- Kiểm schema mapping giữ 18 bảng/41 FK: identity `bigint`, bounded strings, `numeric(p,s)`, `boolean`, UTC `timestamptz`, business `date`, `jsonb` object/array checks và snake_case identifiers.
+- Kiểm numeric precision/scale/nonnegative và NaN rejection; timestamp round-trip microsecond/UTC, DateOnly/expiry boundary; Unicode/UTF-16 limits/NUL validation. Nếu seed explicit IDs thì generated identity sau seed không collision; nullable bytea SHA-256 đúng 32 bytes.
+- Kiểm normalized code/email uniqueness, partial indexes/XOR/NULL predicates, `ILIKE` literal search và escaping `%`/`_`, sorting/pagination tie-breaker; không dựa vào SQL Server collation.
+- Kiểm `row_version bytea` đúng 16 bytes, application sinh token mới khi row đổi, EF `IsConcurrencyToken()` và rollback/concurrent stale update; response vẫn opaque Base64/ETag và `409`/`428` đúng contract.
+- Stale request phải thất bại dù service đã query row/version mới trước SaveChanges: OriginalValue/compare dùng token từ client, không vô tình lấy fresh token bỏ conflict; test mọi metadata/role/archive/bulk write path và audit rollback.
+- Sau khi có credentials thật, verify TLS certificate/hostname, runtime least privilege và pooled endpoint cho API; migration direct endpoint được Thủy lock/review. Connection errors/logs không lộ secret; không tự động retry business command gây duplicate.
+- Các checks trên chưa chạy: **NEON SETUP: PLANNED; NEON CONNECTION: NOT CONFIGURED; DATABASE CONNECTION: NOT VERIFIED; MIGRATION: NOT CREATED.**
 
 ## 4. Unit-test catalogue bắt buộc
 
@@ -104,7 +114,7 @@ Ma trận [BR → entity/API/test case](business-rules.md) (mục 14) định ng
 | IT-AUTH-005 | BOLA/resource scope | Đổi ID sang resource ngoài scope | 403 hoặc 404 theo policy, không lộ dữ liệu | PLANNED |
 | IT-ASSET-001 | Create Asset | Payload hợp lệ | 201, persisted fields/history/audit đúng | PLANNED |
 | IT-ASSET-002 | Duplicate AssetCode | Hai request dùng cùng normalized code | Unique constraint được map thành 409 | PLANNED |
-| IT-ASSET-003 | Concurrency update | Dùng `rowversion` cũ | 409, không silent overwrite | PLANNED |
+| IT-ASSET-003 | Concurrency update | Dùng app-managed `row_version` cũ, Base64 API contract giữ nguyên | 409, không silent overwrite | PLANNED |
 | IT-ASGN-001 | Assign Asset | Asset đủ điều kiện, target User XOR Department | Active assignment được tạo atomically | PLANNED |
 | IT-ASGN-002 | Double assignment | Hai request đồng thời cho cùng asset | Tối đa một request thành công; invariant giữ nguyên | PLANNED |
 | IT-ASGN-003 | Return Asset | Có active assignment | Row được đóng, history giữ lại, status nhất quán | PLANNED |

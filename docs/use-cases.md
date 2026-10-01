@@ -48,7 +48,7 @@ Mọi use case protected áp dụng BR-026 deny-by-default/BOLA. `401` dùng khi
 **Alternative Flow**
 
 - Actor đã có token hợp lệ gọi `/auth/me` để lấy safe profile/role.
-- Logout do client xóa token local; token đã phát hành tự hết hạn, không có server-side revocation/refresh trong MVP.
+- Logout do client xóa token in-memory; không có revoke theo từng token hoặc refresh endpoint. Protected requests vẫn kiểm account state/token_version và từ chối token cũ sau disable/admin lock/đổi role theo ADR-004.
 
 **Exception Flow**
 
@@ -95,7 +95,7 @@ Mọi use case protected áp dụng BR-026 deny-by-default/BOLA. `401` dùng khi
 
 **Exception Flow**
 
-- Type/owning Department inactive hoặc không tồn tại, hoặc dữ liệu ngày/giá sai: `400/404` theo contract.
+- Type/owning Department inactive hoặc không tồn tại, hoặc dữ liệu ngày/giá sai: `400` field-level ProblemDetails theo contract M1; `404` dành cho GET detail không tồn tại/ngoài scope.
 - AssetCode hoặc SerialNumber bị trùng: `409` với stable error code.
 - Concurrent duplicate: unique index từ chối, transaction rollback và API trả `409`.
 
@@ -141,7 +141,7 @@ Mọi use case protected áp dụng BR-026 deny-by-default/BOLA. `401` dùng khi
 - Cả hai/không target, target inactive: `400/409`.
 - Asset không tồn tại/không visible: `404`.
 - Asset Maintenance/Broken/Retired/archived hoặc đã assigned: `409`.
-- Concurrent assignment: filtered unique index làm một request thất bại `409`; không có status/history dư.
+- Concurrent assignment: PostgreSQL partial unique index làm một request thất bại `409`; không có status/history dư.
 
 **Postconditions**
 
@@ -567,6 +567,90 @@ Mọi use case protected áp dụng BR-026 deny-by-default/BOLA. `401` dùng khi
 
 **Business Rules:** BR-018, BR-026, BR-032, BR-033, BR-034, BR-049, BR-053.
 
+### UC-017 — View/Search Assets
+
+| Thuộc tính | Đặc tả |
+|---|---|
+| **ID / Status** | UC-017 / **PLANNED** |
+| **Name** | Xem, tìm kiếm và phân trang tài sản |
+| **Primary Actor** | Admin IT, System Manager, Technical Support theo field/scope policy |
+| **Goal** | Tìm đúng asset và mở detail trên dữ liệu thật, giữ session khi đổi màn hình. |
+| **Requirements** | FR-009, FR-015, FR-040–FR-041, FR-044 |
+| **Permission** | `assets.read`; field purchasePrice cần `assets.cost.read`; master dropdown cần `departments.read`/`asset-types.read`. |
+| **Planned endpoints** | EP-023 `GET /api/v1/assets`, EP-025 `GET /api/v1/assets/{assetId}`, EP-013/018 cho lookup. |
+| **Preconditions** | Đã login, token/account hợp lệ; M1 Asset/master API và Neon PostgreSQL sẵn sàng. |
+| **Trigger** | Actor mở Dashboard/List/Detail hoặc đổi filter/page. |
+
+**Main Flow**
+
+1. Shell đổi view trong cùng document và gửi Bearer qua API client; không full-page redirect.
+2. UI tải Department/Type active theo paging contract; giữ filter keyword/type/owning department/status.
+3. API validate page/pageSize/sort/filter, xác thực permission và scope trước query/count.
+4. Repository filter, sort với tie-breaker và paginate tại PostgreSQL; exclude archived theo default.
+5. Response trả `items/page/pageSize/totalItems/totalPages`, projection chỉ chứa field được phép.
+6. UI hiển thị rows hoặc empty state; actor mở ID thật để gọi detail và xem field theo quyền.
+7. Dashboard M1 dùng EP-023 pageSize=5, sortBy=createdAt, sortDirection=desc và totalItems; không gọi advanced dashboard chưa có.
+
+**Alternative Flow**
+
+- Search không có kết quả hoặc page hợp lệ vượt trang cuối: 200 items rỗng và metadata đúng.
+- Technical Support đọc list/detail nhưng JSON không có purchasePrice/cost; cùng dữ liệu inventory có thể nhìn thấy theo policy.
+- Reload/tab mới: Login hiện lại; sau re-login có thể mở cùng ID để đọc dữ liệu đã lưu.
+
+**Exception Flow**
+
+- Query sai/ID không dương: 400 field-level ProblemDetails; thiếu/hết hạn token: 401, clear session.
+- Thiếu permission: 403; detail không có/ngoài visible scope: 404; lỗi mạng/server: banner an toàn với retry.
+
+**Postconditions**
+
+- Không thay đổi business data; không lộ cost hoặc secret; navigation bình thường không mất session.
+
+**Business Rules:** BR-026, BR-032, BR-034, BR-039, BR-043. **Planned tests:** IT-API-001, IT-AUTH-003–005, UI-SMOKE-M1 và TC-BR-026/032/034.
+
+---
+
+### UC-018 — Update/Archive Asset
+
+| Thuộc tính | Đặc tả |
+|---|---|
+| **ID / Status** | UC-018 / **PLANNED** |
+| **Name** | Cập nhật metadata và archive tài sản |
+| **Primary Actor** | Admin IT, System Manager |
+| **Goal** | Lưu metadata hợp lệ, chống lost update; archive giữ history và không phá active workflow. |
+| **Requirements** | FR-010–FR-011, FR-042 |
+| **Permission** | `assets.update` hoặc `assets.archive`; administrative status cần `assets.status.manage` riêng. |
+| **Planned endpoints** | EP-025 detail, EP-026 `PUT /api/v1/assets/{assetId}`, EP-028 `DELETE /api/v1/assets/{assetId}`; EP-027 status ngoài form metadata. |
+| **Preconditions** | Actor xác thực/đủ permission và object scope; đã đọc detail/version; asset đủ điều kiện thao tác. |
+| **Trigger** | Actor lưu Edit form; archive M1 được gọi qua Swagger/Postman vì archive UI là Should sau M1. |
+
+**Main Flow — Update**
+
+1. UI tải detail và giữ đầy đủ metadata cùng rowVersion opaque.
+2. Actor sửa field được phép; UI gửi full `UpdateAssetRequest` bằng PUT, không gửi status/current assignment/audit field.
+3. API validate required/length/price/date; service normalize code/serial, kiểm unique và reference mới active. Reference inactive không đổi được giữ.
+4. Trong transaction, update với version đã đọc; ghi audit sanitized. Metadata update không tự tạo status event khi status không đổi.
+5. Commit trả 200 detail/version mới; shell đổi view Detail trong cùng document.
+
+**Alternative Flow — Archive**
+
+1. Actor gửi DELETE với strong If-Match từ detail; service kiểm scope/version và không có active assignment hoặc ticket chưa terminal.
+2. Trong transaction đặt archive flag/thời điểm, ghi audit, giữ nguyên history; trả 204. List mặc định không còn row đó.
+3. Status admin chỉ qua EP-027/state machine có history; không đổi qua metadata form. Reactivate asset chưa có endpoint trong MVP.
+
+**Exception Flow**
+
+- Dữ liệu/reference không hợp lệ: 400; token lỗi: 401; Support gọi write: 403; resource không có/ngoài scope: 404.
+- Unique code/serial, stale rowVersion hoặc active workflow chặn archive: 409 code ổn định, transaction rollback.
+- Archive thiếu If-Match: 428; header malformed: 400; không âm thầm ghi đè hoặc chấp nhận wildcard bỏ kiểm version.
+
+**Postconditions**
+
+- Metadata update thành công không đổi assignment/status ngoài ý muốn; version mới và audit cùng commit.
+- Archive giữ lịch sử/FK; failure không để row/audit cập nhật một phần. Reload → re-login → mở cùng ID chứng minh persistence.
+
+**Business Rules:** BR-003, BR-007–BR-009, BR-026, BR-032, BR-035–BR-036, BR-039–BR-040, BR-043, BR-047. **Planned tests:** IT-ASSET-003, IT-AUTH-004, TC-BR-003/008/009/039/040 và UI-SMOKE-M1.
+
 ## 4. Use case bổ sung
 
 CRUD đơn giản được mô tả ngắn ở đây; API contract là nguồn chi tiết endpoint. Tất cả đều **PLANNED**.
@@ -576,8 +660,6 @@ CRUD đơn giản được mô tả ngắn ở đây; API contract là nguồn c
 | UC-014 | Manage User/Account | Admin IT | Tạo/update/deactivate/lock account; giữ history và active allocations; không mất Admin cuối. | `/users` | FR-004; BR-024, BR-041, BR-042, BR-044, BR-055 |
 | UC-015 | Assign Fixed Roles | Admin IT | Gán/bỏ role trong đúng bộ ba cố định; không tạo custom role; audit thay đổi. | `/users/{id}/roles`, `/roles` read-only | FR-005; BR-026, BR-035, BR-042 |
 | UC-016 | Manage Department/Asset Type | Admin IT | Create/update/deactivate master; không hard delete reference. | `/departments`, `/asset-types` | FR-006–FR-007; BR-039, BR-040, BR-043–BR-044 |
-| UC-017 | View/Search Assets | Cả ba theo field scope | List/detail/filter/sort/page; Support không cost. | `/assets` | FR-009, FR-015; BR-026, BR-032, BR-034 |
-| UC-018 | Update/Archive Asset | Admin IT, System Manager | Update metadata/controlled status/archive; giữ history và check active workflow. | `/assets/{id}` | FR-010–FR-011; BR-003, BR-007–BR-009, BR-039 |
 | UC-019 | Manage Maintenance Work | Admin IT, System Manager, scoped Support | Assign/start/update/fail/cancel và xem history; Support không cost. | `/maintenance-tickets` | FR-017–FR-019; BR-010–BR-014, BR-032, BR-046–BR-047 |
 | UC-020 | Manage Software/License Metadata | Admin IT, System Manager | CRUD theo archive semantics; Manager không set/reveal secret key. | `/software`, `/software-licenses` | FR-020–FR-021, FR-025; BR-009, BR-018–BR-019, BR-039, BR-056 |
 | UC-021 | Revoke/Transfer License Allocation | Admin IT, System Manager | Đóng allocation cũ, giữ history; transfer nguyên tử, đúng một seat. | `POST /license-assignments/{id}/revoke`, `POST /license-assignments/{id}/transfer` | FR-023; BR-015–BR-017, BR-035, BR-048 |
@@ -591,6 +673,7 @@ CRUD đơn giản được mô tả ngắn ở đây; API contract là nguồn c
 | Check | Kết quả thiết kế Week 2 |
 |---|---|
 | 13 use case bắt buộc có đủ 10 trường | Có: UC-001–UC-013 đều có ID, Name, Actor, Goal, Preconditions, Trigger, Main/Alternative/Exception Flow, Postconditions, Business Rules. |
+| View/Search và Update/Archive M1 có đặc tả đầy đủ | Có: UC-017/018 bổ sung main/alternative/exception/postconditions, permission/API/test; tổng 15 use case đầy đủ, 25 ID. |
 | Actor có permission tương ứng | Có theo permission matrix; Support được scope/field-limited ở UC-006/007/013/017/019. |
 | Use case có requirement | UC-001–UC-025 đều trace về FR trong bảng/đặc tả. |
 | Use case có planned endpoint | Có endpoint/group dự kiến; phải tiếp tục đối chiếu `api-spec.md` trước khi APPROVED. |
