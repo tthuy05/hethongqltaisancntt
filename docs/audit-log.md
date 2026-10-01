@@ -1,0 +1,213 @@
+# Thiết kế Audit Log
+
+> Trạng thái: **PLANNED — Week 2.** Chưa có bảng migration, middleware/interceptor, audit service hoặc retention job được triển khai.
+
+## 1. Mục tiêu và ranh giới
+
+Audit log trả lời: **ai hoặc tiến trình nào, đã làm gì, với đối tượng nào, khi nào, từ đâu, kết quả ra sao và dữ liệu nghiệp vụ an toàn nào đã đổi**. Audit phục vụ truy cứu bảo mật, tuân thủ và điều tra; không thay thế:
+
+- operational log dùng debug/monitoring;
+- business history như trạng thái asset, assignment, maintenance history;
+- backup hoặc event sourcing.
+
+Business history giữ ý nghĩa domain và được người dùng có quyền xem; audit giữ bằng chứng hành động hệ thống. Hai loại có thể được ghi cùng transaction và liên kết bằng `correlation_id`.
+
+## 2. Sự kiện bắt buộc
+
+| Nhóm | Action chuẩn | Khi ghi | Old/New cần lưu |
+|---|---|---|---|
+| Authentication | `auth.login.success` | Login thành công | Không lưu password/token; metadata user ID/phương thức |
+| Authentication | `auth.login.failure` | Sai credential, inactive, locked; lý do dùng mã chung | Không lưu email thô nếu policy privacy yêu cầu hash/mask |
+| Authentication | `auth.tokens.invalidate` | Admin disable/lock hoặc đổi role/password làm tăng `token_version`; client-only logout không tạo server event | Không lưu token |
+| User | `user.create`, `user.update`, `user.activate`, `user.deactivate` | Thay đổi tài khoản | Field an toàn; không password/hash |
+| RBAC | `role.assign`, `role.revoke` | Gán/bỏ một trong ba role cố định của user | Role/user ID, permission code an toàn |
+| Department | `department.create`, `department.update`, `department.deactivate` | Thay cơ cấu | Field nghiệp vụ an toàn |
+| Asset | `asset.create`, `asset.update`, `asset.archive`, `asset.status.change` | Thay asset/trạng thái | Field đổi; serial có thể mask theo policy |
+| Assignment | `asset.assign`, `asset.return`, `asset.transfer` | Giao/thu hồi/chuyển | Asset ID, target cũ/mới, thời gian; không xóa history |
+| Maintenance | `maintenance.create`, `maintenance.assign`, `maintenance.status.change`, `maintenance.resolve`, `maintenance.fail`, `maintenance.cancel` | Vòng đời ticket; không có CLOSE state riêng | Status/assignee/cost/result theo quyền |
+| Software | `software.create`, `software.update`, `software.deactivate` | Thay catalog | Field an toàn |
+| License | `license.create`, `license.update`, `license.deactivate` | Thay license | Không full key/ciphertext; chỉ `key_changed`, last4 nếu được phép |
+| License key | `license.key.reveal` | Reveal/decrypt key nếu chức năng được duyệt | License ID, purpose; không lưu value |
+| License assignment | `license.assign`, `license.revoke`, `license.transfer` | Cấp/thu hồi/chuyển một seat | License ID, target cũ/mới; mỗi allocation một seat |
+| Replacement | `replacement_rule.create`, `replacement_rule.update`, `replacement_rule.deactivate` | Thay rule/threshold | Rule cũ/mới |
+| Replacement | `replacement.generate`, `replacement.disposition.change` | Tạo/đánh dấu planned, dismissed hoặc superseded | ID, score/priority/disposition/snapshot ref; không phải approval |
+| Import | `import.asset.preview`, `import.asset.commit`, `import.asset.failure` | Preview/commit/fail batch | Tên file đã sanitize/hash, số dòng/kết quả; không lưu file/body |
+| Export/report | `export.execute`, `report.sensitive.view` | Export hoặc xem report nhạy cảm | Loại report, scope/filter đã sanitize, row count |
+| Audit | `audit.view` | Xem audit; export không thuộc MVP | Filter/scope; không chép toàn bộ kết quả vào audit mới |
+| Authorization | `authorization.denied` | Hành động nhạy cảm bị từ chối | Policy/resource ID tối thiểu, chống spam/rate |
+
+Create, update, archive/deactivate (thay cho delete), login, asset assignment/return/transfer, maintenance status, license update/reveal và replacement rule change luôn thuộc diện audit. GET thông thường không audit từng lần trừ dữ liệu nhạy cảm để tránh nhiễu và phình dữ liệu. Client-only logout không phát sinh server request/event; chỉ token-version invalidation do thao tác server được audit. Cùng một correlation ID phải do service truyền vào audit, status history và maintenance history của một transaction; không để mỗi bảng tự sinh ID khác nhau.
+
+## 3. Schema `audit_logs`
+
+| Field | Kiểu dự kiến | Bắt buộc | Nguồn / ý nghĩa |
+|---|---|---:|---|
+| `id` | `bigint IDENTITY` | Có | PK, thứ tự sự kiện cục bộ. |
+| `occurred_at_utc` | `datetime2(7)` | Có | Clock server UTC, mặc định `SYSUTCDATETIME()`. |
+| `actor_user_id` | `bigint` | Không | FK user; null cho anonymous/system. |
+| `actor_type` | `varchar(20)` | Có | `USER`, `SYSTEM`, `ANONYMOUS`. |
+| `action` | `nvarchar(150)` | Có | Tên action chuẩn hóa từ catalog. |
+| `entity_type` | `nvarchar(100)` | Không | Loại resource/aggregate. |
+| `entity_id` | `nvarchar(100)` | Không | PK/business ID dạng chuỗi; không polymorphic FK. |
+| `outcome` | `varchar(20)` | Có | `SUCCESS`, `FAILURE`, `DENIED`. |
+| `correlation_id` | `uniqueidentifier` | Có | Liên kết HTTP request, history và log vận hành. |
+| `request_method` | `varchar(10)` | Không | HTTP method; null cho background/system. |
+| `request_path` | `nvarchar(1000)` | Không | Path không kèm query nhạy cảm. |
+| `ip_address` | `varchar(45)` | Không | IPv4/IPv6 từ proxy tin cậy. |
+| `user_agent` | `nvarchar(1000)` | Không | Chuỗi bị giới hạn/sanitize. |
+| `old_values_json` | `nvarchar(max)` | Không | Snapshot trước đã allow-list/redact. |
+| `new_values_json` | `nvarchar(max)` | Không | Snapshot sau đã allow-list/redact. |
+| `metadata_json` | `nvarchar(max)` | Không | Additional information an toàn, versioned. |
+| `failure_reason_code` | `nvarchar(100)` | Không | Mã lỗi ổn định; không stack trace/secret. |
+| `previous_entry_hash` | `varbinary(32)` | Không | Hash trước nếu hash-chain được triển khai. |
+| `entry_hash` | `varbinary(32)` | Không | SHA-256 payload canonical nếu được triển khai. |
+
+Ràng buộc và index đầy đủ nằm tại `database-design.md`:
+
+- `ISJSON(...) = 1` khi ba trường JSON có dữ liệu.
+- FK user dùng `ON DELETE NO ACTION`.
+- Index theo thời gian, actor, entity, correlation và action/outcome.
+- Bảng append-only; runtime role chỉ `INSERT`, reader role chỉ `SELECT` theo scope.
+
+## 4. Cấu trúc JSON và versioning
+
+Ví dụ an toàn cho cập nhật asset:
+
+```json
+{
+  "schemaVersion": 1,
+  "fields": {
+    "current_status": "IN_STOCK",
+    "owning_department_id": 12
+  }
+}
+```
+
+```json
+{
+  "schemaVersion": 1,
+  "fields": {
+    "current_status": "IN_USE",
+    "owning_department_id": 12
+  }
+}
+```
+
+Ví dụ metadata transfer:
+
+```json
+{
+  "schemaVersion": 1,
+  "sourceAssignmentId": 101,
+  "destinationAssignmentId": 102,
+  "targetType": "USER",
+  "reasonCode": "INTERNAL_TRANSFER"
+}
+```
+
+Chỉ ghi field thực sự thay đổi và cần điều tra. Serializer audit dùng allow-list theo event, giới hạn kích thước; không serialize nguyên entity/navigation graph/request body. Key JSON dùng canonical naming, `schemaVersion` cho phép đọc log cũ sau khi schema ứng dụng đổi.
+
+## 5. Dữ liệu tuyệt đối không audit/log
+
+- Password, password confirmation, password hash/salt.
+- JWT/access token, refresh token (không dùng ở MVP), API key, reset token.
+- `Authorization`, `Cookie`, `Set-Cookie` header.
+- Full software license key, encryption ciphertext, nonce/tag, data-encryption key hoặc KMS credential.
+- Production connection string, secret, private key hoặc environment dump.
+- Toàn bộ Excel upload/download payload.
+- Stack trace/SQL exception có thể lộ schema/credential trong trường audit trả cho user.
+
+Redaction áp dụng trước khi tạo audit record. Với license key, chỉ ghi `key_changed: true`, `key_version` và `last4` nếu caller/audit policy cho phép. Không ghi giá trị cũ dù đã masked nếu không cần.
+
+## 6. Capture strategy
+
+### 6.1 Audit do service tạo
+
+Ưu tiên explicit audit event tại application service cho action mang ý nghĩa nghiệp vụ (`asset.transfer`, `license.assign`, `replacement.disposition.change`). Service hiểu actor, mục tiêu, business outcome và field nào an toàn. Interceptor EF không đủ ngữ nghĩa và không nên tự suy action.
+
+### 6.2 Middleware
+
+Middleware cung cấp correlation ID, request method/path, IP sau trusted proxy processing và User-Agent. Nó có thể ghi `auth`/`authorization.denied`/unexpected failure ở mức thích hợp nhưng không capture body.
+
+### 6.3 EF Core interceptor
+
+Nếu dùng, interceptor chỉ là lớp hỗ trợ để phát hiện thay đổi chưa có audit hoặc bổ sung technical metadata. Không serialize mọi property tự động và không thay business history. Thiết kế cụ thể cần test để tránh audit recursive `SaveChanges`.
+
+### 6.4 System/background event
+
+Job cảnh báo hết hạn/generate recommendation dùng `actor_type=SYSTEM`, `actor_user_id=null`, action rõ ràng và correlation riêng. Không mạo danh user.
+
+## 7. Transaction và outcome
+
+- Với thay đổi DB nghiệp vụ, record `SUCCESS` được thêm trong cùng transaction với entity/history. Nếu commit thất bại, không được tồn tại success audit giả.
+- Transfer asset: đóng assignment cũ + mở assignment mới + status/history + một audit summary trong một transaction.
+- Cấp license: lock/capacity check + assignment + audit trong một transaction.
+- Login failure/denied request không có transaction nghiệp vụ, nên ghi audit bằng đường ghi riêng, có rate control để tránh DoS audit.
+- Failure trước commit chỉ ghi khi có giá trị điều tra, dùng `outcome=FAILURE` và mã lỗi; không ghi dữ liệu nhạy cảm/exception thô.
+- Nếu audit bắt buộc mà ghi audit thất bại, command nhạy cảm phải fail/rollback. Không âm thầm bỏ bằng chứng.
+- Không sử dụng async fire-and-forget cho audit bắt buộc. Outbox chưa thuộc phạm vi 18 bảng và không được tự thêm ở Week 2.
+
+## 8. Tính bất biến và chống sửa
+
+- API không cung cấp endpoint update/delete audit.
+- DB permission của app không có `UPDATE`/`DELETE` trên `audit_logs`; chỉ migration/admin break-glass có quyền cao và mọi sử dụng phải được kiểm soát.
+- `ON DELETE NO ACTION`, user chỉ deactivate để giữ actor reference.
+- Backup mã hóa, retention/archival có phê duyệt và quyền tách biệt.
+- `previous_entry_hash`/`entry_hash` là phương án phát hiện chỉnh sửa, không tự nó ngăn DBA thay đổi cả chuỗi. Muốn bằng chứng mạnh phải có checkpoint/chữ ký lưu ngoài DB/WORM storage.
+- Cho đến khi checkpoint ngoài DB được triển khai và test, hash-chain được đánh dấu **PLANNED** và không tuyên bố tamper-proof.
+
+## 9. Quyền truy cập và API
+
+- `audit-logs.read`: tìm kiếm và xem log trong scope cho phép; baseline chỉ Admin IT có quyền.
+- `audit-logs.export` (nếu endpoint được thêm): export có filter/row limit và audit chính hành động export; chưa có endpoint trong API baseline.
+- Admin IT có thể được xem audit; System Manager chỉ scope được phê duyệt; Technical Support mặc định không xem toàn bộ audit.
+- Query bắt buộc date range/pagination hợp lý, filter allow-list (`actor`, `action`, `entity`, `outcome`, `correlation_id`).
+- Response không lộ old/new field mà caller không có property permission; masking thực hiện bằng projection/DTO.
+- Không có endpoint create/update/delete audit công khai.
+
+## 10. Retention, privacy và vận hành
+
+- Retention cụ thể cần chính sách tổ chức/Mentor xác nhận; đề xuất ban đầu 12–24 tháng online rồi archive mã hóa, không tự purge.
+- PII như IP/User-Agent/email chỉ giữ khi có mục đích bảo mật, giới hạn reader và thời gian.
+- Đồng hồ server đồng bộ; toàn bộ timestamp UTC, UI tự chuyển timezone.
+- Theo dõi tăng trưởng bảng/index; partition/archive theo thời gian chỉ thêm khi dữ liệu thực tế cần, tránh tối ưu sớm.
+- Alert dự kiến cho chuỗi login failure, denied admin action, role/permission change, license key reveal, audit write failure và bất thường export.
+- Restore drill phải bảo toàn audit; không copy log production chứa PII vào môi trường dev.
+
+## 11. Truy vấn và hiệu năng
+
+- Index thời gian hỗ trợ trang gần nhất; composite index actor/entity/action hỗ trợ điều tra.
+- Dùng keyset pagination cho volume lớn về sau; API ban đầu có thể page/pageSize trong giới hạn.
+- Không tạo index trên toàn JSON trước khi có query đo được; các field hay filter phải là column riêng.
+- `old/new/metadata` có giới hạn ứng dụng; payload lớn phải tóm tắt/hash, không đẩy file vào audit.
+- Dashboard không truy vấn audit thay cho bảng nghiệp vụ.
+
+## 12. Tình huống kiểm thử bắt buộc
+
+| Scenario | Kỳ vọng |
+|---|---|
+| Login success/failure | Có action/outcome/correlation; không password/token |
+| Create/update/archive asset | Có actor, entity, diff allow-list |
+| Concurrent update conflict | Không có success audit cho transaction rollback |
+| Assign/return/transfer | Business data, history và audit atomic |
+| Maintenance status transition | Có old/new status và actor |
+| License key update/reveal | Không full key/ciphertext ở DB audit/log/response thường |
+| Role/permission change | Có mapping cũ/mới, actor và target |
+| Import all-or-nothing fail | Không có success; failure summary không chứa file/body |
+| Anonymous denied | Actor null/type anonymous, không fake user |
+| Audit API authorization | 401/403/BOLA scope được chặn |
+| DB permission | Runtime principal không update/delete audit |
+| Malformed JSON | DB `ISJSON` constraint từ chối |
+
+Tất cả test trên hiện là **PLANNED — NOT RUN**.
+
+## 13. Checklist review
+
+- Event name thống nhất với business rules/API và có owner.
+- Success audit không thể commit nếu business transaction rollback.
+- History nghiệp vụ không bị thay bằng generic audit.
+- Password/token/full license key/ciphertext bị loại ở mọi đường ghi.
+- `correlation_id` nối được request, audit và history.
+- Quyền đọc/export audit dùng least privilege và tự được audit.
+- Không có hard delete/update audit trong API/runtime role.
+- Retention, hash checkpoint, KMS và privacy vẫn được ghi rõ là **PLANNED/OPEN** cho đến khi Mentor phê duyệt.
