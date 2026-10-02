@@ -9,8 +9,8 @@
 | Current Week | Week 2 |
 | Current Phase | Week 2 documentation REVIEW PENDING + separately authorized Stitch frontend integration: IMPLEMENTED WITH MOCK DATA / READY FOR REVIEW |
 | Technical Documentation | COMPLETED phần Thủy / UNDER REVIEW bởi Thiện/Mentor; không phải implementation hoàn tất |
-| Current Branch | `main`; frontend publication được người dùng cho phép riêng ngày 02/10 sau preflight PASS; xem `git log -1` cho commit mới nhất, không hard-code SHA của chính commit này |
-| Remote | `origin` đúng repository chính thức; fetch trước publication xác nhận main khớp baseline 142c7fb, không có divergence; kết quả push xác minh bằng Git remote |
+| Current Branch | `main`; người dùng đã push frontend ở `cae3a31` (`push giao dien mock`); lượt kiểm tra còn dở đã hoàn tất, bổ sung publication được cho phép riêng; xem `git log -1` cho commit mới nhất |
+| Remote | `origin` đúng repository chính thức; fetch đầu lượt follow-up xác nhận HEAD/origin/main cùng cae3a31, 0 ahead / 0 behind, working tree sạch trước khi cập nhật tài liệu; kết quả push bổ sung xác minh bằng Git remote |
 | Next phase gate | M1 10/10/2026 là mục tiêu có UI/API/DB thật; Week 3 chỉ bắt đầu sau review/approval của người dùng |
 
 ## Completed Modules
@@ -54,10 +54,10 @@
 | Frontend source checks | **20 JS syntax PASS / 22 source checks PASS**; không phải security/accessibility certification |
 | API runtime/Swagger | **PLANNED — NOT IMPLEMENTED** |
 | Web UI/HTML + Tailwind 3 | **IMPLEMENTED WITH MOCK DATA**; API adapter PLANNED integration, không có JWT thật |
-| Frontend browser evidence | Mock flows PASS; responsive 320/375/768/1280/1440px; local screenshots tại ignored `artifacts/ui-evidence/` |
+| Frontend browser evidence | Mock flows PASS; responsive 320/375/768/1280/1440px trước handoff; follow-up menu tại 390×844 và desktop PASS, ESC trả focus về Menu; local screenshots tại ignored `artifacts/ui-evidence/` |
 | Real M1 demo evidence | **PLANNED — NONE YET**; chưa có Swagger/API/DB persistence hoặc deployment evidence |
 | Mermaid ERD | Parser 11.17.2 kiểm lại 01/10 thành công; 18 entity/41 FK/41 relationships; PNG/SVG render chưa xác nhận |
-| Git commit/push | Documentation/Neon baseline 142c7fb; người dùng yêu cầu commit/push frontend ngày 02/10 với message tiếng Việt không dấu, sau kiểm tra lại PASS. Publication không mở backend/Week 3 |
+| Git commit/push | Frontend đã được người dùng push ở cae3a31; follow-up chỉ bổ sung kết quả kiểm tra/bàn giao, không sửa runtime vì chưa tái hiện lỗi menu qua các kiểm tra có quan sát trạng thái. Publication không mở backend/Week 3 |
 
 ## Known Issues / Open Questions
 
@@ -92,5 +92,6 @@
 | 01/10/2026 | Đổi database PLANNED từ SQL Server sang PostgreSQL hosted on Neon theo yêu cầu, giữ 30 deliverable/evidence và Schema Baseline V1 18 bảng/41 quan hệ. | Chỉ docs/type/provider/connection/migration/test-isolation plan; không credentials/kết nối/schema/migration/business code. Handoff chỉ thêm addendum; previous checks 21 PASS giữ nguyên. Affected checks tại consistency review; không stage/commit/push hoặc mở Week 3. |
 | 02/10/2026 | Tiếp tục task người dùng đã xác nhận: tích hợp Stitch HTML/Tailwind thành frontend mock, chuẩn hóa local assets/components, service boundary, routing, validation, responsive và tài liệu. | Build PASS; 38 frontend tests PASS; 20 syntax/22 boundary checks PASS; browser mock smoke/viewport evidence. Giữ 30 task/18 bảng/41 quan hệ; không backend/JWT/DB/migration hoặc stage/commit/push. |
 | 02/10/2026 | Người dùng yêu cầu kiểm tra lại và xuất bản frontend để làm tiếp. | Build/test/source checks chạy lại PASS (38/20/22); browser mock flow và baseline preservation kiểm lại. Commit message tiếng Việt không dấu; publication không đồng nghĩa DB/API/M1 đã hoàn thành. Git history/remote xác minh kết quả commit/push. |
+| 02/10/2026 | Tiếp tục lượt kiểm tra còn dở sau khi người dùng đã push cae3a31. | Fetch xác nhận baseline sạch/khớp remote; build PASS, 38 tests/20 syntax/22 source checks PASS; menu điện thoại qua 4 destinations, ESC/focus, desktop navigation và browser console kiểm lại. Chỉ cập nhật 4 tài liệu; giữ runtime, 30 task/18 bảng/41 quan hệ và review gate. |
 
 File này cần cập nhật sau mỗi ngày làm việc tiếp theo bằng kết quả thực tế, không bằng kết quả dự kiến.

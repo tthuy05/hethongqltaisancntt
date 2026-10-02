@@ -146,7 +146,7 @@ Full dependencies, daily deliverables and verification criteria are in [Roadmap]
 
 ## Current project status
 
-- Branch: `main`; trước frontend publication, HEAD và `origin/main` khớp baseline `142c7fb` (`update week 2 design for neon`). Ngày 02/10 người dùng yêu cầu kiểm tra lại và commit/push frontend; preflight PASS. Git history/remote là nguồn xác minh commit xuất bản mới nhất. Publication không phải approval backend/DB.
+- Branch: `main`; người dùng đã xuất bản frontend ở `cae3a31` (`push giao dien mock`), được xác minh bằng fetch ngày 02/10. Lượt kiểm tra còn dở đã hoàn tất: build/tests/source checks PASS, điều hướng menu điện thoại và desktop PASS trong phạm vi đã kiểm; [bàn giao bổ sung, §20](docs/stitch-ui-integration.md) ghi kết quả thực tế. Git history/remote xác minh commit bổ sung mới nhất. Publication không phải approval backend/DB.
 - Remote: official GitHub repository. Historical audit/status statements describe their dates; a documentation publication is not approval of backend implementation.
 - Week 2: 30 Thủy task deliverables documented and checked on 01/10; independent Thiện/user/Mentor review pending. [Handoff report](docs/week-02-thuy-handoff.md) preserves evidence, fixes and the original 21 PASS checks; its Database Platform Change Addendum records the new design-level decision. Schema Baseline V1 remains **18 tables / 41 relationships**, with no entity/relationship redesign. Planned workload Thủy 60,9% / Thiện 39,1% by representative estimate.
 - Frontend build PASS; **38 Node tests PASS / 0 FAIL**, 20 JS syntax checks and 22 source boundary checks PASS. Browser mock flows and responsive checks are recorded in the integration report; not backend/DB/security certification.

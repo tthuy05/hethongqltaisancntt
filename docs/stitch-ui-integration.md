@@ -2,7 +2,7 @@
 
 Date: **02/10/2026 (Asia/Saigon)**. Status: **IMPLEMENTED WITH MOCK DATA / READY FOR REVIEW**. User explicitly confirmed the frontend-only integration scope. This is not approval/completion of backend Week 3, real authentication, database setup or M1.
 
-**Publication addendum:** sau snapshot handoff này, người dùng yêu cầu kiểm tra lại rồi commit/push. Kết quả preflight và phạm vi publication tại §19; các trạng thái UNCOMMITTED/no-push ở §1–18 là evidence lịch sử trước yêu cầu mới.
+**Publication addendum:** sau snapshot handoff này, người dùng yêu cầu kiểm tra lại rồi commit/push. Snapshot preflight tại §19; người dùng đã xuất bản frontend ở `cae3a31`, kết quả hoàn tất kiểm tra còn dở tại §20. Các trạng thái UNCOMMITTED/no-push ở §1–18 là evidence lịch sử trước yêu cầu mới.
 
 ## 1. Outcome and scope boundary
 
@@ -294,6 +294,8 @@ Baseline HEAD remains `142c7fb`. **12 modified tracked documents + 30 untracked 
 
 ## 19. Publication Preflight Addendum — 02/10/2026
 
+Đây là snapshot trước khi lượt kiểm tra menu màn hình hẹp bị dở dang, không phải xác nhận commit/push đã thực thi. Kết quả follow-up và baseline người dùng đã xuất bản được ghi tại §20.
+
 Người dùng trực tiếp yêu cầu kiểm tra lại một lần, nếu không có lỗi chặn thì commit/push lên repository với message tiếng Việt không dấu. Yêu cầu mới chỉ cho phép xuất bản frontend đã bàn giao, không mở backend/Neon/Week 3.
 
 - Chạy lại frontend build trong test suite: PASS; **38 tests PASS / 0 FAIL**, **20 syntax PASS / 22 source checks PASS**. Browserslist outdated warning nonblocking vẫn được ghi nhận.
@@ -302,4 +304,19 @@ Người dùng trực tiếp yêu cầu kiểm tra lại một lần, nếu khô
 - Generated dependencies/build/screenshots và secret configuration không thuộc commit. Bản tài liệu này giữ snapshot manifest/diff/no-publication lúc handoff cũ; các current status files cập nhật authorization mới.
 - Message dự kiến: `tich hop giao dien voi du lieu mau`. Chỉ stage đúng 42 authored/documentation files đã review. Kết quả commit/push phải đọc từ Git history/remote sau thực thi, không giả kết quả trước khi push.
 
-Live backend/JWT/API/DB testing, full WCAG/cross-browser và real M1 vẫn **PLANNED / NOT VERIFIED**. Không có lỗi chặn xuất bản phạm vi frontend mock trong các kiểm tra đã thực hiện.
+Live backend/JWT/API/DB testing, full WCAG/cross-browser và real M1 vẫn **PLANNED / NOT VERIFIED**. Kết quả chốt lượt kiểm tra còn dở xem §20.
+
+## 20. Post-publication follow-up — 02/10/2026
+
+Người dùng cho biết đã push và trực tiếp yêu cầu tiếp tục công việc còn dở, push chỉnh sửa nếu có. Không mở backend/Neon/Week 3 hoặc đánh dấu M1 hoàn thành.
+
+- **Published baseline verified:** `git fetch origin main` thành công; HEAD/origin/main cùng `cae3a31` (`push giao dien mock`), **0 ahead / 0 behind**. Working tree sạch ở đầu lượt follow-up. Đây là commit người dùng đã xuất bản, không phải commit do lượt follow-up tạo.
+- **Menu investigation completed:** handler điều hướng mobile tường minh đã nằm trong cae3a31 và được giữ nguyên. Ở viewport **390×844**, mở menu, quan sát trạng thái mới rồi chọn link: Departments → Asset Types → Dashboard → Assets → Departments đều đến đúng URL/heading; menu đóng sau điều hướng. ESC đóng menu và trả focus về nút Menu. Desktop Departments → Dashboard cũng PASS.
+- Không tái hiện lần click đóng menu nhưng không chuyển trang trong các kiểm tra trên. Thử nhanh trước đó chưa đủ để kết luận nguyên nhân; không ghi là đã chứng minh lỗi `inert` hay transition, không sửa thêm runtime hoặc bỏ animation dựa trên suy đoán. Node tests không thay thế kiểm tra DOM/menu thủ công.
+- **Responsive observation:** trang Departments tại 390px có `scrollWidth = clientWidth = 375px` (scrollbar chiếm phần còn lại), không overflow ngang toàn trang trong phép kiểm này. Temporary viewport override đã reset về mặc định. Browser warn/error logs của lượt kiểm tra này trả về `[]`.
+- **Verification rerun:** `node scripts/frontend-check.mjs`: **20 syntax PASS / 22 source checks PASS**; `node --test tests/*.test.mjs`: build **PASS**, **38 tests PASS / 0 FAIL / 0 SKIP**. Cảnh báo Browserslist/caniuse-lite outdated vẫn nonblocking. Không chạy .NET/API/Neon tests.
+- **Supplemental diff scope:** chỉ README.md, PROJECT_STATUS.md, CHANGELOG.md và tài liệu handoff này; không thay frontend source/tooling/tests/dependencies, schema/API/business rules, 30 task/evidence Thủy, roadmap hoặc milestone **10/10/2026**. Previous documentation **21 PASS / Neon affected 24 PASS** vẫn là evidence lịch sử, không chạy lại hoặc gộp vào 38 tests.
+- **Selective consistency checks:** 50 local Markdown file-target links trên 4 tài liệu PASS / 0 missing (không chứng nhận anchors/render); 4-file targeted secret heuristic PASS / 0 hits (không phải full secret audit); diff xác nhận runtime/tooling/tests/dependencies/weekly plans không đổi so với cae3a31 và 10 protected design/evidence documents không đổi so với 142c7fb. Whitespace check PASS với intentional Markdown hard-break convention được giữ nguyên; screenshot được `git check-ignore` xác nhận ignored.
+- Screenshot mới: `artifacts/ui-evidence/followup-dashboard.jpg`, là bản mock đang chạy, ignored và không thuộc commit. Xem Git history/remote cho SHA/kết quả xuất bản bổ sung, không hard-code SHA của chính commit chứa section này.
+
+Không có lỗi chặn được tìm thấy trong các kiểm tra đã thực hiện; đây không phải full WCAG/cross-browser, security certification hay live integration sign-off. **Frontend: IMPLEMENTED WITH MOCK DATA / READY FOR REVIEW. Backend/JWT/API/physical schema/migrations: NOT IMPLEMENTED / NOT CREATED. Neon connection: NOT CONFIGURED / NOT VERIFIED.** Review độc lập của Thiện/Mentor vẫn pending.

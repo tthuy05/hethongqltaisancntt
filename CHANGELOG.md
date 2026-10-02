@@ -4,7 +4,7 @@ Thay đổi quan trọng được nhóm theo tuần. Nhãn **DOCUMENTED** chỉ 
 
 ## 02/10/2026 — Stitch Frontend Integration
 
-Publication addendum: sau báo cáo frontend-only, người dùng yêu cầu kiểm tra lại và commit/push với message tiếng Việt không dấu. Build/38 tests/20 syntax/22 source checks chạy lại PASS, browser mock flow kiểm lại; xem Git history/remote cho kết quả xuất bản. Các ghi chú no-commit/UNCOMMITTED dưới đây là snapshot lúc bàn giao trước yêu cầu publication, không cấm yêu cầu mới hoặc mở backend scope.
+Publication addendum: người dùng đã push frontend tại `cae3a31` (`push giao dien mock`). Lượt follow-up hoàn tất kiểm tra còn dở: build/38 tests/20 syntax/22 source checks PASS; menu điện thoại qua 4 destinations, ESC/focus và desktop navigation PASS trong phạm vi đã kiểm. Không sửa thêm runtime khi chưa tái hiện lỗi; bổ sung kết quả bàn giao/current status ở 4 tài liệu. Xem Git history/remote cho publication bổ sung. Các ghi chú no-commit/UNCOMMITTED dưới đây là snapshot lúc bàn giao trước yêu cầu publication, không cấm yêu cầu mới hoặc mở backend scope.
 
 ### Added
 
