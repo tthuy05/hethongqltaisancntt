@@ -4,7 +4,7 @@
 
 ## 1. Mục tiêu
 
-M1 phục vụ web UI Bootstrap 5/JavaScript từ một `Api/wwwroot/index.html` shell có Login/admin views cùng origin với `/api/v1`; hash navigation không tải HTML mới để giữ token in-memory. Không có frontend dev server/CDN dependency khi demo. Deployment/cache headers phải giữ shell cập nhật được, JS/CSS pin version, API/auth/key-reveal responses `no-store` phù hợp. Reload/tab mới cần đăng nhập lại. UI/API cùng HTTPS origin; không cần mở CORS cho UI nội bộ này. Mọi nội dung ở đây vẫn **PLANNED**.
+M1 dự kiến phục vụ web UI HTML/Tailwind/JavaScript theo ADR-021 từ một `Api/wwwroot/index.html` shell có Login/admin views cùng origin với `/api/v1`; hash navigation không tải HTML mới để giữ token in-memory. Không có frontend dev server/CDN dependency khi real demo; Node localhost static preview hiện tại chỉ phục vụ review mock trước backend. Build output/CSS/fonts phải được package vào ASP.NET ở skeleton được approve; production không bật demo flag hoặc deploy mock fixtures. Deployment/cache headers phải giữ shell cập nhật được, JS/CSS pin version, API/auth/key-reveal responses `no-store` phù hợp. Reload/tab mới cần đăng nhập lại. UI/API cùng HTTPS origin; không cần mở CORS cho UI nội bộ này. Real deployment và toàn bộ Neon setup ở đây vẫn **PLANNED**.
 
 Thiết kế triển khai ưu tiên một ứng dụng ASP.NET Core modular monolith dùng EF Core/Npgsql và PostgreSQL hosted on Neon. Thủy và Thiện chạy backend trên máy của mình, cùng kết nối shared Neon development database; local database không là development target chính. Kiến trúc UI/API và milestone MVP **10/10/2026** giữ nguyên.
 

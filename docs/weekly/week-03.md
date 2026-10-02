@@ -1,6 +1,6 @@
 # Week 03 — M1: Identity + Asset Core + Web UI
 
-> **PLANNED — NOT IMPLEMENTED.** Chỉ bắt đầu sau review/approval. M1 10/10/2026 bắt buộc có API + PostgreSQL hosted on Neon + UI thật. Mỗi ngày Thủy 3M+2S (7h đại diện), Thiện 2M+1S (4,5h); M=1–3h, S<1h. Task quá 3h phải tách. Không thêm framework frontend; Bootstrap 5/JS cùng origin.
+> **PLANNED — REAL INTEGRATION NOT IMPLEMENTED.** Chỉ bắt đầu sau review/approval. M1 10/10/2026 bắt buộc có API + PostgreSQL hosted on Neon + UI thật. Mỗi ngày Thủy 3M+2S (7h đại diện), Thiện 2M+1S (4,5h); M=1–3h, S<1h. Task quá 3h phải tách. Không thêm framework frontend; HTML/Tailwind/JS cùng origin theo ADR-021. Early Stitch mock UI được cho phép riêng; giữ task ID/status/estimate/ownership, tái sử dụng khi thực hiện real integration.
 
 **Database readiness — PLANNED:** Neon project/access, actual database/endpoint và secret storage trên hai máy cần sẵn trước **05/10**, theo [deployment setup](../deployment.md). Chưa có credentials: **NEON SETUP: PLANNED; NEON CONNECTION: NOT CONFIGURED; DATABASE CONNECTION: NOT VERIFIED**. Runtime dùng pooled endpoint với credential riêng/TLS; migration dùng direct endpoint và migration credential do Thủy điều phối. Không gửi password vào chat, không ghi host giả hoặc hard-code connection trong source.
 
@@ -15,7 +15,7 @@
 **Task List (theo thứ tự):**
 - W3-THUY-D1-01 [BACKEND] [M] [PLANNED] Tạo solution/API/Application/Domain/Infrastructure/test projects và project references theo architecture.
 - W3-THUY-D1-02 [BACKEND] [M] [PLANNED] Cấu hình `Program.cs` DI/config, health endpoint và OpenAPI/Swagger development; kiểm SDK/EF Core major để chọn Npgsql provider version tương thích, plan `UseNpgsql`/`ConnectionStrings:DefaultConnection` qua User Secrets/env/TLS, xác nhận Neon access đã sẵn.
-- W3-THUY-D1-03 [FRONTEND] [M] [PLANNED] Tạo `wwwroot` shell, Bootstrap 5 local, header/sidebar responsive và Dashboard asset section skeleton không số giả.
+- W3-THUY-D1-03 [FRONTEND] [M] [PLANNED] Tái sử dụng `wwwroot` Stitch shell/Tailwind local theo ADR-021; review header/sidebar responsive, package assets vào ASP.NET và nối Dashboard asset section thật, không số giả. Mock shell sẵn không đóng real integration task này.
 - W3-THUY-D1-04 [TEST] [S] [PLANNED] Tạo test host/smoke health đầu tiên.
 - W3-THUY-D1-05 [VERIFY] [S] [PLANNED] Chạy restore/Release build, ghi output; không đánh pass nếu lỗi.
 **Files / Modules:** `.sln`, `src/*/*.csproj`, `Api/Program.cs`, `Api/wwwroot/*`, `tests/*`.  

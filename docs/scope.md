@@ -76,7 +76,7 @@ Các hạng mục dưới đây chắc chắn thuộc phạm vi sản phẩm nh�
 - Report: inventory, department, type, status, assignment history, maintenance history/cost, warranty/license expiration, replacement recommendation/budget.
 - Date range/filter/sort/pagination khi phù hợp; aggregate tại database.
 - Role/field-level visibility: chi phí chỉ Admin IT/System Manager; Support chỉ dữ liệu vận hành.
-- Web UI Bootstrap 5/JavaScript cùng origin: Week 3 Login, shell, Dashboard cơ bản, Asset List/Create/Edit/Detail và Department/Asset Type; Week 4–7 thêm screen của module gần ngày API tương ứng.
+- Web UI HTML/Tailwind/JavaScript cùng origin theo ADR-021: Week 3 real integration cho Login, shell, Dashboard cơ bản, Asset List/Create/Edit/Detail và Department/Asset Type; early mock UI đã được cho phép riêng, không thay real API/DB acceptance. Week 4–7 thêm screen của module gần ngày API tương ứng.
 
 ### 2.9 Import/export — PLANNED
 

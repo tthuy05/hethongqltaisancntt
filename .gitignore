@@ -1,0 +1,19 @@
+# Local frontend dependencies and reproducible generated output.
+node_modules/
+artifacts/frontend/
+artifacts/ui-evidence/
+
+# Future local configuration must never enter version control.
+.env
+.env.*
+!.env.example
+*.user
+*.suo
+**/bin/
+**/obj/
+
+# Local browser/test traces and operating-system noise.
+playwright-report/
+test-results/
+.DS_Store
+Thumbs.db

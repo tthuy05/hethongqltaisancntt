@@ -223,7 +223,7 @@ Tất cả yêu cầu dưới đây có trạng thái **PLANNED**; target địn
 | NFR-019 | Documentation | Requirement, API, database, security, test và roadmap phải được cập nhật khi quyết định thay đổi. |
 | NFR-020 | Data retention | Không hard delete business history; retention/anonymization theo policy được xác nhận trước production. |
 | NFR-021 | Frontend accessibility | Form có label, focus và keyboard navigation; thông báo trạng thái rõ; không phụ thuộc màu duy nhất. |
-| NFR-022 | Responsive | MVP UI dùng Bootstrap 5 local, dùng được ở viewport 320/768/1280px mà không tràn thao tác chính. |
+| NFR-022 | Responsive | MVP UI dùng Tailwind/local component CSS theo ADR-021, dùng được ở viewport 320/768/1280px mà không tràn thao tác chính. Business/acceptance scope không đổi; mock viewport smoke không thay live M1 gate. |
 | NFR-023 | Frontend security | JWT chỉ giữ in-memory; UI/API cùng origin; không chèn dữ liệu API bằng `innerHTML`; 401/403/409 xử lý nhất quán. |
 
 ### NFR owner, priority và kiểm chứng

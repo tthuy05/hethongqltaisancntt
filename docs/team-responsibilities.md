@@ -13,7 +13,7 @@
 | Department | Thiện | Thủy | 3 | Schema đã freeze, policy `departments.*` |
 | Asset Type | Thiện | Thủy | 3 | Schema đã freeze, policy `asset-types.*` |
 | Asset core API, search/filter/page và asset tests | Thủy | Thiện | 3 | Department/Asset Type lookup tối thiểu |
-| Frontend shell/Login/Dashboard M1/Asset screens | Thủy | Thiện | 3 | Auth + asset API; static Bootstrap 5 cùng origin |
+| Frontend shell/Login/Dashboard M1/Asset screens | Thủy | Thiện | 3 | Auth + asset API; static HTML/Tailwind cùng origin theo ADR-021; mock readiness không đổi ownership/gate |
 | Assignment API/history và UI | Thiện | Thủy | 4 | User/Department/Asset + partial unique index |
 | Maintenance API/history và UI | Thiện | Thủy | 4 | Asset status transition contract + technician lookup |
 | Audit framework/endpoint và cross-module integration | Thủy | Thiện | 3–4 | Auth/correlation, domain event hooks |

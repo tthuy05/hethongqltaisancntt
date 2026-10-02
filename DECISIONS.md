@@ -154,6 +154,8 @@
 
 ## ADR-017 - Same-origin Bootstrap 5 web UI for M1
 
+> Historical decision: styling/build restriction superseded by ADR-021 on 02/10/2026 after the user authorized Stitch integration. Same-origin/hash navigation, future JWT in-memory and real M1 acceptance remain unchanged. Original rationale/evidence below is preserved.
+
 **Decision ID:** ADR-017  
 **Date:** 2026-10-01  
 **Context:** Yêu cầu mới bắt buộc demo Login→Dashboard→Asset List/Create/Detail/Edit/Search qua giao diện thật vào 10/10/2026. Baseline cũ backend-only mâu thuẫn mốc này; repository chưa có frontend framework và thời gian Week 3 rất ngắn.  
@@ -198,3 +200,17 @@
 **Reason:** JSON hợp lệ được database enforce, tránh unbounded string không có type check; không thêm GIN index, extension hoặc entity khi chưa có truy vấn cần thiết.  
 **Consequences:** Whitespace/key order không được bảo toàn; serializer không tạo duplicate keys. Hash-chain nếu được phê duyệt phải hash canonical redacted payload theo schemaVersion trước khi lưu, không hash `jsonb::text` hoặc phụ thuộc thứ tự DB. Không có business/API/action/permission change; hash-chain vẫn **PLANNED**.  
 **Migration Impact:** Chỉ physical type/CHECK của audit_logs và replacement_recommendations; chưa có data để convert, không tạo migration. [PostgreSQL JSON types](https://www.postgresql.org/docs/current/datatype-json.html).
+
+## ADR-021 - Preserve Stitch HTML/Tailwind frontend
+
+**Decision ID:** ADR-021  
+**Date:** 2026-10-02  
+**Context:** Người dùng cung cấp ZIP Stitch và prompt tích hợp UI, xác nhận cho làm frontend/mock trước database thật. Repository tại audit có documentation đã publish ở `142c7fb`, 30 task Thủy review pending, 18 bảng/41 quan hệ; chưa có backend/project/migration. ZIP là 5 static HTML + PNG và DESIGN.md, dùng Tailwind CDN/Google font, không React/Vite. Original preview có DOM nhưng trắng do opacity 0; controllers độc lập, dead links và số liệu demo không nhất quán cần chuẩn hóa trước integration.  
+**Previous Decision:** ADR-017 định hướng Bootstrap local, không frontend build pipeline. Giữ nguyên mục đích same-origin/hash shell và in-memory session, không dùng quyết định cũ để đổi export sang framework khác.  
+**New Decision:** Giữ HTML semantic + vanilla JavaScript ES modules/hash views; dùng Tailwind CSS **3.4.19** pinned, local component CSS và **@fontsource/inter 5.3.0** self-hosted. Không thêm React/Vite/Bootstrap. Node >=22/pnpm **11.25.0** chỉ build static assets và localhost preview (verified Node 24.19.0). Source `Api/wwwroot`, output ignored `artifacts/frontend`; ASP.NET same-origin packaging sau skeleton approval vẫn PLANNED. Style theo yêu cầu blue/light, không dùng theme Terra green/cream.  
+**Reason:** Bảo toàn stack/layout export, có frontend review được khi API/DB chưa tồn tại; tránh runtime CDN và duplicate page controllers. Tailwind v3 CLI cho build local có [official installation guidance](https://v3.tailwindcss.com/docs/installation); Inter self-hosted theo [Fontsource documentation](https://fontsource.org/docs/getting-started/install). Không upgrade Tailwind major hoặc thêm framework cho task này.  
+**Consequences:** Một index shell, shared components, async service interface. Mock chỉ bật với localhost/127.0.0.1 + `?demo=1`, synthetic RAM/reset on reload, role selection là dev flow không JWT. API adapter mặc định fail closed, không mock fallback; không backend/Neon connection. Credentials/token không persist/render/log/URL; session revisions vô hiệu response cũ. Client/mock permissions và validation chỉ phục vụ UI, không thay server security/constraints. Asset full PUT + If-Match archive giữ API baseline; Department/Asset Type ChangeStatusRequest mapping phải review generated OpenAPI. Extra list detail fields được hydrate qua endpoint hiện hữu trên trang 10 rows; production query optimization còn PLANNED. Decimal text được kiểm trước Number conversion; giá không round-trip chính xác bị báo lỗi thay vì silently round, cần review decimal transport khi API thật sẵn.  
+**Implementation Status:** 8 screens **IMPLEMENTED WITH MOCK DATA**; 5 future-module routes/history **PLANNED**. Build PASS, 38 frontend tests PASS; basic browser/responsive verification có evidence, không tuyên bố full WCAG/security/API/DB verification. Đây là frontend-only approval, không mở backend Week 3 hoặc đóng M1.  
+**Database / Migration Impact:** NONE. Schema Baseline V1 18 tables / 41 relationships, EF entities/migrations/physical DB vẫn chưa tạo; PostgreSQL/Neon design không đổi. 30 completed/documented Week 2 tasks và evidence không reset. Milestone 10/10/2026 giữ nguyên. Không stage/commit/push trong task này.
+
+Exact files, run/check commands, reuse rationale và live-integration handoff: [Stitch UI integration](docs/stitch-ui-integration.md).

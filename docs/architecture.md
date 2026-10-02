@@ -1,6 +1,6 @@
 # Kiến trúc hệ thống
 
-> Trạng thái: **PLANNED — Week 2.** Chưa tạo solution, project skeleton hoặc code nghiệp vụ.
+> **BACKEND PLANNED — Week 2 review pending.** Chưa tạo solution, .NET project skeleton hoặc code nghiệp vụ backend. Frontend static/mock được người dùng cho phép riêng, đã build/test ngày 02/10; xem implementation addendum §15.
 
 ## 1. Lựa chọn kiến trúc
 
@@ -12,7 +12,7 @@ Không đưa microservices, CQRS, message broker, Redis, Elasticsearch, event bu
 
 ```mermaid
 flowchart LR
-    Client[Bootstrap 5 + JS UI or API Client] -->|Same-origin HTTPS + JSON / Excel| Controller[Controller]
+    Client[Tailwind + JS UI or API Client] -->|Same-origin HTTPS + JSON / Excel| Controller[Controller]
     Controller --> Validation[Validation]
     Validation --> Service[Application Service]
     Service --> Authorization[Permission and Scope Check]
@@ -184,7 +184,7 @@ src/
 │   ├── Controllers/
 │   ├── Middleware/
 │   ├── Authorization/
-│   ├── wwwroot/ (Bootstrap 5 local, HTML/CSS/JS modules)
+│   ├── wwwroot/ (HTML/Tailwind/JS static source đã có; API integration PLANNED)
 │   └── Program.cs
 ├── ItAssetManagement.Application/
 │   ├── DTOs/
@@ -206,11 +206,11 @@ tests/
 docs/
 ```
 
-Đây là cấu trúc **PLANNED**. Có thể gộp `Domain`/`Application` nếu implementation cho thấy chi phí ceremony lớn hơn lợi ích, nhưng thay đổi phải cập nhật ADR. Không tạo cấu trúc này trong Week 2.
+Đây là cấu trúc .NET **PLANNED**; ngoại lệ hiện tại chỉ là static source trong `wwwroot`, không có `.csproj`, `Program.cs`, Controller, Entity hay DbContext. Có thể gộp `Domain`/`Application` nếu implementation cho thấy chi phí ceremony lớn hơn lợi ích, nhưng thay đổi phải cập nhật ADR. Không tự tạo backend trong task frontend.
 
 ### Frontend M1 và API integration — PLANNED
 
-Web UI ở `Api/wwwroot` được ASP.NET Core phục vụ cùng origin với `/api/v1`; không mở project framework, dev server hoặc CORS riêng. Bootstrap 5 pin phiên bản và giữ local để demo offline. Một `index.html` chứa Login và admin shell, cùng `js/api-client.js`, `js/auth.js`, `js/assets.js`, `js/masters.js`, `css/app.css` là cấu trúc dự kiến. Login thành công đổi view trong cùng document; Dashboard/List/Create/Detail/Edit dùng hash navigation như `#/assets/12/edit`, không tải trang HTML khác. Cách này giữ token in-memory trong suốt demo flow mà không thêm framework. Nếu cần alias `login.html`, alias chỉ redirect về shell trước khi đăng nhập và không nhận/chuyển token. `api-client.js` xử lý Bearer, JSON, ProblemDetails và 401/403/409; page modules không tự ghép endpoint tùy ý. Reload hoặc mở tab mới phải login lại; logout xóa token/state và đổi về Login trong shell. Không có server cookie auth nên không có CSRF cookie flow cho M1; XSS protection, CSP và safe DOM rendering vẫn bắt buộc. Chi tiết màn hình/field/API tại [UI/UX spec](ui-ux-spec.md).
+Web UI dự kiến được ASP.NET Core phục vụ cùng origin với `/api/v1`, không thêm CORS/frontend framework. Theo ADR-021, styling dùng Tailwind 3/local component CSS và Inter local thay Bootstrap. Một `index.html` chứa Login/admin shell, `js/app.js`, `js/pages/*`, `js/components.js`, `js/services/{index,mock-services,api-services}.js`, `css/input.css`; build xuất `css/app.css` và fonts vào `artifacts/frontend`. Node static preview chỉ là công cụ trước khi backend tồn tại, không proxy API. Packaging build assets vào ASP.NET static web root phải bổ sung ở skeleton được approve sau này. Login đổi view bằng hash trong cùng document; Dashboard/List/Create/Detail/Edit không tải HTML khác. Future JWT in-memory, reload/tab mới phải login lại; không token qua URL/storage. API adapter xử lý Bearer/JSON/ProblemDetails/401/403/409; pages không tự ghép endpoint. Không có server cookie auth M1 nên không CSRF cookie flow; safe DOM/CSP vẫn bắt buộc. Chi tiết tại [UI/UX spec](ui-ux-spec.md).
 
 Week 3 Dashboard cơ bản dùng EP-023 để hiển thị tổng/asset gần nhất. EP-072–075 dashboard aggregates đầy đủ được triển khai Week 6; UI không hiển thị số giả hay mặc định zero cho metric chưa tồn tại. Shared frontend layout/API client do Thủy sở hữu; Thiện thêm page module của mình trong file riêng theo [team responsibilities](team-responsibilities.md).
 
@@ -319,4 +319,22 @@ Thiện: ASP.NET Core backend -> EF Core/Npgsql --TLS-+
 - Validation input không thay thế kiểm tra business trong transaction.
 - Không thêm framework/hạ tầng vượt nhu cầu.
 - Tên entity/quan hệ phải khớp `database-design.md`, `erd.md` và `api-spec.md`.
-- Kiến trúc và toàn bộ module hiện đều **PLANNED**; chỉ tài liệu Week 2 đã được tạo.
+- Kiến trúc backend và toàn bộ business modules hiện đều **PLANNED**; frontend mock exception ở §15 không có API/database implementation.
+
+## 15. Stitch Frontend Implementation Addendum — IMPLEMENTED WITH MOCK DATA
+
+Date: 02/10/2026. Giữ HTML/Tailwind của export, ES modules/hash router; không React/Vite/Bootstrap hoặc thay Controller–Service–Repository. Source đặt trong đường dẫn `Api/wwwroot` để nối same-origin sau này, không tạo project .NET. Shared components + page modules nhận service interface thống nhất; chỉ factory chọn mock hoặc future API adapter:
+
+```text
+index.html -> app.js/hash views -> reusable components + pages
+                                      |
+                              services/index.js
+                                /           \
+              localhost + ?demo=1          default API mode
+               mock-services.js             api-services.js
+                synthetic RAM                /api/v1 (NOT CONNECTED)
+```
+
+Mock auth có role/session demo, không xác thực account, không JWT/security boundary. State/credentials không persist; logout/revision guard ngăn response cũ khôi phục session. Mock responses redact cost theo permissions; server RBAC/BOLA/cost policy vẫn phải implement/test độc lập. List detail hydration tối đa một trang là bridge giữ Summary DTO hiện hữu, không thay database/API; review N+1 projection trước live integration. Dashboard mock counts được tính từ fixtures, replacement indicator ghi rõ minh họa; API mode để metric chưa có là PLANNED.
+
+Node >=22/pnpm build Tailwind CSS 3.4.19 và self-host @fontsource/inter 5.3.0; localhost GET/HEAD-only preview không có backend/Neon connection. Generated output ignored, không commit dependencies/secrets. Frontend Node tests không thay xUnit/DB integration. Exact implementation/checks/limitations tại [integration report](stitch-ui-integration.md). Production deployment/auth/API/DB integration đều **PLANNED**.

@@ -2,6 +2,22 @@
 
 Thay đổi quan trọng được nhóm theo tuần. Nhãn **DOCUMENTED** chỉ nói tài liệu đã được tạo/sửa; chức năng tương lai vẫn **PLANNED**. Tại audit ban đầu repository chưa có commit; xem Git history để biết trạng thái xuất bản mới nhất. Chưa có release ứng dụng.
 
+## 02/10/2026 — Stitch Frontend Integration
+
+Publication addendum: sau báo cáo frontend-only, người dùng yêu cầu kiểm tra lại và commit/push với message tiếng Việt không dấu. Build/38 tests/20 syntax/22 source checks chạy lại PASS, browser mock flow kiểm lại; xem Git history/remote cho kết quả xuất bản. Các ghi chú no-commit/UNCOMMITTED dưới đây là snapshot lúc bàn giao trước yêu cầu publication, không cấm yêu cầu mới hoặc mở backend scope.
+
+### Added
+
+- **FRONTEND IMPLEMENTED WITH MOCK DATA:** một HTML/ES-module shell, Login, Dashboard, Asset List/Create/Edit/Detail, Department và Asset Type screens; reusable components, mock services/state, fail-closed future API adapter, local SVG icons/logo và Inter fonts. Không phải Auth/JWT/Asset API implementation.
+- Node/Tailwind local build, GET/HEAD-only localhost preview, locked frontend dev dependencies, source checks và 38 Node tests. Build **PASS**, tests **38 PASS / 0 FAIL**, JS syntax **20 PASS**, source-boundary checks **22 PASS**. Browser mock flows/responsive 320/375/768/1280/1440px được kiểm; không xác nhận DB/API/WCAG đầy đủ.
+- [Integration handoff](docs/stitch-ui-integration.md): audit ZIP/original preview, file manifest, screenshots, commands, limitations và next integration steps. Future module/history views ghi rõ **PLANNED**.
+
+### Changed
+
+- ADR-021 thay riêng Bootstrap/no-build choice của ADR-017 bằng HTML/Tailwind CSS 3.4.19 + self-hosted @fontsource/inter 5.3.0, giữ same-origin/hash/in-memory future auth và layered backend design.
+- Cập nhật current frontend status/run instructions và các references styling còn hiệu lực; không sửa business requirements/API/database/ERD hoặc reset Week 2 evidence/task statuses. Previous **21 PASS** và Neon affected **24 PASS** vẫn là historical documentation evidence.
+- **UNCOMMITTED / UNPUSHED:** không stage/commit/push; frontend-only task không tạo .NET skeleton/EF entities/migrations hoặc kết nối Neon. M1 **10/10/2026** vẫn PLANNED, chưa đạt.
+
 ## 01/10/2026 — Database Platform Decision Update
 
 ### Changed

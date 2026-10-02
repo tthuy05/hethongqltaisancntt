@@ -1,33 +1,34 @@
 # Project Status
 
-> Cập nhật ngày **01/10/2026** (Asia/Saigon). Đây là trạng thái thực tế của repository; kế hoạch M1 và 36 ngày không đồng nghĩa tính năng đã chạy.
+> Cập nhật ngày **02/10/2026** (Asia/Saigon). Frontend mock được người dùng cho phép riêng; kế hoạch M1 và 36 ngày không đồng nghĩa backend/DB đã chạy.
 
 ## Current Week / Phase / Branch
 
 | Hạng mục | Trạng thái |
 |---|---|
 | Current Week | Week 2 |
-| Current Phase | Week 2 — bàn giao phần việc Thủy và database-platform addendum: DOCUMENTED — REVIEW PENDING |
+| Current Phase | Week 2 documentation REVIEW PENDING + separately authorized Stitch frontend integration: IMPLEMENTED WITH MOCK DATA / READY FOR REVIEW |
 | Technical Documentation | COMPLETED phần Thủy / UNDER REVIEW bởi Thiện/Mentor; không phải implementation hoàn tất |
-| Current Branch | `main`; HEAD `0c9937493b8531954765ae0419374296210c9531`, tài liệu bàn giao sửa cục bộ chưa commit |
-| Remote | `origin` đúng repository chính thức; `refs/heads/main` khớp HEAD baseline ở audit bàn giao 01/10 |
+| Current Branch | `main`; frontend publication được người dùng cho phép riêng ngày 02/10 sau preflight PASS; xem `git log -1` cho commit mới nhất, không hard-code SHA của chính commit này |
+| Remote | `origin` đúng repository chính thức; fetch trước publication xác nhận main khớp baseline 142c7fb, không có divergence; kết quả push xác minh bằng Git remote |
 | Next phase gate | M1 10/10/2026 là mục tiêu có UI/API/DB thật; Week 3 chỉ bắt đầu sau review/approval của người dùng |
 
 ## Completed Modules
 
-**Không có module ứng dụng nào được implement.** 30 nhiệm vụ tài liệu Tuần 2 của Thủy đã có artifact và bằng chứng tại [bàn giao Thủy](docs/week-02-thuy-handoff.md), trạng thái **DOCUMENTED — REVIEW PENDING**. Kế hoạch 36 ngày giữ PLANNED; chưa có review độc lập/sign-off của Thiện hoặc phê duyệt Week 3. [Consistency review](docs/consistency-review.md) ghi các sửa contract CR-23–29 và kết quả kiểm tài liệu.
+**Chưa có module backend nào được implement.** Frontend có 8 màn hình chạy bằng mock services (Login/Dashboard/Asset List/Create/Edit/Detail/Department/Asset Type), không đồng nghĩa Auth/JWT/Asset API đã hoàn thành. [Stitch integration report](docs/stitch-ui-integration.md) ghi audit, file manifest và test/browser evidence. 30 nhiệm vụ tài liệu Tuần 2 của Thủy và evidence tại [bàn giao Thủy](docs/week-02-thuy-handoff.md) vẫn **DOCUMENTED — REVIEW PENDING**. Kế hoạch 36 ngày giữ ID/estimate/owner/status; chưa có independent sign-off hoặc approval toàn bộ Week 3. Previous documentation checks **21 PASS**, affected Neon checks **24 PASS** được giữ như bằng chứng lịch sử, không chạy lại hay gộp với frontend tests.
 
 ## In Progress
 
 - Week 2: phần tài liệu Thủy sẵn review; còn phản biện độc lập của Thiện và review người dùng/Mentor.
 - Kế hoạch baseline 36 ngày Week 2–7 được giữ nguyên ID/estimate/ownership; 30 deliverable tài liệu Thủy Week 2 đã hoàn thành ở mức DOCUMENTED — REVIEW PENDING, không đặt lại thành PLANNED. Implementation tương lai và review chưa thực hiện vẫn **PLANNED**.
 - M1 ngày 10/10/2026: **PLANNED — NOT IMPLEMENTED / NOT VERIFIED**.
+- Stitch frontend integration đã build/test/browser smoke; chờ review của người dùng/Thiện. Các future modules chỉ có placeholder PLANNED, không có dữ liệu nghiệp vụ thật.
 
 ## Pending
 
 - Review của người dùng/Mentor đối với tài liệu và OQ-001–OQ-013.
 - `APPROVED` rõ ràng trước Week 3.
-- Week 3–7 theo [roadmap](docs/roadmap.md): toàn bộ **PLANNED**, gồm UI bắt buộc từ Week 3.
+- Backend/DB/real API integration Week 3–7 theo [roadmap](docs/roadmap.md) vẫn **PLANNED**. Early mock UI không tự đánh dấu task M1 hay các module tương lai DONE.
 
 ## Database / Migration / Build / Test Status
 
@@ -47,33 +48,37 @@
 | Asset CRUD | **PLANNED — NOT IMPLEMENTED** |
 | MVP Milestone | **10/10/2026** — giữ nguyên |
 | Project skeleton / API | **PLANNED — NOT CREATED** |
-| Build | **NOT RUN / NOT APPLICABLE** vì chưa có `.csproj` |
-| Unit/integration tests | **NOT RUN / NOT APPLICABLE** vì chưa có code/test project |
+| .NET build / xUnit / DB integration tests | **NOT RUN / NOT APPLICABLE** vì chưa có `.csproj` / backend / DB test target |
+| Frontend build | **PASS** — local Tailwind CSS + Inter fonts + ES modules trong `artifacts/frontend/` |
+| Frontend automated tests | **38 PASS / 0 FAIL** — Node mock/service contract + build/static server tests, không phải DB integration |
+| Frontend source checks | **20 JS syntax PASS / 22 source checks PASS**; không phải security/accessibility certification |
 | API runtime/Swagger | **PLANNED — NOT IMPLEMENTED** |
-| Web UI/Bootstrap | **PLANNED — NOT CREATED** |
-| M1 demo evidence | **PLANNED — NONE YET**; không có screenshot UI/Swagger/DB app/test hoặc Git history triển khai tính năng |
+| Web UI/HTML + Tailwind 3 | **IMPLEMENTED WITH MOCK DATA**; API adapter PLANNED integration, không có JWT thật |
+| Frontend browser evidence | Mock flows PASS; responsive 320/375/768/1280/1440px; local screenshots tại ignored `artifacts/ui-evidence/` |
+| Real M1 demo evidence | **PLANNED — NONE YET**; chưa có Swagger/API/DB persistence hoặc deployment evidence |
 | Mermaid ERD | Parser 11.17.2 kiểm lại 01/10 thành công; 18 entity/41 FK/41 relationships; PNG/SVG render chưa xác nhận |
-| Git commit/push | Baseline tài liệu đã push ở 0c99374 theo yêu cầu trước; lượt bàn giao này không stage/commit/push |
+| Git commit/push | Documentation/Neon baseline 142c7fb; người dùng yêu cầu commit/push frontend ngày 02/10 với message tiếng Việt không dấu, sau kiểm tra lại PASS. Publication không mở backend/Week 3 |
 
 ## Known Issues / Open Questions
 
-- Repository ban đầu rỗng, chưa có `.gitignore`, solution, project, frontend hoặc CI; các phần này chỉ được tạo ở Week 3 sau review/approval.
+- Repository ban đầu rỗng là evidence lịch sử. Hiện đã có `.gitignore`, frontend/tooling/tests; solution/backend/EF/migrations/CI chưa tạo.
 - Docker client có cài nhưng engine không chạy; không là dependency bắt buộc.
 - ERD parser **VERIFIED** ở mức cú pháp; hình render PNG/SVG **NOT VERIFIED**.
 - Password/JWT/lockout values, serial policy, maintenance ownership, replacement thresholds/price, alert window, budget year/currency, key management, audit retention, import limits, deployment và ticket queue policy cần xác nhận ở [Open Questions](docs/open-questions.md).
-- Không có kết quả build/test/API/migration/performance để báo cáo.
+- Có frontend build/test/browser results; không có backend API/migration/DB/performance results. Bundled pnpm dùng vì `npm` không có trên PATH; build có Browserslist warning nonblocking.
+- Khi nối API: xác nhận generated OpenAPI cho master ChangeStatusRequest, list detail hydration, decimal JSON transport và auth response. Không sửa contract/schema để tiện mock.
 
 ## Technical Debt
 
-- **Không có code debt** vì chưa có code.
-- Sau review/approval, tạo `.gitignore`, solution, dependency pinning, test harness, same-origin static UI và documented local setup theo critical path M1.
+- Mock-only service behaviors không phải business backend; tránh mang mock vào production deployment. Full accessibility audit và live API/DB tests còn PLANNED.
+- Sau approval, tạo solution/backend và static asset packaging cho ASP.NET cùng origin; cấu hình Neon/Npgsql/secrets/migrations theo critical path, không tự chạy trong task này.
 - Render hình Mermaid và generated OpenAPI vẫn chưa kiểm chứng; chỉ cú pháp ERD đã được parser xác nhận.
 
 ## Next Tasks
 
 1. Thiện review bộ bàn giao/CR-23–29, M1 DTO/schema/UI/test và tính khả thi theo checklist handoff; trạng thái review **PLANNED**.
 2. Người dùng/Mentor review OQ-001/OQ-002/OQ-011 và checkpoint schema trước implementation M1; các OQ khác theo module tương ứng.
-3. **STOP** tại Week 2; chỉ mở Week 3 khi người dùng yêu cầu/phê duyệt triển khai.
+3. Thiện review frontend mock theo [integration report](docs/stitch-ui-integration.md); publication được cho phép riêng không thay review gate. Chỉ mở backend/Neon/Week 3 implementation khi người dùng yêu cầu/phê duyệt.
 
 ## Daily update log
 
@@ -85,5 +90,7 @@
 | 01/10/2026 | Người dùng yêu cầu đưa bộ tài liệu lên Git sau báo cáo planning. | Commit/push chỉ xuất bản tài liệu, không phải `APPROVED` cho Week 3; kiểm `git log` và remote để biết kết quả. |
 | 01/10/2026 | Theo yêu cầu thực hiện tuần đầu dự án của Thủy (Week 2), kiểm lại 30 task, sửa contract Login/Asset/audit/permissions, bổ sung UC-017/018 và báo cáo bàn giao. | Local/remote baseline 0c99374 khớp; kiểm Markdown/IDs/36 ngày/288 task/DB-ERD/secret heuristic và ERD parser. Artifact DOCUMENTED — REVIEW PENDING; không code/stage/commit/push hoặc tự nhận Thiện review. |
 | 01/10/2026 | Đổi database PLANNED từ SQL Server sang PostgreSQL hosted on Neon theo yêu cầu, giữ 30 deliverable/evidence và Schema Baseline V1 18 bảng/41 quan hệ. | Chỉ docs/type/provider/connection/migration/test-isolation plan; không credentials/kết nối/schema/migration/business code. Handoff chỉ thêm addendum; previous checks 21 PASS giữ nguyên. Affected checks tại consistency review; không stage/commit/push hoặc mở Week 3. |
+| 02/10/2026 | Tiếp tục task người dùng đã xác nhận: tích hợp Stitch HTML/Tailwind thành frontend mock, chuẩn hóa local assets/components, service boundary, routing, validation, responsive và tài liệu. | Build PASS; 38 frontend tests PASS; 20 syntax/22 boundary checks PASS; browser mock smoke/viewport evidence. Giữ 30 task/18 bảng/41 quan hệ; không backend/JWT/DB/migration hoặc stage/commit/push. |
+| 02/10/2026 | Người dùng yêu cầu kiểm tra lại và xuất bản frontend để làm tiếp. | Build/test/source checks chạy lại PASS (38/20/22); browser mock flow và baseline preservation kiểm lại. Commit message tiếng Việt không dấu; publication không đồng nghĩa DB/API/M1 đã hoàn thành. Git history/remote xác minh kết quả commit/push. |
 
 File này cần cập nhật sau mỗi ngày làm việc tiếp theo bằng kết quả thực tế, không bằng kết quả dự kiến.

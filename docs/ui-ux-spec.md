@@ -1,13 +1,13 @@
-# UI/UX Specification — PLANNED
+# UI/UX Specification — MOCK UI IMPLEMENTED / REAL INTEGRATION PLANNED
 
-> Tài liệu thiết kế ngày 01/10/2026; chưa có giao diện hoặc API runtime. M1 ngày 10/10 là **mục tiêu**, không phải kết quả đã đạt. Tên field/route theo [API spec](api-spec.md); quyền theo [permission matrix](permission-matrix.md).
+> Baseline thiết kế ngày 01/10/2026; addendum frontend ngày 02/10/2026. 8 màn hình có frontend mock theo phạm vi người dùng cho phép riêng; API/JWT/DB runtime chưa triển khai. M1 ngày 10/10 vẫn là **mục tiêu**, không phải kết quả đã đạt. Tên field/route theo [API spec](api-spec.md); quyền theo [permission matrix](permission-matrix.md).
 
 ## 1. Phạm vi và công nghệ
 
-- Web quản trị đơn giản trong `src/ItAssetManagement.Api/wwwroot/`: HTML semantic, CSS, JavaScript ES modules và Bootstrap 5 được pin phiên bản, lưu local để demo không lệ thuộc CDN. Không thêm build pipeline/framework frontend trong MVP. API và UI cùng origin; không cần CORS cho UI này.
-- `index.html` chứa cả Login và admin shell; điều hướng hash trong cùng document (`#/login`, `#/dashboard`, `#/assets`, `#/assets/new`, `#/assets/{id}`, `#/assets/{id}/edit`). Login thành công đổi view, không redirect sang HTML khác vì sẽ mất token in-memory. Back/Forward đổi view; direct link/reload khi chưa có session hiện Login. `api-client.js` là nơi duy nhất ghép `/api/v1`, Bearer token, ProblemDetails và xử lý 401/403/409; không thêm router/framework.
+- Web quản trị trong `src/ItAssetManagement.Api/wwwroot/`: HTML semantic, CSS, JavaScript ES modules và Tailwind CSS 3.4.19 + Inter 5.3.0 local từ Stitch. ADR-021 thay riêng lựa chọn Bootstrap/build ở ADR-017; không thêm React/Vite hoặc framework thứ hai. Node build CSS/assets và preview localhost hiện tại; production API/UI cùng origin vẫn PLANNED.
+- `index.html` chứa cả Login và admin shell; điều hướng hash trong cùng document (`#/login`, `#/dashboard`, `#/assets`, `#/assets/new`, `#/assets/{id}`, `#/assets/{id}/edit`). Login thành công đổi view, không redirect sang HTML khác vì sẽ mất session in-memory. Back/Forward đổi view; direct link/reload khi chưa có session hiện Login. `js/services/api-services.js` là adapter duy nhất ghép `/api/v1`, Bearer token, ProblemDetails và xử lý 401/403/409; `mock-services.js` tách biệt, không fallback tự động.
 - Access token chỉ giữ trong bộ nhớ JavaScript, không localStorage/sessionStorage/cookie; reload yêu cầu đăng nhập lại. Không render token vào DOM/log/URL. 401 đưa về login và xóa state; 403 hiện thông báo thiếu quyền; 409 yêu cầu tải lại bản ghi; lỗi mạng có retry rõ ràng. Server vẫn kiểm quyền trên từng API.
-- Bootstrap 5 grid, table responsive, form feedback, focus states, label/aria, contrast đủ đọc, không dùng `innerHTML` với dữ liệu API. Khi viewport hẹp: sidebar collapse/offcanvas, bộ lọc xếp dọc, bảng cuộn ngang; nút chính luôn hiển thị.
+- Tailwind/local component CSS, table responsive, form feedback, focus states, label/aria; không dùng `innerHTML` với dữ liệu API/mock. Khi viewport <1024px: sidebar collapse/offcanvas, bộ lọc xếp dọc, bảng cuộn trong vùng riêng; nút chính vẫn hiển thị. Basic keyboard/viewport smoke đã kiểm; full WCAG audit chưa thực hiện.
 - `rowVersion` của asset được giữ opaque và gửi trong Update DTO; Create luôn server đặt `InStock`. Không có nút đổi status tùy tiện trong form metadata.
 
 ## 2. Layout và trạng thái chung
@@ -19,11 +19,11 @@
 | Loading | Spinner/placeholder có `aria-live`, chặn submit trùng | Không có dữ liệu giả khi API chậm |
 | Empty | Thông báo “Chưa có dữ liệu” + action nếu được phép | List 200 rỗng vẫn phân biệt với lỗi |
 | Error | Inline field errors từ 400; banner an toàn cho 401/403/404/409/5xx | Không hiển thị stack trace, SQL, token, full key |
-| Responsive | >=992px sidebar cố định; <992px offcanvas; bảng `.table-responsive`; form 1 cột trên mobile | Smoke 320/768/1280px và keyboard |
+| Responsive | >=1024px sidebar cố định; <1024px offcanvas; `.table-wrap` cuộn riêng; form 1 cột trên mobile | Mock smoke 320/375/768/1280/1440px và keyboard PASS; live integration PLANNED |
 
 ## 3. Screens và API contract
 
-Mọi screen dưới đây có trạng thái **PLANNED**. “Cột” là cột bảng khi screen có list; “—” nghĩa không có bảng. Mọi input có label, required marker, client-side hint và server validation vẫn là nguồn sự thật.
+Các mô tả dưới đây là acceptance baseline cho **REAL API INTEGRATION — PLANNED**. UI-01–08 đã có **IMPLEMENTED WITH MOCK DATA** ở addendum §6, không đánh dấu module nghiệp vụ DONE. UI-09–13 vẫn **PLANNED**. “Cột” là cột bảng khi screen có list; “—” nghĩa không có bảng. Client validation không thay thế server validation.
 
 ### UI-01 Login — M1
 
@@ -96,7 +96,7 @@ Mọi screen dưới đây có trạng thái **PLANNED**. “Cột” là cột 
 2. Dashboard hiển thị asset thật hoặc empty state, không số liệu giả.
 3. Asset List tải từ Neon PostgreSQL qua API thật; search/filter/page hoạt động.
 4. Create Asset hợp lệ → Detail hiển thị ID/dữ liệu thật; Edit metadata → reload, đăng nhập lại và mở cùng ID để chứng minh dữ liệu vẫn còn trong database.
-5. Vào Department/Asset Type list; kiểm tra Bootstrap ở 320/768/1280px.
+5. Vào Department/Asset Type list; kiểm tra Tailwind/local UI ở 320/768/1280px.
 6. Gọi cùng asset action bằng Technical Support: UI không hiện Create/Edit và API trả 403 khi gọi trực tiếp.
 7. Bằng chứng cần chụp sau khi chạy: Login, Dashboard, List/filter, Create/Edit/Detail, Swagger/Postman, database rows, build/test. Git history chỉ chụp nếu commit thực tế được thực hiện theo workflow sau này; task planning này không commit.
 
@@ -104,4 +104,18 @@ Mọi screen dưới đây có trạng thái **PLANNED**. “Cột” là cột 
 
 - `UI-SMOKE-M1`: login đúng/sai; Login→Dashboard→List→Create→Detail→Edit và Back/Forward giữ session trong cùng document; reload/tab mới cần login lại; sau re-login mở cùng asset chứng minh persistence; list empty/populated, create/edit/409, filter/page, 403 trực tiếp, mobile overflow và keyboard focus. Dùng browser thật trên API + DB test.
 - Week 4–7: smoke mỗi screen cùng ngày module được nối UI; negative 401/403/409 và masking/cost vẫn phải test API.
-- Một screen chỉ DONE khi dữ liệu API thật, loading/empty/error, responsive, validation, authorization, build/test liên quan, reviewer và docs đã kiểm tra. Mọi screen trong tài liệu này hiện **PLANNED**.
+- Một module/screen M1 chỉ DONE khi dữ liệu API thật, loading/empty/error, responsive, validation, authorization, build/test liên quan, reviewer và docs đã kiểm tra. Mock UI readiness không thay thế gate này; real integration vẫn **PLANNED**.
+
+## 6. Stitch Frontend Implementation Addendum — 02/10/2026
+
+- 8 views chạy trong một shell: Login, Dashboard, Asset List, Create, Edit, Detail, Departments, Asset Types. Sidebar 9 mục; Assignments/Maintenance/License/Lifecycle/Reports là **PLANNED — Chưa triển khai**, không nút chết hoặc fake-success nghiệp vụ.
+- Style: sidebar `#F8FAFC`, nền `#F6F8FB`, primary `#2563EB`, Inter local, cards/borders nhẹ. Reuse cấu trúc sidebar/header/KPI/table/form/detail của 5 HTML Stitch; không copy opacity-hidden, CDN/Times New Roman, unsafe controllers hoặc số liệu hardcoded không nhất quán.
+- Components dùng chung: shell/sidebar/header, page header, button/badge, data table/pagination, loading/empty/error, form fields/validation, toast và native dialog. Asset history tabs có ArrowLeft/ArrowRight/Home/End + roving tabindex; nội dung history vẫn PLANNED.
+- Mock chỉ bật khi localhost/127.0.0.1 **và** `?demo=1`; factory tests dùng state cô lập. 24 assets synthetic, 4 departments, 5 types; mọi mutation chỉ ở RAM. Demo role chọn ở Login, không phải security backend/JWT. Reload/tab mới mất session/dữ liệu; logout và revision guard loại response cũ. Không lưu password/token vào storage/URL/log.
+- Mock service mô phỏng permissions/DTO/errors cần cho UI: Support không nhận purchasePrice và không sửa asset; Admin quản lý master; Manager không ghi master. Asset Create ép InStock, full PUT metadata + opaque rowVersion, archive giữ uniqueness/reference. Các ràng buộc thật vẫn phải kiểm ở server/database sau này.
+- List filters đọc đủ trang toàn bộ catalog, gồm inactive cho historic assets; form chỉ cho target mới active và giữ inactive reference hiện hữu khi Edit. Brand/model/warranty/user không có trong Summary DTO nên adapter tải detail cho tối đa 10 rows của trang hiện tại; không tự sửa API DTO. Projection/performance review khi nối thật còn PLANNED.
+- Giá mua giữ text trước validation; không silently round decimal 2 chữ số. Các giá trị numeric(18,2) không round-trip chính xác qua JS Number bị từ chối rõ ràng trong UI mock, không đổi DB precision; phải chốt decimal JSON transport với Thiện khi tích hợp thật.
+- API adapter có `/api/v1`, ProblemDetails và safe memory-session handling nhưng **NOT CONNECTED**. Master ChangeStatusRequest body mapping phải xác nhận generated OpenAPI; không xem mock mapping là contract mới. Dashboard replacement card ở demo ghi rõ minh họa; API mode không bịa metric cho module chưa có.
+- Build PASS; 38 Node tests/20 syntax/22 source checks PASS. Browser đã kiểm CRUD mock, catalog, role, filter/page, Back/Forward, reload/logout, placeholders và responsive; chưa chứng nhận WCAG, API/DB persistence, security hoặc full cross-browser.
+
+Run commands, exact file manifest, browser evidence/limitations và kế hoạch handoff tại [Stitch integration report](stitch-ui-integration.md).
