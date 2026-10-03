@@ -1,6 +1,7 @@
 # Local frontend dependencies and reproducible generated output.
 node_modules/
 artifacts/frontend/
+artifacts/swagger/
 artifacts/ui-evidence/
 
 # Future local configuration must never enter version control.

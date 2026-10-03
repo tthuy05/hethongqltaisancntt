@@ -15,9 +15,10 @@ var probeOnly = args.Contains("--verify-neon", StringComparer.Ordinal);
 var setupOnly = args.Contains("--setup-neon-m1", StringComparer.Ordinal);
 var inspectOnly = args.Contains("--inspect-neon-schema", StringComparer.Ordinal);
 var seedOnly = args.Contains("--seed-development", StringComparer.Ordinal);
-var builder = WebApplication.CreateBuilder(args.Where(argument => argument is not ("--verify-neon" or "--setup-neon-m1" or "--inspect-neon-schema" or "--seed-development")).ToArray());
-if (probeOnly || setupOnly || inspectOnly || seedOnly) builder.Logging.ClearProviders();
-builder.Services.AddOpenApi();
+var demoOnly = args.Contains("--seed-m1-demo", StringComparer.Ordinal);
+var builder = WebApplication.CreateBuilder(args.Where(argument => argument is not ("--verify-neon" or "--setup-neon-m1" or "--inspect-neon-schema" or "--seed-development" or "--seed-m1-demo")).ToArray());
+if (probeOnly || setupOnly || inspectOnly || seedOnly || demoOnly) builder.Logging.ClearProviders();
+builder.Services.AddMvpOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<BusinessExceptionHandler>();
 builder.Services.AddControllers().AddJsonOptions(options =>
@@ -40,7 +41,9 @@ builder.Services.AddScoped<IUnitOfWork, AuditedUnitOfWork>();
 builder.Services.AddScoped<IAuditWriter, AuditWriter>();
 builder.Services.AddSingleton<IPasswordService, PasswordService>();
 builder.Services.AddScoped<AuthService>(); builder.Services.AddScoped<AssetService>(); builder.Services.AddScoped<MasterService>();
+builder.Services.AddScoped<UserLookupService>();
 builder.Services.AddScoped<DevelopmentSeed>();
+builder.Services.AddScoped<DevelopmentDemoSeed>();
 builder.Services.AddRateLimiter(options =>
 {
     options.AddPolicy("login", context => RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ =>
@@ -59,6 +62,23 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 var app = builder.Build();
 _ = app.Services.GetRequiredService<JwtSettings>(); // Production fails closed; development uses a per-process key.
+if (demoOnly)
+{
+    if (!app.Environment.IsDevelopment() || probeOnly || setupOnly || inspectOnly || seedOnly)
+    { Console.WriteLine("{\"status\":\"DevelopmentOnlyOrConflictingMode\"}"); Environment.ExitCode = 2; }
+    else
+    {
+        try
+        {
+            var credentials = await DemoBootstrap.ReadOrCreateAsync(builder.Configuration["demo-credentials-path"], app.Environment.ContentRootPath);
+            await using var scope = app.Services.CreateAsyncScope();
+            var result = await scope.ServiceProvider.GetRequiredService<DevelopmentDemoSeed>().RunAsync(credentials);
+            Console.WriteLine(JsonSerializer.Serialize(new { status = "DemoSeeded", counts = result }));
+        }
+        catch { Console.WriteLine("{\"status\":\"DemoSeedFailed\"}"); Environment.ExitCode = 2; }
+    }
+    await app.DisposeAsync(); return;
+}
 if (seedOnly)
 {
     if (!app.Environment.IsDevelopment() || probeOnly || setupOnly || inspectOnly ||
@@ -158,6 +178,18 @@ if (app.Environment.IsDevelopment() && app.Configuration.GetValue("Frontend:Enab
         app.UseStaticFiles(new StaticFileOptions { FileProvider = files });
     }
     else app.Logger.LogWarning("Frontend build missing. Run pnpm build from the repository root.");
+}
+if (app.Environment.IsDevelopment() && app.Configuration.GetValue("Swagger:Enabled", true))
+{
+    var swagger = Path.GetFullPath(Path.Combine(app.Environment.ContentRootPath, "../../artifacts/swagger"));
+    if (File.Exists(Path.Combine(swagger, "index.html")))
+    {
+        var files = new PhysicalFileProvider(swagger);
+        app.Lifetime.ApplicationStopped.Register(files.Dispose);
+        app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = files, RequestPath = "/swagger" });
+        app.UseStaticFiles(new StaticFileOptions { FileProvider = files, RequestPath = "/swagger" });
+    }
+    else app.Logger.LogWarning("Development Swagger build missing. Run pnpm build from the repository root.");
 }
 app.UseRouting(); // Static middleware must run before endpoint selection (including fallback).
 app.UseAuthentication(); app.UseAuthorization(); app.UseRateLimiter();

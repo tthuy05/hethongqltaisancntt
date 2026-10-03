@@ -24,6 +24,10 @@ public static class Errors
         var allowed = history ? new[] { "page", "pageSize" } : asset
             ? ["page", "pageSize", "keyword", "status", "sortBy", "sortDirection", "assetTypeId", "departmentId"]
             : ["page", "pageSize", "keyword", "status", "sortBy", "sortDirection"];
+        Query(request, allowed);
+    }
+    public static void Query(HttpRequest request, params string[] allowed)
+    {
         foreach (var item in request.Query)
             if (!allowed.Contains(item.Key) || item.Value.Count != 1) throw Validation.Invalid(item.Key, "Query parameter không hỗ trợ hoặc bị lặp.");
     }

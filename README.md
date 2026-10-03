@@ -4,7 +4,9 @@ Hệ thống Quản lý & Tối ưu Hạ tầng CNTT Doanh nghiệp có web UI v
 
 > **Current phase:** Week 2 review preserved; user-authorized M1 backend/UI vertical slice implemented 02–03/10/2026.
 > **Implementation status:** Auth/JWT/policies, masters, Asset API, audited persistence và UI API thật **IMPLEMENTED / VERIFIED — REVIEW PENDING**.
-> M1 **10/10/2026** giữ nguyên; independent review, rehearsal và production/security gates chưa hoàn tất. Không mở Week 4–7.
+> M1 **10/10/2026** giữ nguyên; independent review, rehearsal và production/security gates chưa hoàn tất. Chưa mở workflow Week 4–7; người dùng duyệt riêng prerequisite User Lookup (EP-004) vào 03/10/2026.
+
+**User Lookup:** `GET /api/v1/users/lookup` đã implement cho dropdown người nhận: active-only, ID/tên/phòng ban tối thiểu, DB-backed `users.lookup`, filter/search/page/sort. Không phải API quản trị user hoặc chọn technician đủ điều kiện. [Contract, kiểm thử và bàn giao cho Thiện](docs/user-lookup-handoff.md). Đây là bổ sung hẹp sau báo cáo Week 2–3, không tự đóng review/M1 hay tạo schema Assignment.
 
 ## Main features **PLANNED**
 
@@ -27,8 +29,8 @@ Hệ thống Quản lý & Tối ưu Hạ tầng CNTT Doanh nghiệp có web UI v
 | EF Core provider | Npgsql.EntityFrameworkCore.PostgreSQL 10.0.3 | Restored / build VERIFIED |
 | Authentication | 15-minute JWT; PasswordHasher Identity V3 | IMPLEMENTED; dev key ephemeral, production key required |
 | Authorization | DB-backed permission-policy RBAC | IMPLEMENTED; account/token-version/roles checked each request |
-| API documentation | Development OpenAPI JSON | M1 + health IMPLEMENTED; interactive Swagger UI PLANNED |
-| Testing | xUnit unit/HTTP + isolated Neon tests | See [current M1 report](docs/m1-backend-handoff.md); historical 25/37 preserved |
+| API documentation | Development OpenAPI JSON + local Swagger UI 5.33.1 | IMPLEMENTED / VERIFIED at `/swagger/`; disabled in Production |
+| Testing | xUnit unit/HTTP + isolated Neon tests | 59 unit + 48 integration PASS; [current lookup evidence](docs/user-lookup-handoff.md); [historical two-week evidence](docs/week-02-03-completion.md) preserved |
 | Web UI | HTML/CSS/JavaScript ES modules + Tailwind CSS 3.4.19, Inter local | 8 M1 screens use API by default; explicit localhost mock demo retained |
 | Frontend tooling | Node.js >=22, pnpm 11.25.0; build CSS/static assets | IMPLEMENTED; Node 24.19.0 verified |
 
@@ -38,7 +40,7 @@ Database platform changed at design level on 01/10/2026 under [ADR-018](DECISION
 
 **M1 publication handoff:** user requested commit/push and explicitly added merging into `main`; verify the actual commit/remote in Git. Publish the implementation branch and fast-forward `main` when possible, without force-push. Thiện should pull `main` to continue/review. Earlier UNCOMMITTED/UNPUSHED notes are implementation snapshots; publication is not independent approval or M1 acceptance. No additional seed, schema change or Week 4–7 work is included.
 
-## Architecture **PLANNED**
+## Architecture — M1 implemented, future modules PLANNED
 
 ```text
 HTTP Request
@@ -114,6 +116,7 @@ Auth/JWT/masters/Asset CRUD now exist. SaveChanges requires an audited transacti
 - [Database design](docs/database-design.md)
 - [Neon M1 physical setup and developer handoff](docs/neon-database-setup.md)
 - [M1 backend / real UI handoff and verification](docs/m1-backend-handoff.md)
+- [Week 2–3 completion matrix: 96 tasks, demo data, Swagger and real UI evidence](docs/week-02-03-completion.md)
 - [ERD](docs/erd.md)
 - [API specification](docs/api-spec.md)
 - [Security](docs/security.md)
@@ -154,10 +157,10 @@ Full dependencies, daily deliverables and verification criteria are in [Roadmap]
 
 ## Current project status
 
-- Branch: `codex/neon-connection-foundation`, from published baseline `18f9f9c`; current foundation UNCOMMITTED / UNPUSHED. Prior frontend publication/browser evidence at [handoff §20](docs/stitch-ui-integration.md) is preserved.
+- Branch: `main`, M1 baseline `2c34671` preserved. User authorized publication of the verified demo/Swagger/tests/evidence and User Lookup follow-up on 03/10/2026; actual commit/push identity is in Git history/remote. Earlier UNCOMMITTED/UNPUSHED reports are implementation-end snapshots, not the current publication state.
 - Remote: official GitHub repository. Historical audit/status statements describe their dates; a documentation publication is not approval of backend implementation.
 - Week 2: 30 Thủy task deliverables documented and checked on 01/10; independent Thiện/user/Mentor review pending. [Handoff report](docs/week-02-thuy-handoff.md) preserves evidence, fixes and the original 21 PASS checks; its Database Platform Change Addendum records the new design-level decision. Schema Baseline V1 remains **18 tables / 41 relationships**, with no entity/relationship redesign. Planned workload Thủy 60,9% / Thiện 39,1% by representative estimate.
-- Frontend build PASS; **38 Node tests PASS / 0 FAIL**, 20 JS syntax checks and 22 source boundary checks PASS. Browser mock flows and responsive checks are recorded in the integration report; not backend/DB/security certification.
+- Frontend build PASS; **40 Node tests PASS / 0 FAIL**. Current source checks, real-browser 320/768/1280 matrix and limitations at [completion evidence](docs/week-02-03-completion.md); original 38-test mock evidence preserved, not relabeled.
 - Eight screens: Login, Dashboard, Asset List, Create, Edit, Detail, Departments and Asset Types use real M1 APIs by default. `?demo=1` on localhost remains an explicit RAM-only mock; no fallback. Five future destinations/history panels remain **PLANNED**.
 - M1 Auth/JWT/masters/Asset/seed/audit/concurrency and runtime config **IMPLEMENTED / VERIFIED**; current test totals at [handoff](docs/m1-backend-handoff.md). Historical 25 xUnit/37 setup/21 and 24 docs checks remain separate. Independent Thiện/Mentor review pending; production not ready.
 - Git publication is separate from plan approval and implementation; consult Git history for its actual state. A documentation commit does not imply a feature is implemented.
@@ -208,4 +211,33 @@ dotnet test ItAssetManagement.slnx -c Release --no-restore
 
 Without opt-in, cloud tests explicitly SKIP; offline/fake-host tests still run. Tests reuse only existing `it_asset_management_m1_verify_20261002`, retain namespaced fixtures, never migrate/create/drop/truncate/reset shared data. Do not rerun `--setup-neon-m1` against these nonempty DBs.
 
-See [Week 3](docs/weekly/week-03.md) for execution addenda and remaining independent review, least privilege, demo rehearsal, UI/security/performance gates. This task stops before commit/push.
+### Development Swagger and demo dataset
+
+`pnpm build` also builds local Swagger files. Run the API and open [Swagger](http://localhost:5080/swagger/). `Authorize` accepts an application JWT (without the `Bearer` prefix); reload clears it. Never paste a Neon URI/password there. Try it out calls real APIs: writes must target reserved demo records. No online validator, CDN or token persistence; Production does not expose this UI. Static `pnpm dev` alone cannot host Swagger/API.
+
+Shared Neon now contains the original records plus 24 seeded demo assets across all 8 types/4 departments, and one separately created UI-smoke asset. No fake assignment/maintenance data was added. Demo login emails:
+
+- Admin IT: `admin.dev@itasset.test` (existing private bootstrap).
+- System Manager: `manager.demo@itasset.test`.
+- Technical Support: `support.demo@itasset.test`.
+
+Passwords are private, outside Git: `%LOCALAPPDATA%/ItAssetManagement/development-bootstrap.json` and `development-demo-accounts.json`. Read them locally, never post them in chat/screenshots. A teammate's newly generated file does **not** reset an existing shared account's password; obtain existing login credentials by an agreed private handoff.
+
+Explicit **Development-only**, idempotent demo seed (already executed; not required on every startup):
+
+```powershell
+$taskDemoCredentials = Join-Path $env:LOCALAPPDATA 'ItAssetManagement/development-demo-accounts.json'
+dotnet run --project src/ItAssetManagement.Api -- --seed-m1-demo "--demo-credentials-path=$taskDemoCredentials"
+```
+
+The path must be absolute and outside the repository. The CLI creates a private bootstrap file if absent; it never overwrites one or prints passwords. Existing users, roles, passwords, profiles, archived assets and demo edits remain unchanged. Unexpected existing role assignments fail closed; seed does not grant extra access. Back up the private file safely; do not rerun setup/migrations or reset shared Neon for a demo.
+
+See [Week 3](docs/weekly/week-03.md) and [96-task evidence](docs/week-02-03-completion.md). Technical deliverables are ready for independent review; Thiện/Mentor review, joint rehearsal, formal M1 acceptance and unresolved credential/least-privilege gates remain **PENDING**. Milestone **10/10/2026** unchanged. That Week 2–3 follow-up stopped before commit/push and Week 4; the separately approved prerequisite below does not open Assignment workflow or close those gates.
+
+### User Lookup prerequisite
+
+`GET /api/v1/users/lookup` is ready for the future assignment picker. Existing three role accounts have `users.lookup`; current shared data contains those three active accounts, not a real employee directory. Use Development Swagger `/swagger/` with an application JWT; supported queries/defaults and exact fields at [handoff](docs/user-lookup-handoff.md). No new UI or user-create endpoint; creating real recipients/account administration remains PLANNED.
+
+The explicit catalog seed was run once (1 permission +3 links) then repeated (0 added); normal startup requires neither seed nor migration. Current full regression **59 unit +48 integration +40 Node PASS**, 17 preservation/documentation checks PASS. Secret scan remains FAIL for the existing owner credential; this changeset does not modify or add connection credentials.
+
+**Publication handoff — 03/10/2026:** user subsequently requested push if tests pass. Pre-push Release build, full 147 tests, 17 documentation/schema checks, 23 JS/27 boundary checks and live/ready/Swagger/OpenAPI HTTP 200 verified again. Target `origin/main`, no force-push; prior implementation reports retain their dated no-commit snapshots. Thiện should pull `main` to review/continue. Publication does not close independent review, M1 acceptance or the existing credential/security gate. Current repeat .NET TRX files are local ignored `artifacts/test-results/publication-final/unit.trx` and `integration.trx`.

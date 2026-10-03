@@ -5,6 +5,8 @@ import { stat, readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { buildFrontend, frontendOutput, projectRoot } from '../scripts/frontend-build.mjs';
 import { createStaticServer, contentSecurityPolicy } from '../scripts/frontend-server.mjs';
+import { swaggerOutput } from '../scripts/swagger-build.mjs';
+import vm from 'node:vm';
 
 let server;
 let origin;
@@ -42,6 +44,34 @@ test('build creates local CSS, six font assets and a font license', async () => 
   }
   assert.match(await readFile(path.join(frontendOutput, 'assets', 'fonts', 'OFL.txt'), 'utf8'), /SIL OPEN FONT LICENSE/iu);
   await assert.rejects(stat(path.join(frontendOutput, 'css', 'input.css')), { code: 'ENOENT' });
+});
+
+test('Swagger distribution is built locally outside the application/static-preview output', async () => {
+  for (const name of ['index.html', 'init.js', 'site.css', 'swagger-ui-bundle.js', 'swagger-ui.css', 'LICENSE']) {
+    assert((await stat(path.join(swaggerOutput, name))).size > 0);
+  }
+  assert.equal((await rawRequest('/swagger/index.html')).status, 404);
+  const html = await readFile(path.join(swaggerOutput, 'index.html'), 'utf8');
+  assert(!/<script(?![^>]*\bsrc=)[^>]*>/iu.test(html));
+  for (const [, reference] of html.matchAll(/\b(?:src|href)=["']([^"']+)["']/gu)) {
+    if (reference === '/') continue;
+    assert(!/^(?:https?:)?\/\//u.test(reference));
+    assert((await stat(path.resolve(swaggerOutput, reference))).isFile());
+  }
+});
+
+test('Swagger does not persist tokens or validate against remote services and rejects external targets', async () => {
+  let config;
+  const bundle = value => { config = value; };
+  bundle.presets = { apis: {} };
+  const window = { SwaggerUIBundle: bundle, location: { origin: 'http://localhost:5080' } };
+  vm.runInNewContext(await readFile(path.join(swaggerOutput, 'init.js'), 'utf8'), { window, URL });
+  assert.equal(config.persistAuthorization, false);
+  assert.equal(config.queryConfigEnabled, false);
+  assert.equal(config.validatorUrl, null);
+  assert.equal(config.url, '/openapi/v1.json');
+  assert.equal(config.requestInterceptor({ url: '/api/v1/assets' }).url, '/api/v1/assets');
+  assert.throws(() => config.requestInterceptor({ url: 'https://example.test/api' }), /cùng origin/u);
 });
 
 test('entry point and query-string demo navigation are served with strict CSP', async () => {

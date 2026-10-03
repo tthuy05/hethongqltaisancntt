@@ -218,3 +218,13 @@ User requested runtime/seed/Auth/JWT/master/Asset/tests and real UI now. Earlier
 | D6 acceptance/review/publication | PENDING; no commit/push; 10/10/2026 unchanged; Week 4–7 PLANNED |
 
 DefaultConnection comes from repository Development JSON per user instruction; no per-machine DB secret required, but publication exposes owner credential. Private dev-login password remains outside Git. Existing isolated DB reused with retained unique fixtures and explicit test opt-in; no new DB/migration/reset. [Exact results/runbook/files](../m1-backend-handoff.md).
+
+## Technical completion follow-up — 03/10/2026
+
+Original rows remain the baseline schedule (05–10/10), not a claim those future dates occurred. M1 baseline now published/fast-forward merged into main at `2c34671`; follow-up below UNCOMMITTED / UNPUSHED. Earlier addenda's no-commit/Swagger-PLANNED statements are historical snapshots superseded here.
+
+- D1 health/OpenAPI/Swagger/UI packaging verified: local interactive Swagger, Bearer metadata, health Try it out 200, Production disabled.
+- D2 seed now includes actual Admin/Manager/Support demo access, 24 varied assets, preserved existing records and zero additions on second run. Private passwords outside Git, no new schema/migration.
+- Master D1/D2 unit cases filled (14 new); current 44 unit + 39 integration/40 Node PASS. Existing isolated DB only, no reset/drop/truncate. Source/artifact checks and actual commands in [96-task matrix](../week-02-03-completion.md).
+- D5/D6 technical manual browser flow verified: create/detail/Manager edit/search/filter/page, 400/401/409, Support denial/cost hiding and 8 screens × 320/768/1280. Backend 403 separately verified through isolated HTTP tests. Not a substitute for independent Thiện review, joint rehearsal or Mentor demo.
+- Formal 10/10/2026 acceptance, reviewed PR integration, security credential/least-privilege remediation and human review PENDING. No task falsely attributed to Thiện as completed work; original owners/estimates unchanged. Week 4–7 remain PLANNED.

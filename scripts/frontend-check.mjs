@@ -17,10 +17,11 @@ async function walk(directory) {
 
 async function checkFrontend() {
   const sourceFiles = await walk(frontendSource);
+  const swaggerFiles = await walk(path.join(projectRoot, 'frontend', 'swagger'));
   const toolingFiles = (await walk(path.join(projectRoot, 'scripts'))).filter((file) => file.endsWith('.mjs'));
   let syntaxChecks = 0;
   let contentChecks = 0;
-  for (const file of [...sourceFiles, ...toolingFiles]) {
+  for (const file of [...sourceFiles, ...swaggerFiles, ...toolingFiles]) {
     if (/\.(?:js|mjs)$/u.test(file)) {
       const result = spawnSync(process.execPath, ['--check', file], { encoding: 'utf8', windowsHide: true });
       assert.equal(result.status, 0, `JavaScript syntax failed for ${path.relative(projectRoot, file)}:\n${result.stderr}`);
@@ -36,7 +37,10 @@ async function checkFrontend() {
         assert(/\bsrc\s*=\s*["'][^"']+["']/iu.test(script), `Inline scripts are not allowed by CSP: ${file}`);
         assert(!/\bsrc\s*=\s*["'](?:https?:)?\/\//iu.test(script), `Runtime scripts must be self-hosted: ${file}`);
         const source = script.match(/\bsrc\s*=\s*["']([^"']+)["']/iu)[1];
-        assert((await stat(path.resolve(path.dirname(file), source))).isFile(), `Script entry point does not exist: ${source}`);
+        const resolved = swaggerFiles.includes(file) && source === './swagger-ui-bundle.js'
+          ? path.join(projectRoot, 'node_modules', 'swagger-ui-dist', 'swagger-ui-bundle.js')
+          : path.resolve(path.dirname(file), source);
+        assert((await stat(resolved)).isFile(), `Script entry point does not exist: ${source}`);
       }
       assert(!/<link\b[^>]*href\s*=\s*["'](?:https?:)?\/\//iu.test(content), `Fonts and CSS must be self-hosted: ${file}`);
     }

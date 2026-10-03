@@ -197,7 +197,8 @@ public sealed class MvpApiTests(MvpFixture fixture)
     {
         await using var scope = fixture.Factory.Services.CreateAsyncScope(); var sp = scope.ServiceProvider;
         var result = await sp.GetRequiredService<DevelopmentSeed>().RunAsync(new(MvpFixture.AdminEmail, MvpFixture.Password));
-        Assert.Equal(0, result.Added); Assert.Equal(3, result.Roles); Assert.Equal(31, result.RolePermissions);
+        Assert.Equal(0, result.Added); Assert.Equal(3, result.Roles);
+        Assert.Equal(Permissions.All.Length + Permissions.Read.Length + Permissions.Operate.Length + Permissions.Read.Length, result.RolePermissions);
         var db = sp.GetRequiredService<AppDbContext>(); var code = fixture.Prefix + "Unaudited";
         await Assert.ThrowsAsync<InvalidOperationException>(() => sp.GetRequiredService<IUnitOfWork>().RunAsync(async () =>
         { db.Add(new Department { Code = code, Name = "Must rollback" }); await db.SaveChangesAsync(); return true; }));

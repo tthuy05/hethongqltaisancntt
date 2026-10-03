@@ -186,7 +186,23 @@ Screenshot chỉ được chụp sau lần chạy thật và phải hiển thị
 
 ## 10. Giới hạn hiện tại
 
-- Chưa có code nên chưa có coverage percentage, benchmark, test count hoặc pass result.
+- M1 đã có code/test; current counts/evidence ở [two-week completion report](week-02-03-completion.md). Chưa đo coverage percentage/benchmark; future workflows vẫn PLANNED.
 - Dataset/load chuẩn và performance threshold cuối cùng cần xác nhận trước phép đo Week 6–7.
 - Cấu hình CI/hosting chưa được chọn; pipeline vẫn **PLANNED**.
 - Mọi kết quả tương lai phải dùng `PLANNED`, `IMPLEMENTED — NOT VERIFIED` hoặc `VERIFIED` đúng bằng chứng.
+
+## 11. Week 2–3 verification addendum — 03/10/2026
+
+Current **44 unit + 39 integration = 83 .NET PASS**, **40 Node PASS**, 0 FAIL/SKIP with `ITAM_RUN_NEON_TESTS=1`; no coverage percentage inferred. 39 integration includes 10 offline host tests and 29 live cases on the existing isolated DB, not shared development. Added fake-repository master rule tests do not establish real PostgreSQL integrity; real cycle/FK/uniqueness/transaction/role/concurrency remain separately tested.
+
+Demo seed tests assert idempotence, unchanged existing passwords/profile/assets/versions, valid status histories, safe audit and rollback for invalid private bootstrap. Retain previous failed test artifact: an initial test assertion accidentally concatenated jsonb in SQL; fixed to concatenate in memory, then both seed tests/full suite PASS. Do not conceal this intermediate failure. Keep unit and integration TRX files separate to avoid same-name overwrite.
+
+Manual shared-Neon browser evidence: full Admin create→detail, Manager edit, case-insensitive search, status filter, pagination, UI 400/401/409 and Support client denial/cost hiding. Actual server 403 is independently asserted by isolated HTTP tests, not inferred from hiding a button. 8 screens × 320/768/1280 measured for document overflow; screenshots retained locally. This is a scoped smoke, not full WCAG/cross-browser/load/penetration certification. Swagger health Try it out 200 + CSP unchanged; Node tests cover local distribution/config, host tests cover bearer metadata/Production/disabled UI.
+
+Formal review, joint rehearsal/Mentor demo, production deployment/least privilege/credential remediation PENDING. Reuse InitialM1 clean-apply historical evidence; do not manufacture a new clean database or reset shared data just to repeat it. Commands, results and task mapping: [completion report](week-02-03-completion.md).
+
+## 12. Scoped User Lookup verification — 03/10/2026
+
+Current **59 unit +48 integration =107 .NET PASS**, **40 Node PASS**, 0 FAIL/SKIP with opt-in. Added 15 unit +9 API tests: 2 offline host checks (401 without DB, OpenAPI exact camel-case query/minimal response/Bearer/errors), 7 real existing-isolated-Neon tests (three roles, active/minimal fields, department/null department/paging/stable sort, literal wildcard/backslash/SQL-like input, bounded/unknown/duplicate/private-field query validation, immediate permission disable→403 with finally restore, caller disable→401, read-only lookup/no user-admin endpoints/no model or migration changes). Fixture writes audited/namespaced, opt-in only; no shared-dev automated mutation/reset/new database.
+
+Initial focused integration run exposed incorrect generated query casing and an EF positional-record projection translation failure. Fix explicit camel-case query bindings and member-initializer projection; retain initial failed TRX and separate successful recheck/final regression TRX. In-memory unit projection is not proof of SQL translation. [Exact totals/commands/limitations](user-lookup-handoff.md). Prior Week 2–3 counts above are historical snapshots; human/credential/production gates remain PENDING.

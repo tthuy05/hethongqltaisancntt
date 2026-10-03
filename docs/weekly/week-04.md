@@ -183,3 +183,9 @@
 **Dependency:** merged build Thủy. **Fallback Task:** run isolated module tests, báo blocker integration. **Reviewer:** Thủy.
 
 **Cuối ngày — Sync / Integration:** chốt M2 pass/fail, Git checkpoint, docs/status; không nhét Software/License vào Thứ 7; DbContext/migrations/Program chỉ Thủy sửa.
+
+## Early prerequisite addendum — 03/10/2026
+
+Người dùng duyệt riêng **W4-THUY-D1-03 / EP-004 User Lookup** trước workflow cấp phát. API minimal active-only đã implement và kiểm thử; [contract/evidence/handoff](../user-lookup-handoff.md). Original task rows/owners/estimates/dates/statuses above remain the planning baseline; this addendum records actual implementation, not independent Thiện review.
+
+Chỉ có lookup service/controller, permission catalog/explicit seed và test/docs. W4-THUY-D1-01/02 migration, Assignment/Maintenance/Audit-read APIs/UI và user administration vẫn **PLANNED**. Không tự đóng M1 hoặc đưa toàn Week 4 sang DONE. Thiện có thể dùng lookup contract khi chuẩn bị assignment dropdown, nhưng workflow phải tự kiểm active user/reference/permission trong transaction.

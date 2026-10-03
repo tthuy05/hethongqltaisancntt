@@ -170,3 +170,11 @@ Custom expression indexes/triggers are outside EF snapshot, so snapshot consiste
 - Roadmap/owners/estimates/milestone 10/10/2026 preserved; addenda distinguish early implementation from independent review/rehearsal/formal M1 acceptance. No Week 4–7/commit/push.
 
 Actual check totals, artifact paths, current row counts and Git manifest: [M1 handoff](m1-backend-handoff.md). Historical 21/24 docs and 25/37 foundation evidence kept separate, not relabeled as current tests.
+
+## Week 2–3 completion consistency addendum — 03/10/2026
+
+Read current [96-task evidence](week-02-03-completion.md) alongside unchanged requirements→use cases→business rules→logical 18-table/41-relationship schema/ERD→M1 physical 10-table/19-FK schema→API→permissions→UI→roadmap. No endpoint/DTO/entity/migration change; local Swagger documents existing Bearer policies. Added demo records have initial history and safe audit, no nonexistent assignment/maintenance histories.
+
+Original 96 task rows/owners/estimates retained; 30 Week 2 Thủy deliverables remain DOCUMENTED — REVIEW PENDING. Implementation done under user authorization is not attributed as Thiện's independent work/review. Each task now has one evidence row, with human-only gates explicitly pending. Milestone **10/10/2026** unchanged, Week 4–7 not opened. Main M1 publication `2c34671` is complete; follow-up changes still UNCOMMITTED / UNPUSHED.
+
+Current checks/tests/scoped browser results recorded separately from historical 21/24 documentation and 25/37 foundation evidence. Known credential scan FAIL retained as unresolved, not transformed to PASS. No new clean database or repeated shared migration/reset claimed.

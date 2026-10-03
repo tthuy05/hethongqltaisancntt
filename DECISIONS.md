@@ -244,3 +244,31 @@ Exact files, run/check commands, reuse rationale và live-integration handoff: [
 **Scope/impact:** Existing Auth/master/Asset endpoints and 8 real UI screens. EP-026 PUT kept despite pasted task mentioning PATCH metadata; no contract/schema redesign. No refresh/user-administration/Week 4–7 workflows. Owner DDL bypass remains possible, no tamper-proof claim. Future workflow tables require active-state queries under parent row lock before replacing fail-closed presence guard.
 
 **Evidence:** [M1 handoff](docs/m1-backend-handoff.md). Previous 30 Week 2 tasks/18 tables/41 relationships/21 and 24 doc checks/25 and 37 setup results preserved as historical evidence. No commit/push.
+
+## ADR-024 - Complete Development Swagger and additive demo evidence
+
+**Date:** 2026-10-03. **Status:** IMPLEMENTED / TESTED — independent review PENDING.
+
+**Context:** M1 already published/merged on main at `2c34671`. User approved finishing the missing technical work of Week 2–3, not Week 4 or a schema redesign. Interactive Swagger/demo role data/master unit evidence were missing; 96 baseline task rows/owners and Week 2 history must remain intact.
+
+**Decision:** Build pinned local `swagger-ui-dist` **5.33.1** through existing Node tooling into ignored output, serve Development-only with existing strict CSP, document Bearer and disable token persistence/online validation/external targets. Add an explicit idempotent audited demo CLI with private generated password file outside repo. Keep existing users/grants/passwords/edited or archived demo records; unexpected existing access fails closed. No fake assignment/maintenance workflow. Use individual task evidence matrix; human review/acceptance cannot be completed by agent claims.
+
+**Reason:** Reuse existing OpenAPI/HTML architecture and shared Neon safely without new runtime framework/migrations/reset. [Official Swagger installation](https://github.com/swagger-api/swagger-ui/blob/main/docs/usage/installation.md) and [configuration](https://swagger.io/docs/open-source-tools/swagger-ui/usage/configuration/) support local distribution/no persisted authorization; [ASP.NET OpenAPI transformer guidance](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/openapi/customize-openapi?view=aspnetcore-10.0) supports Bearer metadata. Version checked from the package registry, not guessed; lock file pinned.
+
+**Consequences:** Run `pnpm build` before API Swagger; static preview does not host it. Try it out writes real data, reserved demo records only. Private bootstrap is local plaintext, not a team password-sync mechanism. InitialM1/full 18/41/API DTOs unchanged. Credential/least-privilege exception still unresolved; no security-clean/production-ready claim. Historical ADRs remain dated snapshots; current matrix distinguishes technical evidence from sign-off. No new commit/push in this follow-up.
+
+**Evidence:** [Week 2–3 completion report](docs/week-02-03-completion.md).
+
+## ADR-025 - Minimal active User Lookup before Assignment workflow
+
+**Date:** 2026-10-03. **Status:** IMPLEMENTED / TESTED — independent review PENDING.
+
+**Context:** User approved the suggested Thủy prerequisite EP-004 / W4-THUY-D1-03 after technical Week 2–3 completion. Existing User/Department/Permission schema already supports it. This approval is not blanket authorization for Week 4 migrations/workflows or publication.
+
+**Decision:** Read-only `GET /api/v1/users/lookup`, gated by DB-backed `users.lookup`, seeded to the three existing roles per the design permission matrix. Every role gets the same allowlisted `{ id, displayName, departmentId }` projection, active users only across departments. The contract does not mandate same-department restriction; do not invent it. No email/phone/username/employee code/security/role fields, and keyword searches only displayName so hidden contacts cannot be inferred by query. Status omitted or `Active`; `Inactive` rejected. Stable displayName/id sorting, bounded paging and department filter; unknown/duplicate/sensitive query parameters rejected.
+
+**Consequences:** This is a workflow picker, not an account directory/admin endpoint. Login locks do not change the baseline IsActive recipient rule. A user with no department can appear with null departmentId. It does not certify technician eligibility; future Assignment/Maintenance services must revalidate active user, references, role/workflow eligibility and permissions in their write transaction. No guarantee that a listed user remains assignable between lookup and write. No new authorization bypass, hardcoded role fallback or persistent token.
+
+**Database/Migration impact:** NONE to schema, InitialM1 or logical 18 tables / 41 relationships. Add one permission and its three standard role links only through explicit existing audited/idempotent development seed; ordinary startup/lookup never seed or migrate. Existing seed can restore missing baseline grants, so use it only for approved bootstrap/catalog updates, not routine startup/access-management overrides. No reset of existing profiles/passwords/assets.
+
+**Evidence:** [User Lookup contract and handoff](docs/user-lookup-handoff.md). Existing 30 Thủy Week 2 tasks and 96-task Week 2–3 evidence retained. Independent review/M1 acceptance/owner-credential remediation still pending; no commit/push.

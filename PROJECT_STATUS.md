@@ -1,19 +1,21 @@
 # Project Status
 
-> Cập nhật **03/10/2026** (Asia/Saigon). M1 runtime/seed/Auth/JWT/masters/Asset/tests/UI API đã triển khai; Week 2 evidence và review gate được giữ. Người dùng yêu cầu publication M1 riêng sau bàn giao; không Week 4–7.
+> Cập nhật **03/10/2026** (Asia/Saigon). M1 runtime/seed/Auth/JWT/masters/Asset/tests/UI API đã triển khai; Week 2 evidence và review gate được giữ. Bổ sung riêng EP-004 User Lookup theo xác nhận mới của người dùng; chưa mở workflow Week 4–7.
 
 ## Current Week / Phase / Branch
 
 | Hạng mục | Trạng thái |
 |---|---|
 | Current Week | Week 2 |
-| Current Phase | Week 2 documentation REVIEW PENDING + user-authorized M1 vertical slice IMPLEMENTED / VERIFIED / READY FOR REVIEW |
+| Current Phase | Week 2 documentation REVIEW PENDING + M1 vertical slice + scoped EP-004 prerequisite IMPLEMENTED / VERIFIED / READY FOR REVIEW; Assignment workflow PLANNED |
 | Technical Documentation | COMPLETED phần Thủy / UNDER REVIEW bởi Thiện/Mentor; không phải implementation hoàn tất |
-| Current Branch | M1 work on `codex/neon-connection-foundation` from `18f9f9c`; user requested publication and merge into `main` on 03/10; see Git branch/log/remote for actual outcome |
+| Current Branch | `main`; M1 baseline `2c34671` preserved. User authorized push of verified Demo/Swagger/test/evidence +User Lookup after 147 tests PASS; current Git history/remote identify the publication commit |
 | Remote | `origin` đúng repository chính thức; published baseline frontend/follow-up được giữ, không reset hoặc đổi remote |
 | Next phase gate | M1 10/10/2026: code/API/DB/UI thật đã có; independent review, rehearsal và security/production gates PENDING |
 
 ## Completed Modules
+
+**Scoped prerequisite EP-004 / W4-THUY-D1-03:** User Lookup implemented, 15 unit + 9 API checks PASS (2 offline host / 7 isolated Neon). Active-only minimal projection, per-request permission, literal display-name search, department filter, stable paging/sort; no user administration/Assignment UI or workflow. [Current contract/evidence](docs/user-lookup-handoff.md); independent Thiện review PENDING. Existing Week 2–3 report/counts are dated snapshots, not invalidated by this addition.
 
 **M1 implemented / verified:** Auth/login/me, JWT, DB-backed policies, Department/Asset Type reads/writes/status, Asset create/list/detail/PUT/status/archive/history, search/filter/page/sort, audited persistence/concurrency và idempotent seed. 8 UI screens dùng API thật mặc định; explicit mock vẫn giữ. [M1 report](docs/m1-backend-handoff.md) ghi actual evidence/limitations. 30 nhiệm vụ Thủy Week 2 và [handoff](docs/week-02-thuy-handoff.md) vẫn DOCUMENTED — REVIEW PENDING; previous **21 PASS**, platform **24 PASS**, foundation **25 tests / 37 checks** giữ nguyên như historical evidence.
 
@@ -28,7 +30,7 @@
 
 - Review của người dùng/Mentor đối với tài liệu và OQ-001–OQ-013.
 - User đã cho phép rõ M1 backend/UI implementation; independent Thiện/Mentor review vẫn PENDING.
-- Least-privilege DB roles, production JWT key/deployment, interactive Swagger UI, full accessibility/load/security review và rehearsal **PLANNED**; Week 4–7 modules **PLANNED**.
+- Least-privilege DB roles, production JWT key/deployment, full accessibility/load/security review và joint rehearsal **PLANNED**; interactive Swagger UI now IMPLEMENTED / VERIFIED; Week 4–7 modules **PLANNED**.
 
 ## Database / Migration / Build / Test Status
 
@@ -48,14 +50,14 @@
 | Asset CRUD | **IMPLEMENTED / VERIFIED**; PUT metadata per EP-026, archive via DELETE + strong If-Match, real search/filter/page/sort |
 | MVP Milestone | **10/10/2026** — giữ nguyên |
 | Project skeleton / API | **IMPLEMENTED**: layered M1; audited unit of work enables SaveChanges, no startup seed/migration |
-| .NET build / xUnit / DB integration tests | Current run/results at [M1 report](docs/m1-backend-handoff.md); 30 unit + 36 HTTP/live integration passed during implementation, Release final gate recorded there |
+| .NET build / xUnit / DB integration tests | 59 unit + 48 integration (12 offline host + 36 isolated Neon) PASS / 0 FAIL / 0 SKIP with opt-in; [current evidence](docs/user-lookup-handoff.md), [previous 44/39 snapshot](docs/week-02-03-completion.md) retained |
 | Frontend build | **PASS** — local Tailwind CSS + Inter fonts + ES modules trong `artifacts/frontend/` |
-| Frontend automated tests | **38 PASS / 0 FAIL** — Node mock/service contract + build/static server tests, không phải DB integration |
-| Frontend source checks | **21 JS syntax PASS / 23 source checks PASS** including new manual smoke script; not security/accessibility certification |
-| API runtime/OpenAPI | Health/readiness/OpenAPI + M1 controllers VERIFIED; Development ready 200; interactive Swagger UI PLANNED |
+| Frontend automated tests | **40 PASS / 0 FAIL** — Node mock/service contract + build/static server/Swagger tests, không phải DB integration |
+| Frontend source checks | Includes authored Swagger sources/tooling; exact current totals at [completion evidence](docs/week-02-03-completion.md), not security/accessibility certification |
+| API runtime/OpenAPI | Health/readiness/OpenAPI + M1 controllers VERIFIED; interactive local Swagger `/swagger/` VERIFIED, health Try it out 200; disabled in Production |
 | Web UI/HTML + Tailwind 3 | **REAL API DEFAULT** on localhost:5080; 8 screens, built assets Development-only; explicit localhost mock retained |
 | Frontend browser evidence | Mock flows PASS; responsive 320/375/768/1280/1440px trước handoff; follow-up menu tại 390×844 và desktop PASS, ESC trả focus về Menu; local screenshots tại ignored `artifacts/ui-evidence/` |
-| Real M1 demo evidence | Real login/JWT/master/Asset/persistence + restart + browser create/edit/search verified; formal Mentor demo/production deployment **PLANNED** |
+| Real M1 demo evidence | Three role logins, 24 demo assets + UI-smoke asset; create/edit/search/filter/page/negative UI checks and 8 screens × 3 widths verified; formal Mentor demo/production deployment **PLANNED** |
 | Mermaid ERD | Parser 11.17.2 kiểm lại 01/10 thành công; 18 entity/41 FK/41 relationships; PNG/SVG render chưa xác nhận |
 | Git commit/push | Baseline `18f9f9c` preserved; user requested M1 commit/push and merge into `main` after handoff; actual Git log/remote are authoritative, independent review remains PENDING |
 
@@ -66,13 +68,13 @@
 - ERD parser **VERIFIED** ở mức cú pháp; hình render PNG/SVG **NOT VERIFIED**.
 - Password/JWT/lockout values, serial policy, maintenance ownership, replacement thresholds/price, alert window, budget year/currency, key management, audit retention, import limits, deployment và ticket queue policy cần xác nhận ở [Open Questions](docs/open-questions.md).
 - Runtime Development config contains real owner credential by user instruction: exact-secret scanner finding is expected and UNRESOLVED, not a clean security gate. Rotation/least privilege strongly recommended; no production approval.
-- Frontend 38 tests PASS; ChangeStatusRequest/auth/decimal/null/PUT/If-Match mapping tested live. Broad performance/accessibility/security review remains PLANNED; Browserslist warning nonblocking.
+- Frontend 40 tests PASS; ChangeStatusRequest/auth/decimal/null/PUT/If-Match mapping tested live. Broad performance/accessibility/security review remains PLANNED; Browserslist warning nonblocking.
 
 ## Technical Debt
 
 - Mock is explicit Development-only and not production packaged. Full accessibility/load review, JWT production lifecycle and deployment still PLANNED.
 - Runtime owner access is an explicit security exception; least-privilege runtime role/credential rotation unresolved. Application transaction/audit/token guards are implemented but cannot prevent owner DDL bypass.
-- Mermaid PNG/SVG chưa VERIFIED; M1 OpenAPI JSON exists, interactive Swagger UI PLANNED. Adding workflow tables must replace fail-closed active-workflow guard before enabling archive/status for those modules.
+- Mermaid PNG/SVG chưa VERIFIED; M1 OpenAPI/Swagger UI now VERIFIED. Adding workflow tables must replace fail-closed active-workflow guard before enabling archive/status for those modules. History UI panels remain PLANNED.
 
 ## Next Tasks
 
@@ -99,3 +101,9 @@
 | 03/10/2026 | Người dùng yêu cầu commit/push phần M1 hiện có và bổ sung yêu cầu merge vào main trước khi hoàn thiện thêm nhiệm vụ hai tuần đầu. | Publish `codex/neon-connection-foundation`, fast-forward main when possible, no force-push; remote baseline 18f9f9c unchanged at initial fetch. 30 unit/38 frontend tests, 21 JS syntax/23 source checks/6 schema checks PASS. Exact-secret scan remains FAIL because of the user-directed Development owner credential; no additional seed/migration/module or fabricated review. Inspect Git log/remote for publication outcome. |
 
 File này cần cập nhật sau mỗi ngày làm việc tiếp theo bằng kết quả thực tế, không bằng kết quả dự kiến.
+
+## Week 2–3 technical completion follow-up — 03/10/2026
+
+**Subsequent publication request:** user approved commit/push after successful recheck. Release build 0 warnings/errors; 59 unit +48 integration +40 Node PASS /0 FAIL /0 SKIP; 17 doc/schema checks and live/ready/Swagger/OpenAPI HTTP 200 PASS. .NET pre-push artifacts at ignored `artifacts/test-results/publication-final/`. Publish only the reviewed 40-file changeset to `origin/main`, without force-push; no DB/schema/business changes in this publication task. Existing owner config untouched; exact-secret scan still FAIL 1 acknowledged finding. Prior UNCOMMITTED/UNPUSHED notes below describe their implementation-end snapshot. Independent review/formal 10/10/2026/security gates remain PENDING; use Git history/remote for actual commit/push state.
+
+M1 publication completed at `2c34671` on main; no new commit/push in this follow-up. [96-task matrix and current results](docs/week-02-03-completion.md) map each original task to artifacts and remaining human gates without changing original IDs/owners/status lines. Preserve 30 Thủy Week 2 deliverables, 18 tables / 41 relationships and historical checks. Added Development-only local Swagger, audited idempotent role/demo seed and missing master unit tests; fixed stale no-Authentication UI message. InitialM1/10 physical tables/19 FKs unchanged. Technical evidence ready, independent Thiện/Mentor review and formal 10/10/2026 acceptance **PENDING**; no blanket 96/96 DONE, no Week 4 implementation. Owner credential in Git remains an acknowledged unresolved security finding.

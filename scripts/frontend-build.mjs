@@ -2,6 +2,7 @@ import { copyFile, mkdir, readdir, readFile, lstat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
+import { buildSwaggerUi } from './swagger-build.mjs';
 
 export const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const frontendSource = path.join(projectRoot, 'src', 'ItAssetManagement.Api', 'wwwroot');
@@ -89,6 +90,7 @@ export async function buildFrontend() {
   ]);
   console.log(`Frontend build ready: ${frontendOutput}`);
   console.log('Local CSS and Inter fonts; API mode by default, explicit localhost demo retained. Build does not contact a database.');
+  await buildSwaggerUi();
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

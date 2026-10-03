@@ -1,5 +1,7 @@
 # M1 backend / real UI handoff — 03/10/2026
 
+**Later technical-completion addendum:** M1 baseline published/merged main at `2c34671`. Subsequent user-authorized demo/Swagger/master unit/UI evidence is documented in [Week 2–3 completion report](week-02-03-completion.md). A–K below remain the original implementation-end snapshot, including row/test/Git counts; they are not overwritten or relabeled. Week 2 evidence/schema/InitialM1 preserved; new follow-up uncommitted, independent review/formal acceptance pending.
+
 **Publication addendum — 03/10/2026:** user subsequently requested commit/push of this existing M1 changeset and explicitly added merge into `main` for Thiện to continue/review. Publish implementation branch `codex/neon-connection-foundation`, fast-forward main when possible, no force-push. Sections A–K, including UNCOMMITTED/UNPUSHED and exact status/stat below, preserve the implementation-end snapshot **before this publication request**, not the current remote state. Inspect Git log/remote for the actual publication outcome. No new seed/schema/module or fabricated independent approval; the real Development owner credential is explicitly included, so the security finding remains unresolved.
 
 Status: IMPLEMENTED / VERIFIED / READY FOR INDEPENDENT REVIEW. User-authorized continuation of the existing 54-file WIP; no reset, new DB, new migration, Week 4–7 feature, stage, commit or push.

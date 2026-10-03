@@ -224,3 +224,20 @@ M1 negative/concurrency/JWT/audit/DTO tests have run; results at [handoff](m1-ba
 - Chính sách privacy/retention cho IP, User-Agent, email, phone và audit.
 
 Các điểm mở không được tự suy rộng thành implementation trước khi kế hoạch được phê duyệt.
+
+## 17. Development Swagger/demo follow-up — 03/10/2026
+
+- Swagger files are self-hosted from pinned `swagger-ui-dist` in ignored `artifacts/swagger`, served only in Development. Production returns 404; Development can disable with `Swagger:Enabled=false`. Existing strict CSP/no-store/nosniff/frame/referrer policy unchanged; no `unsafe-inline`/`unsafe-eval` exception. OpenAPI Bearer metadata describes existing authorization, never grants access.
+- No online validator/query configuration, external origin or persistent authorization. Application JWT only in Swagger memory; reload/API restart requires re-login. Never submit a DB connection/password there. Browser smoke covers health Try it out without token; authenticated API/negative cases tested separately.
+- Explicit demo seed creates only approved demo roles/users/assets, not workflow/admin-access expansion. Uses hashed passwords and audited transaction/advisory locks; repeat preserves existing profiles/activity/locks/grants/passwords and edited/archived assets, fails closed for unexpected role grants. No startup seed/reset/migration.
+- Private `development-demo-accounts.json` is outside repo/web root and never printed/committed; it is plaintext local bootstrap protected by the user's profile permissions, **not encrypted storage**. Keep local ACL/access restricted and use private team handoff. Generated credentials on a second machine do not reset existing shared login passwords. No public password examples.
+- Three roles actually logged in; Support cost omitted and create route denied, Manager Asset edit allowed. This does not replace permission review or broader BOLA/security certification.
+- Existing published owner DefaultConnection exception (ADR-023) remains **UNRESOLVED**. Scanner FAIL is expected, not waived into PASS. Do not mark M1 security/production gate complete; rotation and runtime least privilege remain required remediation proposals, not performed in this task.
+
+[Evidence and remaining gates](week-02-03-completion.md).
+
+## 18. User Lookup security addendum — 03/10/2026
+
+EP-004 uses DB-backed `users.lookup` for Admin IT, System Manager and Technical Support; authorization/account/token-version checks run on every request, with an additional service permission guard. Active-only server filter and identical minimal ID/displayName/departmentId allowlist for all roles; no username/email/phone/hash/tokenVersion/roles/lock state or hidden-field search/sort. This narrow operational picker does not implement full user directory/admin access or technician eligibility. Cross-department minimum identity lookup is supported by the existing field-scope design; no implicit same-department restriction or financial access expansion.
+
+GET never writes audit/business rows or seeds. The explicit development catalog seed adds only the approved lookup permission/three role links when they are missing on the existing baseline. Do not run general bootstrap to undo intentional role revocation. Future workflow writes must revalidate active/eligible recipients and their references in transaction; lookup is not authorization to assign to any ID. Tests mutate permission/caller state only on existing isolated Neon, restore permission state in finally, never on shared development. [Contract and evidence](user-lookup-handoff.md). Owner credential exception remains **UNRESOLVED**, independent review/security gates PENDING.

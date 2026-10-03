@@ -1,5 +1,7 @@
 # Kiến trúc hệ thống
 
+**03/10/2026 scoped prerequisite:** EP-004 User Lookup follows the existing Controller → Application service → read-only repository → EF/Npgsql/Neon path. Three-field projection/filter/order/page stays in PostgreSQL; controller binds a strict query allowlist and existing DB-backed policy. No new layer/entity/DbContext mapping/migration or Assignment aggregate. [Contract/handoff](user-lookup-handoff.md); original full-project diagrams remain the design baseline.
+
 > **M1 backend/UI IMPLEMENTED 02–03/10/2026 theo yêu cầu mới:** Auth/JWT/policies, master/Asset services/repository/controllers, audited unit of work và real API-default frontend. [Current evidence](m1-backend-handoff.md). Week 2 independent review preserved; Week 4–7/production remain PLANNED.
 
 ## 1. Lựa chọn kiến trúc
@@ -338,3 +340,11 @@ index.html -> app.js/hash views -> reusable components + pages
 Mock auth có role/session demo, không xác thực account, không JWT/security boundary. State/credentials không persist; logout/revision guard ngăn response cũ khôi phục session. Mock responses redact cost theo permissions; server RBAC/BOLA/cost policy vẫn phải implement/test độc lập. List detail hydration tối đa một trang là bridge giữ Summary DTO hiện hữu, không thay database/API; review N+1 projection trước live integration. Dashboard mock counts được tính từ fixtures, replacement indicator ghi rõ minh họa; API mode để metric chưa có là PLANNED.
 
 Node >=22/pnpm build Tailwind CSS 3.4.19 và self-host @fontsource/inter 5.3.0; localhost GET/HEAD-only preview không có backend/Neon connection. Generated output ignored, không commit dependencies/secrets. Frontend Node tests không thay xUnit/DB integration. Exact implementation/checks/limitations tại [integration report](stitch-ui-integration.md). Production deployment/auth/API/DB integration đều **PLANNED**.
+
+## 16. Current M1 / Week 2–3 completion addendum — 03/10/2026
+
+Sections §13–15 retain foundation/mock-phase snapshots; current M1 has real controllers/Application services/validation/repository/audited unit-of-work/EF/Npgsql/Neon and API-default UI. No layer/framework or business API redesign. Local Development Swagger serves a separate ignored asset directory at `/swagger/` before endpoint routing; `pnpm build` generates frontend and Swagger distributions. Production packaging stays PLANNED and exposes neither distribution/OpenAPI diagnostics.
+
+Swagger has local external scripts/styles, existing strict CSP, same-origin request guard, Bearer metadata, no token persistence/CDN/online validator. Demo bootstrap is an explicit Development CLI service only, with private file outside repository; it reuses existing M1 entities/schema/audit transaction and cannot run at normal HTTP startup. No new DB/table/migration. Full design **18 tables / 41 relationships**, physical M1 **10 tables / 19 FKs** and InitialM1 preserved.
+
+Current 83 .NET/40 Node tests and live responsive/role/demo verification: [completion report](week-02-03-completion.md). Broad deployment/accessibility/load/least privilege and independent review/formal milestone acceptance remain PENDING.

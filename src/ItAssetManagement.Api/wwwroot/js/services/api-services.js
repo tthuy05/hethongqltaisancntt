@@ -28,7 +28,7 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
     return serialized ? `?${serialized}` : '';
   }
   async function request(path, { method = 'GET', body, headers = {}, publicRequest = false } = {}) {
-    if (!publicRequest && !currentSession()) throw new ServiceError(401, 'UNAUTHENTICATED', 'Vui lòng đăng nhập. Backend Authentication hiện chưa triển khai.');
+    if (!publicRequest && !currentSession()) throw new ServiceError(401, 'UNAUTHENTICATED', 'Phiên đăng nhập chưa có hoặc đã hết hạn. Vui lòng đăng nhập lại.');
     const revision = sessionRevision;
     if (!fetchImpl) throw new ServiceError(0, 'NETWORK_ERROR', 'Trình duyệt không hỗ trợ kết nối API.');
     let response;

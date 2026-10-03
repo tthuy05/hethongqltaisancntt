@@ -1,5 +1,40 @@
 # Changelog
 
+## 03/10/2026 — Xuất bản follow-up đã kiểm thử
+
+### Changed
+
+- User requested commit/push of the existing 40-file Demo/Swagger/User Lookup/test/documentation changeset after tests pass. Pre-push recheck: Release build 0 warnings/errors, 59 unit +48 integration +40 Node PASS, 17 docs/schema checks PASS, live/ready/Swagger/OpenAPI HTTP 200. Target `main`, no force-push; see Git history/remote for actual publication commit.
+- Preserve original phase/handoff/evidence snapshots and pending human/M1 gates. No new database/schema/migration/feature work; existing Development owner credential unchanged and secret finding still UNRESOLVED, not a clean security scan.
+
+## 03/10/2026 — Prerequisite User Lookup cho cấp phát
+
+### Added
+
+- EP-004 `GET /api/v1/users/lookup`: active-only ID/displayName/departmentId, `users.lookup` policy, server-side display-name search, department filter, stable sorting and pagination; no contact/security fields.
+- 15 unit + 9 API tests; full current regression **59 unit +48 integration +40 Node PASS**, no failure/skip with cloud opt-in. [Results and handoff](docs/user-lookup-handoff.md).
+
+### Changed
+
+- Register `users.lookup` in the existing permission catalog/read-role seed; explicit shared catalog update added 1 permission/3 role links, no new table, entity mapping, migration, user-admin or Assignment workflow. Scope approved separately after Week 2–3 completion; preserved old WIP/evidence, milestone and pending review gates. No commit/push in this task.
+
+## 03/10/2026 — Hoàn thiện phần kỹ thuật Week 2–3
+
+### Added
+
+- Self-hosted Development Swagger UI 5.33.1, Bearer metadata, no persisted authorization/online validator/CDN; real health Try it out 200, Production UI disabled.
+- Explicit audited/idempotent demo seed: 2 role accounts + 24 varied assets, private generated credentials outside Git, repeat adds zero and preserves old data. One separate UI-smoke asset created through real API.
+- 14 master-service unit cases, 2 isolated seed tests, OpenAPI security host test and 2 Swagger frontend tests. Current 83 .NET + 40 Node tests PASS; exact evidence/limitations at [96-task completion matrix](docs/week-02-03-completion.md).
+
+### Fixed
+
+- Expired/missing UI session no longer incorrectly reports Authentication as unimplemented.
+
+### Changed
+
+- Current status/runbook and Week 3 addendum distinguish published M1 baseline `2c34671` on main from this uncommitted follow-up. Preserve Week 2 evidence, 18/41 design and InitialM1; no schema/new DB/Week 4 work.
+- Independent review/joint rehearsal/formal 10/10/2026 acceptance PENDING. Existing owner credential security finding still unresolved; no new commit/push.
+
 ## 03/10/2026 — M1 backend and real UI integration
 
 Publication addendum: sau bàn giao, người dùng yêu cầu commit/push changeset M1 và bổ sung merge vào `main` để Thiện làm tiếp/review. Publish implementation branch `codex/neon-connection-foundation` and fast-forward main when possible, no force-push. Earlier no-commit/UNCOMMITTED statements are implementation snapshots; inspect Git log/remote for publication outcome. No additional DB/feature work or fabricated independent approval. Real Development owner credential remains included by the user's explicit decision; secret finding unresolved.

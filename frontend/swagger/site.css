@@ -1,0 +1,9 @@
+body { margin: 0; background: #fafafa; }
+.development-notice { padding: 1rem 1.5rem; background: #eaf2ff; font: 1rem/1.5 system-ui, sans-serif; }
+.development-notice a { display: inline-block; margin-right: 1rem; color: #16469b; }
+.development-notice p { margin: .5rem 0 0; }
+.swagger-ui .wrapper { padding: 0 1rem; }
+@media (max-width: 480px) {
+  .development-notice { padding: .75rem; }
+  .swagger-ui .opblock-summary-path { max-width: 100%; overflow-wrap: anywhere; }
+}
