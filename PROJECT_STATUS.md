@@ -1,84 +1,84 @@
 # Project Status
 
-> Cập nhật ngày **02/10/2026** (Asia/Saigon). Frontend mock được người dùng cho phép riêng; kế hoạch M1 và 36 ngày không đồng nghĩa backend/DB đã chạy.
+> Cập nhật **03/10/2026** (Asia/Saigon). M1 runtime/seed/Auth/JWT/masters/Asset/tests/UI API đã triển khai; Week 2 evidence và review gate được giữ. Người dùng yêu cầu publication M1 riêng sau bàn giao; không Week 4–7.
 
 ## Current Week / Phase / Branch
 
 | Hạng mục | Trạng thái |
 |---|---|
 | Current Week | Week 2 |
-| Current Phase | Week 2 documentation REVIEW PENDING + separately authorized Stitch frontend integration: IMPLEMENTED WITH MOCK DATA / READY FOR REVIEW |
+| Current Phase | Week 2 documentation REVIEW PENDING + user-authorized M1 vertical slice IMPLEMENTED / VERIFIED / READY FOR REVIEW |
 | Technical Documentation | COMPLETED phần Thủy / UNDER REVIEW bởi Thiện/Mentor; không phải implementation hoàn tất |
-| Current Branch | `main`; người dùng đã push frontend ở `cae3a31` (`push giao dien mock`); lượt kiểm tra còn dở đã hoàn tất, bổ sung publication được cho phép riêng; xem `git log -1` cho commit mới nhất |
-| Remote | `origin` đúng repository chính thức; fetch đầu lượt follow-up xác nhận HEAD/origin/main cùng cae3a31, 0 ahead / 0 behind, working tree sạch trước khi cập nhật tài liệu; kết quả push bổ sung xác minh bằng Git remote |
-| Next phase gate | M1 10/10/2026 là mục tiêu có UI/API/DB thật; Week 3 chỉ bắt đầu sau review/approval của người dùng |
+| Current Branch | M1 work on `codex/neon-connection-foundation` from `18f9f9c`; user requested publication and merge into `main` on 03/10; see Git branch/log/remote for actual outcome |
+| Remote | `origin` đúng repository chính thức; published baseline frontend/follow-up được giữ, không reset hoặc đổi remote |
+| Next phase gate | M1 10/10/2026: code/API/DB/UI thật đã có; independent review, rehearsal và security/production gates PENDING |
 
 ## Completed Modules
 
-**Chưa có module backend nào được implement.** Frontend có 8 màn hình chạy bằng mock services (Login/Dashboard/Asset List/Create/Edit/Detail/Department/Asset Type), không đồng nghĩa Auth/JWT/Asset API đã hoàn thành. [Stitch integration report](docs/stitch-ui-integration.md) ghi audit, file manifest và test/browser evidence. 30 nhiệm vụ tài liệu Tuần 2 của Thủy và evidence tại [bàn giao Thủy](docs/week-02-thuy-handoff.md) vẫn **DOCUMENTED — REVIEW PENDING**. Kế hoạch 36 ngày giữ ID/estimate/owner/status; chưa có independent sign-off hoặc approval toàn bộ Week 3. Previous documentation checks **21 PASS**, affected Neon checks **24 PASS** được giữ như bằng chứng lịch sử, không chạy lại hay gộp với frontend tests.
+**M1 implemented / verified:** Auth/login/me, JWT, DB-backed policies, Department/Asset Type reads/writes/status, Asset create/list/detail/PUT/status/archive/history, search/filter/page/sort, audited persistence/concurrency và idempotent seed. 8 UI screens dùng API thật mặc định; explicit mock vẫn giữ. [M1 report](docs/m1-backend-handoff.md) ghi actual evidence/limitations. 30 nhiệm vụ Thủy Week 2 và [handoff](docs/week-02-thuy-handoff.md) vẫn DOCUMENTED — REVIEW PENDING; previous **21 PASS**, platform **24 PASS**, foundation **25 tests / 37 checks** giữ nguyên như historical evidence.
 
 ## In Progress
 
 - Week 2: phần tài liệu Thủy sẵn review; còn phản biện độc lập của Thiện và review người dùng/Mentor.
 - Kế hoạch baseline 36 ngày Week 2–7 được giữ nguyên ID/estimate/ownership; 30 deliverable tài liệu Thủy Week 2 đã hoàn thành ở mức DOCUMENTED — REVIEW PENDING, không đặt lại thành PLANNED. Implementation tương lai và review chưa thực hiện vẫn **PLANNED**.
-- M1 ngày 10/10/2026: **PLANNED — NOT IMPLEMENTED / NOT VERIFIED**.
+- M1 ngày 10/10/2026: core implementation VERIFIED; formal milestone/demo/review acceptance **PENDING**, không tự đánh toàn bộ DONE.
 - Stitch frontend integration đã build/test/browser smoke; chờ review của người dùng/Thiện. Các future modules chỉ có placeholder PLANNED, không có dữ liệu nghiệp vụ thật.
 
 ## Pending
 
 - Review của người dùng/Mentor đối với tài liệu và OQ-001–OQ-013.
-- `APPROVED` rõ ràng trước Week 3.
-- Backend/DB/real API integration Week 3–7 theo [roadmap](docs/roadmap.md) vẫn **PLANNED**. Early mock UI không tự đánh dấu task M1 hay các module tương lai DONE.
+- User đã cho phép rõ M1 backend/UI implementation; independent Thiện/Mentor review vẫn PENDING.
+- Least-privilege DB roles, production JWT key/deployment, interactive Swagger UI, full accessibility/load/security review và rehearsal **PLANNED**; Week 4–7 modules **PLANNED**.
 
 ## Database / Migration / Build / Test Status
 
 | Hạng mục | Trạng thái thực tế |
 |---|---|
-| Database design | Schema Baseline V1: **18 tables / 41 relationships**, documentation COMPLETED / UNDER REVIEW; physical implementation PLANNED |
+| Database design | Schema Baseline V1 **18 tables / 41 relationships**, unchanged; physical M1 subset **10 tables / 19 FKs**, other 8 PLANNED |
 | Database Engine | PostgreSQL |
 | Cloud Provider / primary development DB | Neon; shared development cho Thủy và Thiện, không dùng local DB làm database development chính |
-| EF Core provider | `Npgsql.EntityFrameworkCore.PostgreSQL` — PLANNED; chưa chọn/cài phiên bản package |
-| NEON SETUP | **PLANNED** |
-| NEON CONNECTION | **NOT CONFIGURED** — chưa có credentials |
-| DATABASE CONNECTION | **NOT VERIFIED** — chưa thử kết nối Neon |
-| Physical DB / application schema | **NOT CREATED**; Neon project/branch/database thực tế chưa được cung cấp/kiểm chứng |
+| EF Core provider | Npgsql 10.0.3; EF Core/Relational/Design/tools 10.0.11; restored/pinned with lock files |
+| NEON SETUP | **M1 VERIFIED**; project created by user; Console project/branch identity/access inventory not independently inspected |
+| NEON CONNECTION | Runtime DefaultConnection CONFIGURED in repository Development JSON by explicit user decision; strict TLS, real read/write VERIFIED; secret publication risk accepted, not fixed |
+| DATABASE CONNECTION | **VERIFIED**: `neondb`, PostgreSQL `18.6 (4e955f5)`, UTF8 / C.UTF-8, VerifyFull TLS + required channel binding |
+| Physical DB / application schema | **CREATED / VERIFIED**: 10 M1 tables, 10 PKs, 19 FKs, 27 CHECKs, 48 indexes; same InitialM1 + EF history, now seeded/persisted data; exact counts in M1 report |
 | Local SQL Server audit (historical only) | Local engine đã được kiểm chứng trước đổi platform; không còn là primary development DB |
-| Migration | **PLANNED — NOT CREATED** |
-| Authentication / JWT | **PLANNED — NOT IMPLEMENTED** |
-| Asset CRUD | **PLANNED — NOT IMPLEMENTED** |
+| Migration | **CREATED / APPLIED**: `20261002151601_InitialM1`; isolated target first, shared `neondb` via direct endpoint under advisory lock |
+| Authentication / JWT | **IMPLEMENTED / VERIFIED**; generic denial, lockout/rate limit, 15-minute JWT, in-memory frontend token |
+| Asset CRUD | **IMPLEMENTED / VERIFIED**; PUT metadata per EP-026, archive via DELETE + strong If-Match, real search/filter/page/sort |
 | MVP Milestone | **10/10/2026** — giữ nguyên |
-| Project skeleton / API | **PLANNED — NOT CREATED** |
-| .NET build / xUnit / DB integration tests | **NOT RUN / NOT APPLICABLE** vì chưa có `.csproj` / backend / DB test target |
+| Project skeleton / API | **IMPLEMENTED**: layered M1; audited unit of work enables SaveChanges, no startup seed/migration |
+| .NET build / xUnit / DB integration tests | Current run/results at [M1 report](docs/m1-backend-handoff.md); 30 unit + 36 HTTP/live integration passed during implementation, Release final gate recorded there |
 | Frontend build | **PASS** — local Tailwind CSS + Inter fonts + ES modules trong `artifacts/frontend/` |
 | Frontend automated tests | **38 PASS / 0 FAIL** — Node mock/service contract + build/static server tests, không phải DB integration |
-| Frontend source checks | **20 JS syntax PASS / 22 source checks PASS**; không phải security/accessibility certification |
-| API runtime/Swagger | **PLANNED — NOT IMPLEMENTED** |
-| Web UI/HTML + Tailwind 3 | **IMPLEMENTED WITH MOCK DATA**; API adapter PLANNED integration, không có JWT thật |
+| Frontend source checks | **21 JS syntax PASS / 23 source checks PASS** including new manual smoke script; not security/accessibility certification |
+| API runtime/OpenAPI | Health/readiness/OpenAPI + M1 controllers VERIFIED; Development ready 200; interactive Swagger UI PLANNED |
+| Web UI/HTML + Tailwind 3 | **REAL API DEFAULT** on localhost:5080; 8 screens, built assets Development-only; explicit localhost mock retained |
 | Frontend browser evidence | Mock flows PASS; responsive 320/375/768/1280/1440px trước handoff; follow-up menu tại 390×844 và desktop PASS, ESC trả focus về Menu; local screenshots tại ignored `artifacts/ui-evidence/` |
-| Real M1 demo evidence | **PLANNED — NONE YET**; chưa có Swagger/API/DB persistence hoặc deployment evidence |
+| Real M1 demo evidence | Real login/JWT/master/Asset/persistence + restart + browser create/edit/search verified; formal Mentor demo/production deployment **PLANNED** |
 | Mermaid ERD | Parser 11.17.2 kiểm lại 01/10 thành công; 18 entity/41 FK/41 relationships; PNG/SVG render chưa xác nhận |
-| Git commit/push | Frontend đã được người dùng push ở cae3a31; follow-up chỉ bổ sung kết quả kiểm tra/bàn giao, không sửa runtime vì chưa tái hiện lỗi menu qua các kiểm tra có quan sát trạng thái. Publication không mở backend/Week 3 |
+| Git commit/push | Baseline `18f9f9c` preserved; user requested M1 commit/push and merge into `main` after handoff; actual Git log/remote are authoritative, independent review remains PENDING |
 
 ## Known Issues / Open Questions
 
-- Repository ban đầu rỗng là evidence lịch sử. Hiện đã có `.gitignore`, frontend/tooling/tests; solution/backend/EF/migrations/CI chưa tạo.
+- Repository ban đầu rỗng là historical evidence; hiện có M1 backend/UI. CI/production deployment và future modules chưa tạo.
 - Docker client có cài nhưng engine không chạy; không là dependency bắt buộc.
 - ERD parser **VERIFIED** ở mức cú pháp; hình render PNG/SVG **NOT VERIFIED**.
 - Password/JWT/lockout values, serial policy, maintenance ownership, replacement thresholds/price, alert window, budget year/currency, key management, audit retention, import limits, deployment và ticket queue policy cần xác nhận ở [Open Questions](docs/open-questions.md).
-- Có frontend build/test/browser results; không có backend API/migration/DB/performance results. Bundled pnpm dùng vì `npm` không có trên PATH; build có Browserslist warning nonblocking.
-- Khi nối API: xác nhận generated OpenAPI cho master ChangeStatusRequest, list detail hydration, decimal JSON transport và auth response. Không sửa contract/schema để tiện mock.
+- Runtime Development config contains real owner credential by user instruction: exact-secret scanner finding is expected and UNRESOLVED, not a clean security gate. Rotation/least privilege strongly recommended; no production approval.
+- Frontend 38 tests PASS; ChangeStatusRequest/auth/decimal/null/PUT/If-Match mapping tested live. Broad performance/accessibility/security review remains PLANNED; Browserslist warning nonblocking.
 
 ## Technical Debt
 
-- Mock-only service behaviors không phải business backend; tránh mang mock vào production deployment. Full accessibility audit và live API/DB tests còn PLANNED.
-- Sau approval, tạo solution/backend và static asset packaging cho ASP.NET cùng origin; cấu hình Neon/Npgsql/secrets/migrations theo critical path, không tự chạy trong task này.
-- Render hình Mermaid và generated OpenAPI vẫn chưa kiểm chứng; chỉ cú pháp ERD đã được parser xác nhận.
+- Mock is explicit Development-only and not production packaged. Full accessibility/load review, JWT production lifecycle and deployment still PLANNED.
+- Runtime owner access is an explicit security exception; least-privilege runtime role/credential rotation unresolved. Application transaction/audit/token guards are implemented but cannot prevent owner DDL bypass.
+- Mermaid PNG/SVG chưa VERIFIED; M1 OpenAPI JSON exists, interactive Swagger UI PLANNED. Adding workflow tables must replace fail-closed active-workflow guard before enabling archive/status for those modules.
 
 ## Next Tasks
 
 1. Thiện review bộ bàn giao/CR-23–29, M1 DTO/schema/UI/test và tính khả thi theo checklist handoff; trạng thái review **PLANNED**.
-2. Người dùng/Mentor review OQ-001/OQ-002/OQ-011 và checkpoint schema trước implementation M1; các OQ khác theo module tương ứng.
-3. Thiện review frontend mock theo [integration report](docs/stitch-ui-integration.md); publication được cho phép riêng không thay review gate. Chỉ mở backend/Neon/Week 3 implementation khi người dùng yêu cầu/phê duyệt.
+2. Review provisional dev security values: password 12..256, JWT 15m, lockout 5 failures/15m, login 20/min/IP; production configuration and OQ-001/OQ-002/OQ-011 pending.
+3. Thiện review frontend mock và [DB foundation](docs/neon-database-setup.md); review riêng schema/SQL/custom indexes/triggers và cấp quyền runtime. Không sửa InitialM1 đã apply; thay đổi mới dùng migration tiếp theo.
 
 ## Daily update log
 
@@ -93,5 +93,9 @@
 | 02/10/2026 | Tiếp tục task người dùng đã xác nhận: tích hợp Stitch HTML/Tailwind thành frontend mock, chuẩn hóa local assets/components, service boundary, routing, validation, responsive và tài liệu. | Build PASS; 38 frontend tests PASS; 20 syntax/22 boundary checks PASS; browser mock smoke/viewport evidence. Giữ 30 task/18 bảng/41 quan hệ; không backend/JWT/DB/migration hoặc stage/commit/push. |
 | 02/10/2026 | Người dùng yêu cầu kiểm tra lại và xuất bản frontend để làm tiếp. | Build/test/source checks chạy lại PASS (38/20/22); browser mock flow và baseline preservation kiểm lại. Commit message tiếng Việt không dấu; publication không đồng nghĩa DB/API/M1 đã hoàn thành. Git history/remote xác minh kết quả commit/push. |
 | 02/10/2026 | Tiếp tục lượt kiểm tra còn dở sau khi người dùng đã push cae3a31. | Fetch xác nhận baseline sạch/khớp remote; build PASS, 38 tests/20 syntax/22 source checks PASS; menu điện thoại qua 4 destinations, ESC/focus, desktop navigation và browser console kiểm lại. Chỉ cập nhật 4 tài liệu; giữ runtime, 30 task/18 bảng/41 quan hệ và review gate. |
+
+| 02/10/2026 | Theo yêu cầu mới, dùng credential thực tạo foundation .NET/Neon M1; isolated test DB trước, migration vào `neondb` dưới lock. | 10 tables/19 FKs, 0 business rows; 25 xUnit + 37 live setup checks PASS; secret ngoài Git; no Auth/JWT/CRUD/seed/commit/push. Independent review pending. |
+| 02–03/10/2026 | Theo yêu cầu mới: preserve 54 WIP files, configure DefaultConnection in repository Development JSON, audited persistence, seed, Auth/JWT/policies, master/Asset APIs, isolated tests và real frontend integration. | [M1 handoff](docs/m1-backend-handoff.md): actual seed/HTTP/DB/restart/browser evidence, exact tests/files/Git status; owner credential risk explicit; no new DB/migration/Week 4–7/commit/push. |
+| 03/10/2026 | Người dùng yêu cầu commit/push phần M1 hiện có và bổ sung yêu cầu merge vào main trước khi hoàn thiện thêm nhiệm vụ hai tuần đầu. | Publish `codex/neon-connection-foundation`, fast-forward main when possible, no force-push; remote baseline 18f9f9c unchanged at initial fetch. 30 unit/38 frontend tests, 21 JS syntax/23 source checks/6 schema checks PASS. Exact-secret scan remains FAIL because of the user-directed Development owner credential; no additional seed/migration/module or fabricated review. Inspect Git log/remote for publication outcome. |
 
 File này cần cập nhật sau mỗi ngày làm việc tiếp theo bằng kết quả thực tế, không bằng kết quả dự kiến.

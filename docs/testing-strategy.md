@@ -1,6 +1,6 @@
 # Chiến lược kiểm thử
 
-> Trạng thái: **PLANNED — NOT IMPLEMENTED**. Repository chưa có solution, application code, test project, migration hoặc database nghiệp vụ. Tài liệu này mô tả cách kiểm thử sau khi kế hoạch Week 2 được xác nhận `APPROVED`; không có test result nào được tuyên bố trong Week 2.
+> **M1 business/unit/HTTP/live Neon tests EXECUTED** 02–03/10/2026. [Current totals/commands/isolation/limitations](m1-backend-handoff.md); historical 25 tests/37 setup and Week 2 21/24 checks preserved separately. Existing isolated DB reused; no new DB, no shared reset. Tests require explicit opt-in and retain namespaced fixtures.
 
 ## 1. Mục tiêu
 
@@ -14,7 +14,7 @@ Stack kiểm thử dự kiến là xUnit trên .NET 10. Tên project, package v�
 
 ## 2. Phạm vi và các tầng kiểm thử
 
-### 2.1 Unit test — PLANNED
+### 2.1 Unit test — M1 EXECUTED; future modules PLANNED
 
 Unit test chạy nhanh, cô lập database/network và tập trung vào:
 
@@ -27,7 +27,7 @@ Unit test chạy nhanh, cô lập database/network và tập trung vào:
 
 Không mock toàn bộ EF Core để chứng minh database constraint. Quy tắc phụ thuộc partial unique index, transaction, isolation hoặc app-managed `row_version` phải có integration test với PostgreSQL thật qua Npgsql.
 
-### 2.2 Integration test — PLANNED
+### 2.2 Integration test — M1 EXECUTED; future modules PLANNED
 
 Integration test khởi động API test host và dùng PostgreSQL database/Neon branch cô lập để kiểm tra:
 

@@ -67,7 +67,7 @@ export async function createStaticServer({ root = frontendOutput, previewOrigina
     response.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
     if (!['GET', 'HEAD'].includes(request.method)) {
       response.setHeader('Allow', 'GET, HEAD');
-      respond(response, 405, 'Static frontend only. API backend is not implemented.');
+      respond(response, 405, 'Static preview only. Run the .NET API for real backend access.');
       return;
     }
     let pathname;
@@ -84,7 +84,7 @@ export async function createStaticServer({ root = frontendOutput, previewOrigina
       return;
     }
     if (pathname === '/api' || pathname.startsWith('/api/')) {
-      respond(response, 404, 'API backend is not implemented. This server only serves frontend files.');
+      respond(response, 404, 'Static preview does not host the API. Run the .NET API for real backend access.');
       return;
     }
     const candidate = path.resolve(absoluteRoot, `.${pathname === '/' ? '/index.html' : pathname}`);
@@ -145,7 +145,7 @@ async function main() {
     console.log(`Demo navigation: http://127.0.0.1:${port}/?demo=1#/login`);
     console.log(`Read-only static root: ${root}`);
     if (previewOriginal) console.log('ORIGINAL STITCH EXPORT ONLY: relaxed CDN/inline CSP for comparison; not the final frontend or an authentication environment.');
-    console.log('API / authentication backend / database: NOT IMPLEMENTED or NOT CONNECTED.');
+    console.log('Static preview does not host the API. Use dotnet run --project src/ItAssetManagement.Api for same-origin M1.');
   });
   for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => server.close(() => process.exit(0)));
 }

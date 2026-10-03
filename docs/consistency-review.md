@@ -141,3 +141,32 @@ Review độc lập Thiện/Mentor và actual Neon setup chưa thực hiện. **
 Các kết quả trên chỉ chứng minh documentation/preservation/consistency, không physical PostgreSQL constraints/indexes/TLS/permissions/runtime. N23 chỉ kiểm file-target links (không render/anchor toàn bộ) và secret heuristic, không security scan đầy đủ. N24 kiểm HEAD/index/source scope và current target; full-repo SQL Server/SQLServer/MSSQL/SqlServer/UseSqlServer/Microsoft.EntityFrameworkCore.SqlServer search được đọc/phân loại: historical audit/ADR superseded/old handoff/Week2 audit hoặc explicit OLD→NEW/negative comparison, không planned primary DB. Documentation flowcharts chưa render.
 
 Git cuối task vẫn main/HEAD 0c99374, **32 tracked modified + một untracked handoff (33 WIP files)**; số Git này bao gồm thay đổi bàn giao cũ. Trong riêng lượt platform có **32 file** (không actors/permission-matrix), không file mới hoặc staged change/commit/push. Handoff original sections 1–14 và mọi Week2 task lines được giữ nguyên; scope dừng Week2, không execute Week3.
+
+## Authorized physical M1 foundation addendum — 02/10/2026
+
+Historical Week 2 checks **21 PASS** and design-only platform checks **24 PASS** above describe those phases and are not invalidated by new user authorization. Initial DB setup was requested separately; independent Thiện/Mentor review remains PENDING. [Actual commands/catalog/results](neon-database-setup.md).
+
+| Consistency chain | Actual review / limitation |
+|---|---|
+| Requirements → BR → UC → API | Protected documents unchanged from HEAD; no business contract change or Auth/CRUD implementation |
+| Full schema → ERD | 18 table definitions / 41 relationships preserved; Mermaid block identical to baseline |
+| M1 schema → EF/SQL | 10 tables, 121 columns match baseline names/types/lengths/precision/nullability; 19 NO ACTION FKs, 27 CHECKs, 11 unique indexes |
+| Architecture → provider | .NET 10 skeleton, EF 10.0.11 / Npgsql 10.0.3 verified; Controller/Service/Repository business modules PLANNED |
+| Security → Neon | Strict client TLS verified, setup secret outside Git, no owner fallback for HTTP; runtime roles/config/audit pipeline PLANNED; exposed password unrotated per user decision |
+| Test isolation | Fresh separate Neon verification DB, fixtures rolled back; shared schema inspection read-only and 0 business rows; no shared reset/drop/truncate |
+| Roadmap → Week 3 | Original IDs/owners/estimates preserved; early-execution addendum separates actual foundation from full business integration; M1 10/10/2026 NOT ACHIEVED |
+| Evidence/Git | 25 xUnit + 37 setup checkpoints PASS; 38 frontend tests/20 syntax/22 checks PASS; 6 preservation/design checks PASS; no secret finding in exact-value scan; no commit/push |
+
+Custom expression indexes/triggers are outside EF snapshot, so snapshot consistency alone is insufficient. Full Unicode casefold, application concurrency/security, seed, real UI/DB persistence and production recovery remain PLANNED. InitialM1 already applied: future changes must use reviewed forward migrations, not rewrite initial files.
+
+## Authorized M1 implementation review — 03/10/2026
+
+- Requirements/BR/UC/API/Week 2 plan/handoff unchanged; 30 completed documented tasks, 18 table definitions and exact 41-relationship Mermaid block preserved. No new table/DB/migration; InitialM1/custom SQL hashes unchanged.
+- Controller → Application validation/services → repository/audited unit-of-work → EF/Npgsql → existing shared Neon; same-origin built UI served in Development only. Persistence protects bytea OriginalValue, random 16-byte versions, UTC/system versus date/business fields and append-only audit/history.
+- Existing M1 endpoints implemented; EP-026 remains PUT, status is PATCH subresource, DELETE is soft-archive + If-Match. JSON timestamp names `createdAt`/`updatedAt` fixed to spec; only Department code immutable, Asset Type code remains editable with uniqueness/version/audit. Cost omitted server-side for Support.
+- DB roles/permissions seed supports actual per-request account/role/permission/token-version checks; future modules/permissions do not become implemented just because schema/design exists.
+- Security exception: DefaultConnection contains real owner credential in repository Development JSON by explicit user decision. Secret scanner finding unresolved/acknowledged, not PASS. Production least privilege/secrets/deployment/accessibility/load review remain PLANNED.
+- Existing isolated DB reused for opt-in automated HTTP/DB tests with unique retained fixtures. Shared DB used only for authorized seed/manual real API/UI smoke; no destructive reset/drop/truncate. Real records and restart persistence verified.
+- Roadmap/owners/estimates/milestone 10/10/2026 preserved; addenda distinguish early implementation from independent review/rehearsal/formal M1 acceptance. No Week 4–7/commit/push.
+
+Actual check totals, artifact paths, current row counts and Git manifest: [M1 handoff](m1-backend-handoff.md). Historical 21/24 docs and 25/37 foundation evidence kept separate, not relabeled as current tests.

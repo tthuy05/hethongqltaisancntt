@@ -93,7 +93,7 @@ test('HEAD sends headers but no body', async () => {
 test('API endpoints never fall back to frontend HTML or a fake backend', async () => {
   const response = await rawRequest('/api/v1/assets');
   assert.equal(response.status, 404);
-  assert.match(response.body, /not implemented/iu);
+  assert.match(response.body, /does not host the API/iu);
   assert.equal((await rawRequest('/api/v1/auth/login', 'POST')).status, 405);
 });
 

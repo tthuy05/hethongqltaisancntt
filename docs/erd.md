@@ -1,8 +1,8 @@
 # ERD — Enterprise IT Asset & Infrastructure Management System
 
-> Trạng thái: **PLANNED — Week 2.** ERD mô tả thiết kế dự kiến; chưa có migration hoặc database vật lý.
+> Trạng thái: **FULL LOGICAL DESIGN DOCUMENTED / UNDER REVIEW**; M1 physical subset 10 tables/19 FKs CREATED / VERIFIED 02/10/2026. Các bảng/quan hệ ngoài M1 vẫn PLANNED. [Implementation evidence](neon-database-setup.md).
 
-> Database Engine: **PostgreSQL**. Hosting: **Neon** — PLANNED / NOT YET CONNECTED (ADR-018). Schema Baseline V1 giữ **18 tables / 41 relationships**; Mermaid block dùng logical types và được giữ nguyên byte-for-byte. `binary row_version` map sang app-managed bytea, `json` map jsonb, `datetime` map timestamptz UTC trong database-design; không đổi entity/FK/cardinality.
+> Database Engine: **PostgreSQL**, hosting **Neon** — M1 setup CONNECTED / VERIFIED (ADR-022). Schema Baseline V1 vẫn **18 tables / 41 relationships**; Mermaid block giữ nguyên. `binary row_version` map app-managed bytea, `json` map jsonb, `datetime` map timestamptz UTC. Không thêm EF migration metadata vào logical diagram.
 
 ## 1. Sơ đồ quan hệ
 

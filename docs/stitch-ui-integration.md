@@ -1,5 +1,7 @@
 # Stitch UI Integration — Frontend Handoff
 
+**Historical mock-only snapshot:** original tests/browser evidence below are preserved. Subsequent M1 API-default integration, real browser login/create/edit/search and current limitations are at [M1 backend handoff](m1-backend-handoff.md); original frontend scope and Week 2 evidence are not rewritten.
+
 Date: **02/10/2026 (Asia/Saigon)**. Status: **IMPLEMENTED WITH MOCK DATA / READY FOR REVIEW**. User explicitly confirmed the frontend-only integration scope. This is not approval/completion of backend Week 3, real authentication, database setup or M1.
 
 **Publication addendum:** sau snapshot handoff này, người dùng yêu cầu kiểm tra lại rồi commit/push. Snapshot preflight tại §19; người dùng đã xuất bản frontend ở `cae3a31`, kết quả hoàn tất kiểm tra còn dở tại §20. Các trạng thái UNCOMMITTED/no-push ở §1–18 là evidence lịch sử trước yêu cầu mới.

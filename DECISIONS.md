@@ -214,3 +214,33 @@
 **Database / Migration Impact:** NONE. Schema Baseline V1 18 tables / 41 relationships, EF entities/migrations/physical DB vẫn chưa tạo; PostgreSQL/Neon design không đổi. 30 completed/documented Week 2 tasks và evidence không reset. Milestone 10/10/2026 giữ nguyên. Không stage/commit/push trong task này.
 
 Exact files, run/check commands, reuse rationale và live-integration handoff: [Stitch UI integration](docs/stitch-ui-integration.md).
+
+## ADR-022 - Create authorized Neon M1 foundation without business modules
+
+**Date:** 2026-10-02.
+
+**Context:** User created Neon and explicitly requested real DB setup now, then declined password rotation. Repository has published frontend/mock + preserved Week 2 baseline, no prior application tables. Independent Thiện/Mentor review remains pending; this instruction is a narrow DB-foundation exception, not complete Week 3 approval.
+
+**Decision:** Pin verified .NET/EF/driver versions; create solution/health/OpenAPI and only existing 10-table M1 subset, map schema exactly, generate InitialM1 offline, review SQL and test on newly created separate Neon database before direct shared apply under lock. Keep logical **18 tables / 41 relationships**, business contracts, owners and milestone **10/10/2026** unchanged.
+
+**Consequences:** Actual shared database `neondb` has 10 business tables/19 FKs plus EF history, 0 business rows. 8 non-M1 tables remain PLANNED. Setup credential stays User Secrets under NeonSetupConnection, HTTP DefaultConnection remains NOT CONFIGURED. API never auto-migrates/seeds; SaveChanges disabled until application token generation/AuditWriter/services exist. No Auth/JWT/Asset CRUD. 7 expression unique indexes + 2 append-only triggers/function are migration-owned SQL outside snapshot; future review must preserve them. Owner DDL can bypass triggers, no tamper-proof claim. Applied InitialM1 is forward-only/not rewritten; separate validation database retained with fixtures rolled back.
+
+**Review / security:** User-directed early apply is recorded, not represented as Thiện review. Exposed credential unrotated per explicit instruction; rotation still recommended, no secret in source/log/report. Runtime least-privilege identities/access/seed/backup/business security still PLANNED. No commit/push authorized in this new setup task.
+
+**Evidence:** [Neon setup and handoff](docs/neon-database-setup.md): actual targets/catalog, 25 xUnit + 37 setup checkpoints, strict TLS, local secret handling and remaining work. Original ADR-018–021 are historical phase snapshots, not current no-database claims.
+
+## ADR-023 - Authorize M1 runtime and Development configuration exception
+
+**Date:** 2026-10-03 (implementation began 02/10). **Status:** IMPLEMENTED / VERIFIED, independent review pending.
+
+**Context:** User explicitly requested continuing 54 WIP files with real runtime/seed/Auth/JWT/master/Asset/tests/UI integration; no new DB/migration or commit/push. User deliberately requested existing shared owner connection in repository configuration for pull/run without per-machine DB User Secrets/env/.env.
+
+**Previous decision:** Setup credential outside Git; HTTP unconfigured pending least privilege; persistence disabled (ADR-022).
+
+**Decision:** Existing real URI in `Api/appsettings.Development.json`, DefaultConnection; Program reads that key and enforces strict TLS. File is a Git-visible commit candidate, not staged/committed. Production base config contains no DB credential/JWT key. Enable writes only in audited transactions, random 16-byte tokens/UTC stamps, OriginalValue checks and append-only guards. Seed idempotently with hashed dev account; no startup migration/seed. Existing InitialM1 and isolated validation DB unchanged.
+
+**Consequences/security exception:** Publishing config discloses owner DB access (including DDL/data access) to repository readers. Chat-exposed credential remains unrotated by user choice. Exact-secret scan has acknowledged UNRESOLVED finding; not a clean security gate. Rotation, restricted runtime/migration identities and production secret management strongly recommended/PLANNED. Dev JWT key random per process: restart/backend switch requires re-login, not data reset. Production fails closed without explicit >=32-byte signing key; not deployment-approved.
+
+**Scope/impact:** Existing Auth/master/Asset endpoints and 8 real UI screens. EP-026 PUT kept despite pasted task mentioning PATCH metadata; no contract/schema redesign. No refresh/user-administration/Week 4–7 workflows. Owner DDL bypass remains possible, no tamper-proof claim. Future workflow tables require active-state queries under parent row lock before replacing fail-closed presence guard.
+
+**Evidence:** [M1 handoff](docs/m1-backend-handoff.md). Previous 30 Week 2 tasks/18 tables/41 relationships/21 and 24 doc checks/25 and 37 setup results preserved as historical evidence. No commit/push.

@@ -1,10 +1,10 @@
 # Enterprise IT Asset & Infrastructure Management System
 
-Hệ thống Quản lý & Tối ưu Hạ tầng CNTT Doanh nghiệp là web UI quản trị + REST API **PLANNED** để quản lý tài sản, phân bổ, bảo trì, phần mềm/license, vòng đời, đề xuất thay thế, ngân sách, dashboard, báo cáo và audit log.
+Hệ thống Quản lý & Tối ưu Hạ tầng CNTT Doanh nghiệp có web UI và REST API M1 cho đăng nhập, danh mục và tài sản trên Neon. Phân bổ, bảo trì, phần mềm/license, vòng đời, ngân sách và báo cáo nâng cao vẫn **PLANNED**.
 
-> **Current phase:** WEEK 2 REVIEW PENDING + STITCH FRONTEND INTEGRATION được người dùng cho phép riêng.  
-> **Implementation status:** **FRONTEND IMPLEMENTED WITH MOCK DATA; BACKEND / DATABASE NOT IMPLEMENTED.**  
-> M1: **10/10/2026 MVP demo với UI/API/Neon PostgreSQL thật** vẫn là mục tiêu, chưa đạt. Phạm vi cho phép hiện tại không mở toàn bộ Week 3.
+> **Current phase:** Week 2 review preserved; user-authorized M1 backend/UI vertical slice implemented 02–03/10/2026.
+> **Implementation status:** Auth/JWT/policies, masters, Asset API, audited persistence và UI API thật **IMPLEMENTED / VERIFIED — REVIEW PENDING**.
+> M1 **10/10/2026** giữ nguyên; independent review, rehearsal và production/security gates chưa hoàn tất. Không mở Week 4–7.
 
 ## Main features **PLANNED**
 
@@ -21,20 +21,22 @@ Hệ thống Quản lý & Tối ưu Hạ tầng CNTT Doanh nghiệp là web UI q
 
 | Area | Choice | Status |
 |---|---|---|
-| Runtime/API | ASP.NET Core Web API, .NET 10 | PLANNED |
-| ORM | Entity Framework Core 10 | PLANNED |
-| Database | PostgreSQL hosted on Neon | PLANNED / NOT YET CONNECTED |
-| EF Core provider | Npgsql.EntityFrameworkCore.PostgreSQL | PLANNED; exact compatible package version not selected |
-| Authentication | Short-lived JWT access token | PLANNED |
-| Authorization | Permission-policy RBAC | PLANNED |
-| API documentation | OpenAPI/Swagger | PLANNED |
-| Testing | xUnit unit + integration tests | PLANNED |
-| Web UI | HTML/CSS/JavaScript ES modules + Tailwind CSS 3.4.19, Inter local; source trong `Api/wwwroot` | IMPLEMENTED WITH MOCK DATA; real API integration PLANNED |
+| Runtime/API | ASP.NET Core Web API, .NET 10 | M1 controllers/services/repository IMPLEMENTED |
+| ORM | Entity Framework Core 10.0.11 | IMPLEMENTED: 10 M1 mappings |
+| Database | PostgreSQL 18.6 hosted on Neon | `neondb` M1 schema CREATED / VERIFIED |
+| EF Core provider | Npgsql.EntityFrameworkCore.PostgreSQL 10.0.3 | Restored / build VERIFIED |
+| Authentication | 15-minute JWT; PasswordHasher Identity V3 | IMPLEMENTED; dev key ephemeral, production key required |
+| Authorization | DB-backed permission-policy RBAC | IMPLEMENTED; account/token-version/roles checked each request |
+| API documentation | Development OpenAPI JSON | M1 + health IMPLEMENTED; interactive Swagger UI PLANNED |
+| Testing | xUnit unit/HTTP + isolated Neon tests | See [current M1 report](docs/m1-backend-handoff.md); historical 25/37 preserved |
+| Web UI | HTML/CSS/JavaScript ES modules + Tailwind CSS 3.4.19, Inter local | 8 M1 screens use API by default; explicit localhost mock demo retained |
 | Frontend tooling | Node.js >=22, pnpm 11.25.0; build CSS/static assets | IMPLEMENTED; Node 24.19.0 verified |
 
-Database platform changed at design level on 01/10/2026 under [ADR-018](DECISIONS.md#adr-018---use-postgresql-on-neon-instead-of-planned-sql-server). Neon will be the shared primary development database for Thủy and Thiện; installed local database engines remain historical environment evidence, not the development target. SDK 10.0.400 is verified; EF Core/Npgsql/tool versions must be checked together and pinned during the approved Week 3 skeleton step, not guessed here.
+Database platform changed at design level on 01/10/2026 under [ADR-018](DECISIONS.md#adr-018---use-postgresql-on-neon-instead-of-planned-sql-server). On 02/10 the user authorized physical M1 setup separately: SDK 10.0.400, EF/tool 10.0.11 and Npgsql provider 10.0.3 were verified and pinned. Neon remains the shared development target; no local primary database was introduced. See [setup evidence and handoff](docs/neon-database-setup.md).
 
-**NEON SETUP: PLANNED. NEON CONNECTION: NOT CONFIGURED. DATABASE CONNECTION: NOT VERIFIED.** No credentials were provided and no Neon connection was attempted. Secret configuration uses `ConnectionStrings:DefaultConnection`, supplied locally through user-secrets or `ConnectionStrings__DefaultConnection`; never commit a connection string. Manual setup is documented in [Deployment](docs/deployment.md).
+**DATABASE RUNTIME READ/WRITE VERIFIED.** `neondb` keeps 10 M1 tables / 19 FKs + EF history; full **18 tables / 41 relationships** unchanged, other 8 PLANNED. Seed and real Asset data now persist. **User-directed security exception (ADR-023):** owner connection is in repository `appsettings.Development.json` under DefaultConnection; no per-machine DB secret needed. This file contains a real credential included in the M1 publication changeset at the user's request on 03/10/2026. Publishing it exposes DB access to repository readers; rotation/least privilege strongly recommended. Production has no DB/key defaults. [Current evidence](docs/m1-backend-handoff.md).
+
+**M1 publication handoff:** user requested commit/push and explicitly added merging into `main`; verify the actual commit/remote in Git. Publish the implementation branch and fast-forward `main` when possible, without force-push. Thiện should pull `main` to continue/review. Earlier UNCOMMITTED/UNPUSHED notes are implementation snapshots; publication is not independent approval or M1 acceptance. No additional seed, schema change or Week 4–7 work is included.
 
 ## Architecture **PLANNED**
 
@@ -49,24 +51,28 @@ HTTP Request
   -> PostgreSQL hosted on Neon
 ```
 
-The planned backend remains a layered modular monolith. Production UI/API cùng origin và JWT in-memory vẫn PLANNED. Bản frontend hiện tại giữ stack HTML/Tailwind của Stitch, không thêm React/Vite/Bootstrap; Node chỉ build và preview static files trên localhost, không phải backend. [ADR-021](DECISIONS.md#adr-021---preserve-stitch-htmltailwind-frontend) thay phần styling/build của ADR-017, không đổi Controller–Service–Repository hay API contract.
+The backend is a layered modular monolith: controllers → Application services/validation → repository/unit-of-work → EF/Npgsql. Development serves built UI and API together; production packaging/deployment stays PLANNED. JWT is browser-memory only. HTML/Tailwind remains unchanged; Node builds/static-previews, not a backend. [ADR-021](DECISIONS.md#adr-021---preserve-stitch-htmltailwind-frontend) changes styling only.
 
 Details: [Architecture](docs/architecture.md) and [Decisions](DECISIONS.md).
 
 ## Repository structure
 
-Current structure includes the preserved Week 2 documentation and frontend-only files:
+Current structure includes preserved Week 2 documentation, frontend and M1 database foundation:
 
 ```text
 .
-├── src/ItAssetManagement.Api/wwwroot/   # static source ONLY; no .csproj/backend
+├── ItAssetManagement.slnx              # 4 application projects + 2 xUnit projects
+├── Directory.Packages.props           # verified, pinned .NET packages
+├── src/ItAssetManagement.Api/wwwroot/   # API-default frontend source; explicit demo retained
 │   ├── index.html
 │   ├── assets/
 │   ├── css/input.css
 │   └── js/                            # pages, components, mock/API services
 ├── frontend/tailwind.config.cjs
 ├── scripts/                           # build, read-only preview, source checks
-├── tests/                             # Node frontend/service tests, not xUnit
+├── src/ItAssetManagement.Infrastructure/Data/ # DbContext, mappings, InitialM1 migration, setup CLI
+├── src/ItAssetManagement.Domain/Entities/     # 10 M1 persistence shapes
+├── tests/                             # Node tests + .NET unit/HTTP tests
 ├── package.json
 ├── pnpm-lock.yaml
 ├── docs/
@@ -84,7 +90,7 @@ Current structure includes the preserved Week 2 documentation and frontend-only 
 └── CHANGELOG.md
 ```
 
-The .NET solution/project, EF entities and migrations are intentionally not created. Build output is generated in ignored `artifacts/frontend/`; it is not a second application or production deployment.
+Auth/JWT/masters/Asset CRUD now exist. SaveChanges requires an audited transaction, generates 16-byte tokens and forbids hard-delete/history mutation. API startup never migrates/seeds; InitialM1 remains immutable. Built frontend stays ignored in `artifacts/frontend/` and is served in Development only.
 
 ## Documentation
 
@@ -106,6 +112,8 @@ The .NET solution/project, EF entities and migrations are intentionally not crea
 - [UI/UX specification và M1 demo flow](docs/ui-ux-spec.md)
 - [Stitch frontend integration — audit, checks, file manifest và bàn giao](docs/stitch-ui-integration.md)
 - [Database design](docs/database-design.md)
+- [Neon M1 physical setup and developer handoff](docs/neon-database-setup.md)
+- [M1 backend / real UI handoff and verification](docs/m1-backend-handoff.md)
 - [ERD](docs/erd.md)
 - [API specification](docs/api-spec.md)
 - [Security](docs/security.md)
@@ -146,12 +154,12 @@ Full dependencies, daily deliverables and verification criteria are in [Roadmap]
 
 ## Current project status
 
-- Branch: `main`; người dùng đã xuất bản frontend ở `cae3a31` (`push giao dien mock`), được xác minh bằng fetch ngày 02/10. Lượt kiểm tra còn dở đã hoàn tất: build/tests/source checks PASS, điều hướng menu điện thoại và desktop PASS trong phạm vi đã kiểm; [bàn giao bổ sung, §20](docs/stitch-ui-integration.md) ghi kết quả thực tế. Git history/remote xác minh commit bổ sung mới nhất. Publication không phải approval backend/DB.
+- Branch: `codex/neon-connection-foundation`, from published baseline `18f9f9c`; current foundation UNCOMMITTED / UNPUSHED. Prior frontend publication/browser evidence at [handoff §20](docs/stitch-ui-integration.md) is preserved.
 - Remote: official GitHub repository. Historical audit/status statements describe their dates; a documentation publication is not approval of backend implementation.
 - Week 2: 30 Thủy task deliverables documented and checked on 01/10; independent Thiện/user/Mentor review pending. [Handoff report](docs/week-02-thuy-handoff.md) preserves evidence, fixes and the original 21 PASS checks; its Database Platform Change Addendum records the new design-level decision. Schema Baseline V1 remains **18 tables / 41 relationships**, with no entity/relationship redesign. Planned workload Thủy 60,9% / Thiện 39,1% by representative estimate.
 - Frontend build PASS; **38 Node tests PASS / 0 FAIL**, 20 JS syntax checks and 22 source boundary checks PASS. Browser mock flows and responsive checks are recorded in the integration report; not backend/DB/security certification.
-- Eight screens: Login, Dashboard, Asset List, Create, Edit, Detail, Departments and Asset Types — **IMPLEMENTED WITH MOCK DATA**. Five future-module destinations and history panels are **PLANNED** placeholders.
-- Authentication/JWT backend, Asset CRUD backend, physical database, migrations and real API integration: **NOT IMPLEMENTED / NOT CONNECTED**.
+- Eight screens: Login, Dashboard, Asset List, Create, Edit, Detail, Departments and Asset Types use real M1 APIs by default. `?demo=1` on localhost remains an explicit RAM-only mock; no fallback. Five future destinations/history panels remain **PLANNED**.
+- M1 Auth/JWT/masters/Asset/seed/audit/concurrency and runtime config **IMPLEMENTED / VERIFIED**; current test totals at [handoff](docs/m1-backend-handoff.md). Historical 25 xUnit/37 setup/21 and 24 docs checks remain separate. Independent Thiện/Mentor review pending; production not ready.
 - Git publication is separate from plan approval and implementation; consult Git history for its actual state. A documentation commit does not imply a feature is implemented.
 
 See [PROJECT_STATUS.md](PROJECT_STATUS.md) for the authoritative day-to-day status.
@@ -166,7 +174,7 @@ pnpm build
 pnpm dev
 ```
 
-Open [local frontend demo](http://127.0.0.1:4173/?demo=1#/login). Use a syntactically valid **test** email and any nonempty **test** password; choose a mock role. Do not enter real credentials. The demo flag works only on `localhost`/`127.0.0.1`. Login/navigation/data are in-memory and reset on reload. Without `?demo=1`, API mode fails closed while the backend is absent; it does not show fallback mock data.
+The Node server is a **static preview only**, not the API. [Explicit mock demo](http://127.0.0.1:4173/?demo=1#/login) accepts synthetic input and resets on reload. For real mode run the .NET API below and open [M1 UI](http://localhost:5080/#/login). No automatic fallback to mock.
 
 Verified equivalent commands after dependencies are installed:
 
@@ -179,4 +187,25 @@ node --test tests/*.test.mjs
 
 This machine has no `npm` command on PATH. Bundled pnpm was verified at `C:\Users\nguye\.cache\codex-runtimes\codex-primary-runtime\dependencies\bin\fallback\pnpm.cmd`; invoke that path with PowerShell `&` if needed. `pnpm check` / `pnpm test` run the same check/test commands above. The server binds only `127.0.0.1`; it serves GET/HEAD static files, no API proxy or DB connection. No hot reload: rebuild and reload after source changes. Generated output/fonts are local, so the built UI has no runtime CDN dependency. A nonblocking outdated Browserslist database warning is recorded, not hidden.
 
-See [Week 3](docs/weekly/week-03.md) for the still-PLANNED real backend/Neon integration sequence.
+### M1 backend and same-origin UI
+
+```powershell
+dotnet tool restore
+dotnet restore ItAssetManagement.slnx --locked-mode
+dotnet build ItAssetManagement.slnx -c Release --no-restore
+dotnet test ItAssetManagement.slnx -c Release --no-restore
+dotnet run --project src/ItAssetManagement.Api
+```
+
+Local `/health/live`, `/health/ready`, `/openapi/v1.json` and UI `/` return 200 in Development when reachable/built. Runtime reads DefaultConnection from Development configuration; no User Secrets/.env needed for DB runtime. Seed already exists on shared Neon: don't reseed/reset on every startup. Development account/password handoff is private (see [report](docs/m1-backend-handoff.md)), not in Git/chat. Reload/browser/API restart requires re-login, while DB records persist. Production requires separately provisioned DB/JWT secrets and deployment hardening.
+
+Read-only diagnostics: `dotnet run --project src/ItAssetManagement.Api -- --inspect-neon-schema`. Opt-in isolated tests:
+
+```powershell
+$env:ITAM_RUN_NEON_TESTS='1'
+dotnet test ItAssetManagement.slnx -c Release --no-restore
+```
+
+Without opt-in, cloud tests explicitly SKIP; offline/fake-host tests still run. Tests reuse only existing `it_asset_management_m1_verify_20261002`, retain namespaced fixtures, never migrate/create/drop/truncate/reset shared data. Do not rerun `--setup-neon-m1` against these nonempty DBs.
+
+See [Week 3](docs/weekly/week-03.md) for execution addenda and remaining independent review, least privilege, demo rehearsal, UI/security/performance gates. This task stops before commit/push.

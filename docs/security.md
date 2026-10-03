@@ -1,13 +1,13 @@
 # Thiết kế bảo mật
 
-> Trạng thái: **PLANNED — Week 2.** Đây là security design; Authentication, JWT, authorization policy, encryption và hardening chưa được triển khai hoặc kiểm thử.
+> **M1 Auth/JWT/DB-backed policies/audit/concurrency IMPLEMENTED / TESTED.** Production security/encryption/full hardening remain PLANNED. New explicit user exception: owner DefaultConnection in repository Development configuration (ADR-023), so secret finding/least-privilege risk remain unresolved. [Current evidence/limits](m1-backend-handoff.md); earlier setup report is historical.
 
 ## 1. Mục tiêu và nguyên tắc
 
 - Default deny, least privilege và defense in depth.
 - Xác thực không đồng nghĩa với được phép truy cập mọi object.
 - Mọi input và file đều không đáng tin; validate ở biên và kiểm tra business rule trong service/transaction.
-- Không lưu secret trong source, Git, `.env` được commit, appsettings production hoặc log.
+- Default policy: no secret in source/Git/production appsettings/log. **Development-only exception authorized 02–03/10:** owner DB URI in `appsettings.Development.json` for shared pull/run. Publication discloses it to repository readers; not a clean secret gate or production-safe pattern. Runtime never logs it.
 - Không trả/log password, password hash, JWT/access token, Authorization/Cookie header, full license key hoặc encryption ciphertext.
 - Security control quan trọng phải có test âm tính: không chỉ chứng minh luồng hợp lệ mà còn chứng minh truy cập bị từ chối.
 
@@ -212,7 +212,7 @@ Trước khi một module được coi là verified phải có:
 - Kiểm tra dependency/secret scan khi CI có cấu hình.
 - Review CORS/HTTPS/header và database least privilege cho môi trường mục tiêu.
 
-Hiện mọi mục trên là **PLANNED**, chưa có test chạy.
+M1 negative/concurrency/JWT/audit/DTO tests have run; results at [handoff](m1-backend-handoff.md). Broader workflow/encryption, dependency scan, production HTTPS/proxy/least privilege and full penetration review remain **PLANNED**.
 
 ## 16. Quyết định/chính sách còn mở
 

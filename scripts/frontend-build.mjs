@@ -88,7 +88,7 @@ export async function buildFrontend() {
     '--minify',
   ]);
   console.log(`Frontend build ready: ${frontendOutput}`);
-  console.log('Local CSS and Inter fonts; MOCK development services only. No backend or database was contacted.');
+  console.log('Local CSS and Inter fonts; API mode by default, explicit localhost demo retained. Build does not contact a database.');
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

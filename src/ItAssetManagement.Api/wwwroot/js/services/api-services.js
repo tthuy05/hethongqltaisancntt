@@ -2,7 +2,7 @@ import { ASSET_STATUSES, copy } from '../models/contracts.js';
 import { validateAsset, validateLogin, validateMaster } from '../utils/validation.js';
 import { ServiceError } from './service-error.js';
 
-/** Prepared client adapter only: backend/Auth/database remain NOT IMPLEMENTED. */
+/** Same-origin client for M1 backend APIs; no automatic mock fallback. */
 export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThis), baseUrl = '/api/v1' } = {}) {
   let token = null;
   let session = null;
@@ -92,7 +92,7 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
       async create(dto) { validate(validateMaster(dto, { kind })); return request(path, { method: 'POST', body: dto }); },
       async update(id, dto) { validate(validateMaster(dto, { kind, isUpdate: true })); return request(`${path}/${idPath(id)}`, { method: 'PUT', body: dto }); },
       setStatus(id, dto) {
-        // Planned ChangeStatusRequest mapping must be confirmed against generated OpenAPI by Thiện.
+        // M1 ChangeStatusRequest: confirmed by live HTTP tests; independent Thiện review pending.
         return request(`${path}/${idPath(id)}/status`, { method: 'PATCH', body: { status: dto.isActive ? 'Active' : 'Inactive', reason: dto.reason, rowVersion: dto.rowVersion } });
       },
     };

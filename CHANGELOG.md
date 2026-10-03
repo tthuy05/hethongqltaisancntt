@@ -1,6 +1,36 @@
 # Changelog
 
+## 03/10/2026 — M1 backend and real UI integration
+
+Publication addendum: sau bàn giao, người dùng yêu cầu commit/push changeset M1 và bổ sung merge vào `main` để Thiện làm tiếp/review. Publish implementation branch `codex/neon-connection-foundation` and fast-forward main when possible, no force-push. Earlier no-commit/UNCOMMITTED statements are implementation snapshots; inspect Git log/remote for publication outcome. No additional DB/feature work or fabricated independent approval. Real Development owner credential remains included by the user's explicit decision; secret finding unresolved.
+
+### Added
+
+- Auth/login/me, 15-minute JWT, DB-backed permission policies/account checks, generic credential errors, rate limiting/lockout and hashed idempotent development seed.
+- Audited unit of work, safe audit snapshots, random 16-byte concurrency tokens/UTC stamps, master and Asset APIs with query/validation/unique-conflict/soft-archive/history protection; no new migration/table/database.
+- Real HTTP/Neon tests on existing isolated DB, explicit opt-in and retained unique fixtures; manual shared-runtime/JS adapter/browser/restart verification. Actual results/files at [M1 handoff](docs/m1-backend-handoff.md).
+
+### Changed
+
+- Existing 8 screens now use same-origin M1 API by default; Development hosts built local assets. Explicit localhost mock remains, future workflows/history panels PLANNED. Preserve full 18-table/41-relationship design, 30 Week 2 tasks and earlier check evidence.
+- ADR-023: user-directed owner connection in repository Development configuration; unresolved secret-publication/least-privilege risk recorded, not a clean security scan. No secrets printed in report/log; development login password remains outside repo.
+- No startup migration/seed, no Week 4–7 implementation, no commit/push. Independent review/production readiness/M1 formal demo acceptance pending; 10/10/2026 unchanged.
+
 Thay đổi quan trọng được nhóm theo tuần. Nhãn **DOCUMENTED** chỉ nói tài liệu đã được tạo/sửa; chức năng tương lai vẫn **PLANNED**. Tại audit ban đầu repository chưa có commit; xem Git history để biết trạng thái xuất bản mới nhất. Chưa có release ứng dụng.
+
+## 02/10/2026 — Neon M1 physical foundation
+
+### Added
+
+- Authorized .NET 10 layered skeleton, Development health/OpenAPI, central verified package versions/local EF tool/6 package locks, masked setup-secret helper and read-only schema diagnostics.
+- 10 M1 persistence shapes/mappings and `20261002151601_InitialM1`, applied first on new isolated validation database then shared `neondb` through direct TLS/change lock. Verified 10 tables/19 FKs/27 CHECKs/48 indexes and 0 business rows; EF history metadata not a business table.
+- 25 xUnit tests PASS, 37 setup checkpoints PASS and preservation/secret-check scripts; [setup report](docs/neon-database-setup.md). Frontend regression 38/20/22 PASS. No Auth/JWT/CRUD/seed/runtime roles implemented.
+
+### Changed
+
+- ADR-022/current docs record separately authorized real M1 setup, preserve 30 Week 2 deliverables/evidence and full 18-table/41-relationship baseline. Full Week 3 approval/Thiện review/M1 integration still pending; no milestone change.
+- Setup owner credential stays outside Git; HTTP DefaultConnection still unconfigured, business SaveChanges disabled. InitialM1 forward-only/custom indexes/triggers must be preserved in reviewed future migrations.
+- UNCOMMITTED / UNPUSHED. Password shared in chat was not rotated per user instruction; recommendation/risk recorded without secret values.
 
 ## 02/10/2026 — Stitch Frontend Integration
 

@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../ItAssetManagement.Domain/ItAssetManagement.Domain.csproj" />
+  </ItemGroup>
+</Project>

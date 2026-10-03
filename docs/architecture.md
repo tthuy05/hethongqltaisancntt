@@ -1,6 +1,6 @@
 # Kiến trúc hệ thống
 
-> **BACKEND PLANNED — Week 2 review pending.** Chưa tạo solution, .NET project skeleton hoặc code nghiệp vụ backend. Frontend static/mock được người dùng cho phép riêng, đã build/test ngày 02/10; xem implementation addendum §15.
+> **M1 backend/UI IMPLEMENTED 02–03/10/2026 theo yêu cầu mới:** Auth/JWT/policies, master/Asset services/repository/controllers, audited unit of work và real API-default frontend. [Current evidence](m1-backend-handoff.md). Week 2 independent review preserved; Week 4–7/production remain PLANNED.
 
 ## 1. Lựa chọn kiến trúc
 
@@ -84,9 +84,9 @@ Ví dụ `TransferAsset` phải đóng assignment cũ, mở assignment mới, c�
 - Không lazy-load; query đọc ưu tiên `AsNoTracking()` và projection.
 - `SaveChanges` interceptor có thể bổ sung timestamp/audit metadata, nhưng không được che giấu business history quan trọng.
 
-#### Provider và DbContext registration — PLANNED ONLY
+#### Provider và DbContext registration — foundation IMPLEMENTED
 
-Package provider là `Npgsql.EntityFrameworkCore.PostgreSQL`; không còn planned `UseSqlServer`. Exact version chưa chọn: đối chiếu SDK 10.0.400 / `dotnet --list-sdks`, EF Core major, target framework và official provider dependencies trong Week 3 trước pin/restore/build. Pattern sau chỉ là tài liệu, chưa tạo Program.cs hoặc AppDbContext:
+Package provider `Npgsql.EntityFrameworkCore.PostgreSQL` **10.0.3** tương thích .NET 10, EF Core/Relational **10.0.11**; restore/build verified với SDK 10.0.400. `Program.cs`/`AppDbContext` đã có; pattern registration dưới đây chỉ hoạt động khi runtime DefaultConnection hợp lệ. Setup credential tách riêng, không cấp owner credential cho HTTP.
 
 ```csharp
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -94,7 +94,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
         builder.Configuration.GetConnectionString("DefaultConnection")));
 ```
 
-`ConnectionStrings:DefaultConnection` nhận secret từ user-secrets hoặc `ConnectionStrings__DefaultConnection`; không hard-code. Neon setup **PLANNED**, connection **NOT CONFIGURED / NOT VERIFIED**. Runtime pooled endpoint; migration direct endpoint/credential riêng, Thủy điều phối theo [database change lock](git-collaboration.md#database-change-lock--neon-shared-development-planned). [Npgsql official configuration](https://www.npgsql.org/efcore/).
+`ConnectionStrings:DefaultConnection` nhận runtime secret từ user-secrets/env, hiện **NOT CONFIGURED**. Setup key `ConnectionStrings:NeonSetupConnection` chỉ dùng Development CLI; pooled read-only probe/direct migration đã verified. Thủy điều phối theo [database lock](git-collaboration.md#database-change-lock--neon-shared-development-planned). Không auto-migrate/seed ở startup. [Npgsql configuration](https://www.npgsql.org/efcore/).
 
 ### 3.6 Domain models / Entities
 
@@ -206,7 +206,7 @@ tests/
 docs/
 ```
 
-Đây là cấu trúc .NET **PLANNED**; ngoại lệ hiện tại chỉ là static source trong `wwwroot`, không có `.csproj`, `Program.cs`, Controller, Entity hay DbContext. Có thể gộp `Domain`/`Application` nếu implementation cho thấy chi phí ceremony lớn hơn lợi ích, nhưng thay đổi phải cập nhật ADR. Không tự tạo backend trong task frontend.
+Cấu trúc solution/layer và M1 persistence đã tạo; Controller/Service/Repository/AuditWriter/Auth/CRUD vẫn PLANNED. Frontend static source giữ riêng, chưa được API host/package. `AppDbContext.SaveChanges` hiện fail closed để không tạo write path bypass concurrency/audit. Không tự gộp layers hoặc đổi API contract.
 
 ### Frontend M1 và API integration — PLANNED
 
@@ -307,9 +307,9 @@ Thiện: ASP.NET Core backend -> EF Core/Npgsql --TLS-+
 ## 13. Kiểm thử theo layer
 
 - Unit: validator, state transition, service business rule, replacement calculation.
-- Integration: repository/constraint với PostgreSQL test target cô lập khỏi shared Neon development/demo, transaction, concurrency, auth policy và API ProblemDetails. Chưa có test harness; phải fail closed nếu chưa cấu hình isolation.
+- Đã có 9 HTTP host tests (fake probe, không DB) và Development setup CLI với constraint checks trên Neon database cô lập mới tạo. Auth/CRUD/transaction/concurrency tests đầy đủ còn PLANNED; không dùng shared dev làm fixture/reset target.
 - Không mock EF Core để khẳng định constraint/index hoạt động; dùng database engine thật cho integration test quan trọng.
-- xUnit là framework chuẩn dự kiến; chưa có test project trong Week 2.
+- xUnit hiện có 16 unit + 9 HTTP tests PASS; không phải full business integration coverage.
 
 ## 14. Guardrails review
 
@@ -319,7 +319,7 @@ Thiện: ASP.NET Core backend -> EF Core/Npgsql --TLS-+
 - Validation input không thay thế kiểm tra business trong transaction.
 - Không thêm framework/hạ tầng vượt nhu cầu.
 - Tên entity/quan hệ phải khớp `database-design.md`, `erd.md` và `api-spec.md`.
-- Kiến trúc backend và toàn bộ business modules hiện đều **PLANNED**; frontend mock exception ở §15 không có API/database implementation.
+- Business modules/production integration vẫn **PLANNED**. Ngoại lệ được người dùng cho phép: frontend mock (§15) và .NET/Neon M1 foundation ([handoff](neon-database-setup.md)).
 
 ## 15. Stitch Frontend Implementation Addendum — IMPLEMENTED WITH MOCK DATA
 

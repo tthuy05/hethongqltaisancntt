@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Stitch-based frontend shell; mock development data only, no backend or database access.",
+  "description": "Stitch frontend for M1 APIs; explicit localhost demo mode remains available.",
   "engines": {
     "node": ">=22"
   },

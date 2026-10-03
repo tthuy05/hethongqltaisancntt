@@ -1,6 +1,6 @@
 # Roadmap 28/09–07/11/2026 — PLANNED
 
-> Bản kế hoạch 2 thành viên ngày 01/10/2026. Dự án hiện **chỉ có tài liệu**, không có app, DB nghiệp vụ, migration, UI hay test runtime. M1 là mục tiêu ngày **10/10/2026**, không phải trạng thái đạt được. Task lập kế hoạch này không implement/commit/push; Week 3 chỉ bắt đầu sau review/approval của người dùng.
+> Original 2-person plan/milestones/owners/dependencies preserved. Update 03/10: authorized M1 runtime/seed/Auth/JWT/masters/Asset/tests/real UI implemented; execution addendum in [Week 3](weekly/week-03.md), evidence at [handoff](m1-backend-handoff.md). M1 **10/10/2026** awaits independent review/rehearsal/final acceptance; Week 4–7 PLANNED.
 
 ## 1. Nguyên tắc triển khai
 

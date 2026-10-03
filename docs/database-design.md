@@ -1,12 +1,12 @@
 # Thiết kế cơ sở dữ liệu
 
-> Trạng thái: **PLANNED — Week 2, chưa triển khai migration, EF Core model hoặc SQL script.**
+> Trạng thái: **LOGICAL BASELINE DOCUMENTED / UNDER REVIEW; M1 PHYSICAL SUBSET CREATED / VERIFIED 02/10/2026.** 10 bảng M1/19 FKs đã map EF và apply Neon; 8 bảng còn lại PLANNED. Không đổi baseline 18 bảng/41 quan hệ.
 
-> Documentation: **COMPLETED / UNDER REVIEW** phần Thủy; physical implementation vẫn PLANNED. **Schema Baseline V1: 18 tables / 41 relationships**, bảo toàn từ handoff; platform update 01/10/2026 theo ADR-018–020, không redesign entity/FK/API.
+> Documentation: **COMPLETED / UNDER REVIEW** phần Thủy; **Schema Baseline V1: 18 tables / 41 relationships** bảo toàn. Platform update 01/10 theo ADR-018–020; initial M1 implementation 02/10 theo ADR-022 và [setup evidence](neon-database-setup.md), không redesign entity/FK/API.
 
 ## 1. Mục tiêu và phạm vi
 
-Tài liệu này là đặc tả logic/vật lý dự kiến cho **PostgreSQL hosted on Neon**, dùng Entity Framework Core và `Npgsql.EntityFrameworkCore.PostgreSQL`. Neon là shared primary development database của Thủy/Thiện; không dùng local database làm development chính. **NEON SETUP: PLANNED; NEON CONNECTION: NOT CONFIGURED; DATABASE CONNECTION: NOT VERIFIED.** Phạm vi được khóa ở đúng 18 bảng:
+Tài liệu này đặc tả baseline **PostgreSQL hosted on Neon**, EF Core và Npgsql. Neon là shared primary development database Thủy/Thiện. **M1 runtime/read/write/seed: VERIFIED** (`neondb`, PostgreSQL 18.6) 02–03/10; DefaultConnection configured by explicit repository-credential exception (ADR-023). [Current evidence](m1-backend-handoff.md). Physical subset keeps 10 M1 tables/19 FKs + EF history (not a nineteenth entity); full logical phạm vi vẫn đúng 18 bảng:
 
 1. `departments`
 2. `users`
@@ -27,7 +27,7 @@ Tài liệu này là đặc tả logic/vật lý dự kiến cho **PostgreSQL ho
 17. `replacement_recommendations`
 18. `audit_logs`
 
-Không thêm bảng ngoài danh sách trên trong Week 2. Các bảng xác thực refresh token, tệp đính kèm, nhà cung cấp, địa điểm, danh mục trạng thái và outbox đều nằm ngoài phạm vi hiện tại.
+Không thêm bảng nghiệp vụ ngoài baseline. `ef_migrations_history` là metadata EF, không tham gia ERD 18/41. Các bảng refresh token/attachments/vendors/locations/status/outbox vẫn ngoài phạm vi. InitialM1 chứa Departments/Users/Roles/UserRoles/Permissions/RolePermissions/AssetTypes/Assets/AssetStatusHistories/AuditLogs; 8 bảng còn lại chưa physical implementation.
 
 ## 2. Quy ước chung
 
@@ -39,9 +39,9 @@ Không thêm bảng ngoài danh sách trên trong Week 2. Các bảng xác thự
 - Enum nghiệp vụ được lưu bằng `varchar` và ràng buộc `CHECK`; mã C# phải ánh xạ cùng tập giá trị.
 - Giữ 13 cột `row_version` ở aggregate mutable; map `bytea` NOT NULL, CHECK 16 bytes, application-managed `IsConcurrencyToken()` theo ADR-019. Không native rowversion/xmin/IsRowVersion.
 - Master/transaction root không xóa cứng: dùng `is_active` hoặc `is_archived`, kèm thời điểm/người thực hiện khi cần.
-- Bảng lịch sử `asset_status_histories`, `maintenance_histories`, `audit_logs` chỉ thêm mới; ứng dụng và tài khoản DB không được `UPDATE`/`DELETE`.
+- Bảng lịch sử `asset_status_histories`, `maintenance_histories`, `audit_logs` chỉ thêm mới. M1 đã có triggers chặn UPDATE/DELETE/TRUNCATE cho 2 bảng hiện hữu; maintenance_history còn PLANNED. Runtime least-privilege grants và application AuditWriter còn PLANNED; owner có thể thay DDL nên không coi trigger là chống sửa tuyệt đối.
 - FK mặc định `ON DELETE NO ACTION`; không cascade-delete dữ liệu nghiệp vụ hoặc lịch sử.
-- Unique business key vẫn trim/normalize theo contract. PostgreSQL default UNIQUE không tự case-insensitive: code/serial/employee code dùng `lower(column)` expression unique index (serial/employee nullable giữ partial predicate); username/email dùng unique cột normalized hiện có. Không thêm normalized columns hoặc extension. Collation/casefold thực tế cần kiểm trên Neon trước migration; không copy SQL Server Vietnamese_CI_AS sang PostgreSQL.
+- Unique business key giữ trim/normalize theo contract. M1 có 7 `lower(column)` expression unique indexes, nullable serial/employee giữ partial predicate; username/email unique normalized columns hiện hữu. EF không model expression indexes: quản lý bằng SQL trong `M1DatabaseObjects.CreateSql`, giữ nguyên trong future migrations và verify catalog/negative tests. Neon xác minh UTF8 / C.UTF-8 và ASCII-code case uniqueness; không claim exhaustive Unicode casefold hoặc thêm extension/normalized columns.
 - Các cột `created_by_user_id`/`updated_by_user_id` cho phép `NULL` để hỗ trợ bootstrap hoặc tác vụ hệ thống, nhưng nếu có giá trị phải tham chiếu `users(id)`.
 
 ### 2.1 Chuẩn hóa dữ liệu
@@ -641,7 +641,7 @@ Chỉ bắt đầu sau Week 2 review/approval và permission triển khai module
 
 Migration đã áp dụng không sửa lại; dùng migration mới. Với dữ liệu tương lai, expand/backfill/validate/contract; PostgreSQL large/concurrent index operations cần migration review theo version/transaction constraints thực tế. CI/test database phải disposable và xác minh khác shared dev; không drop database/schema/truncate toàn bộ/reset shared Neon. Seed kỹ thuật không credential/production data; bootstrap secret riêng. Down() không chứng minh recovery.
 
-Hiện migration **NOT CREATED**, physical application schema **NOT CREATED**, **NEON SETUP: PLANNED; NEON CONNECTION: NOT CONFIGURED; DATABASE CONNECTION: NOT VERIFIED**. Local SQL Server read-only audit được giữ như lịch sử, không phải bằng chứng Neon. `it_asset_management_dev` chỉ là logical name proposal; actual database lấy từ Neon sau setup, không giả định host/name.
+**Update 02/10:** `20261002151601_InitialM1` đã tạo/apply trên isolated verification DB rồi `neondb` (10 bảng/19 FKs), connection/schema VERIFIED. Người dùng chỉ thị setup riêng trước independent review; Thiện/Mentor review PENDING. `it_asset_management_dev` vẫn chỉ logical proposal, target thực là `neondb`; runtime role/config và 8 bảng còn lại PLANNED. InitialM1 forward-only, không Down/reset shared DB. [Runbook](neon-database-setup.md).
 
 ## 9. Cân nhắc hiệu năng
 
@@ -680,7 +680,7 @@ Những baseline chưa được người dùng/Mentor xác nhận vẫn là assu
 - Tất cả aggregate mutable có `row_version`; history/audit append-only.
 - Không cascade delete; master/transaction root dùng deactivate/archive.
 - Bốn JSON snapshot/audit dùng jsonb + object/array CHECK; dữ liệu nhạy cảm được redact trước serialization/persistence.
-- Thiết kế này chỉ là **PLANNED**; chưa có migration hoặc module nghiệp vụ được triển khai.
+- Full design remains DOCUMENTED / UNDER REVIEW; M1 physical subset implemented/verified. Business modules và 8 bảng ngoài M1 vẫn PLANNED; không claim 18-table physical completion.
 
 ## 12. PostgreSQL compatibility review — Database Platform Change Addendum
 
@@ -737,7 +737,7 @@ AssetStatus, AssignmentStatus, MaintenanceStatus, LicenseStatus, ReplacementPrio
 ### 12.4 Naming, comparison và index review
 
 - Table/column vẫn lowercase snake_case, C# PascalCase với explicit EF mapping. UQ_/IX_ trong mục 3 là logical labels cũ; physical names map lowercase tương ứng để không phụ thuộc quoted mixed-case identifiers. Npgsql quote lowercase identifiers được phép, không đổi table/column spelling.
-- Chưa biết actual Neon collation/locale/PostgreSQL version; **NOT VERIFIED**. Vietnamese_CI_AS audit chỉ là lịch sử. Kiểm Unicode/tiếng Việt/accent/case, supplementary characters và normalized keys trước migration; không hứa lower/casefold locale khác sẽ giống hoàn toàn SQL Server. Không thêm citext/unaccent/pg_trgm extension trong task này.
+- **Historical 01/10 finding; updated 02/10:** actual Neon `18.6 (4e955f5)`, UTF8 / C.UTF-8 VERIFIED. ASCII case-insensitive business-key checks và Unicode text fixture PASS; exhaustive diacritics/supplementary-character/locale casefold/OQ-002 tests còn PLANNED. SQL Server Vietnamese_CI_AS vẫn chỉ historical audit; không thêm citext/unaccent/pg_trgm.
 - DB unique expression giữ case-insensitive codes/serial; canonical trim/normalize application cũng bắt buộc. Username/email unique trên cột normalized hiện hữu; không tạo cột mới. Search literal case-insensitive dùng parameterized `EF.Functions.ILike`, escape `%`, `_` và escape character; giữ keyword/sort/page/DTO contract. Translation và execution plan phải test trên actual provider ở Week 3. [PostgreSQL expression indexes](https://www.postgresql.org/docs/current/indexes-expressional.html), [Npgsql translations](https://www.npgsql.org/efcore/mapping/translations.html).
 - Đã rà asset_code, serial_number, asset_type_id/current_status, owning_department_id/current_status; assignment asset_id/current predicate/history; maintenance asset_id/status/open status; license expiry; replacement asset_id/current/budget. Giữ các key/order/payload INCLUDE có sẵn, chỉ đổi expression/predicate literals khi engine cần. Status-only query có thể cần measured index review sau MVP; không tự thêm index/đổi workload ngay.
 - Partial WHERE predicates giữ nullable/open/archive semantics và phải khớp query EF; nullable serial/employee unique không dùng NULLS NOT DISTINCT. Existing INCLUDE hỗ trợ PostgreSQL; không thay bằng clustered index hoặc thêm GIN cho jsonb. [PostgreSQL partial indexes](https://www.postgresql.org/docs/current/indexes-partial.html), [Npgsql indexes](https://www.npgsql.org/efcore/modeling/indexes.html).

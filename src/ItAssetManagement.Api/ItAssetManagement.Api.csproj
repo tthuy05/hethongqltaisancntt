@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <UserSecretsId>itassetmanagement-neon-development-b6b526ab-85bb-4275-805a-0f4657528c53</UserSecretsId>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../ItAssetManagement.Application/ItAssetManagement.Application.csproj" />
+    <ProjectReference Include="../ItAssetManagement.Infrastructure/ItAssetManagement.Infrastructure.csproj" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
+    <!-- Existing source stays unchanged; mock assets must not be packaged for deployment. -->
+    <Content Remove="wwwroot/**" />
+  </ItemGroup>
+</Project>

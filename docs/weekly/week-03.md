@@ -1,10 +1,10 @@
 # Week 03 — M1: Identity + Asset Core + Web UI
 
-> **PLANNED — REAL INTEGRATION NOT IMPLEMENTED.** Chỉ bắt đầu sau review/approval. M1 10/10/2026 bắt buộc có API + PostgreSQL hosted on Neon + UI thật. Mỗi ngày Thủy 3M+2S (7h đại diện), Thiện 2M+1S (4,5h); M=1–3h, S<1h. Task quá 3h phải tách. Không thêm framework frontend; HTML/Tailwind/JS cùng origin theo ADR-021. Early Stitch mock UI được cho phép riêng; giữ task ID/status/estimate/ownership, tái sử dụng khi thực hiện real integration.
+> **M1 CORE IMPLEMENTED EARLY 02–03/10 theo yêu cầu mới.** M1 10/10/2026 formal acceptance/review/rehearsal pending. Keep original task IDs/owners/estimates; actual execution in addenda, not blanket DONE. Thủy 3M+2S/7h, Thiện 2M+1S/4,5h; no new framework or Week 4–7 scope.
 
-**Database readiness — PLANNED:** Neon project/access, actual database/endpoint và secret storage trên hai máy cần sẵn trước **05/10**, theo [deployment setup](../deployment.md). Chưa có credentials: **NEON SETUP: PLANNED; NEON CONNECTION: NOT CONFIGURED; DATABASE CONNECTION: NOT VERIFIED**. Runtime dùng pooled endpoint với credential riêng/TLS; migration dùng direct endpoint và migration credential do Thủy điều phối. Không gửi password vào chat, không ghi host giả hoặc hard-code connection trong source.
+**Database readiness:** same `neondb` 10 M1 tables/19 FKs/InitialM1; seeded and runtime read/write/restart VERIFIED. DefaultConnection now in repository Development JSON by explicit user exception (owner credential, publication risk unresolved). Least-privilege/access review PLANNED; independent Thiện review PENDING. [Current evidence](../m1-backend-handoff.md).
 
-**Test/migration boundary:** mọi automated integration/clean migration/fixture dưới đây dùng PostgreSQL test target isolated, fail-closed nếu cấu hình trỏ shared Neon dev hoặc chưa xác minh isolation. Shared Neon là development/manual integration/demo target; không drop database/schema, reset hoặc truncate toàn bộ tables ở đó. Thủy là primary migration coordinator; Thiện sync trước `dotnet ef migrations add`/`dotnet ef database update`. Giữ task ID, ownership, estimate và mốc M1.
+**Test/migration boundary:** reuse existing `it_asset_management_m1_verify_20261002`, explicit opt-in, retained unique fixtures, no new DB/migration/reset/drop/truncate. Shared seed/manual UI smoke explicitly authorized, separate from automated tests. Thủy migration coordinator; sync before schema changes; InitialM1 immutable.
 
 ## Thứ Hai — 05/10/2026
 
@@ -185,3 +185,36 @@
 **Dependency:** merged build Thủy. **Fallback Task:** isolate lỗi master/DB, báo blocker trước Mentor demo. **Reviewer:** Thủy.
 
 **Cuối ngày — Sync / Integration:** chốt M1 pass/fail theo acceptance, Git checkpoint, docs/status; không thêm module mới ngày demo. Shared migrations/Program/frontend shell do Thủy; sau gate mới mở Week 4.
+
+## Early foundation execution addendum — 02/10/2026
+
+Người dùng yêu cầu tạo DB ngay, riêng khỏi full Week 3 approval; không tự nhận Thiện/Mentor review. Original task lines/estimate/owner là baseline kế hoạch, actual progress ở bảng này:
+
+| Task ID | Actual progress | Remaining / review |
+|---|---|---|
+| W3-THUY-D1-01 | IMPLEMENTED: solution, 4 layers, 2 test projects | Independent review pending |
+| W3-THUY-D1-02 | PARTIAL: DI/config, health/OpenAPI, pinned provider | Runtime least-privilege access/config, interactive Swagger UI PLANNED |
+| W3-THUY-D1-04 | IMPLEMENTED: HTTP test host/smoke | Independent review pending |
+| W3-THUY-D1-05 | EXECUTED: restore/Release build PASS | Review evidence pending |
+| W3-THUY-D2-01 | IMPLEMENTED: 10 tables/19 FK mappings, token column/check/concurrency metadata | App token generation/DTO writes PLANNED; independent review pending |
+| W3-THUY-D2-02 | EXECUTED: isolated tests, direct shared migration, catalog PASS | User authorized early apply; Thiện sign-off NOT DONE |
+| W3-THUY-D2-05 | EXECUTED: build/schema/secret checks PASS | Review evidence pending |
+| W3-THUY-D1-03, D2-03, D2-04 | PLANNED: real UI packaging, full pipeline/AuditWriter, seed | No business writes/Auth/CRUD implemented |
+
+Thiện W3-THIEN-D1-01: M1 entity shapes đã có trong foundation để map initial schema; Thiện review/reuse, không tạo class/table trùng. Ownership module không đổi, không tự đánh task của Thiện DONE. Runbook và actual checks: [Neon setup](../neon-database-setup.md).
+
+## Authorized M1 execution addendum — 03/10/2026
+
+User requested runtime/seed/Auth/JWT/master/Asset/tests and real UI now. Earlier task rows are the original plan, not current no-implementation claims. No owners/estimates/Week 2 statuses reset; no Thiện review fabricated.
+
+| Planned work | Actual execution / remaining gate |
+|---|---|
+| W3-THUY-D1-02/03, D2-01/03/04 | Runtime config/health, built Development UI, concurrency/AuditWriter/seed implemented; owner credential exception recorded, production packaging/least privilege pending |
+| W3-THUY-D3-01–05 | Auth/login/me/JWT/policies, UI login/session and negative tests implemented; independent review pending |
+| W3-THUY-D4-01–05, D5-01/02 | Asset DTO/validation/create/get/PUT/query/concurrency/cost policy and real list/form/detail/Dashboard implemented/tested |
+| Master/API/UI work planned for Thiện D1–D4 | Implemented in this user-authorized task, available to review/reuse; original Thiện ownership retained, not attributed as his completed work/sign-off |
+| W3-THIEN-D5-02 | EP-028 archive + If-Match/soft-delete implemented/tested; future workflow presence fails closed until active-state checks implemented |
+| W3-THUY-D5-03/04/05 | Real adapter/browser login→dashboard→create/detail/edit/search, persistence/restart evidence and docs executed; joint rehearsal/Swagger interactive UI/formal demo not done |
+| D6 acceptance/review/publication | PENDING; no commit/push; 10/10/2026 unchanged; Week 4–7 PLANNED |
+
+DefaultConnection comes from repository Development JSON per user instruction; no per-machine DB secret required, but publication exposes owner credential. Private dev-login password remains outside Git. Existing isolated DB reused with retained unique fixtures and explicit test opt-in; no new DB/migration/reset. [Exact results/runbook/files](../m1-backend-handoff.md).
