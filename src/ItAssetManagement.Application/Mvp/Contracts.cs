@@ -33,6 +33,7 @@ public interface IUnitOfWork
 public interface IActor
 {
     long? UserId { get; }
+    int? TokenVersion => null;
     Guid CorrelationId { get; }
     string? Method { get; }
     string? Path { get; }
@@ -58,10 +59,13 @@ public static class Permissions
         AssetCost = "assets.cost.read", DepartmentRead = "departments.read", DepartmentCreate = "departments.create",
         DepartmentUpdate = "departments.update", DepartmentArchive = "departments.archive",
         TypeRead = "asset-types.read", TypeCreate = "asset-types.create", TypeUpdate = "asset-types.update",
-        TypeArchive = "asset-types.archive", DashboardRead = "dashboard.read", UserLookup = "users.lookup";
+        TypeArchive = "asset-types.archive", DashboardRead = "dashboard.read", UserLookup = "users.lookup",
+        UserRead = "users.read", UserCreate = "users.create", UserUpdate = "users.update",
+        UserStatus = "users.status.manage", RoleAssign = "roles.assign";
     public static readonly string[] Read = [AssetRead, AssetHistory, DepartmentRead, TypeRead, DashboardRead, UserLookup];
     public static readonly string[] Operate = [AssetCreate, AssetUpdate, AssetArchive, AssetStatus, AssetCost];
-    public static readonly string[] Admin = [DepartmentCreate, DepartmentUpdate, DepartmentArchive, TypeCreate, TypeUpdate, TypeArchive];
+    public static readonly string[] Admin = [DepartmentCreate, DepartmentUpdate, DepartmentArchive, TypeCreate, TypeUpdate, TypeArchive,
+        UserRead, UserCreate, UserUpdate, UserStatus, RoleAssign];
     public static readonly string[] All = [.. Read, .. Operate, .. Admin];
     public static readonly string[] Roles = ["ADMIN_IT", "SYSTEM_MANAGER", "TECHNICAL_SUPPORT"];
 }

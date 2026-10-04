@@ -94,3 +94,7 @@ No package-lock/version/schema/ERD/business-contract/Week 2 handoff/task-row cha
 Thiện review endpoint/field-scope/query contract, then consume in Assignment dropdown after separate workflow/schema approval. Thủy remains DbContext/migration coordinator under shared change lock. User CRUD/roles management, assignment/return/transfer/history and technician workflows **PLANNED**; no lookup UI claimed.
 
 Final Git checkpoint: `main`, HEAD **2c34671** unchanged, **40 changed files** total: 23 modified tracked +17 untracked. Original 30-file Week 2–3 WIP preserved; this task touches 18 paths, 8 overlap earlier WIP and 10 are newly changed paths. Final `git diff --stat`: **23 files /297 insertions /29 deletions** (tracked files only; new files excluded). `git diff --check` PASS; index empty. All unstaged/uncommitted/unpushed; no stage/commit/push. Implementation is not independent review or whole-Week-4 completion.
+
+## Subsequent scoped user management addendum — 03/10/2026
+
+This historical lookup handoff/147-test snapshot was published at main/4fc66bf. User subsequently approved only EP-003/005/006/007 Admin profile list/create/get/update; [new runtime contract/evidence](user-management-handoff.md). Prior blanket User CRUD PLANNED statements remain phase snapshots, superseded only for those four endpoints. Lookup contract/policy/minimal DTO/three-role grants unchanged. Status/lock/role assignment/user UI/workflows remain PLANNED. No schema/migration change or new publication; original Week 2/handoff/evidence preserved.

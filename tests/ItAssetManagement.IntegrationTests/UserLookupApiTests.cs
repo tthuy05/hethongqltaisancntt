@@ -196,7 +196,7 @@ public sealed class UserLookupApiTests(MvpFixture fixture)
     }
 
     [NeonFact]
-    public async Task Lookup_is_read_only_and_user_management_remains_unimplemented()
+    public async Task Lookup_is_read_only_and_role_definition_writes_remain_unimplemented()
     {
         using var client = await fixture.ClientAsync();
         await using var scope = fixture.Factory.Services.CreateAsyncScope(); var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -204,7 +204,7 @@ public sealed class UserLookupApiTests(MvpFixture fixture)
         await Json(await client.GetAsync(Path));
         Assert.Equal(users, await db.Set<User>().CountAsync()); Assert.Equal(audits, await db.Set<AuditLog>().CountAsync());
         Assert.False(db.Database.HasPendingModelChanges()); Assert.Empty(await db.Database.GetPendingMigrationsAsync());
-        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/v1/users")).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync("/api/v1/users", new { fullName = "Must not create" })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/v1/roles")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync("/api/v1/roles", new { code = "CUSTOM" })).StatusCode);
     }
 }

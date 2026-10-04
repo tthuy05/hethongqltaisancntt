@@ -1,5 +1,38 @@
 # Changelog
 
+## 04/10/2026 — Xuất bản quản lý tài khoản
+
+### Changed
+
+- Người dùng yêu cầu commit/push User management part 1 +account control lên `main`, rồi dừng để tiếp tục ngày khác. Giữ evidence/handoff và pending review; các no-commit/UNCOMMITTED notes ngày 03/10 là implementation snapshots, kết quả publication theo Git log/remote. Không force-push, thêm feature, seed shared DB, schema hoặc migration.
+- Pre-push recheck: Release build 0 warnings/errors; **92 unit +76 integration +40 Node =208 PASS /0 FAIL /0 SKIP**; 25 docs/schema/runtime checks, 23 JS syntax/27 source checks PASS; health/live, health/ready, Swagger/OpenAPI HTTP 200. Integration chạy trên DB kiểm thử riêng có sẵn, không reset shared DB; [publication evidence](docs/user-account-handoff.md#publication-addendum--04102026).
+- Existing Development owner credential unchanged; exact-secret scan vẫn FAIL 1 finding cũ /UNRESOLVED, không phải security gate sạch.
+
+## 03/10/2026 — Account control và role membership
+
+### Added
+
+- EP-008/009 Admin activate/disable/lock/unlock and fixed-role assignment/removal, last-Admin race protection, live transactional permission/token recheck, JWT revocation and audited rollback. [Contract and current results](docs/user-account-handoff.md).
+- 12 new unit /14 focused API checks PASS. User-admin UI, role catalog APIs, password reset and workflow integration remain PLANNED.
+- Full regression **92 unit +76 integration +40 Node =208 PASS /0 FAIL /0 SKIP**, Release 0 warnings/errors, 25 docs/schema/runtime-boundary checks PASS. Explicit shared catalog seed Added=4 (2 permissions +2 Admin links), repeat 0; 3 users/memberships unchanged. Safe shared smoke verifies 401/403/404 routes and health/Swagger/OpenAPI 200, not shared successful account mutations. Secret gate still FAIL 1 old finding.
+
+### Changed
+
+- Narrow AppDbContext runtime guard permits only explicitly approved audited UserRole link removal; no model/entity/schema/migration change or user/history deletion. Preservation scripts distinguish this authorized runtime change from immutable mappings/InitialM1; part 1's prior successful snapshot retained.
+- Preserve existing 19-file part 1 WIP/evidence, original task rows and 10/10/2026. No commit/push; independent review and existing credential finding remain unresolved.
+
+## 03/10/2026 — User management part 1
+
+### Added
+
+- Admin-only EP-003/005/006/007 list/create/get/update profiles, strict DTO/query validation, safe contact response, adaptive password hashing, active department references, identity uniqueness, concurrency and transactional audit.
+- New users have no default role/login. Identity edits revoke old tokens; password/status/lock/role assignment and user-admin UI remain PLANNED. [Runtime contract and results](docs/user-management-handoff.md).
+- 21 new unit +14 API cases; full regression **80 unit +62 integration +40 Node PASS /0 FAIL /0 SKIP**, Release 0 warnings/errors, 22 preservation/doc checks PASS. Shared catalog adds 3 permissions/3 Admin links, repeat adds 0; user count stays 3. Existing secret finding remains FAIL 1 /UNRESOLVED.
+
+### Changed
+
+- Add users.read/create/update to explicit Admin catalog only, no schema/migration change. Preserve EP-004 minimum lookup, Week 2 evidence, logical 18/41 and 10/10/2026; independent review/security gate PENDING. New work UNCOMMITTED / UNPUSHED after published main/4fc66bf.
+
 ## 03/10/2026 — Xuất bản follow-up đã kiểm thử
 
 ### Changed

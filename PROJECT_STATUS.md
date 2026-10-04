@@ -1,21 +1,25 @@
 # Project Status
 
-> Cập nhật **03/10/2026** (Asia/Saigon). M1 runtime/seed/Auth/JWT/masters/Asset/tests/UI API đã triển khai; Week 2 evidence và review gate được giữ. Bổ sung riêng EP-004 User Lookup theo xác nhận mới của người dùng; chưa mở workflow Week 4–7.
+> Cập nhật **04/10/2026** (Asia/Saigon). M1 runtime/seed/Auth/JWT/masters/Asset/tests/UI API đã triển khai; Week 2 evidence và review gate được giữ. Bổ sung riêng User Lookup, User management part 1 và User account control theo xác nhận mới; chưa mở workflow Week 4–7. Người dùng yêu cầu kiểm tra/commit/push công việc hiện tại rồi dừng, không mở thêm chức năng.
 
 ## Current Week / Phase / Branch
 
 | Hạng mục | Trạng thái |
 |---|---|
 | Current Week | Week 2 |
-| Current Phase | Week 2 documentation REVIEW PENDING + M1 vertical slice + scoped EP-004 prerequisite IMPLEMENTED / VERIFIED / READY FOR REVIEW; Assignment workflow PLANNED |
+| Current Phase | Week 2 documentation REVIEW PENDING + M1 vertical slice + scoped EP-003–009 prerequisites IMPLEMENTED / VERIFIED / READY FOR REVIEW; Assignment workflow PLANNED |
 | Technical Documentation | COMPLETED phần Thủy / UNDER REVIEW bởi Thiện/Mentor; không phải implementation hoàn tất |
-| Current Branch | `main`; M1 baseline `2c34671` preserved. User authorized push of verified Demo/Swagger/test/evidence +User Lookup after 147 tests PASS; current Git history/remote identify the publication commit |
+| Current Branch | `main`; published Demo/Swagger/User Lookup baseline `4fc66bf` preserved. Ngày 04/10 người dùng duyệt publication User management part 1 +account control; actual commit/push theo Git log/remote, không force-push. Các UNCOMMITTED / UNPUSHED notes dưới đây là historical implementation snapshots |
 | Remote | `origin` đúng repository chính thức; published baseline frontend/follow-up được giữ, không reset hoặc đổi remote |
 | Next phase gate | M1 10/10/2026: code/API/DB/UI thật đã có; independent review, rehearsal và security/production gates PENDING |
 
 ## Completed Modules
 
-**Scoped prerequisite EP-004 / W4-THUY-D1-03:** User Lookup implemented, 15 unit + 9 API checks PASS (2 offline host / 7 isolated Neon). Active-only minimal projection, per-request permission, literal display-name search, department filter, stable paging/sort; no user administration/Assignment UI or workflow. [Current contract/evidence](docs/user-lookup-handoff.md); independent Thiện review PENDING. Existing Week 2–3 report/counts are dated snapshots, not invalidated by this addition.
+**User account control / W4-THUY-D2-02:** EP-008/009 Admin-only activate/disable/lock/unlock, replace fixed-role membership, token revocation, last-Admin protection và transactional permission recheck implemented; 12 new unit +14 API focused checks PASS. [Contract/evidence](docs/user-account-handoff.md); UI/role-catalog/password reset/workflows PLANNED, independent review PENDING. Không schema/migration mới; AppDbContext có narrow audited UserRole-removal runtime guard, không mở aggregate/history deletes.
+
+**User management part 1 / W4-THUY-D2-01:** EP-003/005/006/007 Admin-only profile list/create/get/update implemented. New account có hash nhưng không có role mặc định; có thể login sau EP-009 hợp lệ và khi active/unlocked. Logical 18 tables / 41 relationships, InitialM1 và evidence cũ nguyên vẹn. [Part 1 contract/evidence](docs/user-management-handoff.md); independent review **PENDING**, M1 10/10/2026 giữ nguyên. Baseline main/4fc66bf, thay đổi mới UNCOMMITTED / UNPUSHED; không gộp với publication đã hoàn tất.
+
+**Scoped prerequisite EP-004 / W4-THUY-D1-03:** User Lookup implemented, 15 unit + 9 API checks PASS (2 offline host / 7 isolated Neon). Active-only minimal projection, per-request permission, literal display-name search, department filter, stable paging/sort; no Assignment UI or workflow. Subsequent partial Admin profile APIs are covered by the separate addendum above, not by lookup approval. [Lookup contract/evidence](docs/user-lookup-handoff.md); independent Thiện review PENDING. Existing Week 2–3 report/counts are dated snapshots, not invalidated by this addition.
 
 **M1 implemented / verified:** Auth/login/me, JWT, DB-backed policies, Department/Asset Type reads/writes/status, Asset create/list/detail/PUT/status/archive/history, search/filter/page/sort, audited persistence/concurrency và idempotent seed. 8 UI screens dùng API thật mặc định; explicit mock vẫn giữ. [M1 report](docs/m1-backend-handoff.md) ghi actual evidence/limitations. 30 nhiệm vụ Thủy Week 2 và [handoff](docs/week-02-thuy-handoff.md) vẫn DOCUMENTED — REVIEW PENDING; previous **21 PASS**, platform **24 PASS**, foundation **25 tests / 37 checks** giữ nguyên như historical evidence.
 
@@ -48,9 +52,11 @@
 | Migration | **CREATED / APPLIED**: `20261002151601_InitialM1`; isolated target first, shared `neondb` via direct endpoint under advisory lock |
 | Authentication / JWT | **IMPLEMENTED / VERIFIED**; generic denial, lockout/rate limit, 15-minute JWT, in-memory frontend token |
 | Asset CRUD | **IMPLEMENTED / VERIFIED**; PUT metadata per EP-026, archive via DELETE + strong If-Match, real search/filter/page/sort |
+| User management part 1 | **IMPLEMENTED / VERIFIED**: Admin list/create/get/PUT profile, 21 new unit +14 API PASS; original DTO/evidence retained. Previous catalog 20/37 is part 1 snapshot; account control added separately below, no UI/migration |
+| User account control | **IMPLEMENTED / VERIFIED**: EP-008/009, 12 new unit +14 API (2 host /12 isolated) PASS. Shared catalog 22 permissions/39 role links; 3 existing users/3 memberships unchanged. No UI/role catalog/password reset/migration |
 | MVP Milestone | **10/10/2026** — giữ nguyên |
 | Project skeleton / API | **IMPLEMENTED**: layered M1; audited unit of work enables SaveChanges, no startup seed/migration |
-| .NET build / xUnit / DB integration tests | 59 unit + 48 integration (12 offline host + 36 isolated Neon) PASS / 0 FAIL / 0 SKIP with opt-in; [current evidence](docs/user-lookup-handoff.md), [previous 44/39 snapshot](docs/week-02-03-completion.md) retained |
+| .NET build / xUnit / DB integration tests | 92 unit + 76 integration (16 offline host + 60 isolated Neon) PASS / 0 FAIL / 0 SKIP with opt-in; Release 0 warnings/errors; [current evidence](docs/user-account-handoff.md), [previous snapshots](docs/week-02-03-completion.md) retained |
 | Frontend build | **PASS** — local Tailwind CSS + Inter fonts + ES modules trong `artifacts/frontend/` |
 | Frontend automated tests | **40 PASS / 0 FAIL** — Node mock/service contract + build/static server/Swagger tests, không phải DB integration |
 | Frontend source checks | Includes authored Swagger sources/tooling; exact current totals at [completion evidence](docs/week-02-03-completion.md), not security/accessibility certification |

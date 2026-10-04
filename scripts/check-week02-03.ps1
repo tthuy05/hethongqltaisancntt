@@ -35,9 +35,10 @@ try {
         }
     }
     Write-Output 'PASS: local file links in all affected documentation resolve within the repository.'
-    & git diff --quiet HEAD -- Directory.Packages.props .config/dotnet-tools.json src/ItAssetManagement.Domain/Entities src/ItAssetManagement.Infrastructure/Data
+    & git diff --quiet HEAD -- Directory.Packages.props .config/dotnet-tools.json src/ItAssetManagement.Domain/Entities src/ItAssetManagement.Infrastructure/Data ':(exclude)src/ItAssetManagement.Infrastructure/Data/AppDbContext.cs'
     if ($LASTEXITCODE -ne 0) { throw 'Pinned .NET versions, entities or physical schema/migration changed.' }
-    Write-Output 'PASS: .NET versions, entity mappings and InitialM1/custom SQL unchanged.'
+    & ./scripts/check-account-persistence.ps1 -Quiet
+    Write-Output 'PASS: .NET versions, entity mappings and InitialM1/custom SQL unchanged; approved account runtime guard verified separately.'
     foreach ($file in @('README.md','PROJECT_STATUS.md','docs/week-02-03-completion.md')) {
         $content = Get-Content -LiteralPath $file -Raw
         foreach ($required in @('10/10/2026','18 tables / 41 relationships','Swagger','Neon','PENDING')) {

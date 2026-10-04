@@ -272,3 +272,31 @@ Exact files, run/check commands, reuse rationale và live-integration handoff: [
 **Database/Migration impact:** NONE to schema, InitialM1 or logical 18 tables / 41 relationships. Add one permission and its three standard role links only through explicit existing audited/idempotent development seed; ordinary startup/lookup never seed or migrate. Existing seed can restore missing baseline grants, so use it only for approved bootstrap/catalog updates, not routine startup/access-management overrides. No reset of existing profiles/passwords/assets.
 
 **Evidence:** [User Lookup contract and handoff](docs/user-lookup-handoff.md). Existing 30 Thủy Week 2 tasks and 96-task Week 2–3 evidence retained. Independent review/M1 acceptance/owner-credential remediation still pending; no commit/push.
+
+## ADR-026 - Scoped Admin user profiles without role assignment
+
+**Date:** 2026-10-03. **Status:** IMPLEMENTED — independent review PENDING.
+
+**Context:** After main/4fc66bf, user approved the suggested part 1 of W4-THUY-D2-01: EP-003/005/006/007. Existing User/Department/permission schema already supports the design. Approval does not cover account status/locks/role assignment, user UI, migrations, workflow or publication.
+
+**Decision:** Three Admin-only permission policies, concrete allowlisted profile/create/update DTOs, adaptive password hashing, normalized unique identity keys and nullable active department reference. New user active but no default role or privilege; no login until separately authorized role assignment. PUT cannot modify password, status/lock/security state or roles. Full PUT nullable fields clear when omitted. Keep EP-004 minimal picker unchanged. Increment existing tokenVersion when normalized email/username changes, invalidating old JWTs; other profile changes leave it untouched. Preserve password/roles; token-version saturation is a safe 409, not integer overflow.
+
+**Consequences:** Existing rowVersion protects no-op and concurrent updates; audited transaction + shared master-data/users-identity lock order protects profile writes. Database uniqueness remains final guard; errors mapped without PostgreSQL details. Admin response may contain contacts; Manager/Support cannot access it even for themselves. Audit stores entity/actor/correlation/department/status and change flags, not actual personal contact/name/password/hash values. No blind entity serialization. New users can be recipients but cannot authenticate without an active role. Future EP-008/009 must enforce last-Admin/ref checks and separate permissions before being enabled.
+
+**Database/Migration Impact:** NONE to 18 tables / 41 relationships, physical 10/19 or applied InitialM1. Explicit audited/idempotent seed adds only missing 3 permissions and 3 ADMIN_IT links; no startup seed/reset or new employee fixtures on shared database. Isolated tests retain namespaced fixtures, never migrate/drop/reset shared development. Owner credential exception remains UNRESOLVED; human/M1 10/10/2026/security acceptance PENDING. No commit/push.
+
+**Evidence:** [User management contract and handoff](docs/user-management-handoff.md). Original 30 Week 2 tasks/96-task evidence preserved.
+
+## ADR-027 - Audited account control and fixed-role replacement
+
+**Date:** 2026-10-03. **Status:** IMPLEMENTED / focused tests PASS — independent review PENDING.
+
+**Context:** User approved continuing EP-008/009 after the uncommitted part 1. Preserve existing WIP, schema/evidence/ownership and 10/10/2026. No UI/role-definition/password-reset/workflow/migration/publication approval.
+
+**Decision:** Separate Admin permission policies users.status.manage/roles.assign. Exact Active/Inactive/Locked/Unlocked commands affect independent activity/manual-lock axes, not automatic lockout. Explicit required roleIds replaces membership in the active fixed three-role catalog; retained links keep identity/timestamps, [] removes all. Every success including no-op increments tokenVersion/touches user, old JWT never revives. AccountChangeResult wraps unchanged UserDto with resulting lock/role IDs and warnings; original profile/lookup endpoints unchanged.
+
+**Consequences:** Global users-identity lock serializes last-Admin checks, membership and identity writes. Recheck actor's live account/token/permission inside transaction before mutation. Reject loss of last eligible active/unlocked/non-auto-locked ADMIN_IT, including race between different users. EF versions protect login/profile races; saturation rolls back intermediate saves. Only explicitly approved UserRole removal inside audited transaction is allowed by a narrow AppDbContext runtime gate; generic links/aggregates/history deletes still forbidden, coverage retained after detach. Audit records safe flags/counts/per-link numeric IDs; mandatory raw status reason is validated but not retained (reasonProvided only), a transparent justification-retention review limitation under current minimal audit policy.
+
+**Database/Migration Impact:** No entity/mapping/InitialM1/18-table/41-relationship change. Runtime AppDbContext guard exception made explicit in preservation scripts; unchanged model entry point/custom SQL still checked and live tests prove removal/audit rollback. M1 lacks allocation tables; later table presence causes conservative ALLOCATION_REVIEW_REQUIRED until actual workflow queries/UI warning are implemented, never a fabricated count or automatic return/delete. Explicit catalog seed only two permissions/two Admin links; no shared account status/role changes in smoke. Owner credential UNRESOLVED; human/M1/security gates PENDING, no commit/push.
+
+**Evidence:** [Account-control contract/handoff](docs/user-account-handoff.md), preserving part 1's 182-test snapshot and original Week 2 evidence.

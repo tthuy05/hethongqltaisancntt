@@ -65,6 +65,8 @@ public sealed class AuditedUnitOfWork(AppDbContext db) : IUnitOfWork
                 {
                     "uq_assets_asset_code" => "ASSET_CODE_CONFLICT", "uq_assets_serial" => "ASSET_SERIAL_CONFLICT",
                     "uq_departments_code" => "DEPARTMENT_CODE_CONFLICT", "uq_asset_types_code" => "ASSET_TYPE_CODE_CONFLICT",
+                    "uq_users_normalized_email" => "USER_EMAIL_CONFLICT", "uq_users_normalized_username" => "USER_USERNAME_CONFLICT",
+                    "uq_users_employee_code" => "USER_EMPLOYEE_CODE_CONFLICT",
                     _ => "BUSINESS_KEY_CONFLICT"
                 };
                 throw new BusinessException(409, code, "Mã nghiệp vụ đã tồn tại.");
@@ -77,7 +79,9 @@ public sealed class AuditWriter(AppDbContext db, IActor actor) : IAuditWriter
 {
     private static readonly HashSet<string> Allowed = new(StringComparer.OrdinalIgnoreCase)
     { "assetCode", "name", "assetTypeId", "owningDepartmentId", "currentStatus", "isArchived", "serialNumber", "purchaseCost",
-      "code", "isActive", "parentDepartmentId", "defaultUsefulLifeMonths" };
+      "code", "isActive", "parentDepartmentId", "defaultUsefulLifeMonths", "departmentId",
+      "emailChanged", "usernameChanged", "displayNameChanged", "employeeCodeChanged", "phoneChanged",
+      "isAdminLocked", "userId", "roleId", "roleCount", "adminRoleAssigned", "reasonProvided" };
     public void Record(string action, object? entity, long? actorId, string actorType, string outcome = "SUCCESS",
         object? before = null, object? after = null, string? failureCode = null)
     {

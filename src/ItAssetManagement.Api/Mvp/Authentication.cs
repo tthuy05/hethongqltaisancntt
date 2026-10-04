@@ -36,6 +36,7 @@ public sealed class HttpActor(IHttpContextAccessor accessor) : IActor
 {
     private readonly Guid _correlationId = Guid.NewGuid();
     public long? UserId => long.TryParse(accessor.HttpContext?.User.FindFirstValue("sub"), out var id) ? id : null;
+    public int? TokenVersion => int.TryParse(accessor.HttpContext?.User.FindFirstValue("token_version"), out var version) ? version : null;
     public Guid CorrelationId => _correlationId;
     public string? Method => accessor.HttpContext?.Request.Method;
     public string? Path => accessor.HttpContext?.Request.Path.Value;

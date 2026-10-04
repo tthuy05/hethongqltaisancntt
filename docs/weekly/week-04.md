@@ -189,3 +189,13 @@
 Người dùng duyệt riêng **W4-THUY-D1-03 / EP-004 User Lookup** trước workflow cấp phát. API minimal active-only đã implement và kiểm thử; [contract/evidence/handoff](../user-lookup-handoff.md). Original task rows/owners/estimates/dates/statuses above remain the planning baseline; this addendum records actual implementation, not independent Thiện review.
 
 Chỉ có lookup service/controller, permission catalog/explicit seed và test/docs. W4-THUY-D1-01/02 migration, Assignment/Maintenance/Audit-read APIs/UI và user administration vẫn **PLANNED**. Không tự đóng M1 hoặc đưa toàn Week 4 sang DONE. Thiện có thể dùng lookup contract khi chuẩn bị assignment dropdown, nhưng workflow phải tự kiểm active user/reference/permission trong transaction.
+
+## Subsequent early prerequisite — User management part 1, 03/10/2026
+
+Sau publication main/4fc66bf, người dùng duyệt riêng **W4-THUY-D2-01 / EP-003/005/006/007**: Admin list/create/get/update profile, password hash, active Department reference, validation/audit/concurrency. [Runtime contract và evidence](../user-management-handoff.md). User tạo mới chưa có role nên chưa login; EP-008/009 status/lock/role assignment, last-Admin checks, UI và workflows vẫn **PLANNED**. Original task rows/owners/dates/statuses above are unchanged planning snapshots, not current implementation claims; addendum supersedes the earlier blanket user-administration-PLANNED note only for these four endpoints.
+
+D2-03 được phủ phần permission/mass assignment/profile token invalidation/concurrency; những scenario account status/role/last Admin/ref workflow chưa implement vẫn PLANNED. D2-04 có runtime handoff/permission/status addendum; không tự đánh cả task security hoặc Week 4 DONE. D2-05 review assign/return của Thiện và independent review của Thiện/Mentor **PENDING**. Không tạo migration hoặc thay ownership/database coordinator. M1 **10/10/2026** giữ nguyên; công việc mới chưa commit/push.
+
+## Subsequent early prerequisite — account control, 03/10/2026
+
+Người dùng duyệt tiếp **W4-THUY-D2-02 / EP-008/009**: Admin activate/disable/lock/unlock, fixed-role membership replacement, JWT revocation, transactional last-Admin safeguard/audit/version. 12 new unit +14 focused API checks PASS; [current runtime contract/evidence](../user-account-handoff.md). D2-03 có thêm account/token/last-Admin/race/rollback coverage, D2-04 có contract/status/security addendum. Original task rows/statuses/dates/owners remain planning snapshots; actual work recorded here, not blanket Week 4 DONE. No user-admin UI/role-catalog/password reset/Assignment/Maintenance/migration. D2-05 độc lập review của Thiện và M1 10/10/2026 acceptance **PENDING**; no commit/push.

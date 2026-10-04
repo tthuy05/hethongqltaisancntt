@@ -4,13 +4,17 @@ Hệ thống Quản lý & Tối ưu Hạ tầng CNTT Doanh nghiệp có web UI v
 
 > **Current phase:** Week 2 review preserved; user-authorized M1 backend/UI vertical slice implemented 02–03/10/2026.
 > **Implementation status:** Auth/JWT/policies, masters, Asset API, audited persistence và UI API thật **IMPLEMENTED / VERIFIED — REVIEW PENDING**.
-> M1 **10/10/2026** giữ nguyên; independent review, rehearsal và production/security gates chưa hoàn tất. Chưa mở workflow Week 4–7; người dùng duyệt riêng prerequisite User Lookup (EP-004) vào 03/10/2026.
+> M1 **10/10/2026** giữ nguyên; independent review, rehearsal và production/security gates chưa hoàn tất. Chưa mở workflow Week 4–7; người dùng duyệt riêng User Lookup, User management part 1 và User account control vào 03/10/2026.
+
+**User management — part 1:** EP-003/005/006/007 (W4-THUY-D2-01), API Admin danh sách/tạo/xem/sửa hồ sơ, hash mật khẩu/validation/audit/concurrency. User tạo mới không được tự cấp role; chưa login cho đến khi Admin gán role hợp lệ. [Contract và evidence part 1](docs/user-management-handoff.md) được giữ như dated snapshot.
+
+**User account control:** EP-008/009 Admin activate/disable/lock/unlock và thay role membership, bảo vệ Admin cuối cùng, thu hồi JWT cũ, audit/rollback và transaction permission recheck. Không xóa user/history, không reset automatic lockout hay password. [Contract và bàn giao](docs/user-account-handoff.md). **Chưa có UI quản trị/role catalog/password reset**; không đổi schema hoặc tự đóng review/M1. Ngày 04/10/2026 người dùng yêu cầu commit/push cả hai phần lên `main` rồi dừng; các ghi chú UNCOMMITTED / UNPUSHED trước đó là snapshot lúc bàn giao, kết quả publication theo Git log/remote.
 
 **User Lookup:** `GET /api/v1/users/lookup` đã implement cho dropdown người nhận: active-only, ID/tên/phòng ban tối thiểu, DB-backed `users.lookup`, filter/search/page/sort. Không phải API quản trị user hoặc chọn technician đủ điều kiện. [Contract, kiểm thử và bàn giao cho Thiện](docs/user-lookup-handoff.md). Đây là bổ sung hẹp sau báo cáo Week 2–3, không tự đóng review/M1 hay tạo schema Assignment.
 
 ## Main features **PLANNED**
 
-- User, role và permission management.
+- User profile và account status/lock/role assignment APIs đã implement riêng; role/permission catalog, password reset và UI quản trị còn **PLANNED**.
 - IT asset/type/department management với search, filter, pagination và sorting.
 - Asset assignment, return, transfer và lịch sử.
 - Maintenance ticket, trạng thái và lịch sử chi phí/kết quả.
@@ -30,7 +34,7 @@ Hệ thống Quản lý & Tối ưu Hạ tầng CNTT Doanh nghiệp có web UI v
 | Authentication | 15-minute JWT; PasswordHasher Identity V3 | IMPLEMENTED; dev key ephemeral, production key required |
 | Authorization | DB-backed permission-policy RBAC | IMPLEMENTED; account/token-version/roles checked each request |
 | API documentation | Development OpenAPI JSON + local Swagger UI 5.33.1 | IMPLEMENTED / VERIFIED at `/swagger/`; disabled in Production |
-| Testing | xUnit unit/HTTP + isolated Neon tests | 59 unit + 48 integration PASS; [current lookup evidence](docs/user-lookup-handoff.md); [historical two-week evidence](docs/week-02-03-completion.md) preserved |
+| Testing | xUnit unit/HTTP + isolated Neon tests | 92 unit + 76 integration PASS; [current account-control evidence](docs/user-account-handoff.md); [historical two-week evidence](docs/week-02-03-completion.md) preserved |
 | Web UI | HTML/CSS/JavaScript ES modules + Tailwind CSS 3.4.19, Inter local | 8 M1 screens use API by default; explicit localhost mock demo retained |
 | Frontend tooling | Node.js >=22, pnpm 11.25.0; build CSS/static assets | IMPLEMENTED; Node 24.19.0 verified |
 

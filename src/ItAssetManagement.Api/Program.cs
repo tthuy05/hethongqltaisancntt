@@ -42,6 +42,9 @@ builder.Services.AddScoped<IAuditWriter, AuditWriter>();
 builder.Services.AddSingleton<IPasswordService, PasswordService>();
 builder.Services.AddScoped<AuthService>(); builder.Services.AddScoped<AssetService>(); builder.Services.AddScoped<MasterService>();
 builder.Services.AddScoped<UserLookupService>();
+builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<IAccountPersistence, AccountPersistence>();
+builder.Services.AddScoped<UserAccountService>();
 builder.Services.AddScoped<DevelopmentSeed>();
 builder.Services.AddScoped<DevelopmentDemoSeed>();
 builder.Services.AddRateLimiter(options =>
