@@ -1,13 +1,13 @@
 # Project Status
 
-> Cập nhật **04/10/2026** (Asia/Saigon). M1 runtime/seed/Auth/JWT/masters/Asset/tests/UI API đã triển khai; Week 2 evidence và review gate được giữ. Bổ sung riêng User Lookup, User management part 1 và User account control theo xác nhận mới; chưa mở workflow Week 4–7. Người dùng yêu cầu kiểm tra/commit/push công việc hiện tại rồi dừng, không mở thêm chức năng.
+> Cập nhật **04/10/2026** (Asia/Saigon). M1 runtime/seed/Auth/JWT/masters/Asset/tests/UI API đã triển khai; Week 2 evidence và review gate được giữ. Sau publication `845c674`, người dùng yêu cầu tiếp tục phần Thủy: bổ sung danh mục role/quyền chỉ đọc và giao diện Người dùng. Assignment/Maintenance Week 4–7 vẫn PLANNED. Lượt này không commit/push; yêu cầu dừng của lần publication trước là checkpoint lịch sử.
 
 ## Current Week / Phase / Branch
 
 | Hạng mục | Trạng thái |
 |---|---|
 | Current Week | Week 2 |
-| Current Phase | Week 2 documentation REVIEW PENDING + M1 vertical slice + scoped EP-003–009 prerequisites IMPLEMENTED / VERIFIED / READY FOR REVIEW; Assignment workflow PLANNED |
+| Current Phase | Week 2 documentation REVIEW PENDING + M1 vertical slice + scoped EP-003–012 prerequisites / user-admin UI; Assignment workflow PLANNED; kết quả mới tại handoff riêng |
 | Technical Documentation | COMPLETED phần Thủy / UNDER REVIEW bởi Thiện/Mentor; không phải implementation hoàn tất |
 | Current Branch | `main`; published Demo/Swagger/User Lookup baseline `4fc66bf` preserved. Ngày 04/10 người dùng duyệt publication User management part 1 +account control; actual commit/push theo Git log/remote, không force-push. Các UNCOMMITTED / UNPUSHED notes dưới đây là historical implementation snapshots |
 | Remote | `origin` đúng repository chính thức; published baseline frontend/follow-up được giữ, không reset hoặc đổi remote |
@@ -15,13 +15,15 @@
 
 ## Completed Modules
 
+**User-admin UI / role-catalog reads — 04/10/2026:** màn Người dùng nối API hồ sơ/trạng thái/gán role; EP-010–012 chỉ đọc danh mục và `GET /users/{userId}/account` đọc projection tối thiểu. Manager nhận ID/tên role, không nhận quyền chi tiết; Support không được xem role catalog hoặc quản trị người dùng. Không hardcode role IDs, tự gán quyền hoặc thêm schema/migration. [Contract/evidence mới](docs/user-admin-ui-handoff.md); các dòng UI/catalog PLANNED bên dưới là checkpoint trước thay đổi này, không phải trạng thái hiện tại. Independent review **PENDING**.
+
 **User account control / W4-THUY-D2-02:** EP-008/009 Admin-only activate/disable/lock/unlock, replace fixed-role membership, token revocation, last-Admin protection và transactional permission recheck implemented; 12 new unit +14 API focused checks PASS. [Contract/evidence](docs/user-account-handoff.md); UI/role-catalog/password reset/workflows PLANNED, independent review PENDING. Không schema/migration mới; AppDbContext có narrow audited UserRole-removal runtime guard, không mở aggregate/history deletes.
 
 **User management part 1 / W4-THUY-D2-01:** EP-003/005/006/007 Admin-only profile list/create/get/update implemented. New account có hash nhưng không có role mặc định; có thể login sau EP-009 hợp lệ và khi active/unlocked. Logical 18 tables / 41 relationships, InitialM1 và evidence cũ nguyên vẹn. [Part 1 contract/evidence](docs/user-management-handoff.md); independent review **PENDING**, M1 10/10/2026 giữ nguyên. Baseline main/4fc66bf, thay đổi mới UNCOMMITTED / UNPUSHED; không gộp với publication đã hoàn tất.
 
 **Scoped prerequisite EP-004 / W4-THUY-D1-03:** User Lookup implemented, 15 unit + 9 API checks PASS (2 offline host / 7 isolated Neon). Active-only minimal projection, per-request permission, literal display-name search, department filter, stable paging/sort; no Assignment UI or workflow. Subsequent partial Admin profile APIs are covered by the separate addendum above, not by lookup approval. [Lookup contract/evidence](docs/user-lookup-handoff.md); independent Thiện review PENDING. Existing Week 2–3 report/counts are dated snapshots, not invalidated by this addition.
 
-**M1 implemented / verified:** Auth/login/me, JWT, DB-backed policies, Department/Asset Type reads/writes/status, Asset create/list/detail/PUT/status/archive/history, search/filter/page/sort, audited persistence/concurrency và idempotent seed. 8 UI screens dùng API thật mặc định; explicit mock vẫn giữ. [M1 report](docs/m1-backend-handoff.md) ghi actual evidence/limitations. 30 nhiệm vụ Thủy Week 2 và [handoff](docs/week-02-thuy-handoff.md) vẫn DOCUMENTED — REVIEW PENDING; previous **21 PASS**, platform **24 PASS**, foundation **25 tests / 37 checks** giữ nguyên như historical evidence.
+**M1 implemented / verified:** Auth/login/me, JWT, DB-backed policies, Department/Asset Type reads/writes/status, Asset create/list/detail/PUT/status/archive/history, search/filter/page/sort, audited persistence/concurrency và idempotent seed. 9 UI screens dùng API thật mặc định (thêm Người dùng); explicit mock giữ 8 screens cũ. [M1 report](docs/m1-backend-handoff.md) ghi historical evidence/limitations; phần UI/catalog mới ở handoff riêng. 30 nhiệm vụ Thủy Week 2 và [handoff](docs/week-02-thuy-handoff.md) vẫn DOCUMENTED — REVIEW PENDING; previous **21 PASS**, platform **24 PASS**, foundation **25 tests / 37 checks** giữ nguyên như historical evidence.
 
 ## In Progress
 
@@ -52,16 +54,16 @@
 | Migration | **CREATED / APPLIED**: `20261002151601_InitialM1`; isolated target first, shared `neondb` via direct endpoint under advisory lock |
 | Authentication / JWT | **IMPLEMENTED / VERIFIED**; generic denial, lockout/rate limit, 15-minute JWT, in-memory frontend token |
 | Asset CRUD | **IMPLEMENTED / VERIFIED**; PUT metadata per EP-026, archive via DELETE + strong If-Match, real search/filter/page/sort |
-| User management part 1 | **IMPLEMENTED / VERIFIED**: Admin list/create/get/PUT profile, 21 new unit +14 API PASS; original DTO/evidence retained. Previous catalog 20/37 is part 1 snapshot; account control added separately below, no UI/migration |
-| User account control | **IMPLEMENTED / VERIFIED**: EP-008/009, 12 new unit +14 API (2 host /12 isolated) PASS. Shared catalog 22 permissions/39 role links; 3 existing users/3 memberships unchanged. No UI/role catalog/password reset/migration |
+| User management part 1 | **IMPLEMENTED / VERIFIED**: Admin list/create/get/PUT profile, original 21 new unit +14 API snapshot retained; now API-backed UI implemented. No migration |
+| User account control / catalog | **IMPLEMENTED / VERIFIED**: EP-008/009 + read-only EP-010–012 + minimal account GET + user-admin UI. Shared catalog 24 permissions/42 fixed-role grants, 3 users/3 memberships; explicit narrow seed adds5 then0. Password reset/role-definition writes PLANNED; no migration |
 | MVP Milestone | **10/10/2026** — giữ nguyên |
 | Project skeleton / API | **IMPLEMENTED**: layered M1; audited unit of work enables SaveChanges, no startup seed/migration |
-| .NET build / xUnit / DB integration tests | 92 unit + 76 integration (16 offline host + 60 isolated Neon) PASS / 0 FAIL / 0 SKIP with opt-in; Release 0 warnings/errors; [current evidence](docs/user-account-handoff.md), [previous snapshots](docs/week-02-03-completion.md) retained |
+| .NET build / xUnit / DB integration tests | 107 unit + 85 integration (18 offline host + 67 isolated Neon) PASS /0 FAIL /0 SKIP with opt-in; Release 0 warnings/errors; [current evidence](docs/user-admin-ui-handoff.md), [previous account snapshot](docs/user-account-handoff.md) retained |
 | Frontend build | **PASS** — local Tailwind CSS + Inter fonts + ES modules trong `artifacts/frontend/` |
-| Frontend automated tests | **40 PASS / 0 FAIL** — Node mock/service contract + build/static server/Swagger tests, không phải DB integration |
+| Frontend automated tests | **50 PASS /0 FAIL /0 SKIP** — Node mock/API service contract + build/static server/Swagger tests, không phải DB integration |
 | Frontend source checks | Includes authored Swagger sources/tooling; exact current totals at [completion evidence](docs/week-02-03-completion.md), not security/accessibility certification |
 | API runtime/OpenAPI | Health/readiness/OpenAPI + M1 controllers VERIFIED; interactive local Swagger `/swagger/` VERIFIED, health Try it out 200; disabled in Production |
-| Web UI/HTML + Tailwind 3 | **REAL API DEFAULT** on localhost:5080; 8 screens, built assets Development-only; explicit localhost mock retained |
+| Web UI/HTML + Tailwind 3 | **REAL API DEFAULT** on localhost:5080; 9 screens, built assets Development-only; explicit localhost mock giữ8 screens cũ, không giả user administration |
 | Frontend browser evidence | Mock flows PASS; responsive 320/375/768/1280/1440px trước handoff; follow-up menu tại 390×844 và desktop PASS, ESC trả focus về Menu; local screenshots tại ignored `artifacts/ui-evidence/` |
 | Real M1 demo evidence | Three role logins, 24 demo assets + UI-smoke asset; create/edit/search/filter/page/negative UI checks and 8 screens × 3 widths verified; formal Mentor demo/production deployment **PLANNED** |
 | Mermaid ERD | Parser 11.17.2 kiểm lại 01/10 thành công; 18 entity/41 FK/41 relationships; PNG/SVG render chưa xác nhận |
@@ -74,7 +76,7 @@
 - ERD parser **VERIFIED** ở mức cú pháp; hình render PNG/SVG **NOT VERIFIED**.
 - Password/JWT/lockout values, serial policy, maintenance ownership, replacement thresholds/price, alert window, budget year/currency, key management, audit retention, import limits, deployment và ticket queue policy cần xác nhận ở [Open Questions](docs/open-questions.md).
 - Runtime Development config contains real owner credential by user instruction: exact-secret scanner finding is expected and UNRESOLVED, not a clean security gate. Rotation/least privilege strongly recommended; no production approval.
-- Frontend 40 tests PASS; ChangeStatusRequest/auth/decimal/null/PUT/If-Match mapping tested live. Broad performance/accessibility/security review remains PLANNED; Browserslist warning nonblocking.
+- Frontend 50 tests PASS; ChangeStatusRequest/auth/decimal/null/PUT/If-Match và user write DTO/session mapping tested. Broad performance/accessibility/security review remains PLANNED; Browserslist warning nonblocking.
 
 ## Technical Debt
 
@@ -84,6 +86,8 @@
 
 ## Next Tasks
 
+0. Phần Thủy vừa hoàn thành: UI Người dùng + catalog read, 242 regression tests /32 preservation-source checks PASS; independent review **PENDING**. Bước tiếp theo: review handoff rồi scoped Audit-read EP-093/094 + UI nhật ký; chưa triển khai trong lượt này. Code mới **UNCOMMITTED / UNPUSHED**, baseline main/845c674 giữ nguyên.
+
 1. Thiện review bộ bàn giao/CR-23–29, M1 DTO/schema/UI/test và tính khả thi theo checklist handoff; trạng thái review **PLANNED**.
 2. Review provisional dev security values: password 12..256, JWT 15m, lockout 5 failures/15m, login 20/min/IP; production configuration and OQ-001/OQ-002/OQ-011 pending.
 3. Thiện review frontend mock và [DB foundation](docs/neon-database-setup.md); review riêng schema/SQL/custom indexes/triggers và cấp quyền runtime. Không sửa InitialM1 đã apply; thay đổi mới dùng migration tiếp theo.
@@ -92,6 +96,7 @@
 
 | Date | Actual work | Evidence / limitation |
 |---|---|---|
+| 04/10/2026 | Tiếp tục Thủy sau publication845c674: user-admin UI, role/permission GET catalog, account-state projection, scoped seed và test/docs. | 107 unit +85 integration +50 Node =242 PASS; 32 preservation/source checks, 24 JS syntax/28 frontend boundary checks PASS. Shared seed adds5 rồi0, 3 users/memberships; browser writes chỉ isolated self profile no-op. Schema/migration/30-task evidence unchanged; secret FAIL1, human review PENDING; no commit/push. |
 | 28/09/2026 | Audit repository và environment, bắt đầu tạo tài liệu Week 2. | Lệnh Git/.NET/SQL Server được ghi trong `docs/repository-audit.md`; repository ban đầu chỉ có `.git`. |
 | 29/09/2026 | Hoàn thiện toàn bộ tài liệu, sửa mâu thuẫn thiết kế và chạy consistency review/ERD parser. | Markdown ID/link/table/weekly checks và ERD grammar pass; không có build/test vì không có project. |
 | 01/10/2026 | Đọc yêu cầu kế hoạch 2 người; audit lại Git/.NET; cập nhật UI/UX, ownership, Git/dependency, roadmap và 36 daily plans trong working tree. | Chỉ tài liệu; M1 và task còn PLANNED. Các kết quả consistency review mới ghi trong `docs/consistency-review.md`. |

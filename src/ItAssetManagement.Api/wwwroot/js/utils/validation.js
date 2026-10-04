@@ -88,3 +88,32 @@ export function validateLogin({ email, password } = {}) {
   if (typeof password !== 'string' || !password.length) error(errors, 'password', 'Vui lòng nhập mật khẩu (chỉ luồng demo).');
   return errors;
 }
+
+export function validateUser(dto = {}, { isUpdate = false } = {}) {
+  const errors = {};
+  for (const [name, max] of [['username', 100], ['email', 320], ['displayName', 200]]) text(errors, dto, name, max, true);
+  text(errors, dto, 'employeeCode', 50); text(errors, dto, 'phone', 30);
+  if (typeof dto.email === 'string' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dto.email.trim())) error(errors, 'email', 'Email không hợp lệ.');
+  if (present(dto.departmentId) && !isPositiveId(dto.departmentId)) error(errors, 'departmentId', 'Phòng ban phải là ID hợp lệ hoặc để trống.');
+  if (isUpdate) {
+    if (typeof dto.rowVersion !== 'string' || !/^[A-Za-z0-9+/]{22}==$/.test(dto.rowVersion)) error(errors, 'rowVersion', 'Tải lại hồ sơ trước khi lưu.');
+  } else if (typeof dto.password !== 'string' || !dto.password.trim() || dto.password.length < 12 || dto.password.length > 256) error(errors, 'password', 'Mật khẩu phải có 12–256 ký tự, không chỉ gồm khoảng trắng.');
+  const allowed = ['username', 'email', 'displayName', 'employeeCode', 'departmentId', 'phone', isUpdate ? 'rowVersion' : 'password'];
+  for (const key of Object.keys(dto)) if (!allowed.includes(key)) error(errors, key, 'Trường này không thuộc hồ sơ người dùng.');
+  return errors;
+}
+export function validateUserStatus(dto = {}) {
+  const errors = {};
+  if (!['Active', 'Inactive', 'Locked', 'Unlocked'].includes(dto.status)) error(errors, 'status', 'Chọn một lệnh trạng thái hợp lệ.');
+  text(errors, dto, 'reason', 1000, true);
+  if (typeof dto.rowVersion !== 'string' || !/^[A-Za-z0-9+/]{22}==$/.test(dto.rowVersion)) error(errors, 'rowVersion', 'Tải lại trạng thái tài khoản.');
+  for (const key of Object.keys(dto)) if (!['status', 'reason', 'rowVersion'].includes(key)) error(errors, key, 'Trường không thuộc lệnh trạng thái.');
+  return errors;
+}
+export function validateUserRoles(dto = {}) {
+  const errors = {};
+  if (!Array.isArray(dto.roleIds) || dto.roleIds.length > 3 || dto.roleIds.some(id => !Number.isSafeInteger(id) || id <= 0) || new Set(dto.roleIds).size !== dto.roleIds.length) error(errors, 'roleIds', 'Chọn tối đa 3 ID vai trò hợp lệ; không trùng.');
+  if (typeof dto.rowVersion !== 'string' || !/^[A-Za-z0-9+/]{22}==$/.test(dto.rowVersion)) error(errors, 'rowVersion', 'Tải lại quyền của tài khoản.');
+  for (const key of Object.keys(dto)) if (!['roleIds', 'rowVersion'].includes(key)) error(errors, key, 'Trường không thuộc lệnh gán vai trò.');
+  return errors;
+}

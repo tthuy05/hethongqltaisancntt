@@ -199,3 +199,9 @@ D2-03 được phủ phần permission/mass assignment/profile token invalidatio
 ## Subsequent early prerequisite — account control, 03/10/2026
 
 Người dùng duyệt tiếp **W4-THUY-D2-02 / EP-008/009**: Admin activate/disable/lock/unlock, fixed-role membership replacement, JWT revocation, transactional last-Admin safeguard/audit/version. 12 new unit +14 focused API checks PASS; [current runtime contract/evidence](../user-account-handoff.md). D2-03 có thêm account/token/last-Admin/race/rollback coverage, D2-04 có contract/status/security addendum. Original task rows/statuses/dates/owners remain planning snapshots; actual work recorded here, not blanket Week 4 DONE. No user-admin UI/role-catalog/password reset/Assignment/Maintenance/migration. D2-05 độc lập review của Thiện và M1 10/10/2026 acceptance **PENDING**; no commit/push.
+
+## Subsequent early prerequisite — user-admin UI / role catalog, 04/10/2026
+
+Sau publication `845c674`, người dùng yêu cầu tiếp tục phần Thủy. Bổ sung giao diện cho W4-THUY-D2-01/02 và EP-010–012 danh mục role/quyền chỉ đọc; thêm account-state projection để đọc khóa/role/version mà không đổi UserDto. [Handoff mới](../user-admin-ui-handoff.md) ghi phạm vi, contract, kiểm thử và giới hạn thật. Các ghi chú UI/catalog PLANNED trước đây là snapshots được supersede riêng cho phần này.
+
+D2-03 thêm role-catalog authorization/projection/query tests và UI service contracts; D2-04 đồng bộ runtime/security/test docs. Original task IDs/owners/estimates/dates/status rows được giữ nguyên, không tự đánh toàn Week 4 DONE. D1-01/02 migration, Audit-read EP-093/094, password reset, workflow Assignment/Maintenance và D2-05 review Thiện vẫn **PLANNED / PENDING**. Thủy giữ DB coordination; M1 **10/10/2026** không đổi. Không commit/push trong lượt này.

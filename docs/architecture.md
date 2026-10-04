@@ -356,3 +356,9 @@ Separate user approval adds EP-003/005/006/007 to the existing UsersController �
 ## 18. Account-control prerequisite — 03/10/2026
 
 Subsequent approval adds EP-008/009 UsersController → UserAccountService → IRepository + narrow IAccountPersistence/audited unit-of-work → existing EF/Npgsql/Neon. Same identity lock coordinates cross-user last-Admin checks and profile changes; actor state/token/live permission rechecked inside it. Role set replacement permits audited deletion of only mutable UserRole links through explicit internal AppDbContext gate, not raw SQL or aggregate/history deletion. Entity mappings/model/migrations unchanged. AccountChangeResult wraps the unchanged profile DTO with lock/role IDs/warnings; original four profile/lookup responses unchanged. No role-definition API/user UI/new workflow/startup migration. [Current contract/evidence](user-account-handoff.md); prior §17 no-account-control note is a dated part 1 snapshot.
+
+## 19. User-admin UI / role-catalog reads — 04/10/2026
+
+`/#/users` → existing API adapter → UsersController (profile/account reads and existing writes) / RolesController → UserAccountReadService / RoleCatalogService → existing no-tracking IRepository → EF/Npgsql/Neon. Account state uses a single correlated projection for current role IDs and rowVersion; profile DTO remains unchanged. Role catalog is fixed-role/implemented-permission reads only, no role-definition mutations or persistence layer change.
+
+Native dialogs reuse existing shell/components and close on route/session changes; user services keep token only in memory, never fall back to mock and do not retry stale writes. Development-only explicit narrow catalog CLI, no startup seed/migration. Original layers, 18 tables /41 relationships, physical 10/19 and InitialM1 unchanged. Prior no-UI/catalog notes are historical snapshots. [Runtime contract / evidence](user-admin-ui-handoff.md); independent review PENDING.

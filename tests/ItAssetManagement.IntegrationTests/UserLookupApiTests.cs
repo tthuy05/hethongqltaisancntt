@@ -204,7 +204,7 @@ public sealed class UserLookupApiTests(MvpFixture fixture)
         await Json(await client.GetAsync(Path));
         Assert.Equal(users, await db.Set<User>().CountAsync()); Assert.Equal(audits, await db.Set<AuditLog>().CountAsync());
         Assert.False(db.Database.HasPendingModelChanges()); Assert.Empty(await db.Database.GetPendingMigrationsAsync());
-        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/v1/roles")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/roles")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync("/api/v1/roles", new { code = "CUSTOM" })).StatusCode);
     }
 }

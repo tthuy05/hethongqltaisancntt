@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace ItAssetManagement.Api.Mvp;
 
 [ApiController, Route("api/v1/users")]
-public sealed class UsersController(UserLookupService service, UserService users, UserAccountService accounts) : ControllerBase
+public sealed class UsersController(UserLookupService service, UserService users, UserAccountService accounts, UserAccountReadService accountReads) : ControllerBase
 {
     [HttpGet, Authorize(Policy = Permissions.UserRead)]
     [ProducesResponseType<PagedResponse<UserDto>>(StatusCodes.Status200OK)]
@@ -51,6 +51,17 @@ public sealed class UsersController(UserLookupService service, UserService users
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public Task<UserDto> Update(long userId, UpdateUserRequest request, CancellationToken ct) => users.UpdateAsync(userId, request, ct);
+
+    [HttpGet("{userId:long}/account"), Authorize(Policy = Permissions.UserRead)]
+    [ProducesResponseType<UserAccountStateDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public Task<UserAccountStateDto> Account(long userId, CancellationToken ct)
+    {
+        Errors.Query(Request, Array.Empty<string>()); return accountReads.GetAsync(userId, ct);
+    }
 
     [HttpPatch("{userId:long}/status"), Authorize(Policy = Permissions.UserStatus)]
     [ProducesResponseType<AccountChangeResult>(StatusCodes.Status200OK)]

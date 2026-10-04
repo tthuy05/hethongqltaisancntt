@@ -16,8 +16,9 @@ var setupOnly = args.Contains("--setup-neon-m1", StringComparer.Ordinal);
 var inspectOnly = args.Contains("--inspect-neon-schema", StringComparer.Ordinal);
 var seedOnly = args.Contains("--seed-development", StringComparer.Ordinal);
 var demoOnly = args.Contains("--seed-m1-demo", StringComparer.Ordinal);
-var builder = WebApplication.CreateBuilder(args.Where(argument => argument is not ("--verify-neon" or "--setup-neon-m1" or "--inspect-neon-schema" or "--seed-development" or "--seed-m1-demo")).ToArray());
-if (probeOnly || setupOnly || inspectOnly || seedOnly || demoOnly) builder.Logging.ClearProviders();
+var roleCatalogOnly = args.Contains("--seed-role-catalog", StringComparer.Ordinal);
+var builder = WebApplication.CreateBuilder(args.Where(argument => argument is not ("--verify-neon" or "--setup-neon-m1" or "--inspect-neon-schema" or "--seed-development" or "--seed-m1-demo" or "--seed-role-catalog")).ToArray());
+if (probeOnly || setupOnly || inspectOnly || seedOnly || demoOnly || roleCatalogOnly) builder.Logging.ClearProviders();
 builder.Services.AddMvpOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<BusinessExceptionHandler>();
@@ -45,6 +46,8 @@ builder.Services.AddScoped<UserLookupService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<IAccountPersistence, AccountPersistence>();
 builder.Services.AddScoped<UserAccountService>();
+builder.Services.AddScoped<UserAccountReadService>();
+builder.Services.AddScoped<RoleCatalogService>();
 builder.Services.AddScoped<DevelopmentSeed>();
 builder.Services.AddScoped<DevelopmentDemoSeed>();
 builder.Services.AddRateLimiter(options =>
@@ -65,6 +68,22 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 var app = builder.Build();
 _ = app.Services.GetRequiredService<JwtSettings>(); // Production fails closed; development uses a per-process key.
+if (roleCatalogOnly)
+{
+    if (!app.Environment.IsDevelopment() || probeOnly || setupOnly || inspectOnly || seedOnly || demoOnly)
+    { Console.WriteLine("{\"status\":\"DevelopmentOnlyOrConflictingMode\"}"); Environment.ExitCode = 2; }
+    else
+    {
+        try
+        {
+            await using var scope = app.Services.CreateAsyncScope();
+            var added = await scope.ServiceProvider.GetRequiredService<DevelopmentSeed>().RunRoleCatalogAsync();
+            Console.WriteLine(JsonSerializer.Serialize(new { status = "RoleCatalogSeeded", added }));
+        }
+        catch { Console.WriteLine("{\"status\":\"RoleCatalogSeedFailed\"}"); Environment.ExitCode = 2; }
+    }
+    await app.DisposeAsync(); return;
+}
 if (demoOnly)
 {
     if (!app.Environment.IsDevelopment() || probeOnly || setupOnly || inspectOnly || seedOnly)

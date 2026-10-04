@@ -59,7 +59,7 @@ public sealed class UserManagementTests
             Assert.Throws<BusinessException>(() => UserValidation.List(query));
         foreach (var permission in new[] { Permissions.UserRead, Permissions.UserCreate, Permissions.UserUpdate })
         { Assert.Contains(permission, Permissions.Admin); Assert.DoesNotContain(permission, Permissions.Read); Assert.DoesNotContain(permission, Permissions.Operate); }
-        Assert.Equal(22, Permissions.All.Distinct().Count());
+        Assert.Equal(24, Permissions.All.Distinct().Count());
         Assert.DoesNotContain("Password", typeof(UpdateUserRequest).GetProperties().Select(x => x.Name));
         foreach (var forbidden in new[] { "Password", "PasswordHash", "NormalizedEmail", "TokenVersion", "IsAdminLocked", "Roles", "LockoutEndUtc" })
             Assert.DoesNotContain(forbidden, typeof(UserDto).GetProperties().Select(x => x.Name));

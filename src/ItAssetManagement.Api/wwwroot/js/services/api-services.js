@@ -1,5 +1,5 @@
 import { ASSET_STATUSES, copy } from '../models/contracts.js';
-import { validateAsset, validateLogin, validateMaster } from '../utils/validation.js';
+import { validateAsset, validateLogin, validateMaster, validateUser, validateUserStatus, validateUserRoles } from '../utils/validation.js';
 import { ServiceError } from './service-error.js';
 
 /** Same-origin client for M1 backend APIs; no automatic mock fallback. */
@@ -97,6 +97,26 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
       },
     };
   }
+  async function changeUser(id, path, method, dto) {
+    const self = currentSession()?.id === Number(id);
+    const result = await request(path, { method, body: dto });
+    if (self) clearSession();
+    return result;
+  }
+  const users = {
+    list(query = {}) { return request(`/users${queryString(query)}`); },
+    get(id) { return request(`/users/${idPath(id)}`); },
+    account(id) { return request(`/users/${idPath(id)}/account`); },
+    async create(dto) { validate(validateUser(dto)); return request('/users', { method: 'POST', body: dto }); },
+    async update(id, dto) { validate(validateUser(dto, { isUpdate: true })); return changeUser(id, `/users/${idPath(id)}`, 'PUT', dto); },
+    async setStatus(id, dto) { validate(validateUserStatus(dto)); return changeUser(id, `/users/${idPath(id)}/status`, 'PATCH', dto); },
+    async replaceRoles(id, dto) { validate(validateUserRoles(dto)); return changeUser(id, `/users/${idPath(id)}/roles`, 'PUT', dto); },
+  };
+  const roles = {
+    list(query = {}) { return request(`/roles${queryString(query)}`); },
+    get(id) { return request(`/roles/${idPath(id)}`); },
+    permissions(query = {}) { return request(`/roles/permissions${queryString(query)}`); },
+  };
   const dashboard = {
     async summary() {
       // M1 has assets API, not a runtime Dashboard/Replacement module. No invented endpoint.
@@ -108,5 +128,5 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
       return { totalAssets: recent.totalItems, inUse: byStatus.find((item) => item.status === 'InUse').count, maintenance: byStatus.find((item) => item.status === 'Maintenance').count, replacementNeeded: null, replacementStatus: 'PLANNED', byStatus, recentAssets: recent.items, dataMode: 'api' };
     },
   };
-  return { mode: 'api', auth, assets, departments: masterService('department'), assetTypes: masterService('assetType'), dashboard };
+  return { mode: 'api', auth, assets, departments: masterService('department'), assetTypes: masterService('assetType'), users, roles, dashboard };
 }

@@ -300,3 +300,17 @@ Exact files, run/check commands, reuse rationale và live-integration handoff: [
 **Database/Migration Impact:** No entity/mapping/InitialM1/18-table/41-relationship change. Runtime AppDbContext guard exception made explicit in preservation scripts; unchanged model entry point/custom SQL still checked and live tests prove removal/audit rollback. M1 lacks allocation tables; later table presence causes conservative ALLOCATION_REVIEW_REQUIRED until actual workflow queries/UI warning are implemented, never a fabricated count or automatic return/delete. Explicit catalog seed only two permissions/two Admin links; no shared account status/role changes in smoke. Owner credential UNRESOLVED; human/M1/security gates PENDING, no commit/push.
 
 **Evidence:** [Account-control contract/handoff](docs/user-account-handoff.md), preserving part 1's 182-test snapshot and original Week 2 evidence.
+
+## ADR-028 - Read-only role catalog and API-backed user administration UI
+
+**Date:** 2026-10-04. **Status:** IMPLEMENTED — independent review PENDING.
+
+**Context:** After publication main/845c674, user requested the next Thủy-owned work. Account profile/status/membership APIs already exist; the UI needs actual role IDs and safe account state without redefining the original UserDto. Preserve current Vietnamese README WIP, 30 Week 2 tasks, logical 18 tables / 41 relationships and M1 10/10/2026.
+
+**Decision:** Implement EP-010–012 read-only fixed-role/implemented-permission catalogs. `roles.read` permits Admin and Manager to read role labels/IDs; only `roles.permissions.read` permits code/activity/detail/permission mapping. Keyword search for limited readers uses visible role name only. Add Admin-only `GET /users/{userId}/account` with only id/isActive/isAdminLocked/roleIds/rowVersion; existing profile/lookup DTOs unchanged. All reads use no-tracking projections and do not write audit or seed.
+
+**Consequences:** New API-only Người dùng page uses exact existing write DTOs, real role IDs, separate permission gates and fresh opaque versions. Empty role selection explicitly removes all memberships; unknown/inactive existing memberships block UI replacement instead of silently removing them. Server remains authority for last-Admin, account/role checks, JWT revocation and concurrency; no automatic retry on 409. Self writes conservatively clear the in-memory session after success and require login again. No new role definitions, password reset, Assignment or Maintenance workflow. Mock mode remains explicitly separate and does not claim user-administration support.
+
+**Database/Migration Impact:** NONE to entities, mappings, InitialM1, physical 10 tables /19 FKs or logical 18/41. Development-only explicit `--seed-role-catalog` adds only the two new permissions and three missing fixed-role grants in an audited idempotent transaction; never creates/resets users/passwords/memberships/assets or restores unrelated grants. No seed/migration on normal startup. Existing owner-credential exception remains UNRESOLVED; security/production approval and human review PENDING. No commit/push.
+
+**Evidence:** [User-admin UI / role catalog handoff](docs/user-admin-ui-handoff.md).

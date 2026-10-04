@@ -1,247 +1,231 @@
-# Enterprise IT Asset & Infrastructure Management System
+# Hệ thống Quản lý & Tối ưu Hạ tầng CNTT Doanh nghiệp
 
-Hệ thống Quản lý & Tối ưu Hạ tầng CNTT Doanh nghiệp có web UI và REST API M1 cho đăng nhập, danh mục và tài sản trên Neon. Phân bổ, bảo trì, phần mềm/license, vòng đời, ngân sách và báo cáo nâng cao vẫn **PLANNED**.
+Ứng dụng web giúp doanh nghiệp quản lý tập trung thiết bị và tài sản CNTT: có những thiết bị nào, thuộc phòng ban nào, đang ở trạng thái gì và đã thay đổi ra sao. Dự án hướng tới quản lý toàn bộ vòng đời tài sản, từ ghi nhận thông tin đến cấp phát, bảo trì và đề xuất thay thế.
 
-> **Current phase:** Week 2 review preserved; user-authorized M1 backend/UI vertical slice implemented 02–03/10/2026.
-> **Implementation status:** Auth/JWT/policies, masters, Asset API, audited persistence và UI API thật **IMPLEMENTED / VERIFIED — REVIEW PENDING**.
-> M1 **10/10/2026** giữ nguyên; independent review, rehearsal và production/security gates chưa hoàn tất. Chưa mở workflow Week 4–7; người dùng duyệt riêng User Lookup, User management part 1 và User account control vào 03/10/2026.
+Hiện đã có giao diện kết nối API và cơ sở dữ liệu PostgreSQL trên Neon cho đăng nhập, danh mục và quản lý tài sản. Các nghiệp vụ cấp phát, bảo trì, bản quyền phần mềm và tối ưu ngân sách vẫn **DỰ KIẾN (PLANNED)**, chưa được triển khai.
 
-**User management — part 1:** EP-003/005/006/007 (W4-THUY-D2-01), API Admin danh sách/tạo/xem/sửa hồ sơ, hash mật khẩu/validation/audit/concurrency. User tạo mới không được tự cấp role; chưa login cho đến khi Admin gán role hợp lệ. [Contract và evidence part 1](docs/user-management-handoff.md) được giữ như dated snapshot.
+## 1. Ý tưởng và mục tiêu
 
-**User account control:** EP-008/009 Admin activate/disable/lock/unlock và thay role membership, bảo vệ Admin cuối cùng, thu hồi JWT cũ, audit/rollback và transaction permission recheck. Không xóa user/history, không reset automatic lockout hay password. [Contract và bàn giao](docs/user-account-handoff.md). **Chưa có UI quản trị/role catalog/password reset**; không đổi schema hoặc tự đóng review/M1. Ngày 04/10/2026 người dùng yêu cầu commit/push cả hai phần lên `main` rồi dừng; các ghi chú UNCOMMITTED / UNPUSHED trước đó là snapshot lúc bàn giao, kết quả publication theo Git log/remote.
+Khi số lượng máy tính, màn hình, máy in và thiết bị mạng tăng lên, doanh nghiệp cần một nơi để theo dõi thông tin thống nhất, tránh thiếu dữ liệu, nhầm trạng thái hoặc khó truy vết thay đổi.
 
-**User Lookup:** `GET /api/v1/users/lookup` đã implement cho dropdown người nhận: active-only, ID/tên/phòng ban tối thiểu, DB-backed `users.lookup`, filter/search/page/sort. Không phải API quản trị user hoặc chọn technician đủ điều kiện. [Contract, kiểm thử và bàn giao cho Thiện](docs/user-lookup-handoff.md). Đây là bổ sung hẹp sau báo cáo Week 2–3, không tự đóng review/M1 hay tạo schema Assignment.
+Hệ thống được xây dựng để trả lời các câu hỏi:
 
-## Main features **PLANNED**
+- Doanh nghiệp đang có bao nhiêu tài sản CNTT? Tài sản thuộc loại và phòng ban nào?
+- Thiết bị nào còn trong kho, đang sử dụng, hỏng hoặc đã ngừng sử dụng?
+- Thông tin mua sắm, bảo hành và lịch sử trạng thái của thiết bị là gì?
+- Ai được phép xem, cập nhật tài sản hoặc quản lý tài khoản?
+- Trong các giai đoạn tiếp theo: tài sản được cấp cho ai, đã bảo trì bao nhiêu lần, bản quyền nào sắp hết hạn và thiết bị nào nên thay thế?
 
-- User profile và account status/lock/role assignment APIs đã implement riêng; role/permission catalog, password reset và UI quản trị còn **PLANNED**.
-- IT asset/type/department management với search, filter, pagination và sorting.
-- Asset assignment, return, transfer và lịch sử.
-- Maintenance ticket, trạng thái và lịch sử chi phí/kết quả.
-- Software, software license và allocation theo asset hoặc user.
-- Rule-based lifecycle/replacement recommendation và budget estimation.
-- Dashboard, reports, Excel import/export.
-- Security controls, immutable business history và audit logging.
+Ví dụ: bộ phận IT nhập một laptop mới, ghi nhận mã tài sản, cấu hình, phòng ban, giá mua và bảo hành; sau đó tìm kiếm, cập nhật và theo dõi lịch sử trạng thái. Khi các mô-đun tiếp theo hoàn thành, hệ thống sẽ bổ sung cấp phát cho nhân viên, ghi nhận bảo trì và đánh giá nhu cầu thay thế.
 
-## Proposed stack
+Phần “tối ưu” dự kiến sử dụng **quy tắc nghiệp vụ** về tuổi thiết bị, lỗi, bảo trì và chi phí để đưa ra đề xuất. Dự án không sử dụng AI/ML để dự đoán, không tự mua sắm và không tự quét mạng hay điều khiển thiết bị.
 
-| Area | Choice | Status |
-|---|---|---|
-| Runtime/API | ASP.NET Core Web API, .NET 10 | M1 controllers/services/repository IMPLEMENTED |
-| ORM | Entity Framework Core 10.0.11 | IMPLEMENTED: 10 M1 mappings |
-| Database | PostgreSQL 18.6 hosted on Neon | `neondb` M1 schema CREATED / VERIFIED |
-| EF Core provider | Npgsql.EntityFrameworkCore.PostgreSQL 10.0.3 | Restored / build VERIFIED |
-| Authentication | 15-minute JWT; PasswordHasher Identity V3 | IMPLEMENTED; dev key ephemeral, production key required |
-| Authorization | DB-backed permission-policy RBAC | IMPLEMENTED; account/token-version/roles checked each request |
-| API documentation | Development OpenAPI JSON + local Swagger UI 5.33.1 | IMPLEMENTED / VERIFIED at `/swagger/`; disabled in Production |
-| Testing | xUnit unit/HTTP + isolated Neon tests | 92 unit + 76 integration PASS; [current account-control evidence](docs/user-account-handoff.md); [historical two-week evidence](docs/week-02-03-completion.md) preserved |
-| Web UI | HTML/CSS/JavaScript ES modules + Tailwind CSS 3.4.19, Inter local | 8 M1 screens use API by default; explicit localhost mock demo retained |
-| Frontend tooling | Node.js >=22, pnpm 11.25.0; build CSS/static assets | IMPLEMENTED; Node 24.19.0 verified |
+## 2. Ai sử dụng hệ thống?
 
-Database platform changed at design level on 01/10/2026 under [ADR-018](DECISIONS.md#adr-018---use-postgresql-on-neon-instead-of-planned-sql-server). On 02/10 the user authorized physical M1 setup separately: SDK 10.0.400, EF/tool 10.0.11 and Npgsql provider 10.0.3 were verified and pinned. Neon remains the shared development target; no local primary database was introduced. See [setup evidence and handoff](docs/neon-database-setup.md).
+Hệ thống có ba vai trò đăng nhập. Bảng dưới đây mô tả quyền trong phần **đã triển khai**, không phải toàn bộ chức năng tương lai.
 
-**DATABASE RUNTIME READ/WRITE VERIFIED.** `neondb` keeps 10 M1 tables / 19 FKs + EF history; full **18 tables / 41 relationships** unchanged, other 8 PLANNED. Seed and real Asset data now persist. **User-directed security exception (ADR-023):** owner connection is in repository `appsettings.Development.json` under DefaultConnection; no per-machine DB secret needed. This file contains a real credential included in the M1 publication changeset at the user's request on 03/10/2026. Publishing it exposes DB access to repository readers; rotation/least privilege strongly recommended. Production has no DB/key defaults. [Current evidence](docs/m1-backend-handoff.md).
-
-**M1 publication handoff:** user requested commit/push and explicitly added merging into `main`; verify the actual commit/remote in Git. Publish the implementation branch and fast-forward `main` when possible, without force-push. Thiện should pull `main` to continue/review. Earlier UNCOMMITTED/UNPUSHED notes are implementation snapshots; publication is not independent approval or M1 acceptance. No additional seed, schema change or Week 4–7 work is included.
-
-## Architecture — M1 implemented, future modules PLANNED
-
-```text
-HTTP Request
-  -> Controller
-  -> Validation
-  -> Service (business rules + transaction orchestration)
-  -> Repository (data access)
-  -> EF Core / DbContext
-  -> Npgsql EF Core provider
-  -> PostgreSQL hosted on Neon
-```
-
-The backend is a layered modular monolith: controllers → Application services/validation → repository/unit-of-work → EF/Npgsql. Development serves built UI and API together; production packaging/deployment stays PLANNED. JWT is browser-memory only. HTML/Tailwind remains unchanged; Node builds/static-previews, not a backend. [ADR-021](DECISIONS.md#adr-021---preserve-stitch-htmltailwind-frontend) changes styling only.
-
-Details: [Architecture](docs/architecture.md) and [Decisions](DECISIONS.md).
-
-## Repository structure
-
-Current structure includes preserved Week 2 documentation, frontend and M1 database foundation:
-
-```text
-.
-├── ItAssetManagement.slnx              # 4 application projects + 2 xUnit projects
-├── Directory.Packages.props           # verified, pinned .NET packages
-├── src/ItAssetManagement.Api/wwwroot/   # API-default frontend source; explicit demo retained
-│   ├── index.html
-│   ├── assets/
-│   ├── css/input.css
-│   └── js/                            # pages, components, mock/API services
-├── frontend/tailwind.config.cjs
-├── scripts/                           # build, read-only preview, source checks
-├── src/ItAssetManagement.Infrastructure/Data/ # DbContext, mappings, InitialM1 migration, setup CLI
-├── src/ItAssetManagement.Domain/Entities/     # 10 M1 persistence shapes
-├── tests/                             # Node tests + .NET unit/HTTP tests
-├── package.json
-├── pnpm-lock.yaml
-├── docs/
-│   ├── weekly/
-│   │   ├── week-02.md
-│   │   ├── week-03.md
-│   │   ├── week-04.md
-│   │   ├── week-05.md
-│   │   ├── week-06.md
-│   │   └── week-07.md
-│   └── *.md
-├── README.md
-├── PROJECT_STATUS.md
-├── DECISIONS.md
-└── CHANGELOG.md
-```
-
-Auth/JWT/masters/Asset CRUD now exist. SaveChanges requires an audited transaction, generates 16-byte tokens and forbids hard-delete/history mutation. API startup never migrates/seeds; InitialM1 remains immutable. Built frontend stays ignored in `artifacts/frontend/` and is served in Development only.
-
-## Documentation
-
-### Analysis and scope
-
-- [Repository & environment audit](docs/repository-audit.md)
-- [Requirements](docs/requirements.md)
-- [Scope](docs/scope.md)
-- [Actors](docs/actors.md)
-- [Permission matrix](docs/permission-matrix.md)
-- [Use cases](docs/use-cases.md)
-- [Business rules](docs/business-rules.md)
-- [Open questions](docs/open-questions.md)
-- [Risks](docs/risks.md)
-
-### Technical design
-
-- [Architecture](docs/architecture.md)
-- [UI/UX specification và M1 demo flow](docs/ui-ux-spec.md)
-- [Stitch frontend integration — audit, checks, file manifest và bàn giao](docs/stitch-ui-integration.md)
-- [Database design](docs/database-design.md)
-- [Neon M1 physical setup and developer handoff](docs/neon-database-setup.md)
-- [M1 backend / real UI handoff and verification](docs/m1-backend-handoff.md)
-- [Week 2–3 completion matrix: 96 tasks, demo data, Swagger and real UI evidence](docs/week-02-03-completion.md)
-- [ERD](docs/erd.md)
-- [API specification](docs/api-spec.md)
-- [Security](docs/security.md)
-- [Audit log](docs/audit-log.md)
-- [Testing strategy](docs/testing-strategy.md)
-- [Deployment](docs/deployment.md)
-- [Consistency review](docs/consistency-review.md)
-
-### Delivery plan and tracking
-
-- [Roadmap Week 2–7](docs/roadmap.md)
-- [Team responsibilities: Thủy / Thiện](docs/team-responsibilities.md)
-- [Git collaboration và shared-file lock](docs/git-collaboration.md)
-- [Task dependency graph và critical path](docs/task-dependencies.md)
-- [Week 2 plan](docs/weekly/week-02.md)
-- [Week 2 — bàn giao 30 nhiệm vụ của Thủy](docs/week-02-thuy-handoff.md)
-- [Week 3 plan](docs/weekly/week-03.md)
-- [Week 4 plan](docs/weekly/week-04.md)
-- [Week 5 plan](docs/weekly/week-05.md)
-- [Week 6 plan](docs/weekly/week-06.md)
-- [Week 7 plan](docs/weekly/week-07.md)
-- [Project status](PROJECT_STATUS.md)
-- [Architecture decisions](DECISIONS.md)
-- [Changelog](CHANGELOG.md)
-
-## Roadmap summary **PLANNED**
-
-| Week | Focus |
+| Vai trò | Quyền chính hiện tại |
 |---|---|
-| 2, 28/09–03/10 | Audit, technical/UI design, owner/dependency/Git plan; không code trong task planning |
-| 3, 05–10/10 | **M1 10/10:** chạy app/DB/migration/auth/role/master/Asset API + Login/Dashboard/Asset UI thật |
-| 4, 12–17/10 | Assignment/return/transfer, maintenance, histories/audit và UI module |
-| 5, 19–24/10 | Software/license, lifecycle/replacement, alerts và UI module |
-| 6, 26–31/10 | Dashboard, reports, cost/budget, charts và query/index review |
-| 7, 02–07/11 | Excel import/export + UI, hardening, full regression, performance/security review, final demo |
+| Quản trị viên IT (`ADMIN_IT`) | Quản lý tài sản, phòng ban, loại tài sản; xem chi phí; quản lý hồ sơ, trạng thái và phân quyền tài khoản bằng giao diện và API. |
+| Quản lý hệ thống (`SYSTEM_MANAGER`) | Xem và quản lý tài sản, xem chi phí và bảng tổng quan; xem danh mục tham chiếu. Không quản trị tài khoản hoặc sửa danh mục phòng ban/loại tài sản. |
+| Nhân viên hỗ trợ kỹ thuật (`TECHNICAL_SUPPORT`) | Xem dữ liệu tài sản và bảng tổng quan phục vụ vận hành; không xem chi phí, không sửa tài sản hoặc quản trị tài khoản. |
 
-Full dependencies, daily deliverables and verification criteria are in [Roadmap](docs/roadmap.md). Future backend/module items remain PLANNED. Frontend mock work is a separately authorized early deliverable, not completion of the Week 3 API/DB/demo gates.
+Nhân viên nhận tài sản không nhất thiết có quyền đăng nhập. Tài khoản mới chỉ đăng nhập được sau khi được gán vai trò hợp lệ, đang hoạt động và không bị khóa. Quyền được kiểm tra tại API, không chỉ bằng việc ẩn nút trên giao diện.
 
-## Current project status
+Chi tiết: [Vai trò sử dụng](docs/actors.md), [Ma trận phân quyền](docs/permission-matrix.md) và [Bảo mật](docs/security.md).
 
-- Branch: `main`, M1 baseline `2c34671` preserved. User authorized publication of the verified demo/Swagger/tests/evidence and User Lookup follow-up on 03/10/2026; actual commit/push identity is in Git history/remote. Earlier UNCOMMITTED/UNPUSHED reports are implementation-end snapshots, not the current publication state.
-- Remote: official GitHub repository. Historical audit/status statements describe their dates; a documentation publication is not approval of backend implementation.
-- Week 2: 30 Thủy task deliverables documented and checked on 01/10; independent Thiện/user/Mentor review pending. [Handoff report](docs/week-02-thuy-handoff.md) preserves evidence, fixes and the original 21 PASS checks; its Database Platform Change Addendum records the new design-level decision. Schema Baseline V1 remains **18 tables / 41 relationships**, with no entity/relationship redesign. Planned workload Thủy 60,9% / Thiện 39,1% by representative estimate.
-- Frontend build PASS; **40 Node tests PASS / 0 FAIL**. Current source checks, real-browser 320/768/1280 matrix and limitations at [completion evidence](docs/week-02-03-completion.md); original 38-test mock evidence preserved, not relabeled.
-- Eight screens: Login, Dashboard, Asset List, Create, Edit, Detail, Departments and Asset Types use real M1 APIs by default. `?demo=1` on localhost remains an explicit RAM-only mock; no fallback. Five future destinations/history panels remain **PLANNED**.
-- M1 Auth/JWT/masters/Asset/seed/audit/concurrency and runtime config **IMPLEMENTED / VERIFIED**; current test totals at [handoff](docs/m1-backend-handoff.md). Historical 25 xUnit/37 setup/21 and 24 docs checks remain separate. Independent Thiện/Mentor review pending; production not ready.
-- Git publication is separate from plan approval and implementation; consult Git history for its actual state. A documentation commit does not imply a feature is implemented.
+## 3. Chức năng và tiến độ hiện tại
 
-See [PROJECT_STATUS.md](PROJECT_STATUS.md) for the authoritative day-to-day status.
+### Đã triển khai và kiểm thử
 
-## Development and run instructions
+- **Đăng nhập và phân quyền:** mật khẩu được băm, xác thực bằng JWT, kiểm tra quyền và trạng thái tài khoản; có giới hạn đăng nhập và khóa tạm thời khi sai nhiều lần.
+- **Danh mục:** quản lý phòng ban và loại tài sản, kiểm tra dữ liệu tham chiếu và trạng thái hoạt động.
+- **Tài sản:** tạo, xem, sửa thông tin, thay đổi trạng thái theo điều kiện nghiệp vụ và đưa ra khỏi danh sách hoạt động bằng lưu trữ; không xóa vĩnh viễn tài sản/lịch sử.
+- **Tra cứu:** tìm kiếm, lọc, phân trang và sắp xếp danh sách tài sản.
+- **Bảng tổng quan:** thống kê cơ bản từ dữ liệu thật; báo cáo và phân tích nâng cao chưa có.
+- **Quản lý người dùng (`User management`):** giao diện và API danh sách, tìm kiếm/lọc, tạo, xem, sửa hồ sơ; kích hoạt/vô hiệu hóa, khóa/mở khóa và gán vai trò bằng ID thật. Có bảo vệ quản trị viên cuối cùng, kiểm soát cập nhật đồng thời và thu hồi hiệu lực JWT cũ khi trạng thái/quyền thay đổi.
+- **Danh mục vai trò/quyền:** API đọc các role cố định; Quản lý hệ thống chỉ nhận ID/tên role, còn thông tin quyền chi tiết dành cho Quản trị IT. Không có chức năng tạo/sửa định nghĩa role.
+- **Tra cứu người dùng (`User Lookup`):** API danh sách tối thiểu để chuẩn bị cho chức năng chọn người nhận tài sản; chưa có nghiệp vụ cấp phát.
+- **Toàn vẹn dữ liệu:** kiểm tra dữ liệu đầu vào, ràng buộc cơ sở dữ liệu, giao dịch, kiểm soát cập nhật đồng thời và ghi nhật ký thao tác. Chưa có màn hình/API đọc nhật ký quản trị.
+- **Giao diện:** 9 màn hình dùng API thật — Đăng nhập, Tổng quan, Danh sách tài sản, Thêm tài sản, Sửa tài sản, Chi tiết tài sản, Phòng ban, Loại tài sản và Người dùng; quản trị tài khoản thao tác trong hộp thoại.
+- **Tài liệu API:** Swagger chạy ở môi trường phát triển, hỗ trợ thử API với JWT.
 
-Requires Node.js >=22 and pnpm 11.25.0. Run from the repository root:
+### Chưa triển khai — DỰ KIẾN (PLANNED)
+
+- Cấp phát, thu hồi và điều chuyển tài sản; lịch sử người sử dụng.
+- Phiếu hỗ trợ, bảo trì và lịch sử sửa chữa/chi phí.
+- Phần mềm, bản quyền, phân bổ bản quyền và cảnh báo hết hạn.
+- Đánh giá vòng đời, đề xuất thay thế thiết bị và dự toán ngân sách.
+- Báo cáo nâng cao, biểu đồ và nhập/xuất Excel.
+- Đặt lại mật khẩu, tạo/sửa định nghĩa vai trò và chỉnh ma trận quyền.
+- Giao diện/API đọc nhật ký quản trị và các bảng lịch sử nghiệp vụ chưa hoàn thành.
+- Triển khai chính thức và đánh giá đầy đủ về bảo mật, hiệu năng, khả năng tiếp cận.
+
+**Cập nhật ngày 04/10/2026:** API quản lý tài khoản đã được đưa lên `main` tại commit `845c674`; giao diện Người dùng và danh mục role/quyền vừa bổ sung, **chưa commit/push**. Kết quả hiện tại: **242 kiểm thử PASS, không lỗi hoặc bỏ qua**, cùng **32 kiểm tra tài liệu/thiết kế/mã nguồn liên quan PASS**. Đánh giá độc lập của Thiện/Mentor và nghiệm thu vẫn **ĐANG CHỜ (PENDING)**; kiểm thử thành công không có nghĩa hệ thống đã sẵn sàng vận hành chính thức.
+
+Mốc trình diễn đầu tiên **M1 — 10/10/2026** giữ nguyên: đăng nhập → tổng quan → danh sách tài sản → thêm → xem/sửa → tìm kiếm/lọc trên dữ liệu thật. Công việc đã làm được ghi trong các báo cáo bàn giao; không đánh dấu toàn bộ kế hoạch là hoàn tất.
+
+## 4. Công nghệ sử dụng
+
+| Thành phần | Công nghệ |
+|---|---|
+| API phía máy chủ | ASP.NET Core Web API, .NET 10 |
+| Truy cập dữ liệu | Entity Framework Core 10.0.11 |
+| Bộ kết nối PostgreSQL | Npgsql.EntityFrameworkCore.PostgreSQL 10.0.3 |
+| Cơ sở dữ liệu | PostgreSQL trên Neon; phiên bản đã kiểm chứng: 18.6 |
+| Xác thực và phân quyền | JWT, PasswordHasher của ASP.NET Core Identity, chính sách quyền lấy từ cơ sở dữ liệu |
+| Giao diện web | HTML, JavaScript ES modules, Tailwind CSS 3.4.19; phông Inter lưu cục bộ |
+| Tài liệu API | OpenAPI và Swagger UI 5.33.1 |
+| Công cụ giao diện | Node.js >=22, pnpm 11.25.0 |
+| Kiểm thử | xUnit cho .NET, kiểm thử HTTP/Neon riêng biệt và bộ kiểm thử Node.js |
+
+Node.js dùng để xây dựng và xem trước giao diện, **không phải máy chủ nghiệp vụ**. Khi chạy ứng dụng thật ở môi trường phát triển, ASP.NET Core phục vụ cả giao diện đã xây dựng và API trên cùng địa chỉ.
+
+### Kiến trúc và cơ sở dữ liệu
+
+```text
+Giao diện web
+  → Controller: tiếp nhận yêu cầu HTTP và kiểm tra quyền
+  → Service: kiểm tra dữ liệu, xử lý nghiệp vụ và điều phối giao dịch
+  → Repository / Unit of Work: truy cập dữ liệu và ghi nhận thao tác
+  → Entity Framework Core / Npgsql
+  → PostgreSQL trên Neon
+```
+
+Thiết kế đầy đủ có **18 bảng / 41 quan hệ** (`18 tables / 41 relationships`). Cơ sở dữ liệu M1 thực tế `neondb` đã có **10 bảng nghiệp vụ / 19 khóa ngoại**, cùng bảng lịch sử migration của EF Core; 8 bảng nghiệp vụ còn lại **PLANNED**. Không nên nhầm bản ERD đầy đủ với số bảng đã triển khai.
+
+Neon là cơ sở dữ liệu phát triển dùng chung của Thủy và Thiện. Migration `20261002151601_InitialM1` đã được áp dụng; không sửa lại migration này hoặc tự chạy thiết lập ban đầu trên cơ sở dữ liệu đã có dữ liệu. Thủy là người điều phối thay đổi schema/migration; hai thành viên cần thống nhất trước khi tạo hoặc áp dụng migration mới.
+
+Xem [Kiến trúc](docs/architecture.md), [Thiết kế cơ sở dữ liệu](docs/database-design.md), [Sơ đồ ERD](docs/erd.md) và [Bàn giao thiết lập Neon](docs/neon-database-setup.md).
+
+## 5. Chạy dự án trên máy phát triển
+
+### Chuẩn bị
+
+- .NET SDK 10; môi trường hiện tại đã kiểm chứng SDK 10.0.400.
+- Node.js >=22 và pnpm 11.25.0 có thể chạy từ terminal.
+- Kết nối Internet để tải thư viện và truy cập Neon.
+- Thông tin tài khoản ứng dụng nhận qua kênh bàn giao riêng, không lấy mật khẩu từ README.
+
+> **Lưu ý bảo mật:** cấu hình Development hiện có credential của tài khoản chủ sở hữu Neon đã được đưa vào Git. Đây là rủi ro chưa xử lý, không phải cấu hình an toàn cho vận hành chính thức. Cần đổi credential đã lộ và sử dụng tài khoản có quyền tối thiểu trước khi triển khai chính thức. Không sao chép connection string/mật khẩu vào chat, ảnh chụp hoặc ví dụ sử dụng. Môi trường Production cần cấu hình riêng bí mật cơ sở dữ liệu và khóa JWT.
+
+### Chạy giao diện và API thật
+
+Tại thư mục gốc repository:
 
 ```powershell
 pnpm install --frozen-lockfile --ignore-scripts
 pnpm build
-pnpm dev
-```
-
-The Node server is a **static preview only**, not the API. [Explicit mock demo](http://127.0.0.1:4173/?demo=1#/login) accepts synthetic input and resets on reload. For real mode run the .NET API below and open [M1 UI](http://localhost:5080/#/login). No automatic fallback to mock.
-
-Verified equivalent commands after dependencies are installed:
-
-```powershell
-node scripts/frontend-build.mjs
-node scripts/frontend-server.mjs
-node scripts/frontend-check.mjs
-node --test tests/*.test.mjs
-```
-
-This machine has no `npm` command on PATH. Bundled pnpm was verified at `C:\Users\nguye\.cache\codex-runtimes\codex-primary-runtime\dependencies\bin\fallback\pnpm.cmd`; invoke that path with PowerShell `&` if needed. `pnpm check` / `pnpm test` run the same check/test commands above. The server binds only `127.0.0.1`; it serves GET/HEAD static files, no API proxy or DB connection. No hot reload: rebuild and reload after source changes. Generated output/fonts are local, so the built UI has no runtime CDN dependency. A nonblocking outdated Browserslist database warning is recorded, not hidden.
-
-### M1 backend and same-origin UI
-
-```powershell
 dotnet tool restore
 dotnet restore ItAssetManagement.slnx --locked-mode
 dotnet build ItAssetManagement.slnx -c Release --no-restore
-dotnet test ItAssetManagement.slnx -c Release --no-restore
-dotnet run --project src/ItAssetManagement.Api
+dotnet run --project src/ItAssetManagement.Api -c Release --no-build
 ```
 
-Local `/health/live`, `/health/ready`, `/openapi/v1.json` and UI `/` return 200 in Development when reachable/built. Runtime reads DefaultConnection from Development configuration; no User Secrets/.env needed for DB runtime. Seed already exists on shared Neon: don't reseed/reset on every startup. Development account/password handoff is private (see [report](docs/m1-backend-handoff.md)), not in Git/chat. Reload/browser/API restart requires re-login, while DB records persist. Production requires separately provisioned DB/JWT secrets and deployment hardening.
+Mở [Giao diện ứng dụng](http://localhost:5080/#/login) hoặc [Swagger](http://localhost:5080/swagger/). Các địa chỉ kiểm tra: `/health/live`, `/health/ready` và `/openapi/v1.json`.
 
-Read-only diagnostics: `dotnet run --project src/ItAssetManagement.Api -- --inspect-neon-schema`. Opt-in isolated tests:
+- Cấu hình khởi chạy mặc định sử dụng môi trường Development và cổng 5080.
+- Ứng dụng đọc `ConnectionStrings:DefaultConnection` từ cấu hình. Khởi động thông thường **không tự tạo schema, chạy migration hoặc nạp dữ liệu mẫu**.
+- Cơ sở dữ liệu dùng chung đã có dữ liệu mẫu; không cần thiết lập lại hoặc nạp lại mỗi lần chạy. Thử các thao tác ghi bằng bản ghi dành riêng cho demo, không làm thay đổi dữ liệu của thành viên khác.
+- JWT chỉ giữ trong bộ nhớ trình duyệt. Tải lại trang hoặc khởi động lại API phát triển có thể yêu cầu đăng nhập lại; dữ liệu đã lưu vẫn nằm trong cơ sở dữ liệu.
+- Đăng nhập bằng tài khoản có quyền `users.read` để thấy menu **Người dùng** tại `/#/users`. Nút tạo/sửa/trạng thái/vai trò xuất hiện theo quyền API; tài khoản mới không được tự gán role. Chế độ dữ liệu giả không có màn quản trị người dùng.
+
+Tại Swagger, nút `Authorize` nhận **JWT của ứng dụng**, không phải connection string Neon. Không thêm tiền tố `Bearer` trong ô nhập JWT. Các thao tác thử API có thể ghi dữ liệu thật.
+
+Tài khoản demo gồm quản trị IT, quản lý hệ thống và hỗ trợ kỹ thuật. Mật khẩu được bàn giao riêng; trên máy đã thiết lập, chúng nằm trong các tệp ngoài Git dưới `%LOCALAPPDATA%/ItAssetManagement/`. Tạo tệp thông tin mới trên máy khác không đặt lại mật khẩu của tài khoản đã tồn tại. Hướng dẫn chi tiết: [Bàn giao backend M1 và giao diện thật](docs/m1-backend-handoff.md).
+
+### Chỉ xem thử giao diện bằng dữ liệu giả
+
+```powershell
+pnpm dev
+```
+
+Mở [Demo giao diện cục bộ](http://127.0.0.1:4173/?demo=1#/login). Chế độ này phải được chọn rõ bằng `?demo=1`, chỉ chạy trên máy cục bộ và giữ dữ liệu trong bộ nhớ; tải lại trang sẽ đặt lại dữ liệu giả. Máy chủ Node chỉ phục vụ tệp giao diện, không có API nghiệp vụ, Swagger hoặc kết nối cơ sở dữ liệu.
+
+Giao diện mặc định dùng API thật và **không tự chuyển sang dữ liệu giả khi API lỗi**. Sau khi sửa mã giao diện cần xây dựng lại và tải lại trang; hiện chưa có tự động tải lại khi sửa mã. CSS, phông chữ và Swagger được lưu cục bộ, không cần CDN khi chạy.
+
+## 6. Kiểm thử
+
+Kết quả kiểm chứng gần nhất ngày 04/10/2026:
+
+- **107** kiểm thử đơn vị .NET PASS.
+- **85** kiểm thử tích hợp PASS: 18 trường hợp không cần DB và 67 trường hợp trên Neon kiểm thử riêng.
+- **50** kiểm thử Node.js PASS, bao gồm xây dựng và phục vụ giao diện/Swagger.
+- **32** kiểm tra tài liệu, thiết kế và ranh giới mã nguồn/lưu trữ PASS.
+- **24** kiểm tra cú pháp JavaScript và **28** kiểm tra mã nguồn về chính sách nội dung/ranh giới dữ liệu PASS.
+
+Các kết quả trên không phải chứng nhận bảo mật hoặc tỷ lệ bao phủ kiểm thử. Kiểm tra secret vẫn báo một finding cũ trong cấu hình Development; cảnh báo dữ liệu Browserslist cũ vẫn còn nhưng không làm thất bại bản dựng.
+
+Các lệnh kiểm tra cơ bản, không bật kiểm thử ghi lên Neon:
+
+```powershell
+dotnet test ItAssetManagement.slnx -c Release --no-restore
+pnpm test
+pnpm check
+```
+
+Kiểm thử Neon phải được bật chủ động, chỉ khi đã có cơ sở dữ liệu kiểm thử riêng đúng cấu hình:
 
 ```powershell
 $env:ITAM_RUN_NEON_TESTS='1'
 dotnet test ItAssetManagement.slnx -c Release --no-restore
+Remove-Item Env:ITAM_RUN_NEON_TESTS
 ```
 
-Without opt-in, cloud tests explicitly SKIP; offline/fake-host tests still run. Tests reuse only existing `it_asset_management_m1_verify_20261002`, retain namespaced fixtures, never migrate/create/drop/truncate/reset shared data. Do not rerun `--setup-neon-m1` against these nonempty DBs.
+Nếu không bật, các trường hợp cần Neon được ghi nhận **bỏ qua**, không phải đã PASS. Kiểm thử hiện dùng cơ sở dữ liệu riêng có sẵn `it_asset_management_m1_verify_20261002`, lưu lại các bản ghi kiểm thử có tiền tố riêng; không tự tạo DB/migration, xóa schema, làm rỗng bảng hoặc đặt lại DB phát triển dùng chung.
 
-### Development Swagger and demo dataset
+Chi tiết: [Chiến lược kiểm thử](docs/testing-strategy.md), [Bàn giao API quản lý tài khoản](docs/user-account-handoff.md) và [Giao diện quản trị người dùng/danh mục role](docs/user-admin-ui-handoff.md). Các báo cáo cũ giữ nguyên số kiểm thử tại thời điểm bàn giao.
 
-`pnpm build` also builds local Swagger files. Run the API and open [Swagger](http://localhost:5080/swagger/). `Authorize` accepts an application JWT (without the `Bearer` prefix); reload clears it. Never paste a Neon URI/password there. Try it out calls real APIs: writes must target reserved demo records. No online validator, CDN or token persistence; Production does not expose this UI. Static `pnpm dev` alone cannot host Swagger/API.
+## 7. Cấu trúc mã nguồn
 
-Shared Neon now contains the original records plus 24 seeded demo assets across all 8 types/4 departments, and one separately created UI-smoke asset. No fake assignment/maintenance data was added. Demo login emails:
-
-- Admin IT: `admin.dev@itasset.test` (existing private bootstrap).
-- System Manager: `manager.demo@itasset.test`.
-- Technical Support: `support.demo@itasset.test`.
-
-Passwords are private, outside Git: `%LOCALAPPDATA%/ItAssetManagement/development-bootstrap.json` and `development-demo-accounts.json`. Read them locally, never post them in chat/screenshots. A teammate's newly generated file does **not** reset an existing shared account's password; obtain existing login credentials by an agreed private handoff.
-
-Explicit **Development-only**, idempotent demo seed (already executed; not required on every startup):
-
-```powershell
-$taskDemoCredentials = Join-Path $env:LOCALAPPDATA 'ItAssetManagement/development-demo-accounts.json'
-dotnet run --project src/ItAssetManagement.Api -- --seed-m1-demo "--demo-credentials-path=$taskDemoCredentials"
+```text
+src/
+├── ItAssetManagement.Api/             # API, xác thực HTTP và mã giao diện trong wwwroot
+├── ItAssetManagement.Application/     # Xử lý nghiệp vụ, kiểm tra dữ liệu và hợp đồng API
+├── ItAssetManagement.Domain/          # Các thực thể nghiệp vụ
+└── ItAssetManagement.Infrastructure/  # EF Core, Npgsql, lưu trữ và migration
+tests/                                # Kiểm thử .NET và JavaScript
+frontend/                             # Cấu hình xây dựng giao diện
+scripts/                              # Công cụ xây dựng và kiểm tra
+docs/                                 # Phân tích, thiết kế, kế hoạch và báo cáo bàn giao
+ItAssetManagement.slnx                # Solution .NET
+Directory.Packages.props              # Phiên bản thư viện .NET tập trung
+package.json                         # Lệnh và thư viện công cụ giao diện
+pnpm-lock.yaml                       # Khóa phiên bản thư viện giao diện
 ```
 
-The path must be absolute and outside the repository. The CLI creates a private bootstrap file if absent; it never overwrites one or prints passwords. Existing users, roles, passwords, profiles, archived assets and demo edits remain unchanged. Unexpected existing role assignments fail closed; seed does not grant extra access. Back up the private file safely; do not rerun setup/migrations or reset shared Neon for a demo.
+Giao diện đã xây dựng nằm tại `artifacts/frontend/`, không đưa vào Git và chỉ được ứng dụng phục vụ ở Development. Thông tin nhạy cảm của tài khoản demo và kết quả kiểm thử cục bộ cũng không đưa vào Git.
 
-See [Week 3](docs/weekly/week-03.md) and [96-task evidence](docs/week-02-03-completion.md). Technical deliverables are ready for independent review; Thiện/Mentor review, joint rehearsal, formal M1 acceptance and unresolved credential/least-privilege gates remain **PENDING**. Milestone **10/10/2026** unchanged. That Week 2–3 follow-up stopped before commit/push and Week 4; the separately approved prerequisite below does not open Assignment workflow or close those gates.
+## 8. Lộ trình dự án
 
-### User Lookup prerequisite
+Đây là kế hoạch gốc; việc đã làm sớm được ghi riêng trong báo cáo bàn giao, không làm thay đổi ngày và trách nhiệm đã thống nhất.
 
-`GET /api/v1/users/lookup` is ready for the future assignment picker. Existing three role accounts have `users.lookup`; current shared data contains those three active accounts, not a real employee directory. Use Development Swagger `/swagger/` with an application JWT; supported queries/defaults and exact fields at [handoff](docs/user-lookup-handoff.md). No new UI or user-create endpoint; creating real recipients/account administration remains PLANNED.
+| Tuần | Thời gian năm 2026 | Mục tiêu |
+|---|---|---|
+| 2 | 28/09–03/10 | Phân tích yêu cầu, thiết kế nghiệp vụ/DB/API/giao diện và lập kế hoạch cộng tác. |
+| 3 | 05–10/10 | Trình diễn M1 ngày **10/10/2026**: đăng nhập, tổng quan, danh mục và tài sản trên dữ liệu thật. |
+| 4 | 12–17/10 | Cấp phát, thu hồi, điều chuyển, bảo trì, lịch sử và giao diện tương ứng — **PLANNED**. |
+| 5 | 19–24/10 | Phần mềm/bản quyền, vòng đời, đề xuất thay thế và cảnh báo — **PLANNED**. |
+| 6 | 26–31/10 | Báo cáo, chi phí/ngân sách, biểu đồ và rà soát truy vấn — **PLANNED**. |
+| 7 | 02–07/11 | Nhập/xuất Excel, rà soát bảo mật/hiệu năng, kiểm thử tổng thể và trình diễn cuối — **PLANNED**. |
 
-The explicit catalog seed was run once (1 permission +3 links) then repeated (0 added); normal startup requires neither seed nor migration. Current full regression **59 unit +48 integration +40 Node PASS**, 17 preservation/documentation checks PASS. Secret scan remains FAIL for the existing owner credential; this changeset does not modify or add connection credentials.
+Nhóm gồm **Thủy và Thiện**. Thủy phụ trách chính kiến trúc, DB/migration, xác thực, tài sản, nền tảng giao diện và tích hợp; Thiện phụ trách theo kế hoạch các danh mục, cấp phát, bảo trì, phần mềm/bản quyền, vòng đời và nhập/xuất. Mỗi phần có người phụ trách và người rà soát. Xem [Phân công nhóm](docs/team-responsibilities.md), [Cộng tác Git và điều phối DB](docs/git-collaboration.md) và [Lộ trình chi tiết](docs/roadmap.md).
 
-**Publication handoff — 03/10/2026:** user subsequently requested push if tests pass. Pre-push Release build, full 147 tests, 17 documentation/schema checks, 23 JS/27 boundary checks and live/ready/Swagger/OpenAPI HTTP 200 verified again. Target `origin/main`, no force-push; prior implementation reports retain their dated no-commit snapshots. Thiện should pull `main` to review/continue. Publication does not close independent review, M1 acceptance or the existing credential/security gate. Current repeat .NET TRX files are local ignored `artifacts/test-results/publication-final/unit.trx` and `integration.trx`.
+## 9. Tài liệu dành cho người mới
+
+Để hiểu dự án, nên bắt đầu từ [Yêu cầu](docs/requirements.md), [Phạm vi](docs/scope.md), [Ca sử dụng](docs/use-cases.md) và [Quy tắc nghiệp vụ](docs/business-rules.md), sau đó đọc [Kiến trúc](docs/architecture.md), [ERD](docs/erd.md) và [Đặc tả API](docs/api-spec.md).
+
+Các tài liệu phân tích Tuần 2 là **bản thiết kế theo thời điểm lập kế hoạch**. Những câu “chưa triển khai” trong bản thiết kế không thay thế trạng thái thực tế mới hơn. Khi cần biết hiện đã có gì, đọc:
+
+- [Trạng thái dự án hiện tại](PROJECT_STATUS.md).
+- [Bàn giao 30 nhiệm vụ Tuần 2 của Thủy](docs/week-02-thuy-handoff.md).
+- [Đối chiếu 96 nhiệm vụ Tuần 2–3 và kết quả kiểm chứng](docs/week-02-03-completion.md).
+- [Bàn giao backend M1 và giao diện kết nối API thật](docs/m1-backend-handoff.md).
+- [API tra cứu người dùng](docs/user-lookup-handoff.md).
+- [API quản lý hồ sơ người dùng](docs/user-management-handoff.md).
+- [API trạng thái và phân quyền tài khoản](docs/user-account-handoff.md).
+- [Giao diện Người dùng và danh mục role/quyền](docs/user-admin-ui-handoff.md).
+- [Thiết kế giao diện](docs/ui-ux-spec.md), [Bảo mật](docs/security.md) và [Nhật ký thao tác](docs/audit-log.md).
+- [Các quyết định kỹ thuật](DECISIONS.md) và [Lịch sử thay đổi](CHANGELOG.md).
+
+Thiện/Mentor vẫn cần rà soát độc lập, nhóm cần chạy thử chung và nghiệm thu M1. **Đưa mã lên Git không đồng nghĩa các bước này đã hoàn thành hoặc dự án đã sẵn sàng triển khai chính thức.**

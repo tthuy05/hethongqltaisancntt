@@ -1,5 +1,18 @@
 # Changelog
 
+## 04/10/2026 — Giao diện quản trị người dùng
+
+### Added
+
+- Màn Người dùng dùng API thật: danh sách, tìm kiếm/lọc, phân trang, tạo/sửa/xem hồ sơ, trạng thái tài khoản và gán role bằng ID thật; xử lý validation, 401/403/409 và tự đăng nhập lại sau khi sửa tài khoản đang dùng.
+- EP-010–012 danh mục role/quyền chỉ đọc và API account-state tối thiểu, không đổi UserDto cũ. Manager chỉ đọc ID/tên role; quyền chi tiết và quản trị tài khoản dành cho Admin.
+- Seed catalog riêng `--seed-role-catalog`, không tạo/reset tài khoản, mật khẩu hoặc dữ liệu demo. [Contract và kiểm chứng](docs/user-admin-ui-handoff.md).
+- Regression **107 unit +85 integration +50 Node =242 PASS /0 FAIL /0 SKIP**; Release 0 warnings/errors, 32 docs/schema/source checks và 24 JS syntax/28 frontend boundary checks PASS. Shared narrow seed adds5 rồi0; 3 users/3 memberships, 24 permissions/42 mapped grants. Browser list/validation/detail/role dialog/self profile no-op relogin và desktop/320px/768px smoke verified trên isolated target.
+
+### Changed
+
+- Giữ README tiếng Việt đang sửa, evidence gốc, ownership/task rows và M1 10/10/2026. Không schema/migration/role-definition write/password reset/Assignment/Maintenance; independent review PENDING, owner credential UNRESOLVED, chưa commit/push.
+
 ## 04/10/2026 — Xuất bản quản lý tài khoản
 
 ### Changed

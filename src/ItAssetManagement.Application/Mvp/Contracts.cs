@@ -61,11 +61,12 @@ public static class Permissions
         TypeRead = "asset-types.read", TypeCreate = "asset-types.create", TypeUpdate = "asset-types.update",
         TypeArchive = "asset-types.archive", DashboardRead = "dashboard.read", UserLookup = "users.lookup",
         UserRead = "users.read", UserCreate = "users.create", UserUpdate = "users.update",
-        UserStatus = "users.status.manage", RoleAssign = "roles.assign";
+        UserStatus = "users.status.manage", RoleAssign = "roles.assign", RoleRead = "roles.read",
+        RolePermissionsRead = "roles.permissions.read";
     public static readonly string[] Read = [AssetRead, AssetHistory, DepartmentRead, TypeRead, DashboardRead, UserLookup];
-    public static readonly string[] Operate = [AssetCreate, AssetUpdate, AssetArchive, AssetStatus, AssetCost];
+    public static readonly string[] Operate = [AssetCreate, AssetUpdate, AssetArchive, AssetStatus, AssetCost, RoleRead];
     public static readonly string[] Admin = [DepartmentCreate, DepartmentUpdate, DepartmentArchive, TypeCreate, TypeUpdate, TypeArchive,
-        UserRead, UserCreate, UserUpdate, UserStatus, RoleAssign];
+        UserRead, UserCreate, UserUpdate, UserStatus, RoleAssign, RolePermissionsRead];
     public static readonly string[] All = [.. Read, .. Operate, .. Admin];
     public static readonly string[] Roles = ["ADMIN_IT", "SYSTEM_MANAGER", "TECHNICAL_SUPPORT"];
 }

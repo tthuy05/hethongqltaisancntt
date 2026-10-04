@@ -9,6 +9,33 @@ public sealed record SeedCredentials(string Email, string Password);
 public sealed record SeedResult(int Roles, int Permissions, int RolePermissions, int Departments, int AssetTypes, int Users, int UserRoles, int Added);
 public sealed class DevelopmentSeed(AppDbContext db, IRepository repo, IUnitOfWork uow, IPasswordService passwords, IAuditWriter audit)
 {
+    // Explicit narrow catalog update: never creates/resets users or restores unrelated grants.
+    public Task<int> RunRoleCatalogAsync(CancellationToken ct = default) => uow.RunAsync(async () =>
+    {
+        await repo.LockAsync("development-seed", ct);
+        var roles = await db.Set<Role>().Where(x => x.Code == "ADMIN_IT" || x.Code == "SYSTEM_MANAGER").ToListAsync(ct);
+        if (roles.Count != 2) throw new InvalidOperationException("Existing fixed roles are required.");
+        var created = new List<object>();
+        foreach (var code in new[] { Permissions.RoleRead, Permissions.RolePermissionsRead })
+        {
+            var permission = await db.Set<Permission>().SingleOrDefaultAsync(x => x.Code == code, ct);
+            if (permission == null)
+            {
+                permission = new Permission { Code = code, Name = code, Module = "roles" };
+                db.Add(permission); created.Add(permission); await db.SaveChangesAsync(ct);
+            }
+            foreach (var role in roles.Where(x => x.Code == "ADMIN_IT" || code == Permissions.RoleRead))
+                if (!await db.Set<RolePermission>().AnyAsync(x => x.RoleId == role.Id && x.PermissionId == permission.Id, ct))
+                {
+                    var link = new RolePermission { RoleId = role.Id, PermissionId = permission.Id, GrantedAtUtc = DateTime.UtcNow };
+                    db.Add(link); created.Add(link);
+                }
+        }
+        await db.SaveChangesAsync(ct);
+        foreach (var entity in created) audit.Record("development.role-catalog.seed", entity, null, "SYSTEM");
+        await db.SaveChangesAsync(ct); return created.Count;
+    }, ct);
+
     public async Task<SeedResult> RunAsync(SeedCredentials credentials, CancellationToken ct = default)
     {
         var added = await uow.RunAsync(async () =>

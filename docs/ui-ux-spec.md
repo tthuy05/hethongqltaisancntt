@@ -119,3 +119,9 @@ Các mô tả dưới đây là acceptance baseline cho **REAL API INTEGRATION �
 - Build PASS; 38 Node tests/20 syntax/22 source checks PASS. Browser đã kiểm CRUD mock, catalog, role, filter/page, Back/Forward, reload/logout, placeholders và responsive; chưa chứng nhận WCAG, API/DB persistence, security hoặc full cross-browser.
 
 Run commands, exact file manifest, browser evidence/limitations và kế hoạch handoff tại [Stitch integration report](stitch-ui-integration.md).
+
+## 7. Current user-admin UI addendum — 04/10/2026
+
+M1 hiện dùng API thật; phần NOT CONNECTED ở §6 là snapshot mock. Màn thứ 9 **Người dùng** (`/#/users`) chỉ ở API mode và cần users.read. List có keyword/department/role/activity, stable sort/page/empty/error; profile/status/role actions trong native dialogs, từng nút theo capability. Password chỉ ở form tạo; không có default role, password reset, xóa tài khoản hoặc role-definition editor. Status giữ riêng trục activity/manual lock; checkbox role từ danh mục ID thật, bỏ hết có cảnh báo thu hồi quyền đăng nhập, membership không có trong active catalog chặn lưu để review.
+
+RowVersion mới được đọc khi mở modal; conflict 409 yêu cầu đóng/mở lại, không retry. Backend bảo vệ Admin cuối cùng và thu hồi JWT; tự cập nhật tài khoản đang dùng buộc đăng nhập lại. Navigation/logout đóng modal; responsive filters 3/2/1 cột, bảng cuộn ngang trong container. Chế độ mock không giả lập quản trị người dùng. [Runtime contract và browser evidence](user-admin-ui-handoff.md); human review và broad accessibility **PENDING / PLANNED**.

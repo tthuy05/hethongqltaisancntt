@@ -7,6 +7,7 @@ import { dashboardPage } from './pages/dashboard.js';
 import { assetListPage, assetDetailPage } from './pages/assets.js';
 import { assetFormPage } from './pages/asset-form.js';
 import { masterPage } from './pages/masters.js';
+import { userPage } from './pages/users.js';
 import { can, route, formAlert } from './pages/shared.js';
 
 const app = document.getElementById('app');
@@ -17,7 +18,7 @@ document.querySelector('.skip-link')?.addEventListener('click', event => {
 });
 const menuItems = [
   ['/dashboard', 'Tổng quan', 'dashboard'], ['/assets', 'Tài sản', 'laptop'], ['/departments', 'Phòng ban', 'building'], ['/asset-types', 'Loại tài sản', 'tag'],
-  ['/assignments', 'Phân bổ tài sản', 'users'], ['/maintenance', 'Bảo trì', 'wrench'], ['/licenses', 'Phần mềm & License', 'key'], ['/lifecycle', 'Vòng đời tài sản', 'refresh-cw'], ['/reports', 'Báo cáo', 'bar-chart']
+  ['/users', 'Người dùng', 'user'], ['/assignments', 'Phân bổ tài sản', 'users'], ['/maintenance', 'Bảo trì', 'wrench'], ['/licenses', 'Phần mềm & License', 'key'], ['/lifecycle', 'Vòng đời tài sản', 'refresh-cw'], ['/reports', 'Báo cáo', 'bar-chart']
 ];
 let generation = 0;
 let pendingPath = '/dashboard';
@@ -28,7 +29,7 @@ function parsedRoute() {
 function shell(path) {
   const user = services.auth.session;
   const roleNames = { ADMIN_IT: 'Admin IT', SYSTEM_MANAGER: 'System Manager', TECHNICAL_SUPPORT: 'Technical Support' };
-  const nav = h('nav', { 'aria-label': 'Điều hướng chính' }, menuItems.map(([target, label, iconName]) => h('a', { className: 'nav-link' + (path === target || (target === '/assets' && path.startsWith('/assets/')) ? ' active' : ''), href: '#' + target, ...(path === target || (target === '/assets' && path.startsWith('/assets/')) ? { 'aria-current': 'page' } : {}) }, icon(iconName), h('span', {}, label))));
+  const nav = h('nav', { 'aria-label': 'Điều hướng chính' }, menuItems.filter(([target]) => target !== '/users' || can(services, 'users.read')).map(([target, label, iconName]) => h('a', { className: 'nav-link' + (path === target || (target === '/assets' && path.startsWith('/assets/')) ? ' active' : ''), href: '#' + target, ...(path === target || (target === '/assets' && path.startsWith('/assets/')) ? { 'aria-current': 'page' } : {}) }, icon(iconName), h('span', {}, label))));
   const sidebar = h('aside', { className: 'sidebar', id: 'main-sidebar' }, h('a', { className: 'brand', href: '#/dashboard' }, h('img', { src: './assets/logo.svg', alt: '', width: 40, height: 40 }), h('div', {}, h('span', { className: 'brand-title' }, 'Quản lý tài sản CNTT'), h('span', { className: 'brand-subtitle' }, 'Danh mục & hạ tầng'))), nav,
     h('div', { className: 'sidebar-footer' }, h('div', { className: 'avatar' }, icon('user')), h('div', {}, h('div', { className: 'profile-name' }, user?.displayName || 'Người dùng'), h('div', { className: 'profile-role' }, roleNames[user?.roles?.[0]] || ''))));
   const content = h('main', { className: 'main-content', id: 'main-content', tabIndex: -1 }, loadingState());
@@ -56,6 +57,7 @@ function shell(path) {
 }
 
 async function render() {
+  for (const dialog of document.querySelectorAll('dialog.dialog')) { dialog.close(); dialog.remove(); }
   const ownGeneration = ++generation;
   const path = parsedRoute();
   if (!services.auth.session || path === '/login') {
@@ -78,6 +80,7 @@ async function render() {
     } else if (/^\/assets\/\d+$/.test(path)) page = await assetDetailPage(services, Number(path.split('/')[2]));
     else if (path === '/departments') page = await masterPage(services, 'departments');
     else if (path === '/asset-types') page = await masterPage(services, 'assetTypes');
+    else if (path === '/users') page = await userPage(services);
     else {
       const item = menuItems.find(([target]) => target === path);
       page = h('div', {}, pageHeader(item ? item[1] : 'Không tìm thấy trang', item ? 'Module được lên kế hoạch cho các giai đoạn tiếp theo.' : 'Đường dẫn không tồn tại.'), h('section', { className: 'card' }, h('div', { className: 'card-body empty-state' }, icon(item?.[2] || 'search', 40), h('h2', {}, item ? 'PLANNED — Chưa triển khai' : '404 — Không tìm thấy'), h('p', { className: 'meta' }, item ? 'Chưa có nghiệp vụ, dữ liệu hoặc backend cho module này. Không phải màn hình chức năng đã hoàn thành.' : 'Bạn có thể quay lại danh sách tài sản.'), button('Về tài sản', { kind: 'secondary', onClick: () => route('/assets') }))));
