@@ -314,3 +314,33 @@ Exact files, run/check commands, reuse rationale và live-integration handoff: [
 **Database/Migration Impact:** NONE to entities, mappings, InitialM1, physical 10 tables /19 FKs or logical 18/41. Development-only explicit `--seed-role-catalog` adds only the two new permissions and three missing fixed-role grants in an audited idempotent transaction; never creates/resets users/passwords/memberships/assets or restores unrelated grants. No seed/migration on normal startup. Existing owner-credential exception remains UNRESOLVED; security/production approval and human review PENDING. No commit/push.
 
 **Evidence:** [User-admin UI / role catalog handoff](docs/user-admin-ui-handoff.md).
+
+## ADR-029 - Admin audit reads with fail-closed projection and view markers
+
+**Date:** 2026-10-05. **Status:** IMPLEMENTED / VERIFIED — independent review PENDING.
+
+**Context:** After publication main/cba71a6, user requested continuing Thủy's tasks according to the plan. M1 already stores audited auth/user/Asset events, while EP-093/094 read APIs/UI are missing. Department/Asset Type remain Thiện-owned despite existing M1 code; Assignment/Maintenance proposals/hooks/review are still dependencies, not authorization to implement Thiện's modules.
+
+**Previous decision:** Week2 audit design permits sensitive Admin reads with scope/redaction and mandatory audit.view; schema JSON examples are versioned envelopes. Actual M1 writer currently persists unversioned flat scalar JSON objects. Keep original design/evidence, not silently claim the envelope implemented or rewrite historical rows.
+
+**Decision:** Read-only list/detail require both DB-backed audit-logs.read and active ADMIN_IT membership. Exact allowlisted filters; explicit-offset timestamps normalized UTC, half-open bounded31-day range/default7 days, bounded offset paging and stable occurredAt/id sort. Summary is minimal; detail revalidates stored JSON with typed scalar allowlist/canonical camelCase keys. Reject malformed/oversized/duplicate-key payloads and remove nested/unknown/wrong-type fields. Cost requires assets.cost.read; metadata/contact/free-text snapshot/IP/User-Agent/hash/request-path/secrets are not exposed. Do not change existing schema or writer envelope in this scope.
+
+**Consequences:** Every successful list/detail appends one audit.view after selecting/counting, with only safe numeric scope/actor/correlation. Mandatory marker failure fails the GET closed; no fire-and-forget, reread recursion, full result copying or success marker for invalid/denied/not-found. UI is API-only/Admin-only, Vietnamese/local-time filters converted UTC, stable search window during paging and sanitized detail dialog; no write/export/mock audit feature. Future workflow snapshot fields require reviewed extension/tests, not automatic serialization.
+
+**Database/Migration impact:** NONE to logical18 tables/41 relationships, physical10 tables/19 FKs, entities/mappings or applied InitialM1. Explicit Development-only --seed-audit-read adds only the permission/missing ADMIN_IT grant under existing lock/audit transaction, never reset users/passwords/memberships/assets/unrelated permissions. Normal startup never seed/migrate; automated tests use existing isolated DB, no shared reset/drop/truncate. Release0 warnings/errors, **165 unit +98 integration +57 Node =320 PASS /0 FAIL /0 SKIP**,38 preservation-source checks PASS; focused13 is a subset, not added twice. Shared narrow seed added2 then0, catalog25 permissions, Admin list/detail200/Manager-Support403/anonymous401 and health/Swagger/OpenAPI200 PASS; browser desktop/mobile PASS. Initial full integration97 PASS/1 FAIL from legacy assertion encountering raw synthetic reader fixtures; scoped assertion refinement preserves writer validation and all audit rows, final rerun98 PASS. Both artifacts retained. Owner-credential security exception FAIL1/UNRESOLVED; no production/tamper-proof/human-review claim. M1 10/10/2026 unchanged; no commit/push.
+
+**Evidence:** [Audit-read API/UI contract and handoff](docs/audit-read-handoff.md). Historical30-task Week2,96-task matrix and242-test user-admin UI evidence preserved. D3-05 transfer-race review/Assignment audit hooks remain PLANNED/PENDING with Thiện.
+
+## ADR-030 - Public Manager demo handoff for Development
+
+**Date:** 2026-10-06. **Status:** DEVELOPMENT-ONLY EXCEPTION — independent security/production review PENDING.
+
+**Context:** Người dùng yêu cầu mật khẩu Manager demo dễ nhập và các lần publication sau có bàn giao đủ để Thiện không phải hỏi lại. Tài khoản demo dùng shared Neon `neondb`; Git chỉ xuất bản code/tài liệu, không đồng bộ hoặc đặt lại mật khẩu DB.
+
+**Previous decision:** Mật khẩu bootstrap/demo được sinh và lưu trong file riêng ngoài repository. Quy tắc này tiếp tục áp dụng cho Admin/Support; các hướng dẫn lịch sử không tự động thay đổi credential hiện hữu.
+
+**New decision / Reason:** Công khai duy nhất thông tin đăng nhập **Manager demo Development** trong [README](README.md), theo yêu cầu bàn giao của người dùng. Không thêm Neon/JWT secret hoặc mật khẩu Admin/Support vào tài liệu. Đây là ngoại lệ chấp nhận rủi ro cho demo, không phải policy cho production hay dữ liệu thật.
+
+**Implementation / Consequences:** Đã đổi Manager hiện hữu bằng maintenance có audit, khóa đồng bộ và concurrency; cập nhật password hash + tăng `TokenVersion`, với metadata/version do persistence hiện hữu quản lý. Không reset/seed DB, đổi schema/role/permission/activity/assets hoặc tài khoản Admin/Support. Private Manager credential file được đồng bộ sau kiểm chứng: mật khẩu mới login/me200, JWT cũ401, mật khẩu cũ401 và login mới cuối200. Người đọc Git có thể sử dụng các quyền Manager đang có; cần kiểm soát dữ liệu demo và revoke/rotate trước production hoặc dữ liệu thật. Không tự thêm API reset password công khai; feature đó vẫn **PLANNED**. Pull Git hoặc chạy idempotent seed không tự đổi mật khẩu tài khoản đã tồn tại.
+
+**Migration impact:** NONE — không entity/mapping/migration/schema mới; giữ logical18 tables/41 relationships, physical10 tables/19 FKs và InitialM1. Owner Neon credential finding hiện hữu **FAIL1 / UNRESOLVED**; ngoại lệ Manager không làm security gate sạch hoặc thay independent review/M1 acceptance.

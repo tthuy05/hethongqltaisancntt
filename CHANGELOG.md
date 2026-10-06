@@ -1,5 +1,26 @@
 # Changelog
 
+## 06/10/2026 — Chốt bàn giao Nhật ký thao tác
+
+### Changed
+
+- Chốt Audit-read phần Thủy và kiểm lại: Release0warnings/errors, **165 unit +98 integration +57 Node =320 PASS/0FAIL/0SKIP**,38preservation-source checks,26syntax/30boundary PASS. Shared HTTP role gates/health/Swagger/OpenAPI và browser list/detail/mobile kiểm lại; evidence06/10 lưu riêng, không ghi đè05/10/run lỗi. [Closeout](docs/audit-read-handoff.md#closeout--publication-addendum--06102026).
+- README có thông tin Manager demo Development theo yêu cầu của người dùng; ADR-030 ghi rủi ro và việc đổi hash/TokenVersion có audit, login mới200 và mật khẩu/JWT cũ401. Admin/Support/private files không public, không thêm reset-password API hoặc seed tự reset.
+- Đồng bộ hướng dẫn publication/bàn giao: yêu cầu push mới supersede checkpoint không commit05/10, giữ human review/M1 acceptance PENDING. No schema/migration/Thiện-owned module changes; owner-secret scanner **FAIL1/UNRESOLVED**, không production-ready claim. Ghi technical debt hiển thị tiền lớn bằng JS Number; chưa tự đổi API contract.
+
+## 05/10/2026 — Nhật ký thao tác (phần Thủy)
+
+### Added
+
+- Scoped EP-093/094 Admin-only list/detail audit, strict UTC range/filter/paging, safe scalar/cost projection và một audit.view marker khi xem thành công; giao diện Nhật ký thao tác chỉ đọc dùng API thật. [Contract và kiểm chứng](docs/audit-read-handoff.md). **IMPLEMENTED / VERIFIED**: Release0 warnings/errors, **165 unit +98 integration +57 Node =320 PASS /0 FAIL /0 SKIP**,38 preservation-source checks,26 JS syntax/30 boundary checks PASS. Shared narrow seed added2 then0, catalog25 permissions; Admin200/Manager-Support403/anonymous401 và health/Swagger/OpenAPI200 PASS; browser desktop/mobile PASS. Full integration đầu97 PASS/1 FAIL, scoped assertion fix rồi rerun98 PASS; run lỗi giữ nguyên, không dùng242 PASS cũ chứng nhận phần mới.
+- D3-04 redaction/correlation verification và phần tài liệu D3-05; Assignment hook và transfer-race review Thiện còn PLANNED/PENDING. Không workflow, schema/migration, export/write API hoặc sửa Department/Asset Type của Thiện.
+
+### Changed
+
+- Assertion legacy toàn-DB kiểm snapshot nay loại riêng raw hostile-reader fixtures `T*.audit.*`, đồng thời kiểm event ghi thật phải loại secret và giữ `IsActive`; không xóa/sửa audit rows hoặc nới redaction/writer policy. Run lỗi vẫn giữ trong artifacts, full rerun thực tế98 PASS.
+- Ghi publication user-admin UI `main/cba71a6`; no-commit notes ngày04/10 là historical snapshot. Current Week indicator vào Week3 đúng05/10, giữ nguyên original task rows/dates/ownership,30-task Week2 evidence,18 tables/41 relationships và physical10 tables/19 FKs/InitialM1.
+- M1 **10/10/2026** và independent review gates không đổi; owner-credential finding **UNRESOLVED**. Lượt Audit-read mới **UNCOMMITTED /UNPUSHED**, không stage/commit/push.
+
 ## 04/10/2026 — Giao diện quản trị người dùng
 
 ### Added

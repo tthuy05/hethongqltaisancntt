@@ -117,6 +117,10 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
     get(id) { return request(`/roles/${idPath(id)}`); },
     permissions(query = {}) { return request(`/roles/permissions${queryString(query)}`); },
   };
+  const auditLogs = {
+    list(query = {}) { return request(`/audit-logs${queryString(query)}`); },
+    get(id) { return request(`/audit-logs/${idPath(id)}`); },
+  };
   const dashboard = {
     async summary() {
       // M1 has assets API, not a runtime Dashboard/Replacement module. No invented endpoint.
@@ -128,5 +132,5 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
       return { totalAssets: recent.totalItems, inUse: byStatus.find((item) => item.status === 'InUse').count, maintenance: byStatus.find((item) => item.status === 'Maintenance').count, replacementNeeded: null, replacementStatus: 'PLANNED', byStatus, recentAssets: recent.items, dataMode: 'api' };
     },
   };
-  return { mode: 'api', auth, assets, departments: masterService('department'), assetTypes: masterService('assetType'), users, roles, dashboard };
+  return { mode: 'api', auth, assets, departments: masterService('department'), assetTypes: masterService('assetType'), users, roles, auditLogs, dashboard };
 }

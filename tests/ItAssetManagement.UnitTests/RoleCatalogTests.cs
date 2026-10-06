@@ -86,7 +86,7 @@ public sealed class RoleCatalogTests
     {
         Assert.Contains(Permissions.RoleRead, Permissions.Operate); Assert.DoesNotContain(Permissions.RoleRead, Permissions.Read);
         Assert.Contains(Permissions.RolePermissionsRead, Permissions.Admin); Assert.DoesNotContain(Permissions.RolePermissionsRead, Permissions.Operate);
-        Assert.Equal(24, Permissions.All.Distinct().Count()); Assert.Equal(Permissions.All.Length, Permissions.All.Distinct().Count());
+        Assert.Equal(25, Permissions.All.Distinct().Count()); Assert.Equal(Permissions.All.Length, Permissions.All.Distinct().Count());
     }
     private sealed class Actor(params string[] permissions) : IActor
     {

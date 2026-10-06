@@ -26,7 +26,7 @@ Hệ thống có ba vai trò đăng nhập. Bảng dưới đây mô tả quyề
 
 | Vai trò | Quyền chính hiện tại |
 |---|---|
-| Quản trị viên IT (`ADMIN_IT`) | Quản lý tài sản, phòng ban, loại tài sản; xem chi phí; quản lý hồ sơ, trạng thái và phân quyền tài khoản bằng giao diện và API. |
+| Quản trị viên IT (`ADMIN_IT`) | Quản lý tài sản, phòng ban, loại tài sản; xem chi phí; quản lý hồ sơ, trạng thái và phân quyền tài khoản; tra cứu nhật ký thao tác bằng giao diện và API. |
 | Quản lý hệ thống (`SYSTEM_MANAGER`) | Xem và quản lý tài sản, xem chi phí và bảng tổng quan; xem danh mục tham chiếu. Không quản trị tài khoản hoặc sửa danh mục phòng ban/loại tài sản. |
 | Nhân viên hỗ trợ kỹ thuật (`TECHNICAL_SUPPORT`) | Xem dữ liệu tài sản và bảng tổng quan phục vụ vận hành; không xem chi phí, không sửa tài sản hoặc quản trị tài khoản. |
 
@@ -46,8 +46,8 @@ Chi tiết: [Vai trò sử dụng](docs/actors.md), [Ma trận phân quyền](do
 - **Quản lý người dùng (`User management`):** giao diện và API danh sách, tìm kiếm/lọc, tạo, xem, sửa hồ sơ; kích hoạt/vô hiệu hóa, khóa/mở khóa và gán vai trò bằng ID thật. Có bảo vệ quản trị viên cuối cùng, kiểm soát cập nhật đồng thời và thu hồi hiệu lực JWT cũ khi trạng thái/quyền thay đổi.
 - **Danh mục vai trò/quyền:** API đọc các role cố định; Quản lý hệ thống chỉ nhận ID/tên role, còn thông tin quyền chi tiết dành cho Quản trị IT. Không có chức năng tạo/sửa định nghĩa role.
 - **Tra cứu người dùng (`User Lookup`):** API danh sách tối thiểu để chuẩn bị cho chức năng chọn người nhận tài sản; chưa có nghiệp vụ cấp phát.
-- **Toàn vẹn dữ liệu:** kiểm tra dữ liệu đầu vào, ràng buộc cơ sở dữ liệu, giao dịch, kiểm soát cập nhật đồng thời và ghi nhật ký thao tác. Chưa có màn hình/API đọc nhật ký quản trị.
-- **Giao diện:** 9 màn hình dùng API thật — Đăng nhập, Tổng quan, Danh sách tài sản, Thêm tài sản, Sửa tài sản, Chi tiết tài sản, Phòng ban, Loại tài sản và Người dùng; quản trị tài khoản thao tác trong hộp thoại.
+- **Toàn vẹn dữ liệu:** kiểm tra dữ liệu đầu vào, ràng buộc cơ sở dữ liệu, giao dịch, kiểm soát cập nhật đồng thời và ghi nhật ký thao tác. Admin có API/màn hình tra cứu nhật ký; kết quả kiểm chứng mới ở mục dưới.
+- **Giao diện:** 10 màn hình dùng API thật — Đăng nhập, Tổng quan, Danh sách tài sản, Thêm tài sản, Sửa tài sản, Chi tiết tài sản, Phòng ban, Loại tài sản, Người dùng và Nhật ký thao tác; quản trị tài khoản và xem chi tiết nhật ký trong hộp thoại.
 - **Tài liệu API:** Swagger chạy ở môi trường phát triển, hỗ trợ thử API với JWT.
 
 ### Chưa triển khai — DỰ KIẾN (PLANNED)
@@ -58,10 +58,14 @@ Chi tiết: [Vai trò sử dụng](docs/actors.md), [Ma trận phân quyền](do
 - Đánh giá vòng đời, đề xuất thay thế thiết bị và dự toán ngân sách.
 - Báo cáo nâng cao, biểu đồ và nhập/xuất Excel.
 - Đặt lại mật khẩu, tạo/sửa định nghĩa vai trò và chỉnh ma trận quyền.
-- Giao diện/API đọc nhật ký quản trị và các bảng lịch sử nghiệp vụ chưa hoàn thành.
+- Các bảng lịch sử nghiệp vụ của cấp phát/bảo trì chưa hoàn thành; không nhầm API tra cứu nhật ký quản trị với lịch sử workflow chưa triển khai.
 - Triển khai chính thức và đánh giá đầy đủ về bảo mật, hiệu năng, khả năng tiếp cận.
 
-**Cập nhật ngày 04/10/2026:** API quản lý tài khoản đã được đưa lên `main` tại commit `845c674`; giao diện Người dùng và danh mục role/quyền vừa bổ sung, **chưa commit/push**. Kết quả hiện tại: **242 kiểm thử PASS, không lỗi hoặc bỏ qua**, cùng **32 kiểm tra tài liệu/thiết kế/mã nguồn liên quan PASS**. Đánh giá độc lập của Thiện/Mentor và nghiệm thu vẫn **ĐANG CHỜ (PENDING)**; kiểm thử thành công không có nghĩa hệ thống đã sẵn sàng vận hành chính thức.
+**Publication checkpoint:** API quản lý tài khoản ở `main/845c674`; giao diện Người dùng và danh mục role/quyền đã được đưa lên `main/cba71a6`. Kết quả ngày04/10: **242 kiểm thử PASS, không lỗi hoặc bỏ qua**, cùng **32 kiểm tra tài liệu/thiết kế/mã nguồn liên quan PASS**; đây là snapshot trước phần nhật ký mới.
+
+**Kết quả ngày 05/10/2026 — phần Thủy:** đã hoàn thành và kiểm chứng EP-093/094 cùng màn **Nhật ký thao tác** cho Admin: lọc/phân trang, xem chi tiết đã loại dữ liệu nhạy cảm, thời gian UTC và ghi `audit.view` khi xem thành công. Release build PASS, **165 unit +98 integration +57 Node =320 PASS, không lỗi hoặc bỏ qua**; **38** kiểm tra bảo toàn/tài liệu/mã nguồn PASS. Shared seed thêm2 rồi0, Admin list/detail200, Manager/Support403 và anonymous401; browser danh sách/lọc/phân trang/chi tiết/điện thoại PASS. Run integration lỗi đầu và scoped assertion fix được giữ trong handoff, không xóa log hoặc dùng242 PASS cũ chứng nhận phần mới. Chưa commit/push lượt mới; review độc lập còn chờ. Xem [Bàn giao nhật ký thao tác](docs/audit-read-handoff.md).
+
+Đánh giá độc lập của Thiện/Mentor và nghiệm thu vẫn **ĐANG CHỜ (PENDING)**; kiểm thử thành công không có nghĩa hệ thống đã sẵn sàng vận hành chính thức.
 
 Mốc trình diễn đầu tiên **M1 — 10/10/2026** giữ nguyên: đăng nhập → tổng quan → danh sách tài sản → thêm → xem/sửa → tìm kiếm/lọc trên dữ liệu thật. Công việc đã làm được ghi trong các báo cáo bàn giao; không đánh dấu toàn bộ kế hoạch là hoàn tất.
 
@@ -105,7 +109,7 @@ Xem [Kiến trúc](docs/architecture.md), [Thiết kế cơ sở dữ liệu](do
 - .NET SDK 10; môi trường hiện tại đã kiểm chứng SDK 10.0.400.
 - Node.js >=22 và pnpm 11.25.0 có thể chạy từ terminal.
 - Kết nối Internet để tải thư viện và truy cập Neon.
-- Thông tin tài khoản ứng dụng nhận qua kênh bàn giao riêng, không lấy mật khẩu từ README.
+- Tài khoản Manager demo Development được ghi bên dưới; tài khoản Admin/Support vẫn nhận qua kênh bàn giao riêng. Không dùng thông tin demo cho Production.
 
 > **Lưu ý bảo mật:** cấu hình Development hiện có credential của tài khoản chủ sở hữu Neon đã được đưa vào Git. Đây là rủi ro chưa xử lý, không phải cấu hình an toàn cho vận hành chính thức. Cần đổi credential đã lộ và sử dụng tài khoản có quyền tối thiểu trước khi triển khai chính thức. Không sao chép connection string/mật khẩu vào chat, ảnh chụp hoặc ví dụ sử dụng. Môi trường Production cần cấu hình riêng bí mật cơ sở dữ liệu và khóa JWT.
 
@@ -129,10 +133,23 @@ Mở [Giao diện ứng dụng](http://localhost:5080/#/login) hoặc [Swagger](
 - Cơ sở dữ liệu dùng chung đã có dữ liệu mẫu; không cần thiết lập lại hoặc nạp lại mỗi lần chạy. Thử các thao tác ghi bằng bản ghi dành riêng cho demo, không làm thay đổi dữ liệu của thành viên khác.
 - JWT chỉ giữ trong bộ nhớ trình duyệt. Tải lại trang hoặc khởi động lại API phát triển có thể yêu cầu đăng nhập lại; dữ liệu đã lưu vẫn nằm trong cơ sở dữ liệu.
 - Đăng nhập bằng tài khoản có quyền `users.read` để thấy menu **Người dùng** tại `/#/users`. Nút tạo/sửa/trạng thái/vai trò xuất hiện theo quyền API; tài khoản mới không được tự gán role. Chế độ dữ liệu giả không có màn quản trị người dùng.
+- Màn **Nhật ký thao tác** tại `/#/audit-logs` đã kiểm chứng trên API thật, chỉ dành cho active `ADMIN_IT` có `audit-logs.read`. Không có chức năng ghi/sửa/xóa/export hoặc dữ liệu audit giả; seed permission mới và kiểm chứng được ghi riêng tại [handoff](docs/audit-read-handoff.md), không chạy lại bootstrap/demo khi khởi động.
 
 Tại Swagger, nút `Authorize` nhận **JWT của ứng dụng**, không phải connection string Neon. Không thêm tiền tố `Bearer` trong ô nhập JWT. Các thao tác thử API có thể ghi dữ liệu thật.
 
-Tài khoản demo gồm quản trị IT, quản lý hệ thống và hỗ trợ kỹ thuật. Mật khẩu được bàn giao riêng; trên máy đã thiết lập, chúng nằm trong các tệp ngoài Git dưới `%LOCALAPPDATA%/ItAssetManagement/`. Tạo tệp thông tin mới trên máy khác không đặt lại mật khẩu của tài khoản đã tồn tại. Hướng dẫn chi tiết: [Bàn giao backend M1 và giao diện thật](docs/m1-backend-handoff.md).
+### Đăng nhập demo trên Neon dùng chung
+
+Theo yêu cầu bàn giao ngày **06/10/2026**, tài khoản Manager Development được công khai để Thiện có thể dùng ngay sau khi kéo code và chạy API nối đúng shared database `neondb`:
+
+| Vai trò | Email | Mật khẩu demo |
+|---|---|---|
+| Quản lý hệ thống (`SYSTEM_MANAGER`) | `manager.demo@itasset.test` | `ManagerDemo1!` |
+
+Mật khẩu này đã được đổi trên DB thật và kiểm chứng đăng nhập HTTP 200; mật khẩu cũ và JWT cũ bị từ chối HTTP 401. Git không đồng bộ mật khẩu vào DB: thông tin trên chỉ đúng với tài khoản hiện có trong shared Development DB, không tự tạo tài khoản hoặc đặt lại mật khẩu khi chạy ứng dụng.
+
+Manager dùng được tài sản/bảng tổng quan, **không** sửa Department/Asset Type, quản trị người dùng hoặc xem Nhật ký thao tác. Thiện cần tài khoản Admin được bàn giao riêng để kiểm những chức năng đó. Admin/Support và các tệp bootstrap cục bộ dưới `%LOCALAPPDATA%/ItAssetManagement/` không được công khai trong thay đổi này. Không nạp lại seed hoặc tạo file credential mới trên máy khác để cố đổi tài khoản đã có.
+
+**Chỉ dùng cho Development với dữ liệu demo.** Ai đọc repository đều biết mật khẩu Manager và có thể thao tác theo quyền của tài khoản nếu truy cập được API. Không dùng tài khoản/mật khẩu này cho dữ liệu doanh nghiệp hoặc Production; phải thu hồi/đổi trước triển khai thật. Ngoại lệ bàn giao demo này không áp dụng cho credential chủ Neon hoặc khóa ký JWT. Xem [quyết định bàn giao demo](DECISIONS.md#adr-030---public-manager-demo-handoff-for-development) và [bàn giao backend M1](docs/m1-backend-handoff.md).
 
 ### Chỉ xem thử giao diện bằng dữ liệu giả
 
@@ -146,13 +163,15 @@ Giao diện mặc định dùng API thật và **không tự chuyển sang dữ 
 
 ## 6. Kiểm thử
 
-Kết quả kiểm chứng gần nhất ngày 04/10/2026:
+Kết quả kiểm chứng gần nhất ngày **06/10/2026** (kiểm lại toàn bộ suite; evidence 05/10 vẫn giữ nguyên):
 
-- **107** kiểm thử đơn vị .NET PASS.
-- **85** kiểm thử tích hợp PASS: 18 trường hợp không cần DB và 67 trường hợp trên Neon kiểm thử riêng.
-- **50** kiểm thử Node.js PASS, bao gồm xây dựng và phục vụ giao diện/Swagger.
-- **32** kiểm tra tài liệu, thiết kế và ranh giới mã nguồn/lưu trữ PASS.
-- **24** kiểm tra cú pháp JavaScript và **28** kiểm tra mã nguồn về chính sách nội dung/ranh giới dữ liệu PASS.
+- **165** kiểm thử đơn vị .NET PASS.
+- **98** kiểm thử tích hợp PASS:20 trường hợp không cần DB và78 trường hợp trên Neon kiểm thử riêng. Focused13 trường hợp nhật ký nằm trong98, không cộng lại.
+- **57** kiểm thử Node.js PASS, bao gồm contract bộ lọc nhật ký, xây dựng và phục vụ giao diện/Swagger.
+- **38** kiểm tra tài liệu, thiết kế và ranh giới mã nguồn/lưu trữ PASS:32 kiểm tra trước +6 kiểm tra phần nhật ký.
+- **26** kiểm tra cú pháp JavaScript và **30** kiểm tra mã nguồn về chính sách nội dung/ranh giới dữ liệu PASS.
+
+Tổng hiện tại **320 kiểm thử PASS /0 FAIL /0 SKIP**. [Kết quả mới, run lỗi đầu và rerun](docs/audit-read-handoff.md#kiểm-chứng-thực-tế) được ghi rõ; snapshot ngày04/10 **242 PASS** giữ nguyên trong [handoff trước](docs/user-admin-ui-handoff.md), không cộng vào tổng mới.
 
 Các kết quả trên không phải chứng nhận bảo mật hoặc tỷ lệ bao phủ kiểm thử. Kiểm tra secret vẫn báo một finding cũ trong cấu hình Development; cảnh báo dữ liệu Browserslist cũ vẫn còn nhưng không làm thất bại bản dựng.
 
@@ -194,7 +213,7 @@ package.json                         # Lệnh và thư viện công cụ giao di
 pnpm-lock.yaml                       # Khóa phiên bản thư viện giao diện
 ```
 
-Giao diện đã xây dựng nằm tại `artifacts/frontend/`, không đưa vào Git và chỉ được ứng dụng phục vụ ở Development. Thông tin nhạy cảm của tài khoản demo và kết quả kiểm thử cục bộ cũng không đưa vào Git.
+Giao diện đã xây dựng nằm tại `artifacts/frontend/`, không đưa vào Git và chỉ được ứng dụng phục vụ ở Development. Private credential files của Admin/Support và kết quả kiểm thử cục bộ không đưa vào Git; Manager demo có ngoại lệ công khai Development tại mục5 theo ADR-030.
 
 ## 8. Lộ trình dự án
 
@@ -211,6 +230,8 @@ Giao diện đã xây dựng nằm tại `artifacts/frontend/`, không đưa và
 
 Nhóm gồm **Thủy và Thiện**. Thủy phụ trách chính kiến trúc, DB/migration, xác thực, tài sản, nền tảng giao diện và tích hợp; Thiện phụ trách theo kế hoạch các danh mục, cấp phát, bảo trì, phần mềm/bản quyền, vòng đời và nhập/xuất. Mỗi phần có người phụ trách và người rà soát. Xem [Phân công nhóm](docs/team-responsibilities.md), [Cộng tác Git và điều phối DB](docs/git-collaboration.md) và [Lộ trình chi tiết](docs/roadmap.md).
 
+**Ranh giới phân công:** Phòng ban (Department) và Loại tài sản (Asset Type) vẫn thuộc Thiện dù M1 đã có code làm trước. Thiện review/tiếp quản code hiện có, không cần viết lại; phần Thủy hiện tại không sửa tiếp hai module hoặc tự tính nhiệm vụ Thiện là hoàn tất.
+
 ## 9. Tài liệu dành cho người mới
 
 Để hiểu dự án, nên bắt đầu từ [Yêu cầu](docs/requirements.md), [Phạm vi](docs/scope.md), [Ca sử dụng](docs/use-cases.md) và [Quy tắc nghiệp vụ](docs/business-rules.md), sau đó đọc [Kiến trúc](docs/architecture.md), [ERD](docs/erd.md) và [Đặc tả API](docs/api-spec.md).
@@ -225,6 +246,7 @@ Các tài liệu phân tích Tuần 2 là **bản thiết kế theo thời đi�
 - [API quản lý hồ sơ người dùng](docs/user-management-handoff.md).
 - [API trạng thái và phân quyền tài khoản](docs/user-account-handoff.md).
 - [Giao diện Người dùng và danh mục role/quyền](docs/user-admin-ui-handoff.md).
+- [API và giao diện Nhật ký thao tác](docs/audit-read-handoff.md).
 - [Thiết kế giao diện](docs/ui-ux-spec.md), [Bảo mật](docs/security.md) và [Nhật ký thao tác](docs/audit-log.md).
 - [Các quyết định kỹ thuật](DECISIONS.md) và [Lịch sử thay đổi](CHANGELOG.md).
 

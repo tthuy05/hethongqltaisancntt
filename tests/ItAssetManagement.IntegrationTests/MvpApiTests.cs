@@ -206,8 +206,24 @@ public sealed class MvpApiTests(MvpFixture fixture)
     }
     [NeonFact] public async Task Audit_snapshots_do_not_contain_hashes_passwords_or_tokens()
     {
-        await using var scope = fixture.Factory.Services.CreateAsyncScope(); var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var logs = await db.Set<AuditLog>().Select(x => new { x.OldValuesJson, x.NewValuesJson, x.MetadataJson }).ToListAsync();
+        await using var scope = fixture.Factory.Services.CreateAsyncScope(); var services = scope.ServiceProvider;
+        var db = services.GetRequiredService<AppDbContext>();
+        var writerAction = "test.writer-redaction." + fixture.Prefix;
+        await services.GetRequiredService<IUnitOfWork>().RunAsync(async () =>
+        {
+            services.GetRequiredService<IAuditWriter>().Record(writerAction, null, null, "SYSTEM",
+                after: new { Password = "synthetic", AccessToken = "synthetic", ConnectionString = "synthetic", IsActive = true });
+            await db.SaveChangesAsync(); return true;
+        });
+        var written = await db.Set<AuditLog>().SingleAsync(x => x.Action == writerAction);
+        var snapshot = JsonSerializer.Deserialize<JsonElement>(written.NewValuesJson!);
+        Assert.True(snapshot.GetProperty("IsActive").GetBoolean());
+        Assert.Equal(["IsActive"], snapshot.EnumerateObject().Select(x => x.Name));
+        // Audit-reader security tests deliberately bypass the writer with raw hostile
+        // JSON in exact namespaced fixtures. Retained isolated runs must not make
+        // those reader inputs look like production writer output; never delete them.
+        var logs = await db.Set<AuditLog>().Where(x => !(x.Action.StartsWith("T") && x.Action.Contains(".audit.")))
+            .Select(x => new { x.OldValuesJson, x.NewValuesJson, x.MetadataJson }).ToListAsync();
         foreach (var log in logs)
         {
             var text = log.OldValuesJson + log.NewValuesJson + log.MetadataJson;

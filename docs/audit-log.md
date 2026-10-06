@@ -4,6 +4,8 @@
 
 > Database platform: **PostgreSQL hosted on Neon — PLANNED / NOT YET CONNECTED** (ADR-018). Audit event/action/permission/transaction MVP không đổi; chỉ physical types/JSON constraints cập nhật theo database design.
 
+> **Current implementation addendum — 05/10/2026:** các status PLANNED/NOT RUN bên dưới là snapshot thiết kế Week2, không phải phủ nhận M1 đã có audit table/writer/audited transactions và auth/user/Asset hooks. PostgreSQL/Neon M1 đã kết nối thật; logical18 tables/41 relationships và physical10 tables/19 FKs giữ nguyên. EP-093/094 +giao diện Admin **IMPLEMENTED / VERIFIED**,320 tests PASS trong [Audit-read handoff](audit-read-handoff.md); không tự nhận mọi scenario ở §12 đã PASS. Assignment/Maintenance hooks, retention/hash-chain/least-privilege runtime vẫn **PLANNED / PENDING**. Các đoạn thiết kế gốc được giữ để review.
+
 ## 1. Mục tiêu và ranh giới
 
 Audit log trả lời: **ai hoặc tiến trình nào, đã làm gì, với đối tượng nào, khi nào, từ đâu, kết quả ra sao và dữ liệu nghiệp vụ an toàn nào đã đổi**. Audit phục vụ truy cứu bảo mật, tuân thủ và điều tra; không thay thế:
@@ -215,3 +217,18 @@ Tất cả test trên hiện là **PLANNED — NOT RUN**.
 - Quyền đọc/export audit dùng least privilege và tự được audit.
 - Không có hard delete/update audit trong API/runtime role.
 - Retention, hash checkpoint, KMS và privacy vẫn được ghi rõ là **PLANNED/OPEN** cho đến khi Mentor phê duyệt.
+
+## 14. Scoped Audit-read implementation addendum — 05/10/2026
+
+**Thủy-owned W4-THUY-D3-03/04**, sau main/cba71a6; không viết lại Week2 hoặc làm workflow Thiện. Runtime contract chi tiết và kết quả thật tại [handoff mới](audit-read-handoff.md), ADR-029. Status hiện **IMPLEMENTED / VERIFIED — independent review PENDING**.
+
+- `GET /api/v1/audit-logs` và `GET /api/v1/audit-logs/{auditLogId}`: `audit-logs.read` **và active ADMIN_IT membership**, không Manager/Support kể cả bị cấp nhầm permission. Read-only endpoint surface, không export/update/delete.
+- Filter exact action/entity/user/outcome/correlation; page/pageSize mặc định 1/20, tối đa 100. ISO timestamps bắt buộc explicit offset, UTC `[from,to)`, default 7 ngày /max 31 ngày, stable occurredAt/id sorting. Invalid query 400; missing detail 404; anonymous 401 /missing privilege 403.
+- Detail dùng DTO allowlist typed scalar camelCase, đọc lại redaction trước trả: M1 JSON thực tế là flat objects chưa versioned, không envelope examples ở §4. Không trả metadata/PII/IP/User-Agent/hash/request path/free-text snapshot; purchaseCost chỉ khi có assets.cost.read. Malformed/duplicate/oversize/nested/unknown/wrong-type values fail closed/redacted, không raw JSON.
+- Successful list/detail phải append đúng một `audit.view` sau select/count, safe numeric scope, same correlation, không reread/recursive marker. Append thất bại →fail closed; invalid/denied/not-found không tạo success marker.
+- Narrow `--seed-audit-read` chỉ permission +missing Admin grant dưới lock; không user/membership/password/assets/other grants/schema/migration/reset. Normal startup không seed/migrate. Seed/runtime/test results chỉ được ghi sau actual execution.
+- UI API-only/Admin-only, local-time→UTC filter, cửa sổ ổn định khi paging và dialog old/new đã lọc; browser desktop/mobile390×844, validation/filter/page2/detail/empty/logout và Menu/ESC **PASS** trên isolated target. Shared Admin list/detail200, Manager/Support403 và anonymous401 **PASS**, seed adds2 then0, catalog25 permissions. Browser verification không thay independent review.
+
+Checkpoint05/10: build **0 warnings/errors**, **165 unit +98 integration +57 Node =320 PASS /0 FAIL /0 SKIP**,38 preservation-source checks PASS. Focused13 integration nằm trong98, không cộng hai lần. Full integration đầu97 PASS/1 FAIL do raw synthetic reader fixtures ảnh hưởng assertion legacy toàn-DB; đã chỉnh assertion có scope +kiểm writer event thật, rerun98 PASS. Không xóa logs hoặc nới policy để làm test PASS; run lỗi và kết quả rerun giữ tại handoff. Cleanup/health tại checkpoint05/10: QA browser tab đóng, viewport reset, QA host5081 dừng; main5080 khởi động lại và health/ready200. Lượt kiểm lại/publication06/10 được ghi riêng trong handoff, không dùng ảnh mobile cũ làm ảnh màn hình đã đóng sidebar hoặc gọi optional retake timeout là PASS.
+
+M1 hooks hiện có không đồng nghĩa Assignment/Maintenance/License/import/authorization-denied coverage toàn hệ thống đã thực hiện. Hash-chain/retention/checkpoint runtime privileges và credential rotation vẫn **PLANNED / PENDING**, owner-secret exception **UNRESOLVED**, no tamper-proof/production-ready claim. M1 **10/10/2026** và 18/41 baseline không đổi; không commit/push lượt này.

@@ -390,11 +390,18 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--primary); widt
 .user-admin-page .data-table .actions { flex-wrap: wrap; min-width: 230px; }
 .user-admin-page .user-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .user-admin-page .user-details dd { overflow-wrap: anywhere; }
+.audit-page .audit-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.audit-filter-actions { grid-column: 1 / -1; flex-wrap: wrap; }
+.audit-filter-note { padding: 0 22px 18px; }
+.audit-code { overflow-wrap: anywhere; max-width: 240px; }
+.audit-detail-dialog { max-width: 760px; }
 @media (max-width: 768px) {
   .user-admin-page .user-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .audit-page .audit-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 480px) {
   .user-admin-page .user-filters, .user-admin-page .user-details { grid-template-columns: minmax(0, 1fr); }
+  .audit-page .audit-filters { grid-template-columns: minmax(0, 1fr); }
 }
 .brand-title, .brand-subtitle { display: block; }
 .sidebar-footer { display: flex; align-items: center; gap: 10px; }

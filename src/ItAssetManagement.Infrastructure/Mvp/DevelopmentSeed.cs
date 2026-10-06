@@ -9,6 +9,29 @@ public sealed record SeedCredentials(string Email, string Password);
 public sealed record SeedResult(int Roles, int Permissions, int RolePermissions, int Departments, int AssetTypes, int Users, int UserRoles, int Added);
 public sealed class DevelopmentSeed(AppDbContext db, IRepository repo, IUnitOfWork uow, IPasswordService passwords, IAuditWriter audit)
 {
+    // Explicit additive audit permission only; preserve existing accounts, roles and grants.
+    public Task<int> RunAuditReadAsync(CancellationToken ct = default) => uow.RunAsync(async () =>
+    {
+        await repo.LockAsync("development-seed", ct);
+        var admin = await db.Set<Role>().SingleOrDefaultAsync(x => x.Code == "ADMIN_IT" && x.IsActive, ct)
+            ?? throw new InvalidOperationException("An existing active ADMIN_IT role is required.");
+        var created = new List<object>();
+        var permission = await db.Set<Permission>().SingleOrDefaultAsync(x => x.Code == Permissions.AuditRead, ct);
+        if (permission == null)
+        {
+            permission = new Permission { Code = Permissions.AuditRead, Name = Permissions.AuditRead, Module = "audit-logs" };
+            db.Add(permission); created.Add(permission); await db.SaveChangesAsync(ct);
+        }
+        if (!await db.Set<RolePermission>().AnyAsync(x => x.RoleId == admin.Id && x.PermissionId == permission.Id, ct))
+        {
+            var link = new RolePermission { RoleId = admin.Id, PermissionId = permission.Id, GrantedAtUtc = DateTime.UtcNow };
+            db.Add(link); created.Add(link);
+        }
+        await db.SaveChangesAsync(ct);
+        foreach (var entity in created) audit.Record("development.audit-read.seed", entity, null, "SYSTEM");
+        await db.SaveChangesAsync(ct); return created.Count;
+    }, ct);
+
     // Explicit narrow catalog update: never creates/resets users or restores unrelated grants.
     public Task<int> RunRoleCatalogAsync(CancellationToken ct = default) => uow.RunAsync(async () =>
     {
