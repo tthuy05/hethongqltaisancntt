@@ -10,6 +10,7 @@
 ### Changed
 
 - README/deployment/status phân biệt repo chuẩn bị deploy với URL public Live. Lệnh Development local, nghiệp vụ, phân công,18bảng/41quan hệ và InitialM1 giữ nguyên. Owner credential remediation/review/rehearsal/public checks PENDING; không dùng evidence320PASS cũ thay lượt verify mới.
+- Cập nhật tài khoản và mật khẩu demo công khai cho cả 3 vai trò (Admin IT `AdminDemo123!`, System Manager `ManagerDemo1!`, Technical Support `SupportDemo1!`) trong README theo yêu cầu bàn giao nội bộ; đồng bộ mật khẩu trên database `neondb` dùng chung.
 
 ## 06/10/2026 — Chốt bàn giao Nhật ký thao tác
 

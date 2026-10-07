@@ -139,17 +139,17 @@ Tại Swagger, nút `Authorize` nhận **JWT của ứng dụng**, không phải
 
 ### Đăng nhập demo trên Neon dùng chung
 
-Theo yêu cầu bàn giao ngày **06/10/2026**, tài khoản Manager Development được công khai để Thiện có thể dùng ngay sau khi kéo code và chạy API nối đúng shared database `neondb`:
+Theo yêu cầu bàn giao nội bộ ngày **07/10/2026**, tài khoản demo cho cả 3 vai trò trong hệ thống được công khai để các thành viên trong nhóm (Thủy, Thiện) có thể dùng ngay khi kéo code hoặc truy cập bản deploy:
 
-| Vai trò | Email | Mật khẩu demo |
-|---|---|---|
-| Quản lý hệ thống (`SYSTEM_MANAGER`) | `manager.demo@itasset.test` | `ManagerDemo1!` |
+| Vai trò | Email | Mật khẩu demo | Quyền hạn chính |
+|---|---|---|---|
+| Quản trị IT (`ADMIN_IT`) | `admin.dev@itasset.test` | `AdminDemo123!` | Toàn quyền hệ thống: Người dùng & phân quyền, Nhật ký thao tác, Danh mục, Tài sản |
+| Quản lý hệ thống (`SYSTEM_MANAGER`) | `manager.demo@itasset.test` | `ManagerDemo1!` | Quản lý tài sản (tạo/sửa/trạng thái/lưu trữ), xem giá tiền và Dashboard |
+| Hỗ trợ kỹ thuật (`TECHNICAL_SUPPORT`) | `support.demo@itasset.test` | `SupportDemo1!` | Chỉ xem thông tin kỹ thuật và tồn kho tài sản (ẩn giá tiền, không sửa/tạo) |
 
-Mật khẩu này đã được đổi trên DB thật và kiểm chứng đăng nhập HTTP 200; mật khẩu cũ và JWT cũ bị từ chối HTTP 401. Git không đồng bộ mật khẩu vào DB: thông tin trên chỉ đúng với tài khoản hiện có trong shared Development DB, không tự tạo tài khoản hoặc đặt lại mật khẩu khi chạy ứng dụng.
+Các mật khẩu trên đã được cập nhật trực tiếp vào cơ sở dữ liệu `neondb` dùng chung và kiểm chứng đăng nhập thành công.
 
-Manager dùng được tài sản/bảng tổng quan, **không** sửa Department/Asset Type, quản trị người dùng hoặc xem Nhật ký thao tác. Thiện cần tài khoản Admin được bàn giao riêng để kiểm những chức năng đó. Admin/Support và các tệp bootstrap cục bộ dưới `%LOCALAPPDATA%/ItAssetManagement/` không được công khai trong thay đổi này. Không nạp lại seed hoặc tạo file credential mới trên máy khác để cố đổi tài khoản đã có.
-
-**Chỉ dùng cho Development với dữ liệu demo.** Ai đọc repository đều biết mật khẩu Manager và có thể thao tác theo quyền của tài khoản nếu truy cập được API. Không dùng tài khoản/mật khẩu này cho dữ liệu doanh nghiệp hoặc Production; phải thu hồi/đổi trước triển khai thật. Ngoại lệ bàn giao demo này không áp dụng cho credential chủ Neon hoặc khóa ký JWT. Xem [quyết định bàn giao demo](DECISIONS.md#adr-030---public-manager-demo-handoff-for-development) và [bàn giao backend M1](docs/m1-backend-handoff.md).
+**Chỉ dùng cho Development/Demo:** Ai đọc repository đều biết mật khẩu các tài khoản demo này và có thể thao tác theo quyền tương ứng. Không dùng các tài khoản này cho dữ liệu doanh nghiệp thật hoặc Production thương mại; phải thu hồi/đổi trước khi triển khai chính thức. Xem [quyết định kỹ thuật](DECISIONS.md) và [bảo mật](docs/security.md).
 
 ### Chỉ xem thử giao diện bằng dữ liệu giả
 
