@@ -1,5 +1,9 @@
 # Project Status
 
+## Deployment preparation addendum — 07/10/2026
+
+Theo yêu cầu mới, đã bổ sung Render Docker cho UI/API cùng domain, Production API-only package, cấu hình PORT/exact host/trusted forwarding, publish-secret guard và CI build/test/container smoke. **IMPLEMENTED; kết quả verify và public gates ở [Render runbook](docs/render-deployment.md).** Render service/secrets/URL public/real proxy verification PENDING, không production-ready claim. Không sửa nghiệp vụ/Thiện-owned modules, schema/migration hoặc dữ liệu Neon; M1 10/10 và evidence30task/320PASS lịch sử giữ nguyên. Owner secret **FAIL1/UNRESOLVED**, human review/rehearsal PENDING. Các checkpoint06/10 bên dưới giữ lịch sử, không phải trạng thái deploy mới.
+
 > Cập nhật **06/10/2026** (Asia/Saigon). M1 runtime/seed/Auth/JWT/masters/Asset/tests/UI API đã triển khai; Week2 evidence và review gate được giữ. Giao diện Người dùng/role catalog đã publish `main/cba71a6`. Phần Thủy Audit-read EP-093/094 và giao diện Nhật ký thao tác **IMPLEMENTED / VERIFIED**,320 tests PASS kiểm lại06/10. Lượt tiếp tục đã chốt verification cho publication theo yêu cầu mới; trạng thái Git thực tế là authoritative. Assignment/Maintenance Week4–7 vẫn PLANNED; Department/Asset Type vẫn Thiện-owned. Các checkpoint không commit/push cũ được giữ lịch sử, không phải lệnh dừng cho publication mới.
 
 ## Current Week / Phase / Branch

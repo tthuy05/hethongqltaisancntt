@@ -10,6 +10,8 @@ using ItAssetManagement.Application.Mvp;
 using ItAssetManagement.Infrastructure.Mvp;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.FileProviders;
+using ItAssetManagement.Api.Hosting;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var probeOnly = args.Contains("--verify-neon", StringComparer.Ordinal);
 var setupOnly = args.Contains("--setup-neon-m1", StringComparer.Ordinal);
@@ -20,6 +22,12 @@ var roleCatalogOnly = args.Contains("--seed-role-catalog", StringComparer.Ordina
 var auditReadOnly = args.Contains("--seed-audit-read", StringComparer.Ordinal);
 var builder = WebApplication.CreateBuilder(args.Where(argument => argument is not ("--verify-neon" or "--setup-neon-m1" or "--inspect-neon-schema" or "--seed-development" or "--seed-m1-demo" or "--seed-role-catalog" or "--seed-audit-read")).ToArray());
 if (probeOnly || setupOnly || inspectOnly || seedOnly || demoOnly || roleCatalogOnly || auditReadOnly) builder.Logging.ClearProviders();
+if (DeploymentHosting.PortUrl(builder.Configuration["PORT"], builder.Environment.IsDevelopment()) is { } portUrl)
+    builder.WebHost.UseUrls(portUrl);
+if (!builder.Environment.IsDevelopment() && DeploymentHosting.RenderAllowedHosts(builder.Configuration["RENDER"],
+    builder.Configuration["RENDER_EXTERNAL_HOSTNAME"], builder.Configuration["AllowedHosts"]) is { } renderHosts)
+    builder.Configuration["AllowedHosts"] = renderHosts;
+builder.Services.AddOptions<ForwardedHeadersOptions>().Configure<IConfiguration>(DeploymentHosting.ConfigureForwardedHeaders);
 builder.Services.AddMvpOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<BusinessExceptionHandler>();
@@ -70,6 +78,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 var app = builder.Build();
 _ = app.Services.GetRequiredService<JwtSettings>(); // Production fails closed; development uses a per-process key.
+DeploymentHosting.ValidateProductionDatabase(app.Configuration, app.Environment.IsDevelopment());
 if (auditReadOnly)
 {
     if (!app.Environment.IsDevelopment() || probeOnly || setupOnly || inspectOnly || seedOnly || demoOnly || roleCatalogOnly)
@@ -197,6 +206,7 @@ if (probeOnly)
     return;
 }
 
+app.UseForwardedHeaders(); // Only explicit trusted proxies/networks; before rate limits and audit metadata.
 app.UseExceptionHandler(new ExceptionHandlerOptions { SuppressDiagnosticsCallback = _ => true });
 app.Use(async (context, next) =>
 {
@@ -207,18 +217,15 @@ app.Use(async (context, next) =>
     context.Response.Headers["X-Frame-Options"] = "DENY";
     await next(context);
 });
-if (app.Environment.IsDevelopment() && app.Configuration.GetValue("Frontend:Enabled", true))
+if (DeploymentHosting.FrontendDirectory(app.Environment, app.Configuration) is { } frontend)
 {
-    var frontend = Path.GetFullPath(Path.Combine(app.Environment.ContentRootPath, "../../artifacts/frontend"));
-    if (File.Exists(Path.Combine(frontend, "index.html")))
-    {
-        var files = new PhysicalFileProvider(frontend);
-        app.Lifetime.ApplicationStopped.Register(files.Dispose);
-        app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = files });
-        app.UseStaticFiles(new StaticFileOptions { FileProvider = files });
-    }
-    else app.Logger.LogWarning("Frontend build missing. Run pnpm build from the repository root.");
+    var files = new PhysicalFileProvider(frontend);
+    app.Lifetime.ApplicationStopped.Register(files.Dispose);
+    app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = files });
+    app.UseStaticFiles(new StaticFileOptions { FileProvider = files });
 }
+else if (app.Environment.IsDevelopment() && app.Configuration.GetValue("Frontend:Enabled", true))
+    app.Logger.LogWarning("Frontend build missing. Run pnpm build from the repository root.");
 if (app.Environment.IsDevelopment() && app.Configuration.GetValue("Swagger:Enabled", true))
 {
     var swagger = Path.GetFullPath(Path.Combine(app.Environment.ContentRootPath, "../../artifacts/swagger"));
@@ -248,7 +255,7 @@ if (app.Environment.IsDevelopment())
     }).AllowAnonymous();
 }
 app.MapFallback("{**path}", () => Results.NotFound()).AllowAnonymous();
-// Normal HTTP startup never migrates/seeds. Built frontend is served only in Development.
+// Normal HTTP startup never migrates/seeds. Production serves only an explicitly packaged frontend.
 app.Run();
 
 public partial class Program;

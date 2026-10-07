@@ -1,5 +1,16 @@
 # Changelog
 
+## 07/10/2026 — Chuẩn bị deploy demo trên Render
+
+### Added
+
+- Docker multi-stage UI/API .NET10 chạy non-root, Render Blueprint và GitHub Actions chờ build/test/package/container smoke; secrets chỉ inject runtime, không auto migration/seed.
+- Bản frontend Production API-only và publish guard loại mock/Swagger/config Development; PORT/exact Render hostname/trusted forwarding support, targeted tests và [runbook](docs/render-deployment.md).
+
+### Changed
+
+- README/deployment/status phân biệt repo chuẩn bị deploy với URL public Live. Lệnh Development local, nghiệp vụ, phân công,18bảng/41quan hệ và InitialM1 giữ nguyên. Owner credential remediation/review/rehearsal/public checks PENDING; không dùng evidence320PASS cũ thay lượt verify mới.
+
 ## 06/10/2026 — Chốt bàn giao Nhật ký thao tác
 
 ### Changed

@@ -1,0 +1,28 @@
+# Explicit build inputs only: never send Git, evidence, local output or secrets.
+**
+!Dockerfile
+!.dockerignore
+!package.json
+!pnpm-lock.yaml
+!Directory.Build.props
+!Directory.Packages.props
+!frontend/
+!frontend/**
+!scripts/
+!scripts/*.mjs
+!src/
+!src/**
+
+# The existing Development secret exception must never enter a build layer.
+src/**/appsettings.*.json
+src/**/bin/**
+src/**/obj/**
+src/**/Properties/**
+**/.env
+**/.env.*
+**/*.user
+**/*.pfx
+**/*.pem
+**/*.key
+**/*credentials*.json
+**/*secrets*.json

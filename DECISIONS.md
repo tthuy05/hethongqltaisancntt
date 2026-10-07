@@ -344,3 +344,15 @@ Exact files, run/check commands, reuse rationale và live-integration handoff: [
 **Implementation / Consequences:** Đã đổi Manager hiện hữu bằng maintenance có audit, khóa đồng bộ và concurrency; cập nhật password hash + tăng `TokenVersion`, với metadata/version do persistence hiện hữu quản lý. Không reset/seed DB, đổi schema/role/permission/activity/assets hoặc tài khoản Admin/Support. Private Manager credential file được đồng bộ sau kiểm chứng: mật khẩu mới login/me200, JWT cũ401, mật khẩu cũ401 và login mới cuối200. Người đọc Git có thể sử dụng các quyền Manager đang có; cần kiểm soát dữ liệu demo và revoke/rotate trước production hoặc dữ liệu thật. Không tự thêm API reset password công khai; feature đó vẫn **PLANNED**. Pull Git hoặc chạy idempotent seed không tự đổi mật khẩu tài khoản đã tồn tại.
 
 **Migration impact:** NONE — không entity/mapping/migration/schema mới; giữ logical18 tables/41 relationships, physical10 tables/19 FKs và InitialM1. Owner Neon credential finding hiện hữu **FAIL1 / UNRESOLVED**; ngoại lệ Manager không làm security gate sạch hoặc thay independent review/M1 acceptance.
+
+## ADR-031 - Render Docker demo deployment with CI gates
+
+**Date:** 2026-10-07. **Status:** ACCEPTED FOR DEPLOYMENT PREPARATION; public Live/security/independent review PENDING.
+
+**Context / Previous decision:** UI/API/Neon M1 và Audit-read đã triển khai/test/publish; hosting Production còn PLANNED. Người dùng muốn link báo cáo tự cập nhật khi push GitHub và đã tạo Render service, First Deploy dừng ở pnpm install. Backend là ASP.NET Core, không phải Node static preview.
+
+**New decision / Reason:** Deploy UI+API same-origin trong Docker .NET10 trên Render, database giữ Neon. Production frontend riêng API-only, đầy đủ module graph nhưng loại mock/Swagger; source wwwroot và config Development không được publish. GitHub Actions build/test/package/Linux container smoke; Render After CI Checks Pass trên main. Neon/JWT secret chỉ inject runtime, không build ARG/ENV hoặc copy credential cũ. Runtime non-root, PORT platform, exact Render hostname và explicit trusted proxy IP/CIDR; không wildcard/unrestricted trust.
+
+**Consequences:** Development/demo local vẫn giữ; Production startup fail-closed nếu thiếu valid connection configuration/JWT/package marker. Build/package smoke dùng synthetic config, không gọi DB. Không suy CI/public connection/proxy/security VERIFIED từ YAML. Người dùng vẫn cần Render/secrets, xử lý owner credential đã lộ/runtime least privilege và demo isolation; public Manager không mặc định được phê duyệt cho dữ liệu thật. Free compute có cold-start tradeoff cho báo cáo. [Runbook và kết quả thực tế](docs/render-deployment.md).
+
+**Migration impact:** NONE — giữ18logical/41relationships,10physicalM1/19FK,InitialM1,ownership và M1 10/10/2026. Không tự seed/migrate/reset build/start/deploy, không chuyển database sang Render. Evidence30task/320PASS cũ giữ checkpoint ngày chạy, không thay lượt verify mới.

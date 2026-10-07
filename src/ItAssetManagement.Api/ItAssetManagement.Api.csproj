@@ -10,5 +10,41 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
     <!-- Existing source stays unchanged; mock assets must not be packaged for deployment. -->
     <Content Remove="wwwroot/**" />
+    <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
   </ItemGroup>
+  <Target Name="AddProductionFrontend" BeforeTargets="ComputeFilesToPublish" Condition="'$(FrontendPublishDirectory)' != ''">
+    <Error Condition="!Exists('$(FrontendPublishDirectory)/index.html')" Text="FrontendPublishDirectory must point to a built production frontend containing index.html." />
+    <ItemGroup>
+      <ForbiddenFrontend Include="$(FrontendPublishDirectory)/js/mock/**/*" />
+      <ForbiddenFrontend Include="$(FrontendPublishDirectory)/js/services/mock-services.js" Condition="Exists('$(FrontendPublishDirectory)/js/services/mock-services.js')" />
+    </ItemGroup>
+    <Error Condition="'@(ForbiddenFrontend)' != ''" Text="Production frontend must not contain demo mock assets." />
+    <ItemGroup>
+      <ProductionFrontendScript Include="$(FrontendPublishDirectory)/js/**/*.js" />
+      <ProductionFrontendFont Include="$(FrontendPublishDirectory)/assets/fonts/*.woff2;$(FrontendPublishDirectory)/assets/fonts/OFL.txt" />
+      <ResolvedFileToPublish Include="$(FrontendPublishDirectory)/index.html">
+        <RelativePath>wwwroot/index.html</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+      <ResolvedFileToPublish Include="$(FrontendPublishDirectory)/css/app.css">
+        <RelativePath>wwwroot/css/app.css</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+      <ResolvedFileToPublish Include="$(FrontendPublishDirectory)/assets/logo.svg">
+        <RelativePath>wwwroot/assets/logo.svg</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+      <ResolvedFileToPublish Include="@(ProductionFrontendScript)">
+        <RelativePath>wwwroot/js/%(RecursiveDir)%(Filename)%(Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+      <ResolvedFileToPublish Include="@(ProductionFrontendFont)">
+        <RelativePath>wwwroot/assets/fonts/%(Filename)%(Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+  <Target Name="MarkProductionFrontend" AfterTargets="Publish" Condition="'$(FrontendPublishDirectory)' != ''">
+    <WriteLinesToFile File="$(PublishDir)frontend-production.marker" Lines="Explicit production frontend package" Overwrite="true" />
+  </Target>
 </Project>

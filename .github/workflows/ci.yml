@@ -1,0 +1,63 @@
+name: deployment checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deployment-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DOTNET_NOLOGO: "true"
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
+      # Cloud DB tests require their separate reviewed isolated fixture.
+      # This workflow never receives Neon credentials or writes to shared Neon.
+      ITAM_RUN_NEON_TESTS: "0"
+    steps:
+      - name: checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - name: dotnet
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
+        with:
+          dotnet-version: "10.0.x"
+      - name: frontend dependencies
+        run: |
+          npm install --global --ignore-scripts --fetch-retries=5 --fetch-retry-mintimeout=1000 --fetch-retry-maxtimeout=10000 pnpm@11.25.0
+          pnpm install --frozen-lockfile --ignore-scripts
+      - name: frontend checks and regression tests
+        run: |
+          pnpm check
+          pnpm test
+          pnpm run build:production
+      - name: backend restore build and offline tests
+        run: |
+          dotnet restore ItAssetManagement.slnx --locked-mode
+          dotnet build ItAssetManagement.slnx --configuration Release --no-restore
+          dotnet test ItAssetManagement.slnx --configuration Release --no-build --no-restore
+      - name: publish and check safe production package
+        run: |
+          dotnet publish src/ItAssetManagement.Api/ItAssetManagement.Api.csproj --configuration Release --no-restore --output artifacts/production-publish -p:FrontendPublishDirectory="${{ github.workspace }}/artifacts/frontend-production" -p:UseAppHost=false
+          node scripts/verify-production-publish.mjs artifacts/production-publish
+          node scripts/smoke-production.mjs --publish artifacts/production-publish
+      - name: build and smoke test actual linux container
+        run: |
+          docker build --tag itam-production-check .
+          node scripts/smoke-production.mjs --image itam-production-check

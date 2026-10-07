@@ -1,5 +1,7 @@
 # Chiến lược kiểm thử
 
+> Deploy-preparation addendum07/10/2026: đã thêm tests cho API-only Production graph/publish-secret boundary/host-port-trusted-proxy, published HTTP smoke và Docker Linux smoke trong CI. Workflow không dùng Neon secret, opt-out cloud tests và báo SKIP đúng thực tế; không DML/reset shared DB. [Kết quả lượt mới và public checklist](render-deployment.md) độc lập với historical320PASS và human acceptance; có workflow không đồng nghĩa GitHub CI đã chạy.
+
 > **M1 business/unit/HTTP/live Neon tests EXECUTED** 02–03/10/2026. [Current totals/commands/isolation/limitations](m1-backend-handoff.md); historical 25 tests/37 setup and Week 2 21/24 checks preserved separately. Existing isolated DB reused; no new DB, no shared reset. Tests require explicit opt-in and retain namespaced fixtures.
 
 ## 1. Mục tiêu

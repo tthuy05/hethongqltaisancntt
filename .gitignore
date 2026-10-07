@@ -1,6 +1,8 @@
 # Local frontend dependencies and reproducible generated output.
 node_modules/
 artifacts/frontend/
+artifacts/frontend-production/
+artifacts/production-publish/
 artifacts/swagger/
 artifacts/ui-evidence/
 

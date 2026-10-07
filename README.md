@@ -213,7 +213,13 @@ package.json                         # Lệnh và thư viện công cụ giao di
 pnpm-lock.yaml                       # Khóa phiên bản thư viện giao diện
 ```
 
-Giao diện đã xây dựng nằm tại `artifacts/frontend/`, không đưa vào Git và chỉ được ứng dụng phục vụ ở Development. Private credential files của Admin/Support và kết quả kiểm thử cục bộ không đưa vào Git; Manager demo có ngoại lệ công khai Development tại mục5 theo ADR-030.
+Giao diện local nằm tại `artifacts/frontend/`; bản Production riêng `artifacts/frontend-production/` được publish vào `wwwroot`, chỉ gọi API thật, không mock/Swagger. Output không đưa vào Git. Private credential files của Admin/Support và kết quả kiểm thử cục bộ không đưa vào Git; Manager demo có ngoại lệ công khai Development tại mục5 theo ADR-030.
+
+### Đưa bản demo lên Render
+
+Repo có Dockerfile và GitHub Actions để deploy chung giao diện + API, database vẫn trên Neon. **Chưa đồng nghĩa URL public đã Live.** Service đã tạo cần Runtime **Docker**, Branch `main`, Health Check `/health/live`, secrets `ConnectionStrings__DefaultConnection` và `Jwt__SigningKey` trên Render, Auto-Deploy **After CI Checks Pass**. Không dùng `pnpm start` làm backend hosting; không tự migration/seed khi deploy.
+
+Xem [Render runbook, secrets và checklist kiểm chứng](docs/render-deployment.md). Credential Neon đã lộ/runtime least privilege/demo isolation vẫn cần xử lý trước public; gói an toàn không làm sạch lịch sử Git.
 
 ## 8. Lộ trình dự án
 

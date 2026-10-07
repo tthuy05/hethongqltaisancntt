@@ -10,6 +10,7 @@
   "packageManager": "pnpm@11.25.0",
   "scripts": {
     "build": "node scripts/frontend-build.mjs",
+    "build:production": "node scripts/frontend-build.mjs --production",
     "dev": "node scripts/frontend-server.mjs --build",
     "start": "node scripts/frontend-server.mjs",
     "check": "node scripts/frontend-check.mjs",

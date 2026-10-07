@@ -359,6 +359,8 @@ Subsequent approval adds EP-008/009 UsersController → UserAccountService → I
 
 ## 19. User-admin UI / role-catalog reads — 04/10/2026
 
+> Hosting addendum07/10: Render Docker now packages UI+API same-origin in Production, with Node build stage → .NET SDK publish → non-root ASP.NET runtime. Production serves only API-only artifact with marker, no source/mock/Swagger/Development secret; EF/Npgsql still targets Neon. PORT/exact hostname and explicit trusted-proxy handling do not change Controller-Service-Repository or business contracts. No startup seed/migration. [Deploy runbook](render-deployment.md); public URL/HTTPS/real proxy/Neon demo connection/security gates PENDING. Prior deployment-PLANNED notes are historical checkpoints.
+
 `/#/users` → existing API adapter → UsersController (profile/account reads and existing writes) / RolesController → UserAccountReadService / RoleCatalogService → existing no-tracking IRepository → EF/Npgsql/Neon. Account state uses a single correlated projection for current role IDs and rowVersion; profile DTO remains unchanged. Role catalog is fixed-role/implemented-permission reads only, no role-definition mutations or persistence layer change.
 
 Native dialogs reuse existing shell/components and close on route/session changes; user services keep token only in memory, never fall back to mock and do not retry stale writes. Development-only explicit narrow catalog CLI, no startup seed/migration. Original layers, 18 tables /41 relationships, physical 10/19 and InitialM1 unchanged. Prior no-UI/catalog notes are historical snapshots. [Runtime contract / evidence](user-admin-ui-handoff.md); independent review PENDING.

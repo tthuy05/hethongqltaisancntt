@@ -1,5 +1,7 @@
 # Thiết kế bảo mật
 
+> Addendum07/10/2026: Render Production package/trusted-forwarding/secret injection đã IMPLEMENTED theo [runbook](render-deployment.md). Chỉ frontend API-only được publish, config Development/private/mock/Swagger bị loại; runtime cần persistent JWT+Neon secret. Public HTTPS/proxy/least privilege/credential rotation/review vẫn PENDING. Artifact sạch không vô hiệu owner credential đã lộ trong Git (**FAIL1/UNRESOLVED**) hoặc phê duyệt public Manager cho dữ liệu thật. Các checkpoint thiết kế phía dưới được giữ lịch sử.
+
 > **M1 Auth/JWT/DB-backed policies/audit/concurrency IMPLEMENTED / TESTED.** Production security/encryption/full hardening remain PLANNED. New explicit user exception: owner DefaultConnection in repository Development configuration (ADR-023), so secret finding/least-privilege risk remain unresolved. [Current evidence/limits](m1-backend-handoff.md); earlier setup report is historical.
 
 ## 1. Mục tiêu và nguyên tắc

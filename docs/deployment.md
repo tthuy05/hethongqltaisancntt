@@ -1,6 +1,6 @@
 # Deployment Design
 
-> **LOCAL M1 API/UI/NEON VERIFIED; PRODUCTION DEPLOYMENT PLANNED.** Same-origin Development hosting, Auth/master/Asset API and persisted data exist. [Current runbook](m1-backend-handoff.md). Repository owner credential is an explicit user exception, not production approval.
+> **LOCAL M1 API/UI/NEON VERIFIED; RENDER DEPLOYMENT PREPARATION IMPLEMENTED 07/10/2026.** Production package/Docker/CI đã bổ sung theo yêu cầu mới; public/secrets/proxy/review gates chưa được suy là hoàn tất. [Render runbook và kết quả thực tế](render-deployment.md). Các trạng thái PLANNED bên dưới giữ checkpoint thiết kế cũ; owner credential exception không là production approval.
 
 ## 1. Mục tiêu
 
@@ -38,7 +38,7 @@ Shared development/demo target thực là `neondb`, PostgreSQL 18.6, UTF8/C.UTF-
 - OpenAPI/Swagger chỉ bật có kiểm soát; production không cho phép thao tác không xác thực.
 - xUnit cho unit/integration test.
 
-Docker là tùy chọn, không phải dependency bắt buộc vì Docker engine hiện không chạy. Không chọn nền tảng hosting cụ thể trước khi biết hạ tầng demo.
+Checkpoint trước07/10: Docker chưa bắt buộc, hosting chưa chọn. Addendum hiện tại chọn Render Docker cho demo; Development local vẫn không cần Docker. [Quy trình hiện tại](render-deployment.md).
 
 ## 4. Configuration và secret
 

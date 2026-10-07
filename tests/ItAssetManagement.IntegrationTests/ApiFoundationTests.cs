@@ -26,7 +26,8 @@ public sealed class ApiFoundationTests
             builder.UseEnvironment(environment);
             builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["ConnectionStrings:DefaultConnection"] = "",
+                ["ConnectionStrings:DefaultConnection"] = environment == "Production"
+                    ? "Host=ep-fixture.neon.tech;Database=fixture_db;Username=fixture_user;Password=fixture_password" : "",
                 ["Jwt:SigningKey"] = "synthetic-test-key-not-used-outside-tests-2026",
                 ["Frontend:Enabled"] = "false",
                 ["Swagger:Enabled"] = "false",
