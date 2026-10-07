@@ -52,7 +52,7 @@ function shell(path) {
     route(target);
   });
   const search = h('input', { className: 'input', type: 'search', maxLength: 200, placeholder: 'Tìm kiếm tài sản…', 'aria-label': 'Tìm kiếm nhanh tài sản' });
-  const header = h('header', { className: 'topbar' }, menu, h('form', { className: 'topbar-search', onSubmit: event => { event.preventDefault(); route('/assets?keyword=' + encodeURIComponent(search.value.trim())); } }, icon('search', 18), search), h('div', { className: 'topbar-actions' }, h('span', { className: 'demo-note' }, services.mode === 'mock' ? 'Dữ liệu minh họa · API chưa kết nối' : 'Chế độ API · Không tự dùng mock'), button('Đăng xuất', { kind: 'ghost', iconName: 'log-out', onClick: async () => { await services.auth.logout(); route('/login'); } })));
+  const header = h('header', { className: 'topbar' }, menu, h('form', { className: 'topbar-search', onSubmit: event => { event.preventDefault(); route('/assets?keyword=' + encodeURIComponent(search.value.trim())); } }, icon('search', 18), search), h('div', { className: 'topbar-actions' }, services.mode === 'mock' ? h('span', { className: 'demo-note' }, 'Dữ liệu minh họa · API chưa kết nối') : null, button('Đăng xuất', { kind: 'ghost', iconName: 'log-out', onClick: async () => { await services.auth.logout(); route('/login'); } })));
   root.append(sidebar, overlay, h('div', { className: 'main-shell' }, header, content));
   return { root, content, sidebar, viewport };
 }
