@@ -62,13 +62,34 @@ public static class Permissions
         TypeArchive = "asset-types.archive", DashboardRead = "dashboard.read", UserLookup = "users.lookup",
         UserRead = "users.read", UserCreate = "users.create", UserUpdate = "users.update",
         UserStatus = "users.status.manage", RoleAssign = "roles.assign", RoleRead = "roles.read",
-        RolePermissionsRead = "roles.permissions.read", AuditRead = "audit-logs.read";
-    public static readonly string[] Read = [AssetRead, AssetHistory, DepartmentRead, TypeRead, DashboardRead, UserLookup];
-    public static readonly string[] Operate = [AssetCreate, AssetUpdate, AssetArchive, AssetStatus, AssetCost, RoleRead];
+        RolePermissionsRead = "roles.permissions.read", AuditRead = "audit-logs.read",
+        AssignmentRead = "assignments.read", AssignmentAssign = "assignments.assign", AssignmentReturn = "assignments.return";
+    public const string MaintenanceRead = "maintenance.read";
+    public const string MaintenanceCreate = "maintenance.create";
+    public const string MaintenanceComplete = "maintenance.complete";   
+    public static readonly string[] Read = [AssetRead, AssetHistory, DepartmentRead, TypeRead, DashboardRead, UserLookup, AssignmentRead];
+    public static readonly string[] Operate = [AssetCreate, AssetUpdate, AssetArchive, AssetStatus, AssetCost, RoleRead, AssignmentAssign, AssignmentReturn];
     public static readonly string[] Admin = [DepartmentCreate, DepartmentUpdate, DepartmentArchive, TypeCreate, TypeUpdate, TypeArchive,
         UserRead, UserCreate, UserUpdate, UserStatus, RoleAssign, RolePermissionsRead, AuditRead];
     public static readonly string[] All = [.. Read, .. Operate, .. Admin];
     public static readonly string[] Roles = ["ADMIN_IT", "SYSTEM_MANAGER", "TECHNICAL_SUPPORT"];
+}
+
+public sealed record CreateMaintenanceRequest(long AssetId, string Description, decimal? EstimatedCost);
+public sealed record CompleteMaintenanceRequest(string Resolution, decimal? ActualCost, string? RowVersion);
+
+public sealed class MaintenanceDto
+{
+    public long Id { get; set; }
+    public long AssetId { get; set; }
+    public string Description { get; set; } = "";
+    public DateTime StartedAtUtc { get; set; }
+    public DateTime? CompletedAtUtc { get; set; }
+    public string? Resolution { get; set; }
+    public decimal? EstimatedCost { get; set; }
+    public decimal? ActualCost { get; set; }
+    public string Status { get; set; } = "";
+    public string RowVersion { get; set; } = "";
 }
 public sealed record LoginRequest(string Email, string Password);
 public sealed record CurrentUser(long Id, string DisplayName, string Email, long? DepartmentId, string[] Roles, string[] Permissions);
