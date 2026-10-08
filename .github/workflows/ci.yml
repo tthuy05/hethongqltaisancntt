@@ -54,10 +54,10 @@ jobs:
           dotnet test ItAssetManagement.slnx --configuration Release --no-build --no-restore
       - name: publish and check safe production package
         run: |
-          dotnet publish src/ItAssetManagement.Api/ItAssetManagement.Api.csproj --configuration Release --no-restore --output artifacts/production-publish -p:FrontendPublishDirectory="${{ github.workspace }}/artifacts/frontend-production" -p:UseAppHost=false
+          dotnet publish src/ItAssetManagement.Api/ItAssetManagement.Api.csproj --configuration Release --no-restore --output artifacts/production-publish -p:FrontendPublishDirectory="${{ github.workspace }}/artifacts/frontend-production" -p:UseAppHost=false -p:BuildRevision="${{ github.sha }}" -p:RequireBuildRevision=true
           node scripts/verify-production-publish.mjs artifacts/production-publish
-          node scripts/smoke-production.mjs --publish artifacts/production-publish
+          node scripts/smoke-production.mjs --publish artifacts/production-publish --expected-revision "${{ github.sha }}"
       - name: build and smoke test actual linux container
         run: |
-          docker build --tag itam-production-check .
-          node scripts/smoke-production.mjs --image itam-production-check
+          docker build --build-arg BUILD_REVISION="${{ github.sha }}" --tag itam-production-check .
+          node scripts/smoke-production.mjs --image itam-production-check --expected-revision "${{ github.sha }}"

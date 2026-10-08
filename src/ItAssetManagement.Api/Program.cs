@@ -31,7 +31,9 @@ builder.Services.AddOptions<ForwardedHeadersOptions>().Configure<IConfiguration>
 builder.Services.AddMvpOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<BusinessExceptionHandler>();
-builder.Services.AddControllers().AddJsonOptions(options =>
+builder.Services.AddControllers().ConfigureApplicationPartManager(parts =>
+    parts.FeatureProviders.Add(new AssignmentControllerFeatureProvider(builder.Configuration)))
+    .AddJsonOptions(options =>
 {
     options.JsonSerializerOptions.UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow;
     var resolver = new DefaultJsonTypeInfoResolver();
@@ -58,6 +60,7 @@ builder.Services.AddScoped<UserAccountService>();
 builder.Services.AddScoped<UserAccountReadService>();
 builder.Services.AddScoped<RoleCatalogService>();
 builder.Services.AddScoped<AuditLogService>();
+builder.Services.AddScoped<IAssignmentSchemaReadiness, AssignmentSchemaReadiness>();
 builder.Services.AddScoped<DevelopmentSeed>();
 builder.Services.AddScoped<DevelopmentDemoSeed>();
 builder.Services.AddRateLimiter(options =>
@@ -239,9 +242,11 @@ if (app.Environment.IsDevelopment() && app.Configuration.GetValue("Swagger:Enabl
     else app.Logger.LogWarning("Development Swagger build missing. Run pnpm build from the repository root.");
 }
 app.UseRouting(); // Static middleware must run before endpoint selection (including fallback).
+app.UseMiddleware<AssignmentRolloutMiddleware>(); // Closed before auth/Controller/DB-dependent business code.
 app.UseAuthentication(); app.UseAuthorization(); app.UseRateLimiter();
 app.MapControllers();
 app.MapGet("/health/live", () => Results.Ok(new { status = "Alive" })).AllowAnonymous();
+app.MapGet("/health/version", (IConfiguration configuration) => Results.Ok(DeploymentRevision.Create(configuration))).AllowAnonymous();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi().AllowAnonymous();

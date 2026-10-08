@@ -1,8 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup>
     <UserSecretsId>itassetmanagement-neon-development-b6b526ab-85bb-4275-805a-0f4657528c53</UserSecretsId>
+    <!-- Local/dirty builds are not evidence of a published commit. -->
+    <BuildRevision Condition="'$(BuildRevision)' == ''">UNKNOWN</BuildRevision>
   </PropertyGroup>
   <ItemGroup>
+    <AssemblyMetadata Include="BuildRevision" Value="$(BuildRevision)" />
     <ProjectReference Include="../ItAssetManagement.Application/ItAssetManagement.Application.csproj" />
     <ProjectReference Include="../ItAssetManagement.Infrastructure/ItAssetManagement.Infrastructure.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
@@ -12,6 +15,10 @@
     <Content Remove="wwwroot/**" />
     <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
   </ItemGroup>
+  <Target Name="ValidateRequiredBuildRevision" BeforeTargets="GenerateAssemblyInfo">
+    <Error Condition="'$(RequireBuildRevision)' == 'true' and !$([System.Text.RegularExpressions.Regex]::IsMatch('$(BuildRevision)', '^[0-9a-fA-F]{40}$'))"
+      Text="A production deployment build requires an explicit full 40-hex BuildRevision." />
+  </Target>
   <Target Name="AddProductionFrontend" BeforeTargets="ComputeFilesToPublish" Condition="'$(FrontendPublishDirectory)' != ''">
     <Error Condition="!Exists('$(FrontendPublishDirectory)/index.html')" Text="FrontendPublishDirectory must point to a built production frontend containing index.html." />
     <ItemGroup>

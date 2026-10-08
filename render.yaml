@@ -17,6 +17,9 @@ services:
         value: "true"
       - key: Swagger__Enabled
         value: "false"
+      # Closed until schema + narrow permissions seed + reviewed Stage C deploy.
+      - key: Features__AssignmentApi__Enabled
+        value: "false"
       - key: ConnectionStrings__DefaultConnection
         sync: false
       - key: Jwt__SigningKey

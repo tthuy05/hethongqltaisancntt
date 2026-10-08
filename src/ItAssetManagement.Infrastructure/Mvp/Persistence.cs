@@ -28,15 +28,9 @@ public sealed class EfRepository(AppDbContext db) : IRepository
         await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({resource}, 0))", ct);
     public async Task LockAssetAsync(long id, CancellationToken ct) =>
         await db.Database.ExecuteSqlInterpolatedAsync($"SELECT id FROM public.assets WHERE id = {id} FOR UPDATE", ct);
-    public async Task<bool> HasActiveWorkflowAsync(long assetId, CancellationToken ct)
-    {
-        // M1 contains neither workflow table. Fail closed if a later migration adds one:
-        // its service must supply the documented active-state query before enabling archive.
-        await using var command = db.Database.GetDbConnection().CreateCommand();
-        command.Transaction = db.Database.CurrentTransaction!.GetDbTransaction();
-        command.CommandText = "SELECT to_regclass('public.asset_assignments') IS NOT NULL OR to_regclass('public.maintenance_tickets') IS NOT NULL";
-        return (bool)(await command.ExecuteScalarAsync(ct))!;
-    }
+    public Task<bool> HasActiveWorkflowAsync(long assetId, CancellationToken ct) =>
+        ActiveWorkflowQuery.HasActiveWorkflowAsync(db.Database.GetDbConnection(),
+            db.Database.CurrentTransaction!.GetDbTransaction(), assetId, ct);
     public IQueryable<Asset> SearchAssets(IQueryable<Asset> q, string keyword)
     {
         var pattern = "%" + keyword.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%";
