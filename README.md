@@ -4,6 +4,8 @@
 
 Hiện đã có giao diện kết nối API và cơ sở dữ liệu PostgreSQL trên Neon cho đăng nhập, danh mục và quản lý tài sản. Các nghiệp vụ cấp phát, bảo trì, bản quyền phần mềm và tối ưu ngân sách vẫn **DỰ KIẾN (PLANNED)**, chưa được triển khai.
 
+Bản demo: [hethongqltaisancntt.onrender.com](https://hethongqltaisancntt.onrender.com/). Đã kiểm tra Login và luồng xem/tìm kiếm của Manager/Support ngày **08/10/2026**; đây là demo, không phải bản triển khai chính thức với dữ liệu doanh nghiệp. [Kết quả kiểm tra và checklist báo cáo M1 ngày 10/10](docs/m1-rehearsal.md).
+
 ## 1. Ý tưởng và mục tiêu
 
 Khi số lượng máy tính, màn hình, máy in và thiết bị mạng tăng lên, doanh nghiệp cần một nơi để theo dõi thông tin thống nhất, tránh thiếu dữ liệu, nhầm trạng thái hoặc khó truy vết thay đổi.
@@ -109,7 +111,7 @@ Xem [Kiến trúc](docs/architecture.md), [Thiết kế cơ sở dữ liệu](do
 - .NET SDK 10; môi trường hiện tại đã kiểm chứng SDK 10.0.400.
 - Node.js >=22 và pnpm 11.25.0 có thể chạy từ terminal.
 - Kết nối Internet để tải thư viện và truy cập Neon.
-- Tài khoản Manager demo Development được ghi bên dưới; tài khoản Admin/Support vẫn nhận qua kênh bàn giao riêng. Không dùng thông tin demo cho Production.
+- Tài khoản demo của cả 3 vai trò được ghi bên dưới theo yêu cầu bàn giao ngày 07/10. Không dùng thông tin demo cho triển khai chính thức hoặc dữ liệu doanh nghiệp thật.
 
 > **Lưu ý bảo mật:** cấu hình Development hiện có credential của tài khoản chủ sở hữu Neon đã được đưa vào Git. Đây là rủi ro chưa xử lý, không phải cấu hình an toàn cho vận hành chính thức. Cần đổi credential đã lộ và sử dụng tài khoản có quyền tối thiểu trước khi triển khai chính thức. Không sao chép connection string/mật khẩu vào chat, ảnh chụp hoặc ví dụ sử dụng. Môi trường Production cần cấu hình riêng bí mật cơ sở dữ liệu và khóa JWT.
 
@@ -213,13 +215,13 @@ package.json                         # Lệnh và thư viện công cụ giao di
 pnpm-lock.yaml                       # Khóa phiên bản thư viện giao diện
 ```
 
-Giao diện local nằm tại `artifacts/frontend/`; bản Production riêng `artifacts/frontend-production/` được publish vào `wwwroot`, chỉ gọi API thật, không mock/Swagger. Output không đưa vào Git. Private credential files của Admin/Support và kết quả kiểm thử cục bộ không đưa vào Git; Manager demo có ngoại lệ công khai Development tại mục5 theo ADR-030.
+Giao diện local nằm tại `artifacts/frontend/`; bản Production riêng `artifacts/frontend-production/` được publish vào `wwwroot`, chỉ gọi API thật, không mock/Swagger. Output và private credential files/kết quả kiểm thử cục bộ không đưa vào Git. Ngoại lệ demo công khai của cả 3 vai trò theo yêu cầu ngày07/10 nằm ở mục5; không đưa thêm DB/JWT secret vào tài liệu.
 
 ### Đưa bản demo lên Render
 
-Repo có Dockerfile và GitHub Actions để deploy chung giao diện + API, database vẫn trên Neon. **Chưa đồng nghĩa URL public đã Live.** Service đã tạo cần Runtime **Docker**, Branch `main`, Health Check `/health/live`, secrets `ConnectionStrings__DefaultConnection` và `Jwt__SigningKey` trên Render, Auto-Deploy **After CI Checks Pass**. Không dùng `pnpm start` làm backend hosting; không tự migration/seed khi deploy.
+Repo có Dockerfile và GitHub Actions để deploy chung giao diện + API, database vẫn trên Neon. URL demo bên trên đã được kiểm tra ngày08/10; mỗi bản sửa mới vẫn cần CI và deploy đúng commit PASS. Cấu hình cần giữ: Runtime **Docker**, Branch `main`, Health Check `/health/live`, secrets `ConnectionStrings__DefaultConnection` và `Jwt__SigningKey` trên Render, Auto-Deploy **After CI Checks Pass**. Không dùng `pnpm start` làm backend hosting; không tự migration/seed khi deploy.
 
-Xem [Render runbook, secrets và checklist kiểm chứng](docs/render-deployment.md). Credential Neon đã lộ/runtime least privilege/demo isolation vẫn cần xử lý trước public; gói an toàn không làm sạch lịch sử Git.
+Xem [Render runbook, secrets và checklist kiểm chứng](docs/render-deployment.md). Credential Neon đã lộ/runtime least privilege/demo isolation vẫn UNRESOLVED/PENDING; public demo đang chạy không chứng nhận các security gate, gói publish an toàn không làm sạch lịch sử Git.
 
 ## 8. Lộ trình dự án
 

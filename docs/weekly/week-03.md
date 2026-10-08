@@ -228,3 +228,15 @@ Original rows remain the baseline schedule (05–10/10), not a claim those futur
 - Master D1/D2 unit cases filled (14 new); current 44 unit + 39 integration/40 Node PASS. Existing isolated DB only, no reset/drop/truncate. Source/artifact checks and actual commands in [96-task matrix](../week-02-03-completion.md).
 - D5/D6 technical manual browser flow verified: create/detail/Manager edit/search/filter/page, 400/401/409, Support denial/cost hiding and 8 screens × 320/768/1280. Backend 403 separately verified through isolated HTTP tests. Not a substitute for independent Thiện review, joint rehearsal or Mentor demo.
 - Formal 10/10/2026 acceptance, reviewed PR integration, security credential/least-privilege remediation and human review PENDING. No task falsely attributed to Thiện as completed work; original owners/estimates unchanged. Week 4–7 remain PLANNED.
+
+## M1 regression / rehearsal preparation addendum — 08/10/2026
+
+Không đổi các task rows/owner/estimate gốc. Lượt tiếp tục phần Thủy D5/D6: sửa401/idle-expiry stale shell và stale Login/Users callbacks; **328 automated tests PASS /0FAIL /78 cloud SKIP**,Release/publish +27Production HTTP smoke PASS. Local Docker engine unavailable nên Linux container smoke local NOT RUN. Render public Manager/Support đọc/tìm kiếm/chi phí/permission UI đã kiểm, Edit320px không tràn ngang; không lưu dữ liệu nghiệp vụ public hoặc tạo migration/seed.
+
+- W3-THUY-D5-03: regression kỹ thuật VERIFIED; diễn tập chung Thiện PENDING.
+- W3-THUY-D5-04/05, D6-04: evidence/docs cập nhật tại [checklist diễn tập M1](../m1-rehearsal.md); không thay evidence cũ.
+- W3-THUY-D6-01/02: offline build/test/package và public browser scope đã kiểm; không tự nhận clean migration/isolated Neon suite/reviewed PR/public create-edit đã chạy trong lượt này. CI/deploy bản sửa cần kiểm đúng commit sau push.
+- W3-THUY-D6-03: Mentor demo/acceptance **10/10/2026 PENDING**; không chuyển phase vì website đã Live.
+- W3-THUY-D6-05: original96task/contracts/schema/migration/config preserved; exact Neon scan **FAIL1/UNRESOLVED**, human security/post-demo gate còn PENDING.
+
+Ưu tiên tiếp theo: Thủy và Thiện thống nhất test target → diễn tập/checklist → chốt issue/evidence → demo Mentor. Department/Asset Type vẫn Thiện-owned; Assignment/Maintenance và status-history UI ngoài M1 core chưa tự mở.

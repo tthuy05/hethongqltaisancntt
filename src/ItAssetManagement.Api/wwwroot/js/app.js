@@ -94,7 +94,13 @@ async function render() {
     window.scrollTo({ top: 0, behavior: 'instant' });
   } catch (error) {
     if (ownGeneration !== generation) return;
-    if (error.status === 401) { await services.auth.logout(); pendingPath = path; app.replaceChildren(loginPage(services, pendingPath)); return; }
+    if (error.status === 401) {
+      // SESSION_CHANGED can belong to an older request, not the current login.
+      // The API adapter owns invalidation; never logout a newer valid session.
+      if (services.auth.session) { void render(); return; }
+      pendingPath = window.location.hash.slice(1) || path;
+      app.replaceChildren(loginPage(services, pendingPath)); return;
+    }
     layout.content.replaceChildren(pageHeader(error.status === 404 ? 'Không tìm thấy tài sản' : 'Không thể tải nội dung', ''), errorState(error, () => render()), button('Về danh sách', { kind: 'secondary', onClick: () => route('/assets') }));
   }
 }
@@ -102,4 +108,16 @@ async function render() {
 window.addEventListener('hashchange', render);
 window.addEventListener('frontend-refresh', render);
 window.addEventListener('resize', () => { const sidebar = document.getElementById('main-sidebar'); if (sidebar) sidebar.inert = window.innerWidth < 1024 && !document.querySelector('.app-shell')?.classList.contains('menu-open'); });
+let sessionInvalidationQueued = false;
+services.auth.onSessionInvalidated?.(() => {
+  // Cancel every pending page, including allSettled and page-level write catches.
+  generation++;
+  if (sessionInvalidationQueued) return;
+  sessionInvalidationQueued = true;
+  queueMicrotask(() => {
+    sessionInvalidationQueued = false;
+    // A successful newer login before this callback must keep its session/view.
+    if (!services.auth.session) render().catch(() => { app.replaceChildren(formAlert('Phiên đăng nhập đã hết hạn. Vui lòng tải lại trang.')); });
+  });
+});
 render().catch(() => { app.replaceChildren(formAlert('Không thể khởi động giao diện. Vui lòng tải lại trang.')); });

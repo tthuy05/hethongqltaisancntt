@@ -8,10 +8,38 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
   let session = null;
   let expiresAt = null;
   let sessionRevision = 0;
+  let expiryTimer = null;
+  const invalidationListeners = new Set();
 
-  function clearSession() { sessionRevision++; token = null; session = null; expiresAt = null; }
+  function clearSession(reason = null) {
+    const hadSession = Boolean(token || session);
+    sessionRevision++;
+    if (expiryTimer !== null) clearTimeout(expiryTimer);
+    expiryTimer = null;
+    token = null; session = null; expiresAt = null;
+    // An expired/unauthorized session is different from intentional login/logout.
+    // Notify once, without exposing the token, user or expiry to observers.
+    if (reason && hadSession) {
+      const event = Object.freeze({ reason });
+      for (const listener of [...invalidationListeners]) {
+        try { listener(event); } catch { /* Observers must not interrupt clearing auth state. */ }
+      }
+    }
+  }
+  function scheduleExpiry(revision) {
+    const delay = Date.parse(expiresAt) - Date.now();
+    if (delay <= 0) { clearSession('expired'); return; }
+    expiryTimer = setTimeout(() => {
+      if (revision !== sessionRevision) return;
+      expiryTimer = null;
+      if (Date.parse(expiresAt) <= Date.now()) clearSession('expired');
+      else scheduleExpiry(revision);
+    }, Math.min(delay, 2147483647));
+    // Node's synthetic tests should not stay alive for a browser session timer.
+    expiryTimer.unref?.();
+  }
   function currentSession() {
-    if (expiresAt && Date.parse(expiresAt) <= Date.now()) clearSession();
+    if (expiresAt && Date.parse(expiresAt) <= Date.now()) clearSession('expired');
     return session;
   }
   function validate(errors) {
@@ -39,6 +67,7 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
     } catch {
+      if (revision !== sessionRevision) throw new ServiceError(401, 'SESSION_CHANGED', 'Phiên đã thay đổi. Vui lòng đăng nhập lại.');
       throw new ServiceError(0, 'NETWORK_ERROR', 'Không thể kết nối API. Kiểm tra máy chủ và thử lại; không có chuyển sang mock tự động.');
     }
     if (revision !== sessionRevision) throw new ServiceError(401, 'SESSION_CHANGED', 'Phiên đã thay đổi. Vui lòng đăng nhập lại.');
@@ -46,18 +75,23 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
     let payload;
     try { payload = await response.json(); } catch {
       if (revision !== sessionRevision) throw new ServiceError(401, 'SESSION_CHANGED', 'Phiên đã thay đổi.');
-      if (response.status === 401) clearSession();
+      if (response.status === 401) clearSession('unauthorized');
       throw new ServiceError(response.ok ? 502 : response.status, 'API_UNAVAILABLE', 'API chưa sẵn sàng hoặc không trả JSON theo contract.');
     }
     if (revision !== sessionRevision) throw new ServiceError(401, 'SESSION_CHANGED', 'Phiên đã thay đổi. Vui lòng đăng nhập lại.');
     if (!response.ok) {
-      if (response.status === 401) clearSession();
+      if (response.status === 401) clearSession('unauthorized');
       throw new ServiceError(response.status, payload.code || 'API_ERROR', payload.detail || payload.title || 'Không thể thực hiện yêu cầu.', payload.errors || {}, { traceId: payload.traceId, retryAfter: response.headers.get('Retry-After') });
     }
     return payload;
   }
   const auth = {
     get session() { return copy(currentSession()); },
+    onSessionInvalidated(listener) {
+      if (typeof listener !== 'function') throw new TypeError('Session listener must be a function.');
+      invalidationListeners.add(listener);
+      return () => invalidationListeners.delete(listener);
+    },
     async login({ email, password }) {
       validate(validateLogin({ email, password }));
       clearSession();
@@ -68,6 +102,7 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
       token = response.accessToken;
       expiresAt = response.expiresAt;
       session = response.user;
+      scheduleExpiry(sessionRevision);
       return copy(response);
     },
     async me() { const revision = sessionRevision; const user = await request('/auth/me'); if (revision !== sessionRevision) throw new ServiceError(401, 'SESSION_CHANGED', 'Phiên đã thay đổi.'); session = user; return copy(session); },

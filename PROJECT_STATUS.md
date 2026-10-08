@@ -1,5 +1,11 @@
 # Project Status
 
+## M1 regression và Render addendum — 08/10/2026
+
+Bản public [hethongqltaisancntt.onrender.com](https://hethongqltaisancntt.onrender.com/) đã kiểm bằng browser: Manager Login/Dashboard/List/search/detail/mở Edit 320px; Support read/cost hiding/edit denial; không ghi dữ liệu nghiệp vụ. Đã sửa frontend hết hạn/401 còn giữ shell và request cũ có thể xóa phiên mới. **328 tests PASS / 0 FAIL / 78 cloud tests SKIP**, Release/publish và27Production HTTP smoke PASS; local Docker engine không hoạt động nên Linux smoke local NOT RUN. [Bằng chứng và checklist diễn tập](docs/m1-rehearsal.md).
+
+Code M1 phần Thủy **IMPLEMENTED / VERIFIED ở phạm vi kiểm tra**; review Thiện, diễn tập chung và Mentor acceptance **10/10/2026 PENDING**. Render live cơ bản không đồng nghĩa mọi public/security gate PASS; owner credential **FAIL1 / UNRESOLVED**, runtime least privilege/demo isolation/real proxy verification PENDING. Các checkpoint07/10 và06/10 bên dưới giữ lịch sử; service/URL không còn là chưa tạo. Bản sửa mới cần xác minh CI/deploy đúng commit sau publication, không lấy browser check bản trước push làm bằng chứng deploy mới. Week2 30task/evidence,18 tables / 41 relationships,physical10/19,InitialM1 và phân công Thiện giữ nguyên; không lưu thay đổi dữ liệu nghiệp vụ, tạo migration/reset hoặc module mới. Login/audit thông thường có thể được server ghi nhận.
+
 ## Deployment preparation addendum — 07/10/2026
 
 Theo yêu cầu mới, đã bổ sung Render Docker cho UI/API cùng domain, Production API-only package, cấu hình PORT/exact host/trusted forwarding, publish-secret guard và CI build/test/container smoke. **IMPLEMENTED; kết quả verify và public gates ở [Render runbook](docs/render-deployment.md).** Render service/secrets/URL public/real proxy verification PENDING, không production-ready claim. Không sửa nghiệp vụ/Thiện-owned modules, schema/migration hoặc dữ liệu Neon; M1 10/10 và evidence30task/320PASS lịch sử giữ nguyên. Owner secret **FAIL1/UNRESOLVED**, human review/rehearsal PENDING. Các checkpoint06/10 bên dưới giữ lịch sử, không phải trạng thái deploy mới.

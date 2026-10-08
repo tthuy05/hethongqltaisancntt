@@ -1,5 +1,19 @@
 # Changelog
 
+## 08/10/2026 — Kiểm tra M1 trước demo
+
+### Fixed
+
+- Giao diện trở về Login khi phiên hết hạn/401, kể cả lỗi bị form hoặc detail callback xử lý; giữ đường dẫn cần quay lại. Request Login/Người dùng cũ không xóa phiên hoặc điều hướng lần đăng nhập mới.
+
+### Added
+
+- 29 regression tests cho adapter/app/Login/Users; tổng lượt này **328 PASS /0FAIL /78 cloud SKIP**,27Production HTTP smoke PASS. [Bằng chứng Render và checklist diễn tập Thủy/Thiện](docs/m1-rehearsal.md).
+
+### Changed
+
+- Ghi nhận URL Render đã chạy và Manager/Support browser reads thực tế; không lưu thay đổi nghiệp vụ public, không schema/migration hoặc sửa module của Thiện. Giữ M1 **10/10/2026**, review/rehearsal/Mentor acceptance PENDING và credential finding FAIL1/UNRESOLVED. Local Linux Docker smoke chưa chạy do engine không hoạt động; CI/deploy của commit mới cần xác minh riêng.
+
 ## 07/10/2026 — Chuẩn bị deploy demo trên Render
 
 ### Added

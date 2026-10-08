@@ -1,5 +1,7 @@
 # Đưa bản demo M1 lên Render
 
+> **08/10/2026:** người dùng đã hoàn tất Render và cung cấp [URL public](https://hethongqltaisancntt.onrender.com/). Browser đã kiểm chứng Login, Dashboard/List/search/detail/mở Edit của Manager và read/cost hiding/edit denial của Support; không lưu nghiệp vụ public. [Evidence và checklist M1](m1-rehearsal.md). Bản sửa frontend phiên đăng nhập mới cần kiểm CI/deploy đúng commit sau push; real proxy/client-IP, runtime least privilege, demo isolation và credential remediation vẫn PENDING/UNRESOLVED. Các ghi chú07/10 bên dưới là checkpoint chuẩn bị, không phải tuyên bố website hiện chưa được tạo.
+
 > 07/10/2026: chuẩn bị deploy **giao diện + ASP.NET Core API cùng domain**, database vẫn ở Neon. Có cấu hình deploy không đồng nghĩa website đã Live. Evidence cuối lượt ở mục 7; Render/secrets/HTTPS/DB public phải được kiểm tra riêng.
 
 ## 1. Phạm vi được giữ nguyên
@@ -68,7 +70,7 @@ Chưa cấu hình trust thì header từ proxy ngoài danh sách bị bỏ qua: 
 
 Owner credential trong Git Development vẫn **FAIL1 / UNRESOLVED**. `.dockerignore` loại file đó khỏi mọi build layer, publish loại config Development, nhưng **không vô hiệu credential đã lộ hoặc xóa lịch sử Git**. Cần phối hợp đổi credential và runtime role hạn chế quyền trước public với dữ liệu thật; không tự đổi password làm Thủy/Thiện mất kết nối.
 
-Manager công khai trong README là ngoại lệ Development, có quyền sửa tài sản. Nên chọn Neon demo branch/database riêng, không dùng dữ liệu doanh nghiệp. Nếu chủ dự án chủ động dùng shared dev, public demo cũng sửa dữ liệu hai thành viên đang dùng. Tạo/chọn branch, grants/rotation là thao tác thủ công **PENDING**; lượt chuẩn bị này không tạo account, database, schema hoặc migration.
+Tài khoản demo cả3vai trò công khai trong README theo yêu cầu ngày07/10; Manager có quyền sửa tài sản và Admin có quyền quản trị dữ liệu/quyền. Nên chọn Neon demo branch/database riêng, không dùng dữ liệu doanh nghiệp. Nếu chủ dự án chủ động dùng shared dev, public demo cũng sửa dữ liệu hai thành viên đang dùng. Tạo/chọn branch, grants/rotation là thao tác thủ công **PENDING**; lượt chuẩn bị này không tạo account, database, schema hoặc migration.
 
 ## 4. Kiểm tra local
 

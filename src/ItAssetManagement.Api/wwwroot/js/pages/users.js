@@ -14,6 +14,8 @@ export async function userPage(services) {
   const alive = () => root.isConnected && Boolean(services.auth.session);
   const refresh = () => { if (root.isConnected) window.dispatchEvent(new Event('frontend-refresh')); };
   function report(error, feedback, modal) {
+    // Old dialogs/requests must not change the screen or session that replaced them.
+    if (!root.isConnected || error.code === 'SESSION_CHANGED') return;
     if (error.status === 401) { modal?.close(); route('/login'); return; }
     const message = error.code === 'CONCURRENCY_CONFLICT' ? 'Dữ liệu đã thay đổi. Đóng hộp thoại và mở lại để kiểm tra trước khi lưu; hệ thống không tự ghi đè.' : error.message;
     if (feedback) feedback.replaceChildren(formAlert(message)); else showToast(message, 'error');

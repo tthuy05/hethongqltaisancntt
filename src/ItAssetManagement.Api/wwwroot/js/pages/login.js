@@ -37,7 +37,12 @@ export function loginPage(services, next = '/dashboard') {
         await services.auth.login({ email, password, ...(services.mode === 'mock' ? { role: role.input.value } : {}) });
         await services.auth.me();
         fields.password.input.value = ''; route(next);
-      } catch (error) { await services.auth.logout(); fields.password.input.value = ''; feedback.append(formAlert(error.message)); displayErrors(fields, error.errors || {}); }
+      } catch (error) {
+        // 401 is already invalidated by the adapter; a stale attempt must not
+        // cancel a newer login (including one still waiting for its response).
+        if (error.status !== 401 && error.code !== 'SESSION_CHANGED') await services.auth.logout();
+        fields.password.input.value = ''; feedback.append(formAlert(error.message)); displayErrors(fields, error.errors || {});
+      }
     });
   } }, fields.email.element, fields.password.element, services.mode === 'mock' ? role.element : null, feedback, submit);
   const art = h('div', { className: 'login-art', 'aria-hidden': 'true' }, h('div', { className: 'login-illustration' }, h('img', { src: './assets/logo.svg', alt: '', width: 80, height: 80 }), h('div', { className: 'illustration-row' }, icon('laptop', 48), icon('monitor', 48), icon('server', 48))), h('h2', {}, 'Mọi tài sản. Một nơi quản lý.'), h('p', {}, 'Theo dõi thiết bị, kết nối phòng ban và chăm sóc hạ tầng CNTT một cách rõ ràng, gọn gàng.'), h('div', { className: 'login-points' }, h('span', {}, icon('check', 18), 'Thông tin tập trung'), h('span', {}, icon('check', 18), 'Quy trình nhất quán')));
