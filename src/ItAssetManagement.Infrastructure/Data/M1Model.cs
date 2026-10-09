@@ -108,6 +108,7 @@ internal static class M1Model
         log.HasIndex(x => new { x.Action, x.Outcome, x.OccurredAtUtc }).IsDescending(false,false,true).HasDatabaseName("ix_audit_logs_action_outcome");
 
         AssignmentMaintenanceMappingProposal.Configure(model);
+        FullSchemaMapping.Configure(model);
 
         foreach (var entity in model.Model.GetEntityTypes())
         {

@@ -33,11 +33,12 @@ public sealed class MvpFixture : IAsyncLifetime
         // Explicit opt-in: ordinary dotnet test never silently writes to a cloud database.
         if (Environment.GetEnvironmentVariable("ITAM_RUN_NEON_TESTS") != "1") return;
         var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
-        var config = JsonSerializer.Deserialize<JsonElement>(await File.ReadAllTextAsync(Path.Combine(root, "src/ItAssetManagement.Api/appsettings.Development.json")));
+        var configPath = Environment.GetEnvironmentVariable("ITAM_TEST_CONFIG_PATH") ?? Path.Combine(root, "src/ItAssetManagement.Api/appsettings.Development.json");
+        var config = JsonSerializer.Deserialize<JsonElement>(await File.ReadAllTextAsync(configPath));
         if (!NeonConnectionPolicy.TryCreate(config.GetProperty("ConnectionStrings").GetProperty("DefaultConnection").GetString(), out var settings))
             throw new InvalidOperationException("Development connection unavailable.");
-        const string testDatabase = "it_asset_management_m1_verify_20261002";
-        if (!testDatabase.StartsWith("it_asset_management_m1_verify_", StringComparison.Ordinal) || settings!.Database == testDatabase)
+        var testDatabase = Environment.GetEnvironmentVariable("ITAM_TEST_DATABASE") ?? "it_asset_management_m1_verify_20261002";
+        if (!System.Text.RegularExpressions.Regex.IsMatch(testDatabase, "\\Ait_asset_management_(m1|full_schema)_verify_[a-z0-9_]{1,24}\\z") || settings!.Database == testDatabase)
             throw new InvalidOperationException("Isolation guard failed.");
         settings.Database = testDatabase;
         Factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>

@@ -44,7 +44,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             // Only explicitly approved mutable membership links may be removed. They
             // still enter _written and must have an audit event before commit.
             var membershipRemoval = e.Entity is UserRole link && _membershipDeletes.Contains(link);
-            if (e.State == EntityState.Deleted && !membershipRemoval || e.State == EntityState.Modified && e.Entity is AuditLog or AssetStatusHistory)
+            if (e.State == EntityState.Deleted && !membershipRemoval || e.State == EntityState.Modified && e.Entity is AuditLog or AssetStatusHistory or MaintenanceHistory)
                 throw new InvalidOperationException("Hard delete and append-only history mutation are forbidden.");
             if (e.State == EntityState.Modified && e.Entity is AssetAssignment)
             {
@@ -59,6 +59,18 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
                 }
             }
             if (e.Entity is AssetStatusHistory history) { _historyAssets.Add(history.AssetId); continue; }
+            if (e.State == EntityState.Modified && e.Entity is LicenseAssignment)
+            {
+                var immutable = new[] { "SoftwareLicenseId", "AssignedUserId", "AssignedAssetId", "AssignedAtUtc", "AssignedByUserId", "CreatedAtUtc" };
+                if (immutable.Any(name => e.Property(name).IsModified))
+                    throw new InvalidOperationException("License allocation identity/target/history cannot be rewritten.");
+                if (e.OriginalValues.GetValue<DateTime?>("RevokedAtUtc") is not null)
+                {
+                    var archiveOnly = !e.OriginalValues.GetValue<bool>("IsArchived") && e.CurrentValues.GetValue<bool>("IsArchived") &&
+                        e.Properties.Where(p => p.IsModified).All(p => p.Metadata.Name is "IsArchived" or "RowVersion");
+                    if (!archiveOnly) throw new InvalidOperationException("Revoked license allocation history is immutable.");
+                }
+            }
             if (e.Entity is AuditLog) continue;
             _written.Add(e.Entity);
             if (e.Metadata.FindProperty("RowVersion") != null)

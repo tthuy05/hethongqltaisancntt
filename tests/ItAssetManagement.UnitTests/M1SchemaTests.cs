@@ -16,10 +16,10 @@ public sealed class M1SchemaTests
         using var context = new AppDbContextFactory().CreateDbContext([]);
         Assert.Null(context.Database.GetConnectionString());
         var originalTables = new InitialM1().TargetModel.GetEntityTypes().Select(e => e.GetTableName());
-        Assert.Equal(originalTables.Concat(["asset_assignments", "maintenance_tickets"]).Order(),
+        Assert.Equal(originalTables.Concat(["asset_assignments", "maintenance_tickets"]).Concat(FullSchemaBaseline.NewTables).Order(),
             context.Model.GetEntityTypes().Select(e => e.GetTableName()).Order());
-        Assert.Equal(12,context.Model.GetEntityTypes().Count());
-        Assert.Equal(27,context.Model.GetEntityTypes().Sum(e => e.GetForeignKeys().Count()));
+        Assert.Equal(18,context.Model.GetEntityTypes().Count());
+        Assert.Equal(41,context.Model.GetEntityTypes().Sum(e => e.GetForeignKeys().Count()));
         Assert.All(context.Model.GetEntityTypes(),e =>
         {
             Assert.Equal("public",e.GetSchema());
@@ -30,12 +30,12 @@ public sealed class M1SchemaTests
     }
 
     [Fact]
-    public void Tokens_are_eight_application_managed_columns_not_native_rowversion()
+    public void Tokens_are_thirteen_application_managed_columns_not_native_rowversion()
     {
         using var context = new AppDbContextFactory().CreateDbContext([]);
         var model = context.GetService<IDesignTimeModel>().Model;
         var tokens = model.GetEntityTypes().SelectMany(e => e.GetProperties()).Where(p => p.IsConcurrencyToken).ToArray();
-        Assert.Equal(8,tokens.Length);
+        Assert.Equal(13,tokens.Length);
         Assert.All(tokens,p =>
         {
             Assert.Equal("row_version",p.GetColumnName()); Assert.Equal("bytea",p.GetColumnType());
@@ -67,7 +67,7 @@ public sealed class M1SchemaTests
     {
         using var context = new AppDbContextFactory().CreateDbContext([]);
         var initialModel = context.GetService<IModelRuntimeInitializer>().Initialize(new InitialM1().TargetModel, designTime: true);
-        var currentModel = context.GetService<IDesignTimeModel>().Model;
+        var currentModel = context.GetService<IModelRuntimeInitializer>().Initialize(new AddAssignmentMaintenance().TargetModel, designTime: true);
         var differences = context.GetService<IMigrationsModelDiffer>().GetDifferences(initialModel.GetRelationalModel(), currentModel.GetRelationalModel());
         var tables = differences.OfType<CreateTableOperation>().ToArray();
         Assert.Equal(new[] { "asset_assignments", "maintenance_tickets" }, tables.Select(t => t.Name).Order());
@@ -86,7 +86,7 @@ public sealed class M1SchemaTests
         using var context = new AppDbContextFactory().CreateDbContext([]);
         Assert.Null(context.Database.GetConnectionString());
         Assert.False(context.Database.HasPendingModelChanges());
-        Assert.Equal(new[] { "20261002151601_InitialM1", "20261008080630_AddAssignmentMaintenance" }, context.Database.GetMigrations());
+        Assert.Equal(new[] { "20261002151601_InitialM1", "20261008080630_AddAssignmentMaintenance", FullSchemaBaseline.Migration }, context.Database.GetMigrations());
         var target = new AddAssignmentMaintenance().TargetModel;
         Assert.Equal(12,target.GetEntityTypes().Count());
         Assert.Equal(27,target.GetEntityTypes().Sum(entity => entity.GetForeignKeys().Count()));

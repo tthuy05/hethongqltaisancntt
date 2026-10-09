@@ -19,7 +19,7 @@ public static class NeonSchemaInspection
         if (!NeonConnectionPolicy.TryCreate(secret, out var settings)) return new("NotConfiguredOrInvalid");
         if (isolatedDatabase is not null)
         {
-            if (!System.Text.RegularExpressions.Regex.IsMatch(isolatedDatabase,"\\Ait_asset_management_m1_verify_[a-z0-9_]{1,24}\\z"))
+            if (!System.Text.RegularExpressions.Regex.IsMatch(isolatedDatabase,"\\Ait_asset_management_(m1|full_schema)_verify_[a-z0-9_]{1,24}\\z"))
                 return new("InvalidInspectionTarget");
             settings!.Database = isolatedDatabase;
         }
@@ -50,10 +50,12 @@ public static class NeonSchemaInspection
                 tables=reader.GetFieldValue<string[]>(4); pk=reader.GetInt32(5); fk=reader.GetInt32(6); check=reader.GetInt32(7);
                 indexes=reader.GetInt32(8); migration=reader.GetString(9);
             }
-            var businessTables = migration == NeonAssignmentMaintenanceSetup.Migration
+            var businessTables = migration == FullSchemaBaseline.Migration
+                ? NeonM1Setup.Tables.Concat(NeonAssignmentMaintenanceSetup.NewTables).Concat(FullSchemaBaseline.NewTables).ToArray()
+                : migration == NeonAssignmentMaintenanceSetup.Migration
                 ? NeonM1Setup.Tables.Concat(NeonAssignmentMaintenanceSetup.NewTables).ToArray() : NeonM1Setup.Tables;
-            var expectedFk = migration == NeonAssignmentMaintenanceSetup.Migration ? 27 : 19;
-            if (migration is not (NeonAssignmentMaintenanceSetup.InitialMigration or NeonAssignmentMaintenanceSetup.Migration) ||
+            var expectedFk = migration == FullSchemaBaseline.Migration ? 41 : migration == NeonAssignmentMaintenanceSetup.Migration ? 27 : 19;
+            if (migration is not (NeonAssignmentMaintenanceSetup.InitialMigration or NeonAssignmentMaintenanceSetup.Migration or FullSchemaBaseline.Migration) ||
                 !tables.Order().SequenceEqual(businessTables.Append("ef_migrations_history").Order()) || pk!=businessTables.Length || fk!=expectedFk)
                 return new("SchemaMismatch", Database:db);
             // Fixed source-controlled allowlist, no user-supplied SQL identifiers; SELECT only.

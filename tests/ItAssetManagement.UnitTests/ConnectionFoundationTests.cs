@@ -67,13 +67,13 @@ public sealed class ConnectionFoundationTests
     }
 
     [Fact]
-    public async Task Context_maps_twelve_tables_and_blocks_unaudited_writes()
+    public async Task Context_maps_eighteen_tables_and_blocks_unaudited_writes()
     {
         Assert.True(NeonConnectionPolicy.TryCreate(UriFixture, out var settings));
         await using var context = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(settings!.ConnectionString).Options);
         Assert.Equal("Npgsql.EntityFrameworkCore.PostgreSQL", context.Database.ProviderName);
-        Assert.Equal(12, context.Model.GetEntityTypes().Count());
-        Assert.Equal(27, context.Model.GetEntityTypes().Sum(entity => entity.GetForeignKeys().Count()));
+        Assert.Equal(18, context.Model.GetEntityTypes().Count());
+        Assert.Equal(41, context.Model.GetEntityTypes().Sum(entity => entity.GetForeignKeys().Count()));
         Assert.All(context.Model.GetEntityTypes().SelectMany(entity => entity.GetForeignKeys()), fk => Assert.Equal(DeleteBehavior.NoAction, fk.DeleteBehavior));
         Assert.Throws<NotSupportedException>(() => context.SaveChanges());
         await Assert.ThrowsAsync<NotSupportedException>(() => context.SaveChangesAsync());

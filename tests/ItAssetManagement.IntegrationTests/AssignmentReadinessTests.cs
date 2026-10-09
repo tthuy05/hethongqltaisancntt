@@ -9,15 +9,18 @@ namespace ItAssetManagement.IntegrationTests;
 public sealed class AssignmentReadinessTests
 {
     [NeonFact]
-    public async Task Existing_schema10_shared_refuses_and_schema12_seeded_isolated_is_ready_without_writes()
+    public async Task Existing_schema12_shared_and_seeded_isolated_are_ready_without_enabling_API_or_writes()
     {
         var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
-        using var document = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(root,
-            "src/ItAssetManagement.Api/appsettings.Development.json")));
+        var configPath = Environment.GetEnvironmentVariable("ITAM_TEST_CONFIG_PATH") ?? Path.Combine(root,
+            "src/ItAssetManagement.Api/appsettings.Development.json");
+        using var document = JsonDocument.Parse(await File.ReadAllTextAsync(configPath));
         var secret = document.RootElement.GetProperty("ConnectionStrings").GetProperty("DefaultConnection").GetString();
         Assert.True(NeonConnectionPolicy.TryCreate(secret, out var settings));
         Assert.Equal("neondb", settings!.Database);
-        foreach (var (database, ready) in new[] { ("neondb", false), ("it_asset_management_m1_verify_20261002", true) })
+        var testDatabase = Environment.GetEnvironmentVariable("ITAM_TEST_DATABASE") ?? "it_asset_management_m1_verify_20261002";
+        Assert.Matches("\\Ait_asset_management_(m1|full_schema)_verify_[a-z0-9_]{1,24}\\z",testDatabase);
+        foreach (var (database, ready) in new[] { ("neondb", true), (testDatabase, true) })
         {
             settings.Database = database;
             var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>

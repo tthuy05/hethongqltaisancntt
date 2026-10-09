@@ -64,11 +64,12 @@ public sealed class AssignmentSetupTests
     }
 
     [Fact]
-    public void Current_additive_migration_passes_runner_validation_offline()
+    public void Historical_B_runner_refuses_the_new_full_schema_assembly_offline()
     {
         using var db = new AppDbContextFactory().CreateDbContext([]);
         Assert.Null(db.Database.GetConnectionString());
-        Assert.Null(Record.Exception(() => ValidateMigration().Invoke(null, [db])));
+        var invocation = Assert.Throws<TargetInvocationException>(() => ValidateMigration().Invoke(null, [db]));
+        Assert.Equal("MIGRATION_SCOPE_MISMATCH", Assert.IsType<InvalidOperationException>(invocation.InnerException).Message);
         Assert.Null(db.Database.GetConnectionString());
         Assert.False(db.Database.HasPendingModelChanges());
     }

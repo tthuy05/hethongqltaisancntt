@@ -223,7 +223,7 @@ public sealed class UserAccountApiTests(MvpFixture fixture)
     private async Task<List<long>> HideOtherAdmins(long[] keep)
     {
         await using var scope = fixture.Factory.Services.CreateAsyncScope(); var sp = scope.ServiceProvider; var db = sp.GetRequiredService<AppDbContext>();
-        Assert.Equal("it_asset_management_m1_verify_20261002", db.Database.GetDbConnection().Database);
+        Assert.Equal(Environment.GetEnvironmentVariable("ITAM_TEST_DATABASE") ?? "it_asset_management_m1_verify_20261002", db.Database.GetDbConnection().Database);
         return await sp.GetRequiredService<IUnitOfWork>().RunAsync(async () =>
         {
             var ids = from ur in db.Set<UserRole>() join role in db.Set<Role>() on ur.RoleId equals role.Id where role.Code == "ADMIN_IT" select ur.UserId;
