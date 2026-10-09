@@ -1,4 +1,6 @@
 using System.Data.Common;
+using ItAssetManagement.Infrastructure.Mvp;
+using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 namespace ItAssetManagement.Infrastructure.Data;
@@ -7,7 +9,8 @@ public sealed record NeonSchemaInspectionResult(string Status, string? Database 
     string? Encoding = null, string? Collation = null, IReadOnlyList<string>? Tables = null,
     int PrimaryKeys = 0, int ForeignKeys = 0, int CheckConstraints = 0, int Indexes = 0,
     long? BusinessRows = null, string? Migration = null, string? FailureCode = null,
-    IReadOnlyDictionary<string, long>? RowCounts = null, long? ArchivedAssets = null);
+    IReadOnlyDictionary<string, long>? RowCounts = null, long? ArchivedAssets = null,
+    string? WorkflowQuery = null, int WorkflowAssetsChecked = 0, int ActiveWorkflowAssets = 0);
 
 public static class NeonSchemaInspection
 {
@@ -47,18 +50,37 @@ public static class NeonSchemaInspection
                 tables=reader.GetFieldValue<string[]>(4); pk=reader.GetInt32(5); fk=reader.GetInt32(6); check=reader.GetInt32(7);
                 indexes=reader.GetInt32(8); migration=reader.GetString(9);
             }
-            if (!tables.Order().SequenceEqual(NeonM1Setup.Tables.Append("ef_migrations_history").Order()) || pk!=10 || fk!=19)
+            var businessTables = migration == NeonAssignmentMaintenanceSetup.Migration
+                ? NeonM1Setup.Tables.Concat(NeonAssignmentMaintenanceSetup.NewTables).ToArray() : NeonM1Setup.Tables;
+            var expectedFk = migration == NeonAssignmentMaintenanceSetup.Migration ? 27 : 19;
+            if (migration is not (NeonAssignmentMaintenanceSetup.InitialMigration or NeonAssignmentMaintenanceSetup.Migration) ||
+                !tables.Order().SequenceEqual(businessTables.Append("ef_migrations_history").Order()) || pk!=businessTables.Length || fk!=expectedFk)
                 return new("SchemaMismatch", Database:db);
             // Fixed source-controlled allowlist, no user-supplied SQL identifiers; SELECT only.
-            var countSql = string.Join(" UNION ALL ",NeonM1Setup.Tables.Select(table => $"SELECT '{table}', count(*) FROM public.{table}"));
+            var countSql = string.Join(" UNION ALL ",businessTables.Select(table => $"SELECT '{table}', count(*) FROM public.{table}"));
             await using var rows = new NpgsqlCommand(countSql,connection,transaction);
             var counts = new Dictionary<string, long>();
             await using (var reader = await rows.ExecuteReaderAsync())
                 while (await reader.ReadAsync()) counts[reader.GetString(0)] = reader.GetInt64(1);
             await using var archived = new NpgsqlCommand("SELECT count(*) FROM public.assets WHERE is_archived", connection, transaction);
             var archivedCount = Convert.ToInt64(await archived.ExecuteScalarAsync());
+            // Exercise the actual repository query on either supported schema without
+            // changing assets or calling archive/retire on the public API.
+            var assetIds = new List<long>();
+            await using (var ids = new NpgsqlCommand("SELECT id FROM public.assets WHERE NOT is_archived ORDER BY id LIMIT 100", connection, transaction))
+            await using (var reader = await ids.ExecuteReaderAsync())
+                while (await reader.ReadAsync()) assetIds.Add(reader.GetInt64(0));
+            await using var context = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(connection,
+                provider => provider.MigrationsHistoryTable("ef_migrations_history", "public")).Options);
+            await context.Database.UseTransactionAsync(transaction);
+            var repository = new EfRepository(context); var activeWorkflows = 0;
+            foreach (var assetId in assetIds)
+                if (await repository.HasActiveWorkflowAsync(assetId, CancellationToken.None)) activeWorkflows++;
+            if (migration == NeonAssignmentMaintenanceSetup.InitialMigration && activeWorkflows != 0)
+                return new("SchemaMismatch", Database: db);
             return new("Verified",db,version,encoding,collation,tables,pk,fk,check,indexes,counts.Values.Sum(),migration,
-                RowCounts: counts, ArchivedAssets: archivedCount);
+                RowCounts: counts, ArchivedAssets: archivedCount, WorkflowQuery: "VerifiedReadOnly",
+                WorkflowAssetsChecked: assetIds.Count, ActiveWorkflowAssets: activeWorkflows);
         }
         catch (Exception error) when (error is DbException or TimeoutException or System.IO.IOException)
         {

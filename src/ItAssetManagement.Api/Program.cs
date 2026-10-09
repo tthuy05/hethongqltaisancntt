@@ -20,8 +20,13 @@ var seedOnly = args.Contains("--seed-development", StringComparer.Ordinal);
 var demoOnly = args.Contains("--seed-m1-demo", StringComparer.Ordinal);
 var roleCatalogOnly = args.Contains("--seed-role-catalog", StringComparer.Ordinal);
 var auditReadOnly = args.Contains("--seed-audit-read", StringComparer.Ordinal);
-var builder = WebApplication.CreateBuilder(args.Where(argument => argument is not ("--verify-neon" or "--setup-neon-m1" or "--inspect-neon-schema" or "--seed-development" or "--seed-m1-demo" or "--seed-role-catalog" or "--seed-audit-read")).ToArray());
-if (probeOnly || setupOnly || inspectOnly || seedOnly || demoOnly || roleCatalogOnly || auditReadOnly) builder.Logging.ClearProviders();
+var assignmentValidationOnly = args.Contains("--setup-assignment-validation", StringComparer.Ordinal);
+var assignmentSetupOnly = args.Contains("--setup-assignment-maintenance", StringComparer.Ordinal);
+string[] cliModes = ["--verify-neon", "--setup-neon-m1", "--inspect-neon-schema", "--seed-development", "--seed-m1-demo",
+    "--seed-role-catalog", "--seed-audit-read", "--setup-assignment-validation", "--setup-assignment-maintenance"];
+var modeCount = cliModes.Count(mode => args.Contains(mode, StringComparer.Ordinal));
+var builder = WebApplication.CreateBuilder(args.Where(argument => !cliModes.Contains(argument, StringComparer.Ordinal)).ToArray());
+if (modeCount > 0) builder.Logging.ClearProviders();
 if (DeploymentHosting.PortUrl(builder.Configuration["PORT"], builder.Environment.IsDevelopment()) is { } portUrl)
     builder.WebHost.UseUrls(portUrl);
 if (!builder.Environment.IsDevelopment() && DeploymentHosting.RenderAllowedHosts(builder.Configuration["RENDER"],
@@ -80,8 +85,21 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 });
 
 var app = builder.Build();
+if (modeCount > 1 || modeCount > 0 && !app.Environment.IsDevelopment())
+{
+    Console.WriteLine("{\"status\":\"DevelopmentOnlyOrConflictingMode\"}"); Environment.ExitCode = 2;
+    await app.DisposeAsync(); return;
+}
 _ = app.Services.GetRequiredService<JwtSettings>(); // Production fails closed; development uses a per-process key.
 DeploymentHosting.ValidateProductionDatabase(app.Configuration, app.Environment.IsDevelopment());
+if (assignmentValidationOnly || assignmentSetupOnly)
+{
+    var result = await NeonAssignmentMaintenanceSetup.RunAsync(builder.Configuration.GetConnectionString("DefaultConnection"),
+        assignmentValidationOnly, builder.Configuration.GetValue<bool>("Database:AssignmentSetup:SharedBackendCompatibilityConfirmed"));
+    Console.WriteLine(JsonSerializer.Serialize(result));
+    Environment.ExitCode = result.Status == "Verified" ? 0 : 2;
+    await app.DisposeAsync(); return;
+}
 if (auditReadOnly)
 {
     if (!app.Environment.IsDevelopment() || probeOnly || setupOnly || inspectOnly || seedOnly || demoOnly || roleCatalogOnly)

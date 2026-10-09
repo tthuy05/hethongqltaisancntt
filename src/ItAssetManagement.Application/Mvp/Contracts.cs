@@ -62,9 +62,12 @@ public static class Permissions
         TypeArchive = "asset-types.archive", DashboardRead = "dashboard.read", UserLookup = "users.lookup",
         UserRead = "users.read", UserCreate = "users.create", UserUpdate = "users.update",
         UserStatus = "users.status.manage", RoleAssign = "roles.assign", RoleRead = "roles.read",
-        RolePermissionsRead = "roles.permissions.read", AuditRead = "audit-logs.read";
+        RolePermissionsRead = "roles.permissions.read", AuditRead = "audit-logs.read",
+        AssignmentRead = "assignments.read", AssignmentAssign = "assignments.assign", AssignmentReturn = "assignments.return";
     public static readonly string[] Read = [AssetRead, AssetHistory, DepartmentRead, TypeRead, DashboardRead, UserLookup];
-    public static readonly string[] Operate = [AssetCreate, AssetUpdate, AssetArchive, AssetStatus, AssetCost, RoleRead];
+    // Support assignment reads require a scoped support contract, not this unrestricted service.
+    public static readonly string[] Operate = [AssetCreate, AssetUpdate, AssetArchive, AssetStatus, AssetCost, RoleRead,
+        AssignmentRead, AssignmentAssign, AssignmentReturn];
     public static readonly string[] Admin = [DepartmentCreate, DepartmentUpdate, DepartmentArchive, TypeCreate, TypeUpdate, TypeArchive,
         UserRead, UserCreate, UserUpdate, UserStatus, RoleAssign, RolePermissionsRead, AuditRead];
     public static readonly string[] All = [.. Read, .. Operate, .. Admin];

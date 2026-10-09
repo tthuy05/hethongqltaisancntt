@@ -161,3 +161,46 @@ public sealed class AuditLog
     public byte[]? PreviousEntryHash { get; set; }
     public byte[]? EntryHash { get; set; }
 }
+
+
+public sealed class AssetAssignment
+{
+    public long Id { get; set; }
+    public long AssetId { get; set; }
+    public long? AssignedUserId { get; set; }
+    public long? AssignedDepartmentId { get; set; }
+    public DateTime AssignedAtUtc { get; set; }
+    public DateTime? ExpectedReturnAtUtc { get; set; }
+    public DateTime? ReturnedAtUtc { get; set; }
+    public long AssignedByUserId { get; set; }
+    public long? ReturnedByUserId { get; set; }
+    public string? AssignmentNote { get; set; }
+    public string? ReturnNote { get; set; }
+    public bool IsArchived { get; set; }
+    public DateTime CreatedAtUtc { get; set; }
+    public byte[] RowVersion { get; set; } = null!;
+}
+
+public sealed class MaintenanceTicket
+{
+    public long Id { get; set; }
+    public string TicketCode { get; set; } = null!;
+    public long AssetId { get; set; }
+    public string Title { get; set; } = null!;
+    public string Description { get; set; } = null!;
+    public string Priority { get; set; } = "MEDIUM";
+    public string Status { get; set; } = "PENDING";
+    public long RequestedByUserId { get; set; }
+    public long? AssignedToUserId { get; set; }
+    public DateTime OpenedAtUtc { get; set; }
+    public DateTime? DueAtUtc { get; set; }
+    public DateTime? StartedAtUtc { get; set; }
+    public DateTime? ResolvedAtUtc { get; set; }
+    public string? Resolution { get; set; }
+    public decimal? EstimatedCost { get; set; }
+    public decimal? ActualCost { get; set; }
+    public bool IsArchived { get; set; }
+    public DateTime CreatedAtUtc { get; set; }
+    public DateTime? UpdatedAtUtc { get; set; }
+    public byte[] RowVersion { get; set; } = null!;
+}

@@ -109,9 +109,14 @@ public sealed class UserAccountApiTests(MvpFixture fixture)
         Assert.Equal(HttpStatusCode.Unauthorized, (await caller.GetAsync("/api/v1/auth/me")).StatusCode);
         using var anonymous = fixture.Factory.CreateClient();
         await Error(await anonymous.PostAsJsonAsync("/api/v1/auth/login", new { email, password = MvpFixture.Password }), HttpStatusCode.Unauthorized, "INVALID_CREDENTIALS");
-        var inactive = await Status(admin, await Get(admin, me.Id), "Inactive"); Assert.False(inactive.User.IsActive); Assert.True(inactive.IsAdminLocked); Assert.Empty(inactive.Warnings);
+        var inactive = await Status(admin, await Get(admin, me.Id), "Inactive"); Assert.False(inactive.User.IsActive); Assert.True(inactive.IsAdminLocked);
+        // The isolated schema now includes asset_assignments. BR-055's approved
+        // conservative warning is intentional until per-user allocation review exists;
+        // it must not be interpreted as a counted active assignment or auto-return.
+        Assert.Equal(["ALLOCATION_REVIEW_REQUIRED"], inactive.Warnings);
         var active = await Status(admin, inactive.User, "Active"); Assert.True(active.User.IsActive); Assert.True(active.IsAdminLocked);
         var unlocked = await Status(admin, active.User, "Unlocked"); Assert.False(unlocked.IsAdminLocked);
+        Assert.Empty(locked.Warnings); Assert.Empty(active.Warnings); Assert.Empty(unlocked.Warnings);
         var login = await anonymous.PostAsJsonAsync("/api/v1/auth/login", new { email, password = MvpFixture.Password }); Assert.Equal(HttpStatusCode.OK, login.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await caller.GetAsync("/api/v1/auth/me")).StatusCode); // Old token never revives.
         await using var scope = fixture.Factory.Services.CreateAsyncScope(); var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

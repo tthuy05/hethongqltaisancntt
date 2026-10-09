@@ -46,6 +46,18 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             var membershipRemoval = e.Entity is UserRole link && _membershipDeletes.Contains(link);
             if (e.State == EntityState.Deleted && !membershipRemoval || e.State == EntityState.Modified && e.Entity is AuditLog or AssetStatusHistory)
                 throw new InvalidOperationException("Hard delete and append-only history mutation are forbidden.");
+            if (e.State == EntityState.Modified && e.Entity is AssetAssignment)
+            {
+                var immutable = new[] { "AssetId", "AssignedUserId", "AssignedDepartmentId", "AssignedAtUtc", "AssignedByUserId", "CreatedAtUtc" };
+                if (immutable.Any(name => e.Property(name).IsModified))
+                    throw new InvalidOperationException("Assignment identity/target/history cannot be rewritten.");
+                if (e.OriginalValues.GetValue<DateTime?>("ReturnedAtUtc") is not null)
+                {
+                    var archiveOnly = !e.OriginalValues.GetValue<bool>("IsArchived") && e.CurrentValues.GetValue<bool>("IsArchived") &&
+                        e.Properties.Where(p => p.IsModified).All(p => p.Metadata.Name is "IsArchived" or "RowVersion");
+                    if (!archiveOnly) throw new InvalidOperationException("Closed assignment history is immutable.");
+                }
+            }
             if (e.Entity is AssetStatusHistory history) { _historyAssets.Add(history.AssetId); continue; }
             if (e.Entity is AuditLog) continue;
             _written.Add(e.Entity);

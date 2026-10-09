@@ -107,6 +107,8 @@ internal static class M1Model
         log.HasIndex(x => x.CorrelationId).HasDatabaseName("ix_audit_logs_correlation");
         log.HasIndex(x => new { x.Action, x.Outcome, x.OccurredAtUtc }).IsDescending(false,false,true).HasDatabaseName("ix_audit_logs_action_outcome");
 
+        AssignmentMaintenanceMappingProposal.Configure(model);
+
         foreach (var entity in model.Model.GetEntityTypes())
         {
             foreach (var property in entity.GetProperties())

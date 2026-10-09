@@ -12,7 +12,7 @@ public sealed class AuditLogTests
     {
         Assert.Equal("audit-logs.read", Permissions.AuditRead); Assert.Contains(Permissions.AuditRead, Permissions.Admin);
         Assert.DoesNotContain(Permissions.AuditRead, Permissions.Read); Assert.DoesNotContain(Permissions.AuditRead, Permissions.Operate);
-        Assert.Equal(25, Permissions.All.Distinct().Count()); Assert.Equal(Permissions.All.Length, Permissions.All.Distinct().Count());
+        Assert.Equal(28, Permissions.All.Distinct().Count()); Assert.Equal(Permissions.All.Length, Permissions.All.Distinct().Count());
     }
     [Fact]
     public void Date_defaults_and_explicit_offsets_use_half_open_utc_window()
