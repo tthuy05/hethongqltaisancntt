@@ -46,7 +46,8 @@ public sealed class MvpFixture : IAsyncLifetime
             builder.UseEnvironment("Development");
             builder.ConfigureAppConfiguration((_, c) => c.AddInMemoryCollection(new Dictionary<string, string?>
             { ["ConnectionStrings:DefaultConnection"] = settings.ConnectionString, ["Database:EnableReadinessProbe"] = "true",
-              ["Logging:LogLevel:Default"] = "None", ["Frontend:Enabled"] = "false" }));
+              ["Logging:LogLevel:Default"] = "None", ["Frontend:Enabled"] = "false",
+              ["Features:AssignmentApi:Enabled"] = "true" }));
         });
         await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

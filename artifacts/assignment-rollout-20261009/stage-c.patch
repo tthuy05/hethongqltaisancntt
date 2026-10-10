@@ -1,0 +1,1641 @@
+diff --git a/src/ItAssetManagement.Api/Mvp/AssetAssignmentsController.cs b/src/ItAssetManagement.Api/Mvp/AssetAssignmentsController.cs
+new file mode 100644
+index 0000000..7a534c8
+--- /dev/null
++++ b/src/ItAssetManagement.Api/Mvp/AssetAssignmentsController.cs
+@@ -0,0 +1,43 @@
++using ItAssetManagement.Application.Mvp;
++using Microsoft.AspNetCore.Authorization;
++using Microsoft.AspNetCore.Mvc;
++
++namespace ItAssetManagement.Api.Mvp;
++
++[ApiController]
++[Route("api/v1/asset-assignments")]
++public sealed class AssetAssignmentsController(AssignmentService service) : ControllerBase
++{
++    [HttpGet]
++    [Authorize(Policy = Permissions.AssignmentRead)]
++    public Task<PagedResponse<AssignmentDto>> List(CancellationToken ct,
++        [FromQuery(Name = "page")] int page = 1, [FromQuery(Name = "pageSize")] int pageSize = 20,
++        [FromQuery(Name = "assetId")] long? assetId = null, [FromQuery(Name = "userId")] long? userId = null,
++        [FromQuery(Name = "departmentId")] long? departmentId = null, [FromQuery(Name = "active")] bool activeOnly = false)
++    {
++        Errors.Query(Request, "page", "pageSize", "assetId", "userId", "departmentId", "active");
++        return service.ListAsync(assetId, userId, departmentId, activeOnly, page, pageSize, ct);
++    }
++
++    [HttpGet("{id:long:min(1)}")]
++    [Authorize(Policy = Permissions.AssignmentRead)]
++    public async Task<AssignmentDto> Get(long id, CancellationToken ct)
++    {
++        var result = await service.GetAsync(id, ct);
++        Response.Headers.ETag = '"' + result.RowVersion + '"';
++        return result;
++    }
++
++    [HttpPost]
++    [Authorize(Policy = Permissions.AssignmentAssign)]
++    public async Task<IActionResult> Assign(AssignAssetRequest request, CancellationToken ct)
++    {
++        var result = await service.AssignAsync(request, ct);
++        return CreatedAtAction(nameof(Get), new { id = result.Id }, result);
++    }
++
++    [HttpPost("{id:long:min(1)}/return")]
++    [Authorize(Policy = Permissions.AssignmentReturn)]
++    public Task<AssignmentDto> Return(long id, ReturnAssetRequest request, CancellationToken ct) =>
++        service.ReturnAsync(id, request, ct);
++}
+diff --git a/src/ItAssetManagement.Api/Program.cs b/src/ItAssetManagement.Api/Program.cs
+index b6ad4fe..9123506 100644
+--- a/src/ItAssetManagement.Api/Program.cs
++++ b/src/ItAssetManagement.Api/Program.cs
+@@ -65,6 +65,7 @@ builder.Services.AddScoped<UserAccountService>();
+ builder.Services.AddScoped<UserAccountReadService>();
+ builder.Services.AddScoped<RoleCatalogService>();
+ builder.Services.AddScoped<AuditLogService>();
++builder.Services.AddScoped<AssignmentService>();
+ builder.Services.AddScoped<IAssignmentSchemaReadiness, AssignmentSchemaReadiness>();
+ builder.Services.AddScoped<DevelopmentSeed>();
+ builder.Services.AddScoped<DevelopmentDemoSeed>();
+diff --git a/src/ItAssetManagement.Application/Mvp/AssignmentService.cs b/src/ItAssetManagement.Application/Mvp/AssignmentService.cs
+new file mode 100644
+index 0000000..122c243
+--- /dev/null
++++ b/src/ItAssetManagement.Application/Mvp/AssignmentService.cs
+@@ -0,0 +1,227 @@
++using System.Text.Json.Serialization;
++using ItAssetManagement.Domain.Entities;
++
++namespace ItAssetManagement.Application.Mvp;
++
++public sealed class AssignmentDto
++{
++    public long Id { get; set; }
++    public long AssetId { get; set; }
++    public long? AssignedUserId { get; set; }
++    public long? AssignedDepartmentId { get; set; }
++    [JsonPropertyName("assignedAt")] public DateTime AssignedAtUtc { get; set; }
++    [JsonPropertyName("returnedAt")] public DateTime? ReturnedAtUtc { get; set; }
++    public string? AssignmentNote { get; set; }
++    public string? ReturnNote { get; set; }
++    public string RowVersion { get; set; } = null!;
++}
++
++public sealed class AssignAssetRequest
++{
++    public long AssetId { get; set; }
++    public long? UserId { get; set; }
++    public long? DepartmentId { get; set; }
++    [JsonPropertyName("assignedAt")] public DateTime? AssignedAtUtc { get; set; }
++    public string? Note { get; set; }
++}
++
++public sealed class ReturnAssetRequest
++{
++    public string? Note { get; set; }
++    public string? RowVersion { get; set; }
++    [JsonPropertyName("returnedAt")] public DateTime? ReturnedAtUtc { get; set; }
++}
++
++public sealed class AssignmentService(IRepository repo, IUnitOfWork uow, IAuditWriter audit, IActor actor)
++{
++    private void Require(string permission)
++    {
++        if (actor.UserId is not > 0 || !actor.Has(permission))
++            throw new BusinessException(403, "FORBIDDEN", "Không có quyền thực hiện thao tác cấp phát.");
++    }
++
++    private static void PositiveId(long id, string field)
++    {
++        if (id <= 0) throw Validation.Invalid(field, "ID phải > 0.");
++    }
++
++    private static void Utc(DateTime? value, string field)
++    {
++        if (value is { Kind: not DateTimeKind.Utc })
++            throw Validation.Invalid(field, "Thời điểm phải là UTC.");
++    }
++
++    private IQueryable<AssignmentDto> Query() => repo.Query<AssetAssignment>().Where(x => !x.IsArchived).Select(x => new AssignmentDto
++    {
++        Id = x.Id, AssetId = x.AssetId, AssignedUserId = x.AssignedUserId, AssignedDepartmentId = x.AssignedDepartmentId,
++        AssignedAtUtc = x.AssignedAtUtc, ReturnedAtUtc = x.ReturnedAtUtc, AssignmentNote = x.AssignmentNote,
++        ReturnNote = x.ReturnNote, RowVersion = Convert.ToBase64String(x.RowVersion),
++    });
++
++    public async Task<PagedResponse<AssignmentDto>> ListAsync(long? assetId, long? userId, long? departmentId,
++        bool activeOnly, int page, int pageSize, CancellationToken ct)
++    {
++        Require(Permissions.AssignmentRead);
++        if (page < 1 || pageSize is < 1 or > 100 || (long)(page - 1) * pageSize > int.MaxValue)
++            throw Validation.Invalid("page", "page >= 1, pageSize 1..100, offset hợp lệ.");
++        if (assetId <= 0 || userId <= 0 || departmentId <= 0)
++            throw Validation.Invalid("filter", "ID phải > 0 hoặc null.");
++
++        var query = Query();
++        if (assetId is { } a) query = query.Where(x => x.AssetId == a);
++        if (userId is { } u) query = query.Where(x => x.AssignedUserId == u);
++        if (departmentId is { } d) query = query.Where(x => x.AssignedDepartmentId == d);
++        if (activeOnly) query = query.Where(x => x.ReturnedAtUtc == null);
++
++        var total = await repo.CountAsync(query, ct);
++        var order = query.OrderByDescending(x => x.AssignedAtUtc).ThenByDescending(x => x.Id);
++        var items = await repo.ListAsync(order.Skip((page - 1) * pageSize).Take(pageSize), ct);
++        return new(items, page, pageSize, total, (int)Math.Ceiling(total / (double)pageSize));
++    }
++
++    public async Task<AssignmentDto> GetAsync(long id, CancellationToken ct)
++    {
++        Require(Permissions.AssignmentRead); PositiveId(id, "assignmentId");
++        return await DetailAsync(id, ct);
++    }
++
++    // Command responses use the command's permission, not an extra read check after commit.
++    private async Task<AssignmentDto> DetailAsync(long id, CancellationToken ct) =>
++        await repo.FirstAsync(Query().Where(x => x.Id == id), ct) ?? throw NotFound();
++
++    public async Task<AssignmentDto> AssignAsync(AssignAssetRequest x, CancellationToken ct)
++    {
++        Require(Permissions.AssignmentAssign); PositiveId(x.AssetId, "assetId");
++        if ((x.UserId is null) == (x.DepartmentId is null))
++            throw Validation.Invalid("userId", "Phải chọn đúng một trong hai: user hoặc department.");
++        if (x.UserId <= 0 || x.DepartmentId <= 0) throw Validation.Invalid("target", "ID phải > 0.");
++        var note = Validation.Optional(x.Note, 1000, "note"); Utc(x.AssignedAtUtc, "assignedAt");
++
++        var resultId = await uow.RunAsync(async () =>
++        {
++            // Share the parent-row protocol with AssetService archive/status/update.
++            await repo.LockAssetAsync(x.AssetId, ct);
++
++            var asset = await repo.FirstAsync(repo.Query<Asset>(true).Where(a => a.Id == x.AssetId), ct)
++                ?? throw new BusinessException(404, "ASSET_NOT_FOUND", "Không tìm thấy tài sản.");
++            if (asset.IsArchived) throw new BusinessException(409, "ASSET_ARCHIVED", "Không thể cấp phát tài sản đã archive.");
++            if (asset.CurrentStatus != "IN_STOCK")
++                throw new BusinessException(409, "ASSET_NOT_IN_STOCK", "Chỉ tài sản IN_STOCK mới cấp phát được.");
++
++            var hasActive = await repo.AnyAsync(repo.Query<AssetAssignment>()
++                .Where(a => a.AssetId == x.AssetId && a.ReturnedAtUtc == null && !a.IsArchived), ct);
++            if (hasActive) throw new BusinessException(409, "ASSET_ALREADY_ASSIGNED", "Tài sản đã có assignment hiệu lực.");
++
++            // Asset -> master-data -> users-identity is consistent with metadata writes.
++            // These shared locks prevent target deactivation during validation/commit.
++            await repo.LockAsync("master-data", ct);
++            await repo.LockAsync("users-identity", ct);
++            if (x.UserId is { } userId && !await repo.AnyAsync(repo.Query<User>().Where(u => u.Id == userId && u.IsActive), ct))
++                throw Validation.Invalid("userId", "Người nhận không tồn tại/không hoạt động.");
++            if (x.DepartmentId is { } departmentId && !await repo.AnyAsync(repo.Query<Department>().Where(d => d.Id == departmentId && d.IsActive), ct))
++                throw Validation.Invalid("departmentId", "Phòng ban nhận không tồn tại/không hoạt động.");
++
++            var assignedAt = x.AssignedAtUtc ?? DateTime.UtcNow;
++            var assetBefore = new { asset.CurrentStatus, asset.IsArchived };
++
++            var assignment = new AssetAssignment
++            {
++                AssetId = x.AssetId, AssignedUserId = x.UserId, AssignedDepartmentId = x.DepartmentId,
++                AssignedAtUtc = assignedAt, AssignedByUserId = actor.UserId!.Value, AssignmentNote = note,
++            };
++            repo.Add(assignment);
++
++            var oldStatus = asset.CurrentStatus;
++            asset.CurrentStatus = "IN_USE";
++            asset.UpdatedByUserId = actor.UserId;
++
++            var history = new AssetStatusHistory
++            {
++                AssetId = asset.Id, FromStatus = oldStatus, ToStatus = "IN_USE", Source = "ASSIGNMENT",
++                ChangedAtUtc = assignedAt, ChangedByUserId = actor.UserId, CorrelationId = actor.CorrelationId,
++                Reason = note ?? "Cấp phát tài sản",
++            };
++            repo.Add(history);
++
++            await repo.SaveAsync(ct);
++            audit.Record("assignments.assign", assignment, actor.UserId, "USER",
++                after: Snapshot(assignment));
++            audit.Record("assignments.assign", asset, actor.UserId, "USER", before: assetBefore,
++                after: new { asset.CurrentStatus, asset.IsArchived });
++            await repo.SaveAsync(ct);
++            return assignment.Id;
++        }, ct);
++
++        return await DetailAsync(resultId, ct);
++    }
++
++    public async Task<AssignmentDto> ReturnAsync(long id, ReturnAssetRequest x, CancellationToken ct)
++    {
++        Require(Permissions.AssignmentReturn); PositiveId(id, "assignmentId");
++        var version = Validation.Version(x.RowVersion);
++        var note = Validation.Required(x.Note, 1000, "note"); Utc(x.ReturnedAtUtc, "returnedAt");
++        await uow.RunAsync(async () =>
++        {
++            var observed = await repo.FirstAsync(repo.Query<AssetAssignment>().Where(a => a.Id == id), ct) ?? throw NotFound();
++            await repo.LockAssetAsync(observed.AssetId, ct);
++
++            var assignment = await repo.FirstAsync(repo.Query<AssetAssignment>(true).Where(a => a.Id == id && a.AssetId == observed.AssetId), ct)
++                ?? throw NotFound();
++            if (!assignment.RowVersion.SequenceEqual(version))
++                throw new BusinessException(409, "CONCURRENCY_CONFLICT", "Dữ liệu đã thay đổi; tải lại trước khi lưu.");
++            if (assignment.ReturnedAtUtc != null || assignment.IsArchived)
++                throw new BusinessException(409, "ASSIGNMENT_ALREADY_RETURNED", "Assignment đã được thu hồi.");
++
++            var asset = await repo.FirstAsync(repo.Query<Asset>(true).Where(a => a.Id == assignment.AssetId), ct)
++                ?? throw new BusinessException(500, "DATA_INCONSISTENT", "Không tìm thấy tài sản liên kết với assignment này.");
++
++            if (asset.IsArchived || asset.CurrentStatus is not ("IN_USE" or "MAINTENANCE" or "BROKEN"))
++                throw new BusinessException(409, "ASSET_STATUS_CONFLICT", "Trạng thái tài sản không phù hợp để thu hồi.");
++            var inProgress = await repo.AnyAsync(repo.Query<MaintenanceTicket>().Where(t =>
++                t.AssetId == asset.Id && t.Status == "IN_PROGRESS" && !t.IsArchived), ct);
++            if (asset.CurrentStatus == "MAINTENANCE" && !inProgress || asset.CurrentStatus == "IN_USE" && inProgress)
++                throw new BusinessException(409, "ASSET_STATUS_CONFLICT", "Trạng thái bảo trì và tài sản không nhất quán.");
++
++            var returnedAt = x.ReturnedAtUtc ?? DateTime.UtcNow;
++            if (returnedAt < assignment.AssignedAtUtc)
++                throw Validation.Invalid("returnedAt", "Không được trước thời điểm cấp phát.");
++            var before = Snapshot(assignment);
++            var assetBefore = new { asset.CurrentStatus, asset.IsArchived };
++            repo.ExpectVersion(assignment, version);
++
++            assignment.ReturnedAtUtc = returnedAt;
++            assignment.ReturnedByUserId = actor.UserId;
++            assignment.ReturnNote = note;
++
++            var oldStatus = asset.CurrentStatus;
++            if (oldStatus == "IN_USE")
++            {
++                asset.CurrentStatus = "IN_STOCK"; asset.UpdatedByUserId = actor.UserId;
++                repo.Add(new AssetStatusHistory
++                {
++                    AssetId = asset.Id, FromStatus = oldStatus, ToStatus = "IN_STOCK", Source = "ASSIGNMENT",
++                    ChangedAtUtc = returnedAt, ChangedByUserId = actor.UserId, CorrelationId = actor.CorrelationId, Reason = note,
++                });
++            }
++
++            await repo.SaveAsync(ct);
++            audit.Record("assignments.return", assignment, actor.UserId, "USER", before: before, after: Snapshot(assignment));
++            audit.Record("assignments.return", asset, actor.UserId, "USER", before: assetBefore,
++                after: new { asset.CurrentStatus, asset.IsArchived });
++            await repo.SaveAsync(ct);
++            return true;
++        }, ct);
++
++        return await DetailAsync(id, ct);
++    }
++
++    // Deliberately omit notes/free text from the audit payload.
++    private static object Snapshot(AssetAssignment assignment) => new
++    {
++        assignment.AssetId, assignment.AssignedUserId, assignment.AssignedDepartmentId, assignment.AssignedByUserId,
++        assignment.ReturnedByUserId, assignment.AssignedAtUtc, assignment.ReturnedAtUtc,
++        reasonProvided = !string.IsNullOrEmpty(assignment.ReturnNote),
++    };
++
++    private static BusinessException NotFound() => new(404, "ASSIGNMENT_NOT_FOUND", "Không tìm thấy assignment.");
++}
+diff --git a/src/ItAssetManagement.Application/Mvp/AuditLogService.cs b/src/ItAssetManagement.Application/Mvp/AuditLogService.cs
+index 4eadeec..b4ff591 100644
+--- a/src/ItAssetManagement.Application/Mvp/AuditLogService.cs
++++ b/src/ItAssetManagement.Application/Mvp/AuditLogService.cs
+@@ -79,12 +79,13 @@ public sealed class AuditLogDetailDto : AuditLogSummaryDto
+ // Revalidate historic JSON at the read boundary; never return the stored snapshot directly.
+ public static class AuditSnapshot
+ {
+-    private static readonly string[] PositiveIds = ["assetTypeId", "owningDepartmentId", "userId", "roleId", "auditLogId"];
+-    private static readonly string[] NullableIds = ["parentDepartmentId", "departmentId"];
++    private static readonly string[] PositiveIds = ["assetTypeId", "owningDepartmentId", "userId", "roleId", "auditLogId", "assetId", "assignedByUserId"];
++    private static readonly string[] NullableIds = ["parentDepartmentId", "departmentId", "assignedUserId", "assignedDepartmentId", "returnedByUserId"];
++    private static readonly string[] UtcTimes = ["assignedAtUtc", "returnedAtUtc"];
+     private static readonly string[] Flags = ["isActive", "isArchived", "isAdminLocked", "emailChanged", "usernameChanged", "displayNameChanged",
+         "employeeCodeChanged", "phoneChanged", "adminRoleAssigned", "reasonProvided"];
+     private static readonly string[] Other = ["defaultUsefulLifeMonths", "roleCount", "currentStatus", "purchaseCost", "page", "pageSize", "returnedCount"];
+-    private static readonly Dictionary<string, string> Names = PositiveIds.Concat(NullableIds).Concat(Flags).Concat(Other)
++    private static readonly Dictionary<string, string> Names = PositiveIds.Concat(NullableIds).Concat(UtcTimes).Concat(Flags).Concat(Other)
+         .ToDictionary(x => x, x => x, StringComparer.OrdinalIgnoreCase);
+ 
+     public static (Dictionary<string, JsonElement>? Values, bool Redacted) Read(string? json, bool canReadCost)
+@@ -113,6 +114,7 @@ public static class AuditSnapshot
+         if (PositiveIds.Contains(name)) return value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out var id) && id > 0;
+         if (NullableIds.Contains(name)) return isNull || value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out var optionalId) && optionalId > 0;
+         if (Flags.Contains(name)) return value.ValueKind is JsonValueKind.True or JsonValueKind.False;
++        if (UtcTimes.Contains(name)) return isNull || value.ValueKind == JsonValueKind.String && value.TryGetDateTime(out var time) && time.Kind == DateTimeKind.Utc;
+         return name switch
+         {
+             "defaultUsefulLifeMonths" => isNull || value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var months) && months > 0,
+diff --git a/src/ItAssetManagement.Infrastructure/Mvp/Persistence.cs b/src/ItAssetManagement.Infrastructure/Mvp/Persistence.cs
+index 1311767..7a9780c 100644
+--- a/src/ItAssetManagement.Infrastructure/Mvp/Persistence.cs
++++ b/src/ItAssetManagement.Infrastructure/Mvp/Persistence.cs
+@@ -61,6 +61,7 @@ public sealed class AuditedUnitOfWork(AppDbContext db) : IUnitOfWork
+                     "uq_departments_code" => "DEPARTMENT_CODE_CONFLICT", "uq_asset_types_code" => "ASSET_TYPE_CODE_CONFLICT",
+                     "uq_users_normalized_email" => "USER_EMAIL_CONFLICT", "uq_users_normalized_username" => "USER_USERNAME_CONFLICT",
+                     "uq_users_employee_code" => "USER_EMPLOYEE_CODE_CONFLICT",
++                    "uq_asset_assignments_one_active" => "ASSET_ALREADY_ASSIGNED",
+                     _ => "BUSINESS_KEY_CONFLICT"
+                 };
+                 throw new BusinessException(409, code, "Mã nghiệp vụ đã tồn tại.");
+@@ -76,7 +77,8 @@ public sealed class AuditWriter(AppDbContext db, IActor actor) : IAuditWriter
+       "code", "isActive", "parentDepartmentId", "defaultUsefulLifeMonths", "departmentId",
+       "emailChanged", "usernameChanged", "displayNameChanged", "employeeCodeChanged", "phoneChanged",
+       "isAdminLocked", "userId", "roleId", "roleCount", "adminRoleAssigned", "reasonProvided",
+-      "auditLogId", "page", "pageSize", "returnedCount" };
++      "auditLogId", "page", "pageSize", "returnedCount", "assetId", "assignedUserId", "assignedDepartmentId",
++      "assignedByUserId", "returnedByUserId", "assignedAtUtc", "returnedAtUtc" };
+     public void Record(string action, object? entity, long? actorId, string actorType, string outcome = "SUCCESS",
+         object? before = null, object? after = null, string? failureCode = null)
+     {
+diff --git a/tests/ItAssetManagement.IntegrationTests/AssignmentApiTests.cs b/tests/ItAssetManagement.IntegrationTests/AssignmentApiTests.cs
+new file mode 100644
+index 0000000..c2a1062
+--- /dev/null
++++ b/tests/ItAssetManagement.IntegrationTests/AssignmentApiTests.cs
+@@ -0,0 +1,248 @@
++using System.Net;
++using System.Net.Http.Json;
++using System.Text.Json;
++using ItAssetManagement.Application.Mvp;
++using ItAssetManagement.Domain.Entities;
++using ItAssetManagement.Infrastructure.Data;
++using Microsoft.EntityFrameworkCore;
++using Microsoft.Extensions.DependencyInjection;
++
++namespace ItAssetManagement.IntegrationTests;
++
++// Real HTTP evidence for Thiện's four handed-off endpoints, using the existing
++// opt-in isolated database. No new routes, schema setup, shared database or cleanup.
++[Collection("isolated-neon")]
++public sealed class AssignmentApiTests(MvpFixture fixture)
++{
++    private const string Path = "/api/v1/asset-assignments";
++    private const string IsolatedDatabase = "it_asset_management_m1_verify_20261002";
++
++    private async Task<T> ReadAsync<T>(Func<AppDbContext, Task<T>> work)
++    {
++        await using var scope = fixture.Factory.Services.CreateAsyncScope();
++        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
++        Assert.Equal(IsolatedDatabase, db.Database.GetDbConnection().Database);
++        return await work(db);
++    }
++    private async Task<AssetDto> CreateAsync(HttpClient client)
++    {
++        var response = await client.PostAsJsonAsync("/api/v1/assets", fixture.Asset());
++        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
++        return (await response.Content.ReadFromJsonAsync<AssetDto>())!;
++    }
++    private static async Task<CurrentUser> MeAsync(HttpClient client) => (await client.GetFromJsonAsync<CurrentUser>("/api/v1/auth/me"))!;
++    private static async Task<AssignmentDto> AssignAsync(HttpClient client, long assetId, long userId)
++    {
++        var response = await client.PostAsJsonAsync(Path, new { assetId, userId, note = "Isolated HTTP handoff" });
++        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
++        return (await response.Content.ReadFromJsonAsync<AssignmentDto>())!;
++    }
++    private static async Task<AssignmentDto> ReturnAsync(HttpClient client, AssignmentDto assignment)
++    {
++        var response = await client.PostAsJsonAsync($"{Path}/{assignment.Id}/return",
++            new { rowVersion = assignment.RowVersion, note = "Isolated HTTP return" });
++        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
++        return (await response.Content.ReadFromJsonAsync<AssignmentDto>())!;
++    }
++    private static async Task Error(HttpResponseMessage response, HttpStatusCode status, string? code = null)
++    {
++        Assert.Equal(status, response.StatusCode);
++        if (code != null)
++        {
++            var body = (await response.Content.ReadFromJsonAsync<JsonElement>());
++            Assert.Equal(code, body.GetProperty("code").GetString());
++            Assert.True(body.TryGetProperty("traceId", out _));
++        }
++    }
++    private static async Task<HttpResponseMessage> ArchiveAsync(HttpClient client, AssetDto asset)
++    {
++        using var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/v1/assets/{asset.Id}");
++        request.Headers.TryAddWithoutValidation("If-Match", '"' + asset.RowVersion + '"');
++        return await client.SendAsync(request);
++    }
++
++    [NeonFact]
++    public async Task All_four_endpoints_require_valid_authentication()
++    {
++        using var client = fixture.Factory.CreateClient();
++        foreach (var invalidToken in new[] { false, true })
++        {
++            if (invalidToken) client.DefaultRequestHeaders.Authorization = new("Bearer", "invalid-assignment-token");
++            await Error(await client.GetAsync(Path), HttpStatusCode.Unauthorized);
++            await Error(await client.GetAsync(Path + "/1"), HttpStatusCode.Unauthorized);
++            await Error(await client.PostAsJsonAsync(Path, new { assetId = 1, userId = 1 }), HttpStatusCode.Unauthorized);
++            await Error(await client.PostAsJsonAsync(Path + "/1/return",
++                new { rowVersion = Convert.ToBase64String(new byte[16]), note = "Unauthorized" }), HttpStatusCode.Unauthorized);
++        }
++    }
++
++    [NeonFact]
++    public async Task Technical_support_is_denied_by_all_four_HTTP_permission_policies()
++    {
++        using var admin = await fixture.ClientAsync(); var asset = await CreateAsync(admin);
++        using var support = await fixture.ClientAsync(fixture.SupportEmail); var me = await MeAsync(support);
++        await Error(await support.GetAsync(Path), HttpStatusCode.Forbidden);
++        await Error(await support.GetAsync(Path + "/1"), HttpStatusCode.Forbidden);
++        await Error(await support.PostAsJsonAsync(Path, new { assetId = asset.Id, userId = me.Id }), HttpStatusCode.Forbidden);
++        await Error(await support.PostAsJsonAsync(Path + "/1/return",
++            new { rowVersion = Convert.ToBase64String(new byte[16]), note = "Forbidden" }), HttpStatusCode.Forbidden);
++        Assert.False(await ReadAsync(db => db.Set<AssetAssignment>().AnyAsync(x => x.AssetId == asset.Id)));
++        Assert.Equal("IN_STOCK", await ReadAsync(db => db.Set<Asset>().Where(x => x.Id == asset.Id).Select(x => x.CurrentStatus).SingleAsync()));
++    }
++
++    [NeonFact]
++    public async Task Admin_and_manager_can_use_all_four_routes_with_Location_ETag_and_atomic_audit_pairs()
++    {
++        foreach (var email in new[] { MvpFixture.AdminEmail, fixture.ManagerEmail })
++        {
++            using var client = await fixture.ClientAsync(email); var me = await MeAsync(client); var asset = await CreateAsync(client);
++            var create = await client.PostAsJsonAsync(Path,
++                new { assetId = asset.Id, userId = me.Id, assignedAt = DateTime.UtcNow.AddMinutes(-1), note = "Isolated HTTP handoff" });
++            Assert.Equal(HttpStatusCode.Created, create.StatusCode);
++            var assignment = (await create.Content.ReadFromJsonAsync<AssignmentDto>())!;
++            Assert.NotNull(create.Headers.Location); Assert.EndsWith($"{Path}/{assignment.Id}", create.Headers.Location!.ToString());
++            var detail = await client.GetAsync(create.Headers.Location);
++            Assert.Equal(HttpStatusCode.OK, detail.StatusCode); Assert.Equal('"' + assignment.RowVersion + '"', detail.Headers.ETag!.Tag);
++            var detailJson = await detail.Content.ReadFromJsonAsync<JsonElement>();
++            Assert.True(detailJson.TryGetProperty("assignedAt", out _)); Assert.True(detailJson.TryGetProperty("returnedAt", out _));
++            Assert.False(detailJson.TryGetProperty("assignedAtUtc", out _)); Assert.Equal(me.Id, assignment.AssignedUserId);
++            var current = (await client.GetFromJsonAsync<PagedResponse<AssignmentDto>>($"{Path}?assetId={asset.Id}&active=true"))!;
++            Assert.Equal(assignment.Id, Assert.Single(current.Items).Id);
++            await AssertAuditPairAsync(asset.Id, assignment.Id, "assignments.assign", me.Id);
++            var returned = await ReturnAsync(client, assignment);
++            Assert.NotNull(returned.ReturnedAtUtc); Assert.NotEqual(assignment.RowVersion, returned.RowVersion);
++            var returnedGet = await client.GetAsync($"{Path}/{assignment.Id}");
++            Assert.Equal(HttpStatusCode.OK, returnedGet.StatusCode); Assert.Equal('"' + returned.RowVersion + '"', returnedGet.Headers.ETag!.Tag);
++            Assert.Empty((await client.GetFromJsonAsync<PagedResponse<AssignmentDto>>($"{Path}?assetId={asset.Id}&active=true"))!.Items);
++            Assert.Single((await client.GetFromJsonAsync<PagedResponse<AssignmentDto>>($"{Path}?assetId={asset.Id}"))!.Items);
++            Assert.Equal("InStock", (await client.GetFromJsonAsync<AssetDto>($"/api/v1/assets/{asset.Id}"))!.Status);
++            await AssertAuditPairAsync(asset.Id, assignment.Id, "assignments.return", me.Id);
++            Assert.Equal(2, await ReadAsync(db => db.Set<AssetStatusHistory>().CountAsync(x => x.AssetId == asset.Id && x.Source == "ASSIGNMENT")));
++        }
++    }
++
++    private Task<bool> AssertAuditPairAsync(long assetId, long assignmentId, string action, long actorId) => ReadAsync(async db =>
++    {
++        var logs = await db.Set<AuditLog>().AsNoTracking().Where(x => x.Action == action &&
++            (x.EntityType == "Asset" && x.EntityId == assetId.ToString() || x.EntityType == "AssetAssignment" && x.EntityId == assignmentId.ToString())).ToListAsync();
++        Assert.Equal(2, logs.Count); Assert.All(logs, log => { Assert.Equal(actorId, log.ActorUserId); Assert.Equal("SUCCESS", log.Outcome); });
++        Assert.Equal(logs[0].CorrelationId, logs[1].CorrelationId);
++        var assignmentLog = logs.Single(x => x.EntityType == "AssetAssignment");
++        using var snapshot = JsonDocument.Parse(assignmentLog.NewValuesJson!);
++        Assert.Equal(assetId, snapshot.RootElement.GetProperty("AssetId").GetInt64());
++        Assert.False(snapshot.RootElement.TryGetProperty("AssignmentNote", out _)); Assert.False(snapshot.RootElement.TryGetProperty("ReturnNote", out _));
++        return true;
++    });
++
++    [NeonFact]
++    public async Task XOR_positive_ID_and_inactive_target_validation_reject_without_business_side_effects()
++    {
++        using var client = await fixture.ClientAsync(); var me = await MeAsync(client); var asset = await CreateAsync(client);
++        var inactiveId = await ReadAsync(db => db.Set<User>().Where(x => x.Email == fixture.InactiveEmail).Select(x => x.Id).SingleAsync());
++        foreach (var request in new object[]
++        {
++            new { assetId = asset.Id }, new { assetId = asset.Id, userId = me.Id, departmentId = fixture.DepartmentId },
++            new { assetId = asset.Id, userId = 0 }, new { assetId = asset.Id, userId = inactiveId },
++            new { assetId = asset.Id, userId = me.Id, note = new string('x', 1001) },
++        }) await Error(await client.PostAsJsonAsync(Path, request), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
++        Assert.False(await ReadAsync(db => db.Set<AssetAssignment>().AnyAsync(x => x.AssetId == asset.Id)));
++        Assert.False(await ReadAsync(db => db.Set<AssetStatusHistory>().AnyAsync(x => x.AssetId == asset.Id && x.Source == "ASSIGNMENT")));
++        Assert.Equal("InStock", (await client.GetFromJsonAsync<AssetDto>($"/api/v1/assets/{asset.Id}"))!.Status);
++    }
++
++    [NeonFact]
++    public async Task Return_malformed_version_stale_version_and_closed_replay_have_correct_HTTP_errors()
++    {
++        using var client = await fixture.ClientAsync(); var me = await MeAsync(client); var asset = await CreateAsync(client);
++        var assignment = await AssignAsync(client, asset.Id, me.Id);
++        await Error(await client.PostAsJsonAsync($"{Path}/{assignment.Id}/return", new { rowVersion = "malformed", note = "Invalid" }),
++            HttpStatusCode.BadRequest, "VALIDATION_ERROR");
++        await Error(await client.PostAsJsonAsync($"{Path}/{assignment.Id}/return", new { rowVersion = Convert.ToBase64String(new byte[16]), note = "Stale" }),
++            HttpStatusCode.Conflict, "CONCURRENCY_CONFLICT");
++        Assert.Null((await client.GetFromJsonAsync<AssignmentDto>($"{Path}/{assignment.Id}"))!.ReturnedAtUtc);
++        Assert.False(await ReadAsync(db => db.Set<AuditLog>().AnyAsync(x => x.Action == "assignments.return" && x.EntityType == "AssetAssignment" && x.EntityId == assignment.Id.ToString())));
++        var returned = await ReturnAsync(client, assignment);
++        await Error(await client.PostAsJsonAsync($"{Path}/{assignment.Id}/return", new { rowVersion = assignment.RowVersion, note = "Old token" }),
++            HttpStatusCode.Conflict, "CONCURRENCY_CONFLICT");
++        await Error(await client.PostAsJsonAsync($"{Path}/{assignment.Id}/return", new { rowVersion = returned.RowVersion, note = "Replay" }),
++            HttpStatusCode.Conflict, "ASSIGNMENT_ALREADY_RETURNED");
++        await AssertAuditPairAsync(asset.Id, assignment.Id, "assignments.return", me.Id);
++    }
++
++    [NeonFact]
++    public async Task List_uses_handed_off_filters_and_rejects_unimplemented_or_invalid_query_contracts()
++    {
++        using var client = await fixture.ClientAsync(); var me = await MeAsync(client); var asset = await CreateAsync(client);
++        var assignment = await AssignAsync(client, asset.Id, me.Id);
++        var response = await client.GetAsync($"{Path}?assetId={asset.Id}&userId={me.Id}&active=true&page=1&pageSize=1");
++        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
++        var page = (await response.Content.ReadFromJsonAsync<PagedResponse<AssignmentDto>>())!;
++        Assert.Equal(1, page.TotalItems); Assert.Equal(1, page.TotalPages); Assert.Equal(assignment.Id, Assert.Single(page.Items).Id);
++        foreach (var query in new[] { "page=0", "pageSize=101", "page=2147483647&pageSize=100", "assetId=-1", "active=invalid", "page=1&page=2",
++            "status=Active", "from=2026-10-01", "to=2026-10-08", "sortBy=assignedAt" })
++            await Error(await client.GetAsync(Path + "?" + query), HttpStatusCode.BadRequest);
++        // status/from/to/client sort remain contract gaps, not silently supported by this Controller.
++    }
++
++    [NeonFact]
++    public async Task Asset_HTTP_archive_and_retire_block_only_real_active_workflow_and_allow_returned_assets()
++    {
++        using var client = await fixture.ClientAsync(); var me = await MeAsync(client);
++        var occupied = await CreateAsync(client); var unrelated = await CreateAsync(client); var assignment = await AssignAsync(client, occupied.Id, me.Id);
++        var current = (await client.GetFromJsonAsync<AssetDto>($"/api/v1/assets/{occupied.Id}"))!;
++        await Error(await ArchiveAsync(client, current), HttpStatusCode.Conflict, "ASSET_ACTIVE_WORKFLOW");
++        await Error(await client.PatchAsJsonAsync($"/api/v1/assets/{occupied.Id}/status",
++            new { status = "Retired", reason = "Blocked active assignment", rowVersion = current.RowVersion }), HttpStatusCode.Conflict);
++        var retireFree = await client.PatchAsJsonAsync($"/api/v1/assets/{unrelated.Id}/status",
++            new { status = "Retired", reason = "Unrelated asset is eligible", rowVersion = unrelated.RowVersion });
++        Assert.Equal(HttpStatusCode.OK, retireFree.StatusCode);
++        var retiredFree = (await retireFree.Content.ReadFromJsonAsync<AssetDto>())!;
++        Assert.Equal("Retired", retiredFree.Status); Assert.Equal(HttpStatusCode.NoContent, (await ArchiveAsync(client, retiredFree)).StatusCode);
++        await ReturnAsync(client, assignment);
++        current = (await client.GetFromJsonAsync<AssetDto>($"/api/v1/assets/{occupied.Id}"))!;
++        var retireReturned = await client.PatchAsJsonAsync($"/api/v1/assets/{occupied.Id}/status",
++            new { status = "Retired", reason = "Returned asset is eligible", rowVersion = current.RowVersion });
++        Assert.Equal(HttpStatusCode.OK, retireReturned.StatusCode);
++        Assert.Equal(HttpStatusCode.NoContent, (await ArchiveAsync(client, (await retireReturned.Content.ReadFromJsonAsync<AssetDto>())!)).StatusCode);
++    }
++
++    [NeonFact]
++    public async Task Concurrent_HTTP_assigns_return_one_201_one_409_and_one_audited_transition()
++    {
++        using var client = await fixture.ClientAsync(fixture.ManagerEmail); var me = await MeAsync(client); var asset = await CreateAsync(client);
++        var responses = await Task.WhenAll(client.PostAsJsonAsync(Path, new { assetId = asset.Id, userId = me.Id }),
++            client.PostAsJsonAsync(Path, new { assetId = asset.Id, userId = me.Id }));
++        var created = Assert.Single(responses, x => x.StatusCode == HttpStatusCode.Created);
++        Assert.Single(responses, x => x.StatusCode == HttpStatusCode.Conflict);
++        var assignment = (await created.Content.ReadFromJsonAsync<AssignmentDto>())!;
++        Assert.Equal(1, await ReadAsync(db => db.Set<AssetAssignment>().CountAsync(x => x.AssetId == asset.Id && x.ReturnedAtUtc == null)));
++        Assert.Equal(1, await ReadAsync(db => db.Set<AssetStatusHistory>().CountAsync(x => x.AssetId == asset.Id && x.Source == "ASSIGNMENT")));
++        await AssertAuditPairAsync(asset.Id, assignment.Id, "assignments.assign", me.Id);
++    }
++
++    [NeonFact]
++    public async Task Retired_and_archived_assets_cannot_be_assigned_through_HTTP()
++    {
++        using var client = await fixture.ClientAsync(); var me = await MeAsync(client); var retired = await CreateAsync(client); var archived = await CreateAsync(client);
++        Assert.Equal(HttpStatusCode.OK, (await client.PatchAsJsonAsync($"/api/v1/assets/{retired.Id}/status",
++            new { status = "Retired", reason = "Isolated retire guard", rowVersion = retired.RowVersion })).StatusCode);
++        await Error(await client.PostAsJsonAsync(Path, new { assetId = retired.Id, userId = me.Id }), HttpStatusCode.Conflict, "ASSET_NOT_IN_STOCK");
++        Assert.Equal(HttpStatusCode.NoContent, (await ArchiveAsync(client, archived)).StatusCode);
++        await Error(await client.PostAsJsonAsync(Path, new { assetId = archived.Id, userId = me.Id }), HttpStatusCode.Conflict, "ASSET_ARCHIVED");
++    }
++
++    [NeonFact]
++    public async Task Missing_assignment_has_404_and_invalid_return_time_keeps_assignment_open()
++    {
++        using var client = await fixture.ClientAsync(); var me = await MeAsync(client); var asset = await CreateAsync(client);
++        await Error(await client.GetAsync(Path + "/9223372036854775807"), HttpStatusCode.NotFound, "ASSIGNMENT_NOT_FOUND");
++        await Error(await client.PostAsJsonAsync(Path + "/9223372036854775807/return",
++            new { rowVersion = Convert.ToBase64String(new byte[16]), note = "Missing" }), HttpStatusCode.NotFound, "ASSIGNMENT_NOT_FOUND");
++        var assignment = await AssignAsync(client, asset.Id, me.Id);
++        await Error(await client.PostAsJsonAsync($"{Path}/{assignment.Id}/return",
++            new { rowVersion = assignment.RowVersion, returnedAt = assignment.AssignedAtUtc.AddMinutes(-1), note = "Wrong chronology" }),
++            HttpStatusCode.BadRequest, "VALIDATION_ERROR");
++        Assert.Null((await client.GetFromJsonAsync<AssignmentDto>($"{Path}/{assignment.Id}"))!.ReturnedAtUtc);
++        Assert.Equal("InUse", (await client.GetFromJsonAsync<AssetDto>($"/api/v1/assets/{asset.Id}"))!.Status);
++    }
++}
+diff --git a/tests/ItAssetManagement.IntegrationTests/AssignmentIntegrationTests.cs b/tests/ItAssetManagement.IntegrationTests/AssignmentIntegrationTests.cs
+new file mode 100644
+index 0000000..e056c87
+--- /dev/null
++++ b/tests/ItAssetManagement.IntegrationTests/AssignmentIntegrationTests.cs
+@@ -0,0 +1,409 @@
++using System.Net;
++using System.Net.Http.Json;
++using System.Security.Claims;
++using System.Text.Json;
++using ItAssetManagement.Application.Mvp;
++using ItAssetManagement.Domain.Entities;
++using ItAssetManagement.Infrastructure.Data;
++using Microsoft.AspNetCore.Http;
++using Microsoft.EntityFrameworkCore;
++using Microsoft.Extensions.DependencyInjection;
++using Npgsql;
++
++namespace ItAssetManagement.IntegrationTests;
++
++// No AssignmentController is introduced for these tests. Actual DI/service/persistence
++// runs against the opt-in existing isolated database, never shared neondb. Fixture-owned
++// records remain there like the existing suite; no schema/reset/delete cleanup is used.
++[Collection("isolated-neon")]
++public sealed class AssignmentIntegrationTests(MvpFixture fixture)
++{
++    private const string IsolatedDatabase = "it_asset_management_m1_verify_20261002";
++    private static readonly CancellationToken Ct = CancellationToken.None;
++
++    private static void VerifyTarget(IServiceProvider provider) =>
++        Assert.Equal(IsolatedDatabase, provider.GetRequiredService<AppDbContext>().Database.GetDbConnection().Database);
++
++    private async Task<CurrentUser> MeAsync(string? email = null)
++    {
++        using var client = await fixture.ClientAsync(email);
++        var response = await client.GetAsync("/api/v1/auth/me");
++        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
++        return (await response.Content.ReadFromJsonAsync<CurrentUser>())!;
++    }
++
++    // Bind HttpActor to identity/permissions returned by real authentication. Resolving
++    // AssignmentService from the application container also checks its scoped DI graph.
++    // This is service-level permission evidence, NOT a nonexistent Controller HTTP403.
++    private async Task<T> AsAsync<T>(string? email, Func<IServiceProvider, Task<T>> work)
++    {
++        var user = await MeAsync(email);
++        await using var scope = fixture.Factory.Services.CreateAsyncScope();
++        var provider = scope.ServiceProvider; VerifyTarget(provider);
++        var accessor = provider.GetRequiredService<IHttpContextAccessor>();
++        var previous = accessor.HttpContext;
++        var claims = new List<Claim> { new("sub", user.Id.ToString(System.Globalization.CultureInfo.InvariantCulture)) };
++        claims.AddRange(user.Permissions.Select(p => new Claim("permission", p)));
++        claims.AddRange(user.Roles.Select(r => new Claim("role", r)));
++        accessor.HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(claims, "isolated-fixture")) };
++        accessor.HttpContext.Request.Method = "POST";
++        accessor.HttpContext.Request.Path = "/isolated-fixture/assignment-service";
++        try { return await work(provider); }
++        finally { accessor.HttpContext = previous; }
++    }
++
++    private async Task<T> ReadAsync<T>(Func<AppDbContext, Task<T>> work)
++    {
++        await using var scope = fixture.Factory.Services.CreateAsyncScope();
++        VerifyTarget(scope.ServiceProvider); return await work(scope.ServiceProvider.GetRequiredService<AppDbContext>());
++    }
++
++    private async Task<AssetDto> CreatedAsync()
++    {
++        using var client = await fixture.ClientAsync();
++        var response = await client.PostAsJsonAsync("/api/v1/assets", fixture.Asset());
++        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
++        return (await response.Content.ReadFromJsonAsync<AssetDto>())!;
++    }
++
++    private Task<AssignmentDto> AssignAsync(long assetId, bool department = false, string? email = null) => AsAsync(email, async provider =>
++    {
++        var actor = provider.GetRequiredService<IActor>();
++        return await provider.GetRequiredService<AssignmentService>().AssignAsync(new()
++        {
++            AssetId = assetId, UserId = department ? null : actor.UserId,
++            DepartmentId = department ? fixture.DepartmentId : null, Note = "Isolated handoff evidence",
++        }, Ct);
++    });
++    private Task<AssignmentDto> ReturnAsync(AssignmentDto assignment, string? email = null) => AsAsync(email, provider =>
++        provider.GetRequiredService<AssignmentService>().ReturnAsync(assignment.Id,
++            new() { RowVersion = assignment.RowVersion, Note = "Isolated return evidence" }, Ct));
++
++    private async Task<bool> ActiveAsync(long assetId) => await AsAsync(null, provider =>
++        provider.GetRequiredService<IUnitOfWork>().RunAsync(() => provider.GetRequiredService<IRepository>().HasActiveWorkflowAsync(assetId, Ct)));
++
++    private static async Task<BusinessException> Error(Task task, int status, string? code = null)
++    {
++        var error = await Assert.ThrowsAsync<BusinessException>(() => task);
++        Assert.Equal(status, error.Status); if (code != null) Assert.Equal(code, error.Code); return error;
++    }
++
++    [NeonFact]
++    public async Task DI_and_real_role_catalog_make_admin_manager_assignment_permissions_available_without_granting_support()
++    {
++        var codes = new[] { Permissions.AssignmentRead, Permissions.AssignmentAssign, Permissions.AssignmentReturn };
++        foreach (var email in new[] { MvpFixture.AdminEmail, fixture.ManagerEmail })
++        {
++            var user = await MeAsync(email); Assert.All(codes, code => Assert.Contains(code, user.Permissions));
++            await AsAsync(email, provider =>
++            {
++                Assert.Same(provider.GetRequiredService<AssignmentService>(), provider.GetRequiredService<AssignmentService>());
++                Assert.All(codes, code => Assert.True(provider.GetRequiredService<IActor>().Has(code)));
++                return Task.FromResult(true);
++            });
++        }
++        var support = await MeAsync(fixture.SupportEmail);
++        Assert.All(codes, code => Assert.DoesNotContain(code, support.Permissions));
++        await ReadAsync(async db =>
++        {
++            Assert.Equal(3, await db.Set<Permission>().CountAsync(x => codes.Contains(x.Code)));
++            foreach (var roleCode in new[] { "ADMIN_IT", "SYSTEM_MANAGER" })
++            {
++                var grants = from r in db.Set<Role>() join link in db.Set<RolePermission>() on r.Id equals link.RoleId
++                    join p in db.Set<Permission>() on link.PermissionId equals p.Id where r.Code == roleCode && codes.Contains(p.Code) select p.Code;
++                Assert.Equal(codes.Order(), (await grants.ToListAsync()).Order());
++            }
++            return true;
++        });
++    }
++
++    [NeonFact]
++    public async Task User_assign_return_commits_versions_status_history_and_both_entity_audits()
++    {
++        var asset = await CreatedAsync(); var assignment = await AssignAsync(asset.Id, email: fixture.ManagerEmail);
++        var manager = await MeAsync(fixture.ManagerEmail);
++        Assert.Equal(asset.Id, assignment.AssetId); Assert.Equal(manager.Id, assignment.AssignedUserId); Assert.Null(assignment.ReturnedAtUtc);
++        Assert.Equal(16, Convert.FromBase64String(assignment.RowVersion).Length); Assert.Equal(DateTimeKind.Utc, assignment.AssignedAtUtc.Kind);
++        await AssertSnapshotAsync(asset.Id, assignment.Id, "IN_USE", "assignments.assign", 1);
++        var returned = await ReturnAsync(assignment, fixture.ManagerEmail);
++        Assert.NotNull(returned.ReturnedAtUtc); Assert.NotEqual(assignment.RowVersion, returned.RowVersion);
++        Assert.True(returned.ReturnedAtUtc >= returned.AssignedAtUtc); Assert.Equal(DateTimeKind.Utc, returned.ReturnedAtUtc!.Value.Kind);
++        await AssertSnapshotAsync(asset.Id, assignment.Id, "IN_STOCK", "assignments.return", 2);
++        await AsAsync(fixture.ManagerEmail, async provider =>
++        {
++            var service = provider.GetRequiredService<AssignmentService>();
++            Assert.Equal(returned.RowVersion, (await service.GetAsync(assignment.Id, Ct)).RowVersion);
++            Assert.Empty((await service.ListAsync(asset.Id, null, null, true, 1, 20, Ct)).Items);
++            Assert.Single((await service.ListAsync(asset.Id, null, null, false, 1, 20, Ct)).Items);
++            return true;
++        });
++    }
++
++    private Task<bool> AssertSnapshotAsync(long assetId, long assignmentId, string status, string action, int workflowHistoryCount) => ReadAsync(async db =>
++    {
++        var asset = await db.Set<Asset>().AsNoTracking().SingleAsync(x => x.Id == assetId); Assert.Equal(status, asset.CurrentStatus);
++        Assert.Equal(workflowHistoryCount, await db.Set<AssetStatusHistory>().CountAsync(x => x.AssetId == assetId && x.Source == "ASSIGNMENT"));
++        var events = await db.Set<AuditLog>().AsNoTracking().Where(x => x.Action == action &&
++            (x.EntityType == "Asset" && x.EntityId == assetId.ToString() || x.EntityType == "AssetAssignment" && x.EntityId == assignmentId.ToString())).ToListAsync();
++        Assert.Equal(2, events.Count); Assert.All(events, log => { Assert.Equal("SUCCESS", log.Outcome); Assert.NotNull(log.ActorUserId); });
++        var assignmentLog = events.Single(x => x.EntityType == "AssetAssignment");
++        using var snapshot = JsonDocument.Parse(assignmentLog.NewValuesJson!);
++        Assert.Equal(assetId, snapshot.RootElement.GetProperty("AssetId").GetInt64());
++        Assert.False(snapshot.RootElement.TryGetProperty("AssignmentNote", out _)); Assert.False(snapshot.RootElement.TryGetProperty("ReturnNote", out _));
++        Assert.Contains(events, x => x.EntityType == "Asset" && x.CorrelationId == assignmentLog.CorrelationId);
++        return true;
++    });
++
++    [NeonFact]
++    public async Task Department_target_assign_and_return_use_the_same_persistence_path()
++    {
++        var asset = await CreatedAsync(); var assignment = await AssignAsync(asset.Id, department: true);
++        Assert.Null(assignment.AssignedUserId); Assert.Equal(fixture.DepartmentId, assignment.AssignedDepartmentId);
++        var returned = await ReturnAsync(assignment); Assert.Equal(fixture.DepartmentId, returned.AssignedDepartmentId);
++        Assert.False(await ActiveAsync(asset.Id));
++    }
++
++    [NeonFact]
++    public async Task Support_service_permissions_are_denied_without_writing_any_assignment()
++    {
++        var asset = await CreatedAsync();
++        await AsAsync(fixture.SupportEmail, async provider =>
++        {
++            var service = provider.GetRequiredService<AssignmentService>();
++            await Error(service.ListAsync(null, null, null, false, 1, 20, Ct), 403, "FORBIDDEN");
++            await Error(service.GetAsync(1, Ct), 403, "FORBIDDEN");
++            await Error(service.AssignAsync(new() { AssetId = asset.Id, UserId = provider.GetRequiredService<IActor>().UserId }, Ct), 403, "FORBIDDEN");
++            await Error(service.ReturnAsync(1, new() { RowVersion = Convert.ToBase64String(new byte[16]), Note = "Denied" }, Ct), 403, "FORBIDDEN");
++            return true;
++        });
++        Assert.False(await ReadAsync(db => db.Set<AssetAssignment>().AnyAsync(x => x.AssetId == asset.Id)));
++        Assert.Equal("IN_STOCK", await ReadAsync(db => db.Set<Asset>().Where(x => x.Id == asset.Id).Select(x => x.CurrentStatus).SingleAsync()));
++    }
++
++    [NeonFact]
++    public async Task XOR_stale_and_closed_errors_have_no_partial_assignment_or_asset_changes()
++    {
++        var asset = await CreatedAsync();
++        await AsAsync(null, async provider =>
++        {
++            var service = provider.GetRequiredService<AssignmentService>(); var actor = provider.GetRequiredService<IActor>();
++            await Error(service.AssignAsync(new() { AssetId = asset.Id }, Ct), 400, "VALIDATION_ERROR");
++            await Error(service.AssignAsync(new() { AssetId = asset.Id, UserId = actor.UserId, DepartmentId = fixture.DepartmentId }, Ct), 400, "VALIDATION_ERROR");
++            return true;
++        });
++        Assert.False(await ReadAsync(db => db.Set<AssetAssignment>().AnyAsync(x => x.AssetId == asset.Id)));
++        var assignment = await AssignAsync(asset.Id);
++        await AsAsync(null, async provider =>
++        {
++            await Error(provider.GetRequiredService<AssignmentService>().ReturnAsync(assignment.Id,
++                new() { RowVersion = Convert.ToBase64String(new byte[16]), Note = "Stale" }, Ct), 409, "CONCURRENCY_CONFLICT");
++            return true;
++        });
++        Assert.Null(await ReadAsync(db => db.Set<AssetAssignment>().Where(x => x.Id == assignment.Id).Select(x => x.ReturnedAtUtc).SingleAsync()));
++        var returned = await ReturnAsync(assignment);
++        await Error(ReturnAsync(returned), 409, "ASSIGNMENT_ALREADY_RETURNED");
++        Assert.Equal(returned.ReturnedAtUtc, await ReadAsync(db => db.Set<AssetAssignment>().Where(x => x.Id == assignment.Id).Select(x => x.ReturnedAtUtc).SingleAsync()));
++        await AssertSnapshotAsync(asset.Id, assignment.Id, "IN_STOCK", "assignments.return", 2);
++    }
++
++    [NeonFact]
++    public async Task Concurrent_assigns_have_one_winner_without_extra_assignment_history_or_audit()
++    {
++        var asset = await CreatedAsync(); await MeAsync(fixture.ManagerEmail); // Prewarm cached token before concurrent reads.
++        async Task<(AssignmentDto? Result, BusinessException? Error)> Attempt()
++        {
++            try { return (await AssignAsync(asset.Id, email: fixture.ManagerEmail), null); }
++            catch (BusinessException error) { return (null, error); }
++        }
++        var attempts = await Task.WhenAll(Attempt(), Attempt());
++        var winner = Assert.Single(attempts, x => x.Result != null).Result!;
++        Assert.Equal(409, Assert.Single(attempts, x => x.Error != null).Error!.Status);
++        Assert.Equal(1, await ReadAsync(db => db.Set<AssetAssignment>().CountAsync(x => x.AssetId == asset.Id && x.ReturnedAtUtc == null)));
++        await AssertSnapshotAsync(asset.Id, winner.Id, "IN_USE", "assignments.assign", 1);
++    }
++
++    [NeonFact]
++    public async Task Concurrent_returns_have_one_winner_and_one_version_conflict()
++    {
++        var asset = await CreatedAsync(); var assignment = await AssignAsync(asset.Id);
++        async Task<(AssignmentDto? Result, BusinessException? Error)> Attempt()
++        {
++            try { return (await ReturnAsync(assignment), null); }
++            catch (BusinessException error) { return (null, error); }
++        }
++        var attempts = await Task.WhenAll(Attempt(), Attempt());
++        Assert.Single(attempts, x => x.Result != null);
++        var loser = Assert.Single(attempts, x => x.Error != null).Error!;
++        Assert.Equal(409, loser.Status); Assert.Equal("CONCURRENCY_CONFLICT", loser.Code);
++        await AssertSnapshotAsync(asset.Id, assignment.Id, "IN_STOCK", "assignments.return", 2);
++    }
++
++    [NeonFact]
++    public async Task Active_workflow_is_asset_scoped_and_archive_allows_unrelated_and_returned_assets()
++    {
++        var free = await CreatedAsync(); var occupied = await CreatedAsync(); var assignment = await AssignAsync(occupied.Id);
++        Assert.False(await ActiveAsync(free.Id)); Assert.True(await ActiveAsync(occupied.Id));
++        await AsAsync(null, async provider =>
++        {
++            var assetService = provider.GetRequiredService<AssetService>();
++            await Error(assetService.ArchiveAsync(occupied.Id,
++                Convert.FromBase64String((await assetService.GetAsync(occupied.Id, Ct)).RowVersion), Ct), 409, "ASSET_ACTIVE_WORKFLOW");
++            await assetService.ArchiveAsync(free.Id, Convert.FromBase64String(free.RowVersion), Ct);
++            return true;
++        });
++        Assert.True(await ReadAsync(db => db.Set<Asset>().Where(x => x.Id == free.Id).Select(x => x.IsArchived).SingleAsync()));
++        Assert.False(await ReadAsync(db => db.Set<Asset>().Where(x => x.Id == occupied.Id).Select(x => x.IsArchived).SingleAsync()));
++        await ReturnAsync(assignment); Assert.False(await ActiveAsync(occupied.Id));
++        await AsAsync(null, async provider =>
++        {
++            var service = provider.GetRequiredService<AssetService>();
++            var version = Convert.FromBase64String((await service.GetAsync(occupied.Id, Ct)).RowVersion);
++            await service.ArchiveAsync(occupied.Id, version, Ct); return true;
++        });
++    }
++
++    private Task<long> TicketAsync(long assetId, bool inProgress) => AsAsync(null, provider =>
++        provider.GetRequiredService<IUnitOfWork>().RunAsync(async () =>
++        {
++            var db = provider.GetRequiredService<AppDbContext>(); var actor = provider.GetRequiredService<IActor>();
++            var repo = provider.GetRequiredService<IRepository>(); var audit = provider.GetRequiredService<IAuditWriter>();
++            await repo.LockAssetAsync(assetId, Ct);
++            var now = DateTime.UtcNow;
++            long? technicianId = inProgress ? await db.Set<User>().Where(x => x.Email == fixture.SupportEmail && x.IsActive)
++                .Select(x => x.Id).SingleAsync() : null;
++            var ticket = new MaintenanceTicket { AssetId = assetId, TicketCode = fixture.Prefix + Guid.NewGuid().ToString("N")[..12],
++                Title = "Isolated maintenance fixture", Description = "No MaintenanceService implemented by this test",
++                RequestedByUserId = actor.UserId!.Value, OpenedAtUtc = now,
++                Status = inProgress ? "IN_PROGRESS" : "PENDING", AssignedToUserId = technicianId,
++                StartedAtUtc = inProgress ? now : null };
++            db.Add(ticket);
++            if (inProgress)
++            {
++                var asset = await db.Set<Asset>().SingleAsync(x => x.Id == assetId); var before = new { asset.CurrentStatus };
++                db.Add(new AssetStatusHistory { AssetId = assetId, FromStatus = asset.CurrentStatus, ToStatus = "MAINTENANCE",
++                    Source = "MAINTENANCE", ChangedAtUtc = now, ChangedByUserId = actor.UserId, CorrelationId = actor.CorrelationId,
++                    Reason = "Isolated fixture enters maintenance" });
++                asset.CurrentStatus = "MAINTENANCE"; asset.UpdatedByUserId = actor.UserId;
++                audit.Record("test.assignment.maintenance.fixture", asset, actor.UserId, "USER", before: before, after: new { asset.CurrentStatus });
++            }
++            await repo.SaveAsync(Ct); audit.Record("test.assignment.maintenance.fixture", ticket, actor.UserId, "USER");
++            await repo.SaveAsync(Ct); return ticket.Id;
++        }));
++
++    [NeonFact]
++    public async Task Pending_maintenance_blocks_only_its_asset_and_terminal_ticket_does_not_block_archive()
++    {
++        var asset = await CreatedAsync(); var free = await CreatedAsync(); var ticketId = await TicketAsync(asset.Id, false);
++        Assert.True(await ActiveAsync(asset.Id)); Assert.False(await ActiveAsync(free.Id));
++        await AsAsync(null, async provider =>
++        {
++            var service = provider.GetRequiredService<AssetService>();
++            await Error(service.ArchiveAsync(asset.Id, Convert.FromBase64String(asset.RowVersion), Ct), 409, "ASSET_ACTIVE_WORKFLOW");
++            await provider.GetRequiredService<IUnitOfWork>().RunAsync(async () =>
++            {
++                var db = provider.GetRequiredService<AppDbContext>(); var ticket = await db.Set<MaintenanceTicket>().SingleAsync(x => x.Id == ticketId);
++                ticket.Status = "CANCELLED";
++                provider.GetRequiredService<IAuditWriter>().Record("test.assignment.maintenance.cancel", ticket, null, "SYSTEM");
++                await db.SaveChangesAsync(); return true;
++            });
++            return true;
++        });
++        Assert.False(await ActiveAsync(asset.Id));
++        await AsAsync(null, async provider =>
++        { await provider.GetRequiredService<AssetService>().ArchiveAsync(asset.Id, Convert.FromBase64String(asset.RowVersion), Ct); return true; });
++    }
++
++    [NeonFact]
++    public async Task Return_during_valid_maintenance_closes_assignment_without_extra_status_history()
++    {
++        var asset = await CreatedAsync(); var assignment = await AssignAsync(asset.Id); await TicketAsync(asset.Id, true);
++        await ReturnAsync(assignment);
++        await AssertSnapshotAsync(asset.Id, assignment.Id, "MAINTENANCE", "assignments.return", 1);
++        Assert.True(await ActiveAsync(asset.Id));
++        Assert.Equal(1, await ReadAsync(db => db.Set<AssetStatusHistory>().CountAsync(x => x.AssetId == asset.Id && x.Source == "MAINTENANCE")));
++    }
++
++    [NeonFact]
++    public async Task Audit_coverage_failure_rolls_back_assignment_asset_and_history_together()
++    {
++        var asset = await CreatedAsync();
++        await AsAsync(null, async provider =>
++        {
++            await Assert.ThrowsAsync<InvalidOperationException>(() => provider.GetRequiredService<IUnitOfWork>().RunAsync(async () =>
++            {
++                var db = provider.GetRequiredService<AppDbContext>(); var repo = provider.GetRequiredService<IRepository>();
++                await repo.LockAssetAsync(asset.Id, Ct); var tracked = await db.Set<Asset>().SingleAsync(x => x.Id == asset.Id);
++                db.Add(new AssetAssignment { AssetId = asset.Id, AssignedDepartmentId = fixture.DepartmentId,
++                    AssignedByUserId = provider.GetRequiredService<IActor>().UserId!.Value, AssignedAtUtc = DateTime.UtcNow });
++                tracked.CurrentStatus = "IN_USE";
++                db.Add(new AssetStatusHistory { AssetId = asset.Id, FromStatus = "IN_STOCK", ToStatus = "IN_USE", Source = "ASSIGNMENT",
++                    ChangedAtUtc = DateTime.UtcNow, Reason = "Must roll back" });
++                await db.SaveChangesAsync(); return true; // Deliberately no audit; existing guard must refuse commit.
++            }));
++            return true;
++        });
++        Assert.False(await ReadAsync(db => db.Set<AssetAssignment>().AnyAsync(x => x.AssetId == asset.Id)));
++        Assert.Equal("IN_STOCK", await ReadAsync(db => db.Set<Asset>().Where(x => x.Id == asset.Id).Select(x => x.CurrentStatus).SingleAsync()));
++        Assert.False(await ReadAsync(db => db.Set<AssetStatusHistory>().AnyAsync(x => x.AssetId == asset.Id && x.Source == "ASSIGNMENT")));
++    }
++
++    [NeonFact]
++    public async Task PostgreSQL_enforces_assignment_FK_and_XOR_and_failed_writes_are_rolled_back()
++    {
++        var asset = await CreatedAsync();
++        await AsAsync(null, async provider =>
++        {
++            foreach (var invalidTarget in new[] { false, true })
++            {
++                var error = await Assert.ThrowsAsync<DbUpdateException>(() => provider.GetRequiredService<IUnitOfWork>().RunAsync(async () =>
++                {
++                    var db = provider.GetRequiredService<AppDbContext>(); var actor = provider.GetRequiredService<IActor>();
++                    db.Add(new AssetAssignment { AssetId = asset.Id, AssignedByUserId = actor.UserId!.Value, AssignedAtUtc = DateTime.UtcNow,
++                        AssignedUserId = invalidTarget ? long.MaxValue : actor.UserId, AssignedDepartmentId = invalidTarget ? null : fixture.DepartmentId });
++                    await db.SaveChangesAsync(); return true;
++                }));
++                Assert.Equal(invalidTarget ? "23503" : "23514", Assert.IsType<PostgresException>(error.InnerException).SqlState);
++            }
++            return true;
++        });
++        Assert.False(await ReadAsync(db => db.Set<AssetAssignment>().AnyAsync(x => x.AssetId == asset.Id)));
++    }
++
++    [NeonFact]
++    public async Task Database_unique_index_rejects_duplicate_active_assignment_without_leaking_extra_history()
++    {
++        var asset = await CreatedAsync(); var assignment = await AssignAsync(asset.Id);
++        await AsAsync(null, async provider =>
++        {
++            await Error(provider.GetRequiredService<IUnitOfWork>().RunAsync(async () =>
++            {
++                var db = provider.GetRequiredService<AppDbContext>();
++                db.Add(new AssetAssignment { AssetId = asset.Id, AssignedDepartmentId = fixture.DepartmentId,
++                    AssignedByUserId = provider.GetRequiredService<IActor>().UserId!.Value, AssignedAtUtc = DateTime.UtcNow });
++                await db.SaveChangesAsync(); return true;
++            }), 409, "ASSET_ALREADY_ASSIGNED");
++            return true;
++        });
++        Assert.Equal(1, await ReadAsync(db => db.Set<AssetAssignment>().CountAsync(x => x.AssetId == asset.Id)));
++        await AssertSnapshotAsync(asset.Id, assignment.Id, "IN_USE", "assignments.assign", 1);
++    }
++
++    [NeonFact]
++    public async Task Closed_assignment_persistence_guard_refuses_history_rewrite_even_with_an_audit_event()
++    {
++        var asset = await CreatedAsync(); var assignment = await ReturnAsync(await AssignAsync(asset.Id));
++        await AsAsync(null, async provider =>
++        {
++            await Assert.ThrowsAsync<InvalidOperationException>(() => provider.GetRequiredService<IUnitOfWork>().RunAsync(async () =>
++            {
++                var db = provider.GetRequiredService<AppDbContext>(); var tracked = await db.Set<AssetAssignment>().SingleAsync(x => x.Id == assignment.Id);
++                tracked.ReturnNote = "Forbidden overwrite";
++                provider.GetRequiredService<IAuditWriter>().Record("test.assignment.invalid.rewrite", tracked, null, "SYSTEM");
++                await db.SaveChangesAsync(); return true;
++            }));
++            return true;
++        });
++        Assert.Equal("Isolated return evidence", await ReadAsync(db => db.Set<AssetAssignment>().Where(x => x.Id == assignment.Id).Select(x => x.ReturnNote).SingleAsync()));
++        Assert.False(await ReadAsync(db => db.Set<AuditLog>().AnyAsync(x => x.EntityType == "AssetAssignment" && x.EntityId == assignment.Id.ToString() && x.Action == "test.assignment.invalid.rewrite")));
++    }
++}
+diff --git a/tests/ItAssetManagement.IntegrationTests/AssignmentSetupCliTests.cs b/tests/ItAssetManagement.IntegrationTests/AssignmentSetupCliTests.cs
+new file mode 100644
+index 0000000..648609e
+--- /dev/null
++++ b/tests/ItAssetManagement.IntegrationTests/AssignmentSetupCliTests.cs
+@@ -0,0 +1,170 @@
++using System.Diagnostics;
++using System.Text.Json;
++using ItAssetManagement.Application.Mvp;
++using ItAssetManagement.Infrastructure.Data;
++using Microsoft.AspNetCore.Hosting;
++using Microsoft.AspNetCore.Mvc.Testing;
++using Microsoft.EntityFrameworkCore;
++using Microsoft.Extensions.Configuration;
++using Microsoft.Extensions.DependencyInjection;
++
++namespace ItAssetManagement.IntegrationTests;
++
++// Isolated CLI subprocesses use only invalid configuration or a synthetic non-target database.
++// Even if a mode guard regresses, the runner cannot open a database with these inputs.
++public sealed class AssignmentSetupCliTests
++{
++    private const string WrongTarget = "Host=ep-fixture.neon.tech;Database=fixture_db;Username=fixture_user;Password=fixture_password";
++
++    [Theory]
++    [InlineData("Development", "--setup-assignment-validation", "--setup-assignment-maintenance")]
++    [InlineData("Development", "--setup-assignment-maintenance", "--verify-neon")]
++    [InlineData("Development", "--setup-assignment-validation", "--seed-development")]
++    [InlineData("Production", "--setup-assignment-validation", null)]
++    [InlineData("Production", "--setup-assignment-maintenance", null)]
++    public async Task Conflicting_or_production_modes_exit_without_running_setup(string environment, string mode, string? conflictingMode)
++    {
++        var result = await RunAsync(environment, WrongTarget, conflictingMode is null ? [mode] : [mode, conflictingMode]);
++        Assert.Equal(2, result.ExitCode);
++        using var document = JsonDocument.Parse(result.Output.Trim());
++        Assert.Equal("DevelopmentOnlyOrConflictingMode", document.RootElement.GetProperty("status").GetString());
++        Assert.Empty(result.Error);
++        AssertSafeOutput(result.Output);
++    }
++
++    [Theory]
++    [InlineData("--setup-assignment-validation", "invalid", "it_asset_management_m1_verify_20261002")]
++    [InlineData("--setup-assignment-maintenance", "invalid", "neondb")]
++    [InlineData("--setup-assignment-validation", WrongTarget, "it_asset_management_m1_verify_20261002")]
++    [InlineData("--setup-assignment-maintenance", WrongTarget, "neondb")]
++    public async Task Development_setup_refuses_invalid_or_wrong_database_without_contacting_neon(string mode, string configuration, string target)
++    {
++        var result = await RunAsync("Development", configuration, [mode]);
++        Assert.Equal(2, result.ExitCode);
++        using var document = JsonDocument.Parse(result.Output.Trim());
++        var root = document.RootElement;
++        Assert.Equal("Refused", root.GetProperty("Status").GetString());
++        Assert.Equal(target, root.GetProperty("Database").GetString());
++        Assert.Equal("20261008080630_AddAssignmentMaintenance", root.GetProperty("Migration").GetString());
++        Assert.Equal("INVALID_NEON_TARGET_OR_CONFIGURATION", root.GetProperty("FailureCode").GetString());
++        Assert.Equal(0, root.GetProperty("Checks").GetArrayLength());
++        Assert.Empty(result.Error);
++        AssertSafeOutput(result.Output);
++    }
++
++    [Theory]
++    [InlineData("--setup-assignment-validation")]
++    [InlineData("--setup-assignment-maintenance")]
++    public async Task Production_modes_are_refused_even_without_jwt_or_database_configuration(string mode)
++    {
++        var result = await RunAsync("Production", "", [mode], signingKey: "");
++        Assert.Equal(2, result.ExitCode);
++        using var document = JsonDocument.Parse(result.Output.Trim());
++        Assert.Equal("DevelopmentOnlyOrConflictingMode", document.RootElement.GetProperty("status").GetString());
++        Assert.Empty(result.Error);
++        AssertSafeOutput(result.Output);
++    }
++
++    [Fact]
++    public async Task Shared_setup_default_gate_refuses_before_opening_a_valid_looking_target()
++    {
++        var result = await RunAsync("Development", WrongTarget.Replace("fixture_db", "neondb", StringComparison.Ordinal),
++            ["--setup-assignment-maintenance"]);
++        Assert.Equal(2, result.ExitCode);
++        using var document = JsonDocument.Parse(result.Output.Trim());
++        var root = document.RootElement;
++        Assert.Equal("Refused", root.GetProperty("Status").GetString());
++        Assert.Equal("SHARED_BACKEND_COMPATIBILITY_REVIEW_REQUIRED", root.GetProperty("FailureCode").GetString());
++        Assert.Equal(0, root.GetProperty("Checks").GetArrayLength());
++        AssertSafeOutput(result.Output);
++        Assert.Empty(result.Error);
++    }
++
++    [Fact]
++    public async Task Application_registers_assignment_service_scoped_without_database_configuration()
++    {
++        await using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
++        {
++            builder.UseEnvironment("Development");
++            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>
++            {
++                ["ConnectionStrings:DefaultConnection"] = "",
++                ["Jwt:SigningKey"] = "synthetic-cli-test-key-not-used-outside-tests-2026",
++                ["Frontend:Enabled"] = "false",
++                ["Swagger:Enabled"] = "false",
++                ["Database:EnableReadinessProbe"] = "false"
++            }));
++        });
++        using var first = factory.Services.CreateScope();
++        using var second = factory.Services.CreateScope();
++        var service = first.ServiceProvider.GetRequiredService<AssignmentService>();
++        Assert.Same(service, first.ServiceProvider.GetRequiredService<AssignmentService>());
++        Assert.NotSame(service, second.ServiceProvider.GetRequiredService<AssignmentService>());
++        Assert.NotSame(first.ServiceProvider.GetRequiredService<AppDbContext>(), second.ServiceProvider.GetRequiredService<AppDbContext>());
++        foreach (var scope in new[] { first, second })
++            Assert.DoesNotContain(scope.ServiceProvider.GetRequiredService<DbContextOptions<AppDbContext>>().Extensions,
++                extension => extension.Info.IsDatabaseProvider);
++        // No HTTP request or repository query is needed to prove the real application's DI lifetime.
++    }
++
++    private static void AssertSafeOutput(string output)
++    {
++        foreach (var forbidden in new[] { "fixture_user", "fixture_password", "ep-fixture", "Host=", "postgresql://", "Verified", "Now listening", "SEED_REAPPLY_PASS" })
++            Assert.DoesNotContain(forbidden, output);
++    }
++
++    private static async Task<(int ExitCode, string Output, string Error)> RunAsync(string environment, string configuration, string[] modes,
++        string signingKey = "synthetic-cli-test-key-not-used-outside-tests-2026")
++    {
++        var api = typeof(Program).Assembly.Location;
++        Assert.True(File.Exists(Path.ChangeExtension(api, ".runtimeconfig.json")), "API runtime configuration must be copied to the test output.");
++        var contentRoot = Path.Combine(Path.GetTempPath(), "itam-assignment-cli-test-" + Guid.NewGuid().ToString("N"));
++        Directory.CreateDirectory(contentRoot);
++        try
++        {
++            var start = new ProcessStartInfo("dotnet")
++            {
++                UseShellExecute = false,
++                RedirectStandardOutput = true,
++                RedirectStandardError = true,
++                CreateNoWindow = true,
++                WorkingDirectory = contentRoot
++            };
++            start.ArgumentList.Add(api);
++            foreach (var mode in modes) start.ArgumentList.Add(mode);
++            start.ArgumentList.Add("--contentRoot");
++            start.ArgumentList.Add(contentRoot);
++            // Remove inherited application configuration, then install synthetic values with priority
++            // over any user-secrets provider. The empty content root contains no Development JSON.
++            foreach (var key in start.Environment.Keys.Where(key =>
++                key.StartsWith("ASPNETCORE_", StringComparison.OrdinalIgnoreCase) ||
++                key.StartsWith("ConnectionStrings", StringComparison.OrdinalIgnoreCase) ||
++                key.StartsWith("Jwt", StringComparison.OrdinalIgnoreCase) ||
++                key.StartsWith("Hosting__", StringComparison.OrdinalIgnoreCase) ||
++                key.StartsWith("ForwardedHeaders", StringComparison.OrdinalIgnoreCase) ||
++                key.StartsWith("RENDER", StringComparison.OrdinalIgnoreCase) ||
++                key.Equals("PORT", StringComparison.OrdinalIgnoreCase)).ToArray())
++                start.Environment.Remove(key);
++            start.Environment["DOTNET_ENVIRONMENT"] = environment;
++            start.Environment["ASPNETCORE_ENVIRONMENT"] = environment;
++            start.Environment["ConnectionStrings__DefaultConnection"] = configuration;
++            start.Environment["Jwt__SigningKey"] = signingKey;
++            start.Environment["Frontend__Enabled"] = "false";
++            start.Environment["Swagger__Enabled"] = "false";
++            start.Environment["Database__EnableReadinessProbe"] = "false";
++            using var process = new Process { StartInfo = start };
++            Assert.True(process.Start());
++            var output = process.StandardOutput.ReadToEndAsync();
++            var error = process.StandardError.ReadToEndAsync();
++            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
++            try { await process.WaitForExitAsync(timeout.Token); }
++            catch (OperationCanceledException)
++            {
++                if (!process.HasExited) process.Kill(entireProcessTree: true);
++                throw new TimeoutException("The safe CLI mode did not exit within 20 seconds.");
++            }
++            return (process.ExitCode, await output, await error);
++        }
++        finally { Directory.Delete(contentRoot, recursive: true); }
++    }
++}
+diff --git a/tests/ItAssetManagement.IntegrationTests/MvpFixture.cs b/tests/ItAssetManagement.IntegrationTests/MvpFixture.cs
+index 1e04d6d..47e6e2a 100644
+--- a/tests/ItAssetManagement.IntegrationTests/MvpFixture.cs
++++ b/tests/ItAssetManagement.IntegrationTests/MvpFixture.cs
+@@ -45,7 +45,8 @@ public sealed class MvpFixture : IAsyncLifetime
+             builder.UseEnvironment("Development");
+             builder.ConfigureAppConfiguration((_, c) => c.AddInMemoryCollection(new Dictionary<string, string?>
+             { ["ConnectionStrings:DefaultConnection"] = settings.ConnectionString, ["Database:EnableReadinessProbe"] = "true",
+-              ["Logging:LogLevel:Default"] = "None", ["Frontend:Enabled"] = "false" }));
++              ["Logging:LogLevel:Default"] = "None", ["Frontend:Enabled"] = "false",
++              ["Features:AssignmentApi:Enabled"] = "true" }));
+         });
+         await using var scope = Factory.Services.CreateAsyncScope();
+         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+diff --git a/tests/ItAssetManagement.UnitTests/AssignmentServiceTests.cs b/tests/ItAssetManagement.UnitTests/AssignmentServiceTests.cs
+new file mode 100644
+index 0000000..a99820e
+--- /dev/null
++++ b/tests/ItAssetManagement.UnitTests/AssignmentServiceTests.cs
+@@ -0,0 +1,376 @@
++using System.Text.Json;
++using ItAssetManagement.Application.Mvp;
++using ItAssetManagement.Domain.Entities;
++
++namespace ItAssetManagement.UnitTests;
++
++// These fakes exercise service decisions only. PostgreSQL atomicity/FK/concurrency
++// require the separately isolated integration fixture, not the shared Neon database.
++public sealed class AssignmentServiceTests
++{
++    private static readonly DateTime AssignedAt = new(2026, 10, 1, 8, 0, 0, DateTimeKind.Utc);
++    private static readonly byte[] Version = Enumerable.Repeat((byte)7, 16).ToArray();
++    private static string EncodedVersion => Convert.ToBase64String(Version);
++
++    private sealed class Repository : IRepository
++    {
++        public readonly List<Asset> Assets = [new() { Id = 1, CurrentStatus = "IN_STOCK", RowVersion = Version.ToArray() }];
++        public readonly List<User> Users = [new() { Id = 2, IsActive = true }];
++        public readonly List<Department> Departments = [new() { Id = 3, IsActive = true }];
++        public readonly List<AssetAssignment> Assignments = [];
++        public readonly List<MaintenanceTicket> Tickets = [];
++        public readonly List<AssetStatusHistory> Histories = [];
++        public readonly List<string> Operations = [];
++        public int Saves { get; private set; }
++        public int ExpectedVersions { get; private set; }
++
++        public IQueryable<T> Query<T>(bool tracking = false) where T : class
++        {
++            if (tracking) Operations.Add("track:" + typeof(T).Name);
++            IEnumerable<T> values = typeof(T) == typeof(Asset) ? Assets.Cast<T>() :
++                typeof(T) == typeof(User) ? Users.Cast<T>() :
++                typeof(T) == typeof(Department) ? Departments.Cast<T>() :
++                typeof(T) == typeof(AssetAssignment) ? Assignments.Cast<T>() :
++                typeof(T) == typeof(MaintenanceTicket) ? Tickets.Cast<T>() :
++                typeof(T) == typeof(AssetStatusHistory) ? Histories.Cast<T>() : throw new NotSupportedException();
++            return values.AsQueryable();
++        }
++        public Task<List<T>> ListAsync<T>(IQueryable<T> query, CancellationToken ct) => Task.FromResult(query.ToList());
++        public Task<T?> FirstAsync<T>(IQueryable<T> query, CancellationToken ct) => Task.FromResult(query.FirstOrDefault());
++        public Task<bool> AnyAsync<T>(IQueryable<T> query, CancellationToken ct) => Task.FromResult(query.Any());
++        public Task<int> CountAsync<T>(IQueryable<T> query, CancellationToken ct) => Task.FromResult(query.Count());
++        public void Add<T>(T entity) where T : class
++        {
++            if (entity is AssetAssignment assignment)
++            {
++                assignment.Id = Assignments.Count + 1; assignment.RowVersion = Version.ToArray(); Assignments.Add(assignment);
++            }
++            else if (entity is AssetStatusHistory history) Histories.Add(history);
++            else throw new NotSupportedException();
++        }
++        public void ExpectVersion<T>(T entity, byte[] version) where T : class
++        {
++            Assert.IsType<AssetAssignment>(entity); Assert.Equal(Version, version); ExpectedVersions++;
++        }
++        public Task SaveAsync(CancellationToken ct) { Saves++; return Task.CompletedTask; }
++        public Task LockAsync(string resource, CancellationToken ct) { Operations.Add("lock:" + resource); return Task.CompletedTask; }
++        public Task LockAssetAsync(long id, CancellationToken ct) { Operations.Add("asset:" + id); return Task.CompletedTask; }
++        public Task<bool> HasActiveWorkflowAsync(long assetId, CancellationToken ct) => throw new NotSupportedException();
++        public IQueryable<Asset> SearchAssets(IQueryable<Asset> query, string keyword) => throw new NotSupportedException();
++    }
++    private sealed class UnitOfWork : IUnitOfWork
++    {
++        public int Calls { get; private set; }
++        public Task<T> RunAsync<T>(Func<Task<T>> work, CancellationToken ct = default) { Calls++; return work(); }
++    }
++    private sealed class Actor(long? id = 9, params string[] permissions) : IActor
++    {
++        public long? UserId => id;
++        public Guid CorrelationId => Guid.Parse("f50bde27-9689-4f34-ae32-57fb3bfa7b3b");
++        public string? Method => "POST";
++        public string? Path => "/api/v1/asset-assignments";
++        public bool Has(string permission) => permissions.Contains(permission);
++    }
++    private sealed record Event(string Action, object? Entity, long? ActorId, string ActorType, object? Before, object? After);
++    private sealed class Audit : IAuditWriter
++    {
++        public readonly List<Event> Events = [];
++        public void Record(string action, object? entity, long? actorId, string actorType, string outcome = "SUCCESS",
++            object? before = null, object? after = null, string? failureCode = null) => Events.Add(new(action, entity, actorId, actorType, before, after));
++    }
++    private sealed class Fixture
++    {
++        public readonly Repository Repo = new();
++        public readonly UnitOfWork Uow = new();
++        public readonly Audit Audit = new();
++        public AssignmentService Service { get; }
++        public Fixture(Actor? actor = null) => Service = new(Repo, Uow, Audit, actor ?? new(9,
++            Permissions.AssignmentRead, Permissions.AssignmentAssign, Permissions.AssignmentReturn));
++        public AssetAssignment Active()
++        {
++            Repo.Assets[0].CurrentStatus = "IN_USE";
++            var assignment = new AssetAssignment
++            {
++                Id = 1, AssetId = 1, AssignedUserId = 2, AssignedByUserId = 9,
++                AssignedAtUtc = AssignedAt, RowVersion = Version.ToArray(), AssignmentNote = "Initial handoff",
++            };
++            Repo.Assignments.Add(assignment); return assignment;
++        }
++    }
++    private static AssignAssetRequest Assign() => new() { AssetId = 1, UserId = 2, AssignedAtUtc = AssignedAt };
++    private static ReturnAssetRequest Return() => new() { Note = "  Đã thu hồi  ", RowVersion = EncodedVersion, ReturnedAtUtc = AssignedAt.AddDays(1) };
++    private static Task<AssignmentDto> ReturnAsync(Fixture fixture, ReturnAssetRequest? request = null) => fixture.Service.ReturnAsync(1, request ?? Return(), default);
++    private static async Task<BusinessException> Error(Task task, int status, string? code = null)
++    {
++        var error = await Assert.ThrowsAsync<BusinessException>(() => task);
++        Assert.Equal(status, error.Status); if (code != null) Assert.Equal(code, error.Code); return error;
++    }
++
++    [Theory]
++    [InlineData("list")]
++    [InlineData("get")]
++    [InlineData("assign")]
++    [InlineData("return")]
++    public async Task Every_operation_enforces_its_permission_before_repository_access(string operation)
++    {
++        var fixture = new Fixture(new(9));
++        Task task = operation switch
++        {
++            "list" => fixture.Service.ListAsync(null, null, null, false, 1, 20, default),
++            "get" => fixture.Service.GetAsync(1, default),
++            "assign" => fixture.Service.AssignAsync(Assign(), default),
++            _ => ReturnAsync(fixture),
++        };
++        await Error(task, 403, "FORBIDDEN"); Assert.Empty(fixture.Repo.Operations); Assert.Equal(0, fixture.Uow.Calls);
++    }
++    [Theory]
++    [InlineData(null)] [InlineData(0L)] [InlineData(-1L)]
++    public async Task A_permission_does_not_replace_a_valid_authenticated_actor(long? id)
++    {
++        var fixture = new Fixture(new(id, Permissions.AssignmentAssign));
++        await Error(fixture.Service.AssignAsync(Assign(), default), 403, "FORBIDDEN"); Assert.Equal(0, fixture.Uow.Calls);
++    }
++    [Theory]
++    [InlineData(0)] [InlineData(-1)]
++    public async Task Assignment_detail_requires_positive_id(long id)
++    { await Error(new Fixture().Service.GetAsync(id, default), 400, "VALIDATION_ERROR"); }
++    [Fact]
++    public async Task Detail_does_not_expose_archived_assignment()
++    {
++        var fixture = new Fixture(); var assignment = fixture.Active(); assignment.ReturnedAtUtc = AssignedAt.AddDays(1); assignment.IsArchived = true;
++        await Error(fixture.Service.GetAsync(1, default), 404, "ASSIGNMENT_NOT_FOUND");
++    }
++    [Theory]
++    [InlineData(0, 20)] [InlineData(1, 0)] [InlineData(1, 101)] [InlineData(int.MaxValue, 100)]
++    public async Task List_rejects_invalid_page_and_overflow(int page, int pageSize)
++    { await Error(new Fixture().Service.ListAsync(null, null, null, false, page, pageSize, default), 400); }
++    [Theory]
++    [InlineData(0L, null, null)] [InlineData(null, 0L, null)] [InlineData(null, null, -1L)]
++    public async Task List_filters_require_positive_ids(long? asset, long? user, long? department)
++    { await Error(new Fixture().Service.ListAsync(asset, user, department, false, 1, 20, default), 400); }
++    [Fact]
++    public async Task List_filters_and_pages_stably_without_removing_closed_history()
++    {
++        var fixture = new Fixture(); fixture.Active();
++        fixture.Repo.Assignments.Add(new() { Id = 2, AssetId = 1, AssignedUserId = 2, AssignedAtUtc = AssignedAt,
++            ReturnedAtUtc = AssignedAt.AddDays(1), RowVersion = Version.ToArray() });
++        fixture.Repo.Assignments.Add(new() { Id = 3, AssetId = 2, AssignedDepartmentId = 3, AssignedAtUtc = AssignedAt, RowVersion = Version.ToArray() });
++        fixture.Repo.Assignments.Add(new() { Id = 4, AssetId = 1, AssignedUserId = 2, AssignedAtUtc = AssignedAt,
++            ReturnedAtUtc = AssignedAt.AddDays(1), IsArchived = true, RowVersion = Version.ToArray() });
++        var result = await fixture.Service.ListAsync(1, 2, null, false, 1, 1, default);
++        Assert.Equal(2, result.TotalItems); Assert.Equal(2, result.TotalPages); Assert.Equal(2, Assert.Single(result.Items).Id);
++        Assert.Equal(1, Assert.Single((await fixture.Service.ListAsync(1, 2, null, true, 1, 20, default)).Items).Id);
++        Assert.Equal(3, Assert.Single((await fixture.Service.ListAsync(null, null, 3, false, 1, 20, default)).Items).Id);
++    }
++    [Theory]
++    [InlineData(null, null)] [InlineData(2L, 3L)] [InlineData(0L, null)] [InlineData(null, -1L)]
++    public async Task Assign_requires_one_positive_target(long? userId, long? departmentId)
++    {
++        var fixture = new Fixture(); var request = Assign(); request.UserId = userId; request.DepartmentId = departmentId;
++        await Error(fixture.Service.AssignAsync(request, default), 400); Assert.Equal(0, fixture.Uow.Calls);
++    }
++    [Theory]
++    [InlineData(0)] [InlineData(-1)]
++    public async Task Assign_requires_positive_asset_id(long id)
++    { var request = Assign(); request.AssetId = id; await Error(new Fixture().Service.AssignAsync(request, default), 400); }
++    [Fact]
++    public async Task Assign_rejects_oversized_note_before_write()
++    {
++        var fixture = new Fixture(); var request = Assign(); request.Note = new string('x', 1001);
++        await Error(fixture.Service.AssignAsync(request, default), 400); Assert.Equal(0, fixture.Uow.Calls);
++    }
++    [Theory]
++    [InlineData(DateTimeKind.Unspecified)] [InlineData(DateTimeKind.Local)]
++    public async Task Commands_reject_non_UTC_business_timestamps(DateTimeKind kind)
++    {
++        var fixture = new Fixture(); fixture.Active(); var assign = Assign(); assign.AssignedAtUtc = DateTime.SpecifyKind(AssignedAt, kind);
++        var returned = Return(); returned.ReturnedAtUtc = DateTime.SpecifyKind(AssignedAt, kind);
++        await Error(fixture.Service.AssignAsync(assign, default), 400); await Error(ReturnAsync(fixture, returned), 400);
++        Assert.Equal(0, fixture.Uow.Calls);
++    }
++    [Theory]
++    [InlineData(true, false)] [InlineData(true, true)] [InlineData(false, false)] [InlineData(false, true)]
++    public async Task Assign_checks_selected_target_exists_and_is_active(bool userTarget, bool missing)
++    {
++        var fixture = new Fixture(); var request = Assign();
++        if (userTarget) { if (missing) fixture.Repo.Users.Clear(); else fixture.Repo.Users[0].IsActive = false; }
++        else
++        {
++            request.UserId = null; request.DepartmentId = 3;
++            if (missing) fixture.Repo.Departments.Clear(); else fixture.Repo.Departments[0].IsActive = false;
++        }
++        var error = await Error(fixture.Service.AssignAsync(request, default), 400);
++        Assert.Contains(userTarget ? "userId" : "departmentId", error.Errors!.Keys);
++        Assert.Empty(fixture.Repo.Assignments); Assert.Empty(fixture.Repo.Histories); Assert.Empty(fixture.Audit.Events);
++        Assert.Equal("IN_STOCK", fixture.Repo.Assets[0].CurrentStatus);
++    }
++    [Theory]
++    [InlineData("IN_USE")] [InlineData("MAINTENANCE")] [InlineData("BROKEN")] [InlineData("RETIRED")]
++    public async Task Assign_rejects_non_stock_asset_without_side_effects(string status)
++    {
++        var fixture = new Fixture(); fixture.Repo.Assets[0].CurrentStatus = status;
++        await Error(fixture.Service.AssignAsync(Assign(), default), 409, "ASSET_NOT_IN_STOCK");
++        Assert.Empty(fixture.Repo.Assignments); Assert.Empty(fixture.Audit.Events); Assert.Empty(fixture.Repo.Histories);
++    }
++    [Fact]
++    public async Task Assign_rejects_archived_and_missing_assets()
++    {
++        var fixture = new Fixture(); fixture.Repo.Assets[0].IsArchived = true;
++        await Error(fixture.Service.AssignAsync(Assign(), default), 409, "ASSET_ARCHIVED");
++        fixture.Repo.Assets.Clear(); await Error(fixture.Service.AssignAsync(Assign(), default), 404, "ASSET_NOT_FOUND");
++    }
++    [Fact]
++    public async Task Assign_rejects_existing_open_assignment_even_if_asset_state_is_stock()
++    {
++        var fixture = new Fixture(); fixture.Active(); fixture.Repo.Assets[0].CurrentStatus = "IN_STOCK";
++        await Error(fixture.Service.AssignAsync(Assign(), default), 409, "ASSET_ALREADY_ASSIGNED");
++        Assert.Single(fixture.Repo.Assignments); Assert.Empty(fixture.Audit.Events);
++    }
++    [Theory]
++    [InlineData(true)] [InlineData(false)]
++    public async Task Valid_assign_uses_parent_lock_history_and_audits_each_business_entity(bool userTarget)
++    {
++        var fixture = new Fixture(new(9, Permissions.AssignmentAssign)); var request = Assign(); request.Note = "  Handoff note  ";
++        if (!userTarget) { request.UserId = null; request.DepartmentId = 3; }
++        // A pending ticket does not invent a new assign prohibition.
++        fixture.Repo.Tickets.Add(new() { Id = 1, AssetId = 1, Status = "PENDING" });
++        var result = await fixture.Service.AssignAsync(request, default); var assignment = Assert.Single(fixture.Repo.Assignments);
++        Assert.Equal(userTarget ? 2L : null, assignment.AssignedUserId); Assert.Equal(userTarget ? null : 3L, assignment.AssignedDepartmentId);
++        Assert.Equal(9, assignment.AssignedByUserId); Assert.Equal(AssignedAt, result.AssignedAtUtc); Assert.Equal("Handoff note", result.AssignmentNote);
++        Assert.Equal("IN_USE", fixture.Repo.Assets[0].CurrentStatus); Assert.Equal(9, fixture.Repo.Assets[0].UpdatedByUserId);
++        Assert.Equal(new[] { "asset:1", "track:Asset", "lock:master-data", "lock:users-identity" }, fixture.Repo.Operations);
++        var history = Assert.Single(fixture.Repo.Histories); Assert.Equal("IN_STOCK", history.FromStatus); Assert.Equal("IN_USE", history.ToStatus);
++        Assert.Equal("ASSIGNMENT", history.Source); Assert.Equal("Handoff note", history.Reason); Assert.Equal(AssignedAt, history.ChangedAtUtc);
++        Assert.NotEqual(Guid.Empty, history.CorrelationId); Assert.Equal(2, fixture.Repo.Saves); Assert.Equal(1, fixture.Uow.Calls);
++        AssertAuditPair(fixture, "assignments.assign", assignment);
++        Assert.DoesNotContain("Handoff note", JsonSerializer.Serialize(fixture.Audit.Events.Select(e => e.After)));
++    }
++    [Fact]
++    public async Task Default_assign_time_is_UTC_and_blank_note_is_absent()
++    {
++        var fixture = new Fixture(); var request = Assign(); request.AssignedAtUtc = null; request.Note = "   ";
++        var result = await fixture.Service.AssignAsync(request, default);
++        Assert.Equal(DateTimeKind.Utc, result.AssignedAtUtc.Kind); Assert.Null(result.AssignmentNote);
++        Assert.Equal("Cấp phát tài sản", Assert.Single(fixture.Repo.Histories).Reason);
++    }
++    [Theory]
++    [InlineData(null)] [InlineData("")] [InlineData("bad-base64")]
++    public async Task Return_requires_a_canonical_16_byte_version(string? version)
++    {
++        var fixture = new Fixture(); fixture.Active(); var request = Return(); request.RowVersion = version;
++        await Error(ReturnAsync(fixture, request), 400); Assert.Equal(0, fixture.Uow.Calls);
++    }
++    [Theory]
++    [InlineData(null)] [InlineData(" ")]
++    public async Task Return_requires_a_reason(string? reason)
++    {
++        var fixture = new Fixture(); fixture.Active(); var request = Return(); request.Note = reason;
++        await Error(ReturnAsync(fixture, request), 400); Assert.Equal(0, fixture.Uow.Calls);
++    }
++    [Fact]
++    public async Task Return_rejects_oversized_note()
++    {
++        var request = Return(); request.Note = new string('x', 1001);
++        await Error(ReturnAsync(new Fixture(), request), 400);
++    }
++    [Theory]
++    [InlineData(0)] [InlineData(-1)]
++    public async Task Return_requires_positive_assignment_id(long id)
++    { await Error(new Fixture().Service.ReturnAsync(id, Return(), default), 400); }
++    [Fact]
++    public async Task Return_rejects_missing_assignment_and_missing_parent()
++    {
++        var fixture = new Fixture(); await Error(ReturnAsync(fixture), 404, "ASSIGNMENT_NOT_FOUND");
++        fixture.Active(); fixture.Repo.Assets.Clear(); await Error(ReturnAsync(fixture), 500, "DATA_INCONSISTENT");
++        Assert.Empty(fixture.Audit.Events);
++    }
++    [Fact]
++    public async Task Stale_return_is_rejected_before_touching_any_state()
++    {
++        var fixture = new Fixture(); var assignment = fixture.Active(); var request = Return(); request.RowVersion = Convert.ToBase64String(new byte[16]);
++        await Error(ReturnAsync(fixture, request), 409, "CONCURRENCY_CONFLICT");
++        Assert.Null(assignment.ReturnedAtUtc); Assert.Equal("IN_USE", fixture.Repo.Assets[0].CurrentStatus);
++        Assert.Equal(0, fixture.Repo.Saves); Assert.Equal(0, fixture.Repo.ExpectedVersions); Assert.Empty(fixture.Audit.Events); Assert.Empty(fixture.Repo.Histories);
++    }
++    [Fact]
++    public async Task Closed_return_never_overwrites_history()
++    {
++        var fixture = new Fixture(); var assignment = fixture.Active(); assignment.ReturnedAtUtc = AssignedAt.AddHours(1); assignment.ReturnNote = "Original reason";
++        await Error(ReturnAsync(fixture), 409, "ASSIGNMENT_ALREADY_RETURNED");
++        Assert.Equal("Original reason", assignment.ReturnNote); Assert.Equal(AssignedAt.AddHours(1), assignment.ReturnedAtUtc);
++        Assert.Equal(0, fixture.Repo.Saves); Assert.Empty(fixture.Audit.Events);
++    }
++    [Fact]
++    public async Task Return_date_cannot_precede_assignment()
++    {
++        var fixture = new Fixture(); var assignment = fixture.Active(); var request = Return(); request.ReturnedAtUtc = AssignedAt.AddSeconds(-1);
++        await Error(ReturnAsync(fixture, request), 400); Assert.Null(assignment.ReturnedAtUtc); Assert.Equal(0, fixture.Repo.ExpectedVersions);
++    }
++    [Theory]
++    [InlineData("IN_STOCK")] [InlineData("RETIRED")]
++    public async Task Return_rejects_inconsistent_asset_state(string status)
++    {
++        var fixture = new Fixture(); var assignment = fixture.Active(); fixture.Repo.Assets[0].CurrentStatus = status;
++        await Error(ReturnAsync(fixture), 409, "ASSET_STATUS_CONFLICT"); Assert.Null(assignment.ReturnedAtUtc); Assert.Equal(0, fixture.Repo.Saves);
++    }
++    [Fact]
++    public async Task Return_rejects_archived_asset()
++    {
++        var fixture = new Fixture(); var assignment = fixture.Active(); fixture.Repo.Assets[0].IsArchived = true;
++        await Error(ReturnAsync(fixture), 409, "ASSET_STATUS_CONFLICT"); Assert.Null(assignment.ReturnedAtUtc);
++    }
++    [Theory]
++    [InlineData("MAINTENANCE", "PENDING", false)]
++    [InlineData("MAINTENANCE", "IN_PROGRESS", true)]
++    [InlineData("IN_USE", "IN_PROGRESS", false)]
++    public async Task Return_rejects_inconsistent_maintenance_state(string assetStatus, string ticketStatus, bool archived)
++    {
++        var fixture = new Fixture(); var assignment = fixture.Active(); fixture.Repo.Assets[0].CurrentStatus = assetStatus;
++        fixture.Repo.Tickets.Add(new() { AssetId = 1, Status = ticketStatus, IsArchived = archived });
++        await Error(ReturnAsync(fixture), 409, "ASSET_STATUS_CONFLICT"); Assert.Null(assignment.ReturnedAtUtc); Assert.Empty(fixture.Audit.Events);
++    }
++    [Theory]
++    [InlineData("IN_USE", false, "IN_STOCK", 1)]
++    [InlineData("MAINTENANCE", true, "MAINTENANCE", 0)]
++    [InlineData("BROKEN", false, "BROKEN", 0)]
++    public async Task Valid_return_closes_only_assignment_and_preserves_workflow_status(string status, bool inProgress, string expected, int historyCount)
++    {
++        var fixture = new Fixture(new(9, Permissions.AssignmentReturn)); var assignment = fixture.Active(); fixture.Repo.Assets[0].CurrentStatus = status;
++        if (inProgress) fixture.Repo.Tickets.Add(new() { AssetId = 1, Status = "IN_PROGRESS" });
++        var result = await ReturnAsync(fixture);
++        Assert.Equal(AssignedAt.AddDays(1), result.ReturnedAtUtc); Assert.Equal("Đã thu hồi", result.ReturnNote);
++        Assert.Equal(9, assignment.ReturnedByUserId); Assert.Equal(expected, fixture.Repo.Assets[0].CurrentStatus);
++        Assert.Equal(historyCount, fixture.Repo.Histories.Count); Assert.Equal(1, fixture.Repo.ExpectedVersions); Assert.Equal(2, fixture.Repo.Saves);
++        Assert.Equal("asset:1", fixture.Repo.Operations[0]); Assert.True(fixture.Repo.Operations.IndexOf("track:AssetAssignment") > fixture.Repo.Operations.IndexOf("asset:1"));
++        if (historyCount == 1)
++        {
++            var history = Assert.Single(fixture.Repo.Histories); Assert.Equal(status, history.FromStatus); Assert.Equal(expected, history.ToStatus);
++            Assert.Equal(result.ReturnedAtUtc, history.ChangedAtUtc); Assert.Equal("Đã thu hồi", history.Reason); Assert.Equal(9, fixture.Repo.Assets[0].UpdatedByUserId);
++        }
++        AssertAuditPair(fixture, "assignments.return", assignment);
++        Assert.DoesNotContain("Đã thu hồi", JsonSerializer.Serialize(fixture.Audit.Events.Select(e => e.After)));
++    }
++    [Fact]
++    public async Task Default_return_timestamp_is_UTC()
++    {
++        var fixture = new Fixture(); fixture.Active(); var request = Return(); request.ReturnedAtUtc = null;
++        Assert.Equal(DateTimeKind.Utc, (await ReturnAsync(fixture, request)).ReturnedAtUtc!.Value.Kind);
++    }
++    [Fact]
++    public void Business_timestamp_JSON_uses_the_documented_names()
++    {
++        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
++        var assign = JsonSerializer.Deserialize<AssignAssetRequest>("{\"assetId\":1,\"userId\":2,\"assignedAt\":\"2026-10-01T08:00:00Z\"}", options)!;
++        var returned = JsonSerializer.Deserialize<ReturnAssetRequest>("{\"returnedAt\":\"2026-10-02T08:00:00Z\"}", options)!;
++        Assert.Equal(AssignedAt, assign.AssignedAtUtc); Assert.Equal(DateTimeKind.Utc, returned.ReturnedAtUtc!.Value.Kind);
++        var json = JsonSerializer.Serialize(new AssignmentDto { AssignedAtUtc = AssignedAt, ReturnedAtUtc = AssignedAt.AddDays(1) }, options);
++        Assert.Contains("\"assignedAt\":", json); Assert.Contains("\"returnedAt\":", json); Assert.DoesNotContain("AtUtc", json);
++    }
++    private static void AssertAuditPair(Fixture fixture, string action, AssetAssignment assignment)
++    {
++        Assert.Equal(2, fixture.Audit.Events.Count);
++        Assert.Contains(fixture.Audit.Events, e => ReferenceEquals(e.Entity, assignment));
++        Assert.Contains(fixture.Audit.Events, e => ReferenceEquals(e.Entity, fixture.Repo.Assets[0]));
++        Assert.All(fixture.Audit.Events, e => { Assert.Equal(action, e.Action); Assert.Equal(9, e.ActorId); Assert.Equal("USER", e.ActorType); });
++    }
++}
+diff --git a/tests/ItAssetManagement.UnitTests/AuditLogTests.cs b/tests/ItAssetManagement.UnitTests/AuditLogTests.cs
+index 743099e..43ec6a5 100644
+--- a/tests/ItAssetManagement.UnitTests/AuditLogTests.cs
++++ b/tests/ItAssetManagement.UnitTests/AuditLogTests.cs
+@@ -174,6 +174,50 @@ public sealed class AuditLogTests
+         Assert.True(result.Redacted); Assert.Equal(new[] { "reasonProvided" }, result.Values!.Keys);
+     }
+ 
++    [Fact]
++    public void Assignment_snapshot_preserves_typed_ids_nullable_targets_and_utc_times_without_notes_or_tokens()
++    {
++        const string json = "{\"AssetId\":4,\"AssignedByUserId\":7,\"AssignedUserId\":null,\"AssignedDepartmentId\":3,\"ReturnedByUserId\":null,\"AssignedAtUtc\":\"2026-10-08T00:00:00Z\",\"ReturnedAtUtc\":null}";
++        var safe = AuditSnapshot.Read(json, false);
++        Assert.False(safe.Redacted); Assert.Equal(7,safe.Values!.Count);
++        Assert.Equal(4,safe.Values["assetId"].GetInt64()); Assert.Equal(7,safe.Values["assignedByUserId"].GetInt64());
++        Assert.Equal(JsonValueKind.Null,safe.Values["assignedUserId"].ValueKind);
++        Assert.Equal(3,safe.Values["assignedDepartmentId"].GetInt64());
++        Assert.Equal(JsonValueKind.Null,safe.Values["returnedByUserId"].ValueKind);
++        Assert.Equal(DateTimeKind.Utc,safe.Values["assignedAtUtc"].GetDateTime().Kind);
++        Assert.Equal(JsonValueKind.Null,safe.Values["returnedAtUtc"].ValueKind);
++
++        var redacted = AuditSnapshot.Read(json.TrimEnd('}') + ",\"assignmentNote\":\"hidden\",\"returnNote\":\"hidden\",\"rowVersion\":\"hidden\",\"password\":\"hidden\"}", true);
++        Assert.True(redacted.Redacted); Assert.Equal(safe.Values.Keys.Order(),redacted.Values!.Keys.Order());
++    }
++
++    [Fact]
++    public void Assignment_snapshot_accepts_positive_optional_actors_and_completed_utc_timestamp()
++    {
++        var result = AuditSnapshot.Read("{\"assignedUserId\":2,\"assignedDepartmentId\":null,\"returnedByUserId\":8,\"returnedAtUtc\":\"2026-10-09T00:00:00.1234567Z\"}", false);
++        Assert.False(result.Redacted); Assert.Equal(4,result.Values!.Count);
++        Assert.Equal(2,result.Values["assignedUserId"].GetInt64()); Assert.Equal(8,result.Values["returnedByUserId"].GetInt64());
++        Assert.Equal(DateTimeKind.Utc,result.Values["returnedAtUtc"].GetDateTime().Kind);
++    }
++
++    [Theory]
++    [InlineData("\"assetId\":null")]
++    [InlineData("\"assetId\":0")]
++    [InlineData("\"assignedByUserId\":-1")]
++    [InlineData("\"assignedUserId\":0")]
++    [InlineData("\"assignedDepartmentId\":\"3\"")]
++    [InlineData("\"returnedByUserId\":[]")]
++    [InlineData("\"assignedAtUtc\":\"2026-10-08\"")]
++    [InlineData("\"assignedAtUtc\":\"2026-10-08T00:00:00\"")]
++    [InlineData("\"returnedAtUtc\":\"2026-10-08T07:00:00+07:00\"")]
++    [InlineData("\"returnedAtUtc\":1")]
++    [InlineData("\"returnedAtUtc\":{\"token\":\"hidden\"}")]
++    public void Invalid_assignment_snapshot_values_are_redacted_without_stringification(string property)
++    {
++        var result = AuditSnapshot.Read("{" + property + ",\"reasonProvided\":true}", true);
++        Assert.True(result.Redacted); Assert.Equal(new[] { "reasonProvided" },result.Values!.Keys);
++    }
++
+     private static AuditLogListQuery Window() => new() { From = "2026-10-04T00:00:00Z", To = "2026-10-05T00:00:00Z" };
+     private static AuditLogService Service(Repository repo, Writer writer) => new(repo, new Actor(Permissions.AuditRead), new UnitOfWork(), writer);
+     private static Repository Data()

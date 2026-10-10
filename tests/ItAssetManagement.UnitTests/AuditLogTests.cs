@@ -174,6 +174,50 @@ public sealed class AuditLogTests
         Assert.True(result.Redacted); Assert.Equal(new[] { "reasonProvided" }, result.Values!.Keys);
     }
 
+    [Fact]
+    public void Assignment_snapshot_preserves_typed_ids_nullable_targets_and_utc_times_without_notes_or_tokens()
+    {
+        const string json = "{\"AssetId\":4,\"AssignedByUserId\":7,\"AssignedUserId\":null,\"AssignedDepartmentId\":3,\"ReturnedByUserId\":null,\"AssignedAtUtc\":\"2026-10-08T00:00:00Z\",\"ReturnedAtUtc\":null}";
+        var safe = AuditSnapshot.Read(json, false);
+        Assert.False(safe.Redacted); Assert.Equal(7,safe.Values!.Count);
+        Assert.Equal(4,safe.Values["assetId"].GetInt64()); Assert.Equal(7,safe.Values["assignedByUserId"].GetInt64());
+        Assert.Equal(JsonValueKind.Null,safe.Values["assignedUserId"].ValueKind);
+        Assert.Equal(3,safe.Values["assignedDepartmentId"].GetInt64());
+        Assert.Equal(JsonValueKind.Null,safe.Values["returnedByUserId"].ValueKind);
+        Assert.Equal(DateTimeKind.Utc,safe.Values["assignedAtUtc"].GetDateTime().Kind);
+        Assert.Equal(JsonValueKind.Null,safe.Values["returnedAtUtc"].ValueKind);
+
+        var redacted = AuditSnapshot.Read(json.TrimEnd('}') + ",\"assignmentNote\":\"hidden\",\"returnNote\":\"hidden\",\"rowVersion\":\"hidden\",\"password\":\"hidden\"}", true);
+        Assert.True(redacted.Redacted); Assert.Equal(safe.Values.Keys.Order(),redacted.Values!.Keys.Order());
+    }
+
+    [Fact]
+    public void Assignment_snapshot_accepts_positive_optional_actors_and_completed_utc_timestamp()
+    {
+        var result = AuditSnapshot.Read("{\"assignedUserId\":2,\"assignedDepartmentId\":null,\"returnedByUserId\":8,\"returnedAtUtc\":\"2026-10-09T00:00:00.1234567Z\"}", false);
+        Assert.False(result.Redacted); Assert.Equal(4,result.Values!.Count);
+        Assert.Equal(2,result.Values["assignedUserId"].GetInt64()); Assert.Equal(8,result.Values["returnedByUserId"].GetInt64());
+        Assert.Equal(DateTimeKind.Utc,result.Values["returnedAtUtc"].GetDateTime().Kind);
+    }
+
+    [Theory]
+    [InlineData("\"assetId\":null")]
+    [InlineData("\"assetId\":0")]
+    [InlineData("\"assignedByUserId\":-1")]
+    [InlineData("\"assignedUserId\":0")]
+    [InlineData("\"assignedDepartmentId\":\"3\"")]
+    [InlineData("\"returnedByUserId\":[]")]
+    [InlineData("\"assignedAtUtc\":\"2026-10-08\"")]
+    [InlineData("\"assignedAtUtc\":\"2026-10-08T00:00:00\"")]
+    [InlineData("\"returnedAtUtc\":\"2026-10-08T07:00:00+07:00\"")]
+    [InlineData("\"returnedAtUtc\":1")]
+    [InlineData("\"returnedAtUtc\":{\"token\":\"hidden\"}")]
+    public void Invalid_assignment_snapshot_values_are_redacted_without_stringification(string property)
+    {
+        var result = AuditSnapshot.Read("{" + property + ",\"reasonProvided\":true}", true);
+        Assert.True(result.Redacted); Assert.Equal(new[] { "reasonProvided" },result.Values!.Keys);
+    }
+
     private static AuditLogListQuery Window() => new() { From = "2026-10-04T00:00:00Z", To = "2026-10-05T00:00:00Z" };
     private static AuditLogService Service(Repository repo, Writer writer) => new(repo, new Actor(Permissions.AuditRead), new UnitOfWork(), writer);
     private static Repository Data()

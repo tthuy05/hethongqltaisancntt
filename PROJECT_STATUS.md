@@ -1,5 +1,17 @@
 # Project Status
 
+## Safe rollout preparation — 09/10/2026: PREPARED / UNDER REVIEW
+
+Đã tách patch A độc lập (model 10 bảng/19 FK, 25 permissions, chỉ InitialM1), thêm immutable `/health/version` và Assignment rollout mặc định false. Bật nhầm khi thiếu schema/grants trả 503 trước Controller, không 500. Dashboard thực tế: Render Live `9524a6c`/main/Docker, **On Commit** (khác YAML `checksPass`); public `/health/version` trả 404 nên A chưa deploy.
+
+Current WIP offline **408 PASS /0 FAIL /103 cloud SKIP**; focused 46 PASS, affected 11 PASS (10 HTTP isolated +1 READ ONLY schema10/12), Production 32 smoke PASS; Docker Linux local **NOT RUN**. Kết quả 464 PASS ngày08/10 giữ làm checkpoint, không cộng lại. Shared read-only vẫn 10 bảng/19 FK, 25 permissions/43 links; chưa migrate/seed. Gate kiểm lại flag sau readiness; public activation C vẫn cần contract review và readiness-load hardening. Không commit/push/deploy/đổi Settings; manifest và sequence A → verify → B migration/seed → C core/contract gates ở [runbook](docs/assignment-safe-rollout.md).
+
+## Assignment/Maintenance integration — 08/10/2026: BLOCKED trước apply
+
+Đã tích hợp có review từ `origin/feature/assignment-maintenance/fe4c897`, sau `git fetch origin` review tiếp `5dbef3a`, thành thay đổi **UNCOMMITTED / UNPUSHED** trên `main/9524a6c`, không merge commit. Chỉ nhận Assignment Controller mới, tái sử dụng đúng3 permission hiện tại và giữ Support không có quyền đọc unrestricted; MaintenanceService/Controller scaffold TODO/route/DTO/policy/DI chưa phù hợp nên không kích hoạt. Migration `20261008080630_AddAssignmentMaintenance` **CREATED / SQL REVIEWED / APPLIED-VERIFIED trên isolated test DB**:12 bảng/27 FK/44 CHECK/62 indexes,44 setup checks PASS; seed9 rồi0 (28 permissions/49 links),14 service +10 HTTP Assignment focused PASS. Full regression đã hoàn tất **295 unit +169 integration =464 PASS /0 FAIL /0 SKIP**, Release0 warnings/errors; run đầu có1 FAIL do assertion warning schema10 đã được sửa theo BR-055, giữ TRX lỗi và rerun. Snapshot offline trước đó362 PASS/92 cloud SKIP giữ lịch sử, không cộng vào tổng mới.
+
+Theo yêu cầu bổ sung, **dừng trước shared apply/seed**: code baseline đang publish kiểm tra sự tồn tại workflow tables, có nguy cơ trả `409 ASSET_ACTIVE_WORKFLOW` cho mọi archive/retire sau DDL. Bản sửa per-asset query chưa được deploy/verify trên Render; CLI shared setup mặc định từ chối trước kết nối. Read-only Neon inspection: `neondb` vẫn **10 bảng /19 FK /27 CHECK /48 indexes**,329 business rows, InitialM1 unchanged; query mới read-only kiểm26 non-archived assets trên schema10 bảng đều không bị chặn nhầm. Isolated12 bảng đã kiểm workflows/archive/retire qua HTTP. Cần review/publish backend tương thích cả hai schema trước khi mở gate shared theo chỉ đạo mới. [Báo cáo 12 mục và hướng dẫn Thiện](docs/assignment-maintenance-integration-handoff.md). Baseline18/41,30 task/evidence Tuần2 và milestone10/10 giữ nguyên; checkpoint phía dưới là lịch sử.
+
 ## M1 regression và Render addendum — 08/10/2026
 
 Bản public [hethongqltaisancntt.onrender.com](https://hethongqltaisancntt.onrender.com/) đã kiểm bằng browser: Manager Login/Dashboard/List/search/detail/mở Edit 320px; Support read/cost hiding/edit denial; không ghi dữ liệu nghiệp vụ. Đã sửa frontend hết hạn/401 còn giữ shell và request cũ có thể xóa phiên mới. **328 tests PASS / 0 FAIL / 78 cloud tests SKIP**, Release/publish và27Production HTTP smoke PASS; local Docker engine không hoạt động nên Linux smoke local NOT RUN. [Bằng chứng và checklist diễn tập](docs/m1-rehearsal.md).

@@ -65,6 +65,7 @@ builder.Services.AddScoped<UserAccountService>();
 builder.Services.AddScoped<UserAccountReadService>();
 builder.Services.AddScoped<RoleCatalogService>();
 builder.Services.AddScoped<AuditLogService>();
+builder.Services.AddScoped<AssignmentService>();
 builder.Services.AddScoped<IAssignmentSchemaReadiness, AssignmentSchemaReadiness>();
 builder.Services.AddScoped<DevelopmentSeed>();
 builder.Services.AddScoped<DevelopmentDemoSeed>();

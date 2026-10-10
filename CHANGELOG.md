@@ -1,5 +1,30 @@
 # Changelog
 
+## 09/10/2026 — Chuẩn bị rollout Assignment an toàn
+
+### Added
+
+- Patch tương thích archive/retire độc lập, immutable artifact revision, rollout flagfalse và READ ONLY schema/permission readiness trước Assignment Controller. Không rewrite Controller Thiện, không auto migration/seed. [Phân chia commit A/B/C và gate triển khai](docs/assignment-safe-rollout.md).
+
+### Verified
+
+- WIP offline **408 PASS /0 FAIL /103 cloud SKIP**; focused 46 PASS gồm hai regression reload/disable, affected 11 PASS, published Production 32 smoke PASS kiểm lại. Giữ run 10 HTTP FAIL do config capture và rerun PASS; Docker Linux local NOT RUN. Dashboard Render thực tế On Commit/Live `9524a6c`; chưa deploy A hoặc apply/seed shared. Readiness-load hardening trước public activation vẫn PLANNED.
+
+## 08/10/2026 — Chuẩn bị tích hợp Assignment/Maintenance của Thiện
+
+### Added
+
+- Mapping hai bảng thuộc baseline, migration `AddAssignmentMaintenance` riêng, Scoped DI AssignmentService, catalog/seed hẹp ba quyền Admin/Manager; isolated migration12/27 và44 setup checks,14 service +10 HTTP Assignment focused PASS. Đã review mới `5dbef3a` và tích hợp Assignment Controller của Thiện, không viết lại hoặc kích hoạt Maintenance TODO. [Báo cáo bàn giao](docs/assignment-maintenance-integration-handoff.md).
+- Full .NET regression **295 unit +169 integration =464 PASS /0 FAIL /0 SKIP**, Release0 warnings/errors. Run đầu có1 FAIL ở assertion UserAccount warning cũ; chỉ cập nhật test theo schema12/BR-055, không đổi nghiệp vụ tài khoản; giữ TRX lỗi và rerun PASS.
+
+### Fixed
+
+- Assignment validation/permission, khóa parent Asset, concurrency, audit Asset cùng Assignment và guard lịch sử đóng; workflow query theo từng tài sản thay vì sự tồn tại bảng. Nghiệp vụ kiểm trên DB test12 bảng; query mới tương thích schema10 bảng của shared được kiểm read-only, không ghi asset public.
+
+### Changed
+
+- **Dừng trước apply/seed shared `neondb`** do nguy cơ archive/retire của backend Render cũ; shared setup mặc định bị chặn trước kết nối đến khi backend compatibility được xác minh. Shared vẫn10/19, InitialM1 và dữ liệu shared không đổi; riêng test DB12/27 đã apply/seed và retain fixture unique. Không triển khai MaintenanceService/frontend, không commit/push; đây không phải completion của toàn bộ Assignment/Maintenance contract.
+
 ## 08/10/2026 — Kiểm tra M1 trước demo
 
 ### Fixed
