@@ -3,7 +3,7 @@ using System.Reflection;
 namespace ItAssetManagement.Api.Hosting;
 
 public sealed record DeploymentRevisionInfo(string? ArtifactRevision, string? RenderRevision,
-    string Provenance, string WorkflowCompatibility, bool AssignmentApiEnabled);
+    string Provenance, string WorkflowCompatibility, bool AssignmentApiEnabled, bool MaintenanceModeEnabled);
 
 public static class DeploymentRevision
 {
@@ -15,14 +15,16 @@ public static class DeploymentRevision
     {
         var embedded = typeof(DeploymentRevision).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
             .SingleOrDefault(attribute => attribute.Key == "BuildRevision")?.Value;
-        return Evaluate(embedded, configuration["RENDER_GIT_COMMIT"], AssignmentRollout.IsEnabled(configuration));
+        return Evaluate(embedded, configuration["RENDER_GIT_COMMIT"], AssignmentRollout.IsEnabled(configuration),
+            MaintenanceMode.IsEnabled(configuration));
     }
 
     public static string? Parse(string? revision) => revision is { Length: 40 } &&
         revision.All(character => character is >= '0' and <= '9' or >= 'a' and <= 'f' or >= 'A' and <= 'F')
             ? revision.ToLowerInvariant() : null;
 
-    public static DeploymentRevisionInfo Evaluate(string? embeddedRevision, string? renderRevision, bool assignmentApiEnabled = false)
+    public static DeploymentRevisionInfo Evaluate(string? embeddedRevision, string? renderRevision,
+        bool assignmentApiEnabled = false, bool maintenanceModeEnabled = false)
     {
         var artifact = Parse(embeddedRevision);
         var platform = Parse(renderRevision);
@@ -30,6 +32,6 @@ public static class DeploymentRevision
             ? "PlatformRevisionUnavailable" : artifact == platform ? "Matched" : "Mismatch";
         // This is the process configuration, not a claim that schema/permissions
         // are ready. The request-time rollout readiness gate remains independent.
-        return new(artifact, platform, provenance, WorkflowCompatibility, assignmentApiEnabled);
+        return new(artifact, platform, provenance, WorkflowCompatibility, assignmentApiEnabled, maintenanceModeEnabled);
     }
 }

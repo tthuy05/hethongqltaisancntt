@@ -45,6 +45,7 @@ public sealed class DeploymentRevisionTests
         Assert.Equal(DeploymentRevision.Parse(platform), result.RenderRevision);
         Assert.Equal("asset-workflow-per-asset-v1", result.WorkflowCompatibility);
         Assert.False(result.AssignmentApiEnabled);
+        Assert.False(result.MaintenanceModeEnabled);
     }
 
     [Fact]
@@ -97,6 +98,7 @@ public sealed class DeploymentRevisionTests
                 ["Frontend:Enabled"] = "false",
                 ["Swagger:Enabled"] = "false",
                 ["Features:AssignmentApi:Enabled"] = "false",
+                [MaintenanceMode.ConfigurationKey] = "false",
                 ["RENDER"] = "false",
                 ["RENDER_GIT_COMMIT"] = Revision,
                 ["BuildRevision"] = OtherRevision
@@ -117,13 +119,14 @@ public sealed class DeploymentRevisionTests
         var text = await response.Content.ReadAsStringAsync();
         using var document = JsonDocument.Parse(text);
         var root = document.RootElement;
-        Assert.Equal(5, root.EnumerateObject().Count());
+        Assert.Equal(6, root.EnumerateObject().Count());
         var embedded = typeof(DeploymentRevision).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
             .Single(attribute => attribute.Key == "BuildRevision").Value;
         Assert.Equal(DeploymentRevision.Parse(embedded), root.GetProperty("artifactRevision").GetString());
         Assert.Equal(Revision, root.GetProperty("renderRevision").GetString());
         Assert.Equal(DeploymentRevision.WorkflowCompatibility, root.GetProperty("workflowCompatibility").GetString());
         Assert.False(root.GetProperty("assignmentApiEnabled").GetBoolean());
+        Assert.False(root.GetProperty("maintenanceModeEnabled").GetBoolean());
         Assert.DoesNotContain("synthetic-test-password", text);
         Assert.DoesNotContain("fixture_db", text);
         Assert.DoesNotContain("synthetic-revision-test-key", text);

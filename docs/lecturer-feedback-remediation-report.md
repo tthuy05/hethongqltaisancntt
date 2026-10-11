@@ -340,3 +340,25 @@ Kiểm lại trước publication:
 Phạm vi commit: 63 tracked + 15 new của section 10, cộng 3 configuration files email người dùng bổ sung (`render.yaml`, `appsettings.json`, `appsettings.Development.json`): **81 files**. Không thêm API key/connection string mới, không sửa giá trị database đang có. Ba report WIP cũ giữ ngoài commit, artifacts/TRX/sandbox không track.
 
 Source publication không chứng minh production readiness. Trước merge/deploy còn cần: owner duyệt maintenance/migration tương thích, fresh backup/restore drill, phối hợp writers, migration shared và email sender/domain thực tế. Không chạy Down/drop/reset. Dừng sau Git/CI để owner review bước production.
+
+## 14. Deployment preparation addendum — backup/restore và rehearsal thật
+
+Tiếp tục theo yêu cầu người dùng sau publication: [runbook và evidence](lecturer-feedback-rollout.md). Backup shared 18-table tại 2026-10-11T16:52:18Z và actual restore vào một DB mới **PASS**; full19 table fingerprints/history/41FK/646 structural definitions/18 sequence states khớp. Private archive giữ ngoài Git/OneDrive, không in/upload secrets.
+
+Migration mới trên chính bản copy đó **PASS**, 3.317s:18/41/85CHECK/96indexes/history4, mọi business column cũ/password/code/history bảo toàn; legacy users có defaults đúng, EF không pending migrations/model changes. Target hiện đã migrate, không còn pristine; archive và trước-migration restore proof vẫn nguyên. Shared audit cuối16:58:31Z vẫn18/41/83/96/history3; toàn19 table counts/fingerprints khớp trước preparation. Không ghi/apply/seed shared.
+
+CI candidate db473f7 đã SUCCESS cả Linux Docker; PR#1 vẫn draft, main/public Render1bc2767 và Assignmentfalse. Chưa merge/push thêm/deploy/Suspend. Runtime/config/migrations và ba report WIP có sẵn giữ nguyên.
+
+Section9 là kế hoạch sơ bộ, **không phải approved Suspend→deploy procedure**: kiểm tài liệu Render thấy platform Maintenance Mode chỉ paid; deploy hook409 khi suspended. Runbook mới chốt NO-GO đến khi owner duyệt traffic barrier (đề xuất application maintenance gate, PLANNED/chưa code), writer confirmations/maintenance window/recovery. Không giả định Resume sẽ chạy candidate trước old requests. Backup freshness/PITR/SQL ACL limitations ghi rõ trong runbook; không tự apply do rehearsal PASS.
+
+## 15. Maintenance gate addendum — 12/10/2026 GMT+7
+
+User đã cho phép tiếp tục thêm/kiểm thử application maintenance gate, **không cho phép migration/deploy/publication** trong lượt này. Gate `Maintenance__Enabled` đã IMPLEMENTED/TESTED LOCAL, mặc định OFF; invalid nonempty config fail closed. ON chặn frontend và mọi business/Auth/readiness route trước auth/model binding/Controller/DB, trả503/no-store/Retry-After60. Chỉ GET/HEAD đúng health live/version được phục vụ trực tiếp, kể cả valid JWT không vào DB-backed auth; version thêm `maintenanceModeEnabled` boolean. Không có public toggle/bypass.
+
+Release build 0warnings/errors; **332 unit +148 offline integration +114 frontend PASS**, 114 cloud integration SKIP (không dùng DB thật). Focused71 là subset, không cộng lặp. Production publish60files/30assets PASS; smoke OFF32/ON36 PASS với DB synthetic/missing schema, không query/migrate/seed. Docker local NOT RUN do engine off; workflow đã bổ sung Docker ON smoke nhưng WIP mới chưa push, CI db473f7 trước đó không được coi là evidence gate mới. Chi tiết commands, guards và first-iteration HEAD fix ở [runbook mục10](lecturer-feedback-rollout.md#10-maintenance-gate-addendum--local-implementation-và-kiểm-thử).
+
+Configuration/connection string, migrations, business modules và ba report WIP người dùng giữ nguyên. Gate chưa commit/push/deploy/enable trên Render; chưa merge main/apply shared/bật Assignment/gửi email thật. Còn cần review/publication riêng, CI exact candidate SHA, actual Render settings, confirmations writers/window/recovery và fresh baseline/backup trước GO. Environment flag cần process restart/deploy được kiểm soát, không phải hot-toggle đảm bảo drain. Dừng để owner review.
+
+## 16. Publication follow-up — chỉ nhánh draft PR
+
+Yêu cầu tiếp tục sau báo cáo gate được thực hiện ở bước Git/CI, **không phải production approval**. Chỉ commit/push10paths gate/preparation trong [runbook mục11](lecturer-feedback-rollout.md#11-publication-gate-candidate--nhánh-pr-không-production) lên `codex/lecturer-feedback`; giữ PR#1 DRAFT/BLOCK MERGE, main/Render/Neon không thay đổi. Không gom ba report WIP cũ, migration/configuration/Controller/Service hoặc artifacts. Release build/focused71PASS được xác minh lại trước publication; chờ CI đúng SHA mới, kết quả thực tế ghi kèm PR/handoff, không suy từ run db473f7 cũ. Chưa maintenance window, shared migration/seed, deploy hoặc bật Assignment.

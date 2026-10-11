@@ -246,6 +246,7 @@ app.Use(async (context, next) =>
     context.Response.Headers["X-Frame-Options"] = "DENY";
     await next(context);
 });
+app.UseMiddleware<MaintenanceModeMiddleware>(); // Before static/UI, auth and every DB-dependent endpoint.
 if (DeploymentHosting.FrontendDirectory(app.Environment, app.Configuration) is { } frontend)
 {
     var files = new PhysicalFileProvider(frontend);
@@ -271,8 +272,9 @@ app.UseRouting(); // Static middleware must run before endpoint selection (inclu
 app.UseMiddleware<AssignmentRolloutMiddleware>(); // Closed before auth/Controller/DB-dependent business code.
 app.UseAuthentication(); app.UseAuthorization(); app.UseRateLimiter();
 app.MapControllers();
-app.MapGet("/health/live", () => Results.Ok(new { status = "Alive" })).AllowAnonymous();
-app.MapGet("/health/version", (IConfiguration configuration) => Results.Ok(DeploymentRevision.Create(configuration))).AllowAnonymous();
+app.MapMethods("/health/live", [HttpMethods.Get, HttpMethods.Head], () => Results.Ok(new { status = "Alive" })).AllowAnonymous();
+app.MapMethods("/health/version", [HttpMethods.Get, HttpMethods.Head],
+    (IConfiguration configuration) => Results.Ok(DeploymentRevision.Create(configuration))).AllowAnonymous();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi().AllowAnonymous();
