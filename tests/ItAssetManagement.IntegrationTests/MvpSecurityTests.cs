@@ -81,10 +81,11 @@ public sealed class MvpSecurityTests(MvpFixture fixture)
     {
         // Exercise the database exception path, not only the pre-flight duplicate query.
         using var client = await fixture.ClientAsync(); var request = fixture.Asset();
-        Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync("/api/v1/assets", request)).StatusCode);
+        var created = await client.PostAsJsonAsync("/api/v1/assets", request); Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var code = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("assetCode").GetString()!;
         await using var scope = fixture.Factory.Services.CreateAsyncScope(); var sp = scope.ServiceProvider; var db = sp.GetRequiredService<AppDbContext>();
         var error = await Assert.ThrowsAsync<BusinessException>(() => sp.GetRequiredService<IUnitOfWork>().RunAsync(async () =>
-        { db.Add(new Asset { AssetCode = request.AssetCode, Name = "Duplicate race", AssetTypeId = fixture.TypeId, OwningDepartmentId = fixture.DepartmentId }); await db.SaveChangesAsync(); return true; }));
+        { db.Add(new Asset { AssetCode = code, Name = "Duplicate race", AssetTypeId = fixture.TypeId, OwningDepartmentId = fixture.DepartmentId }); await db.SaveChangesAsync(); return true; }));
         Assert.Equal(409, error.Status); Assert.Equal("ASSET_CODE_CONFLICT", error.Code);
     }
     [NeonFact] public async Task Missing_asset_and_invalid_json_return_safe_problem_details()

@@ -34,19 +34,20 @@ public sealed class RoleCatalogHostTests
         }
     }
     [Fact]
-    public async Task OpenApi_describes_safe_reads_and_no_role_definition_writes()
+    public async Task OpenApi_describes_reads_and_admin_role_definition_writes()
     {
         await using var factory = Factory(); using var client = factory.CreateClient();
         var doc = await client.GetFromJsonAsync<JsonElement>("/openapi/v1.json");
         foreach (var path in new[] { "/api/v1/roles", "/api/v1/roles/permissions", "/api/v1/roles/{roleId}", "/api/v1/users/{userId}/account" })
         {
             var operations = doc.GetProperty("paths").GetProperty(path);
-            Assert.Equal(["get"], operations.EnumerateObject().Select(x => x.Name));
+            Assert.True(operations.TryGetProperty("get", out _));
+            if (path == "/api/v1/roles") Assert.True(operations.TryGetProperty("post", out _));
             var get = operations.GetProperty("get"); Assert.Single(get.GetProperty("security").EnumerateArray());
             foreach (var status in new[] { "200", "400", "401", "403" }) Assert.True(get.GetProperty("responses").TryGetProperty(status, out _));
         }
         var account = doc.GetProperty("components").GetProperty("schemas").GetProperty("UserAccountStateDto");
-        Assert.Equal(["id", "isActive", "isAdminLocked", "roleIds", "rowVersion"], account.GetProperty("properties").EnumerateObject().Select(x => x.Name).Order());
+        Assert.Equal(["effectivePermissions", "id", "isActive", "isAdminLocked", "roleIds", "rowVersion"], account.GetProperty("properties").EnumerateObject().Select(x => x.Name).Order());
     }
 }
 
@@ -61,14 +62,14 @@ public sealed class RoleCatalogApiTests(MvpFixture fixture)
         using var admin = await fixture.ClientAsync(); using var manager = await fixture.ClientAsync(fixture.ManagerEmail);
         using var support = await fixture.ClientAsync(fixture.SupportEmail);
         var full = await Json(await admin.GetAsync("/api/v1/roles?pageSize=100&status=Active"));
-        Assert.Equal(3, full.GetProperty("totalItems").GetInt32());
+        Assert.True(full.GetProperty("totalItems").GetInt32() >= 3);
         var limited = await Json(await manager.GetAsync("/api/v1/roles?pageSize=100&status=Active"));
         Assert.Equal(full.GetProperty("items").EnumerateArray().Select(x => x.GetProperty("id").GetInt64()),
             limited.GetProperty("items").EnumerateArray().Select(x => x.GetProperty("id").GetInt64()));
         foreach (var item in limited.GetProperty("items").EnumerateArray())
-            Assert.Equal(["id", "name"], item.EnumerateObject().Select(x => x.Name).Order());
+            Assert.Equal(["id", "isSystem", "name"], item.EnumerateObject().Select(x => x.Name).Order());
         foreach (var item in full.GetProperty("items").EnumerateArray())
-            Assert.Equal(["code", "id", "isActive", "name"], item.EnumerateObject().Select(x => x.Name).Order());
+            Assert.Equal(["code", "id", "isActive", "isSystem", "name"], item.EnumerateObject().Select(x => x.Name).Order());
         Assert.Equal(HttpStatusCode.Forbidden, (await support.GetAsync("/api/v1/roles")).StatusCode);
         Assert.Equal(0, (await Json(await manager.GetAsync("/api/v1/roles?keyword=ADMIN_IT"))).GetProperty("totalItems").GetInt32());
     }
@@ -96,7 +97,7 @@ public sealed class RoleCatalogApiTests(MvpFixture fixture)
         var second = await Json(await client.GetAsync("/api/v1/roles?pageSize=1&page=2&sortBy=id&sortDirection=desc"));
         Assert.True(first.GetProperty("items")[0].GetProperty("id").GetInt64() > second.GetProperty("items")[0].GetProperty("id").GetInt64());
         var past = await Json(await client.GetAsync("/api/v1/roles?page=99")); Assert.Empty(past.GetProperty("items").EnumerateArray());
-        Assert.Equal(3, past.GetProperty("totalItems").GetInt32());
+        Assert.True(past.GetProperty("totalItems").GetInt32() >= 3);
         foreach (var keyword in new[] { "%", "_", "\\", "' OR 1=1 --" })
             Assert.Equal(0, (await Json(await client.GetAsync("/api/v1/roles?keyword=" + Uri.EscapeDataString(keyword)))).GetProperty("totalItems").GetInt32());
         foreach (var query in new[] { "page=0", "pageSize=101", "page=2147483647", "page=no", "status=active", "sortBy=code",
@@ -115,7 +116,7 @@ public sealed class RoleCatalogApiTests(MvpFixture fixture)
         var user = await db.Set<User>().SingleAsync(x => x.Email == fixture.ManagerEmail);
         var expected = await db.Set<UserRole>().Where(x => x.UserId == user.Id).OrderBy(x => x.RoleId).Select(x => x.RoleId).ToArrayAsync();
         var state = await Json(await admin.GetAsync("/api/v1/users/" + user.Id + "/account"));
-        Assert.Equal(["id", "isActive", "isAdminLocked", "roleIds", "rowVersion"], state.EnumerateObject().Select(x => x.Name).Order());
+        Assert.Equal(["effectivePermissions", "id", "isActive", "isAdminLocked", "roleIds", "rowVersion"], state.EnumerateObject().Select(x => x.Name).Order());
         Assert.Equal(expected, state.GetProperty("roleIds").EnumerateArray().Select(x => x.GetInt64()));
         Assert.Equal(Convert.ToBase64String(user.RowVersion), state.GetProperty("rowVersion").GetString());
         Assert.False(state.GetProperty("isAdminLocked").GetBoolean());
@@ -155,7 +156,7 @@ public sealed class RoleCatalogApiTests(MvpFixture fixture)
         await Json(await client.GetAsync("/api/v1/users/" + user.Id + "/account"));
         Assert.Equal(before, await db.Set<AuditLog>().CountAsync()); Assert.Equal(count, await db.Set<User>().CountAsync());
         Assert.False(db.Database.HasPendingModelChanges()); Assert.Empty(await db.Database.GetPendingMigrationsAsync());
-        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync("/api/v1/roles", new { code = "CUSTOM" })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/v1/roles", new { code = "CUSTOM" })).StatusCode);
     }
     [NeonFact]
     public async Task Narrow_catalog_seed_is_idempotent_and_preserves_users_memberships_and_other_grants()

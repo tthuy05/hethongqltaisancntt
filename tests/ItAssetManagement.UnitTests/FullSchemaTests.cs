@@ -37,7 +37,7 @@ public sealed class FullSchemaTests
     {
         using var db = new AppDbContextFactory().CreateDbContext([]);
         var old = db.GetService<IModelRuntimeInitializer>().Initialize(new AddAssignmentMaintenance().TargetModel,designTime:true);
-        var current = db.GetService<IDesignTimeModel>().Model;
+        var current = db.GetService<IModelRuntimeInitializer>().Initialize(new CompleteBaselineV1().TargetModel,designTime:true);
         var diff = db.GetService<IMigrationsModelDiffer>().GetDifferences(old.GetRelationalModel(),current.GetRelationalModel());
         var migration = new CompleteBaselineV1();
         var creates = migration.UpOperations.OfType<CreateTableOperation>().ToArray();
@@ -53,7 +53,7 @@ public sealed class FullSchemaTests
         Assert.Equal(diff.Count+1,migration.UpOperations.Count);
         Assert.Throws<NotSupportedException>(() => migration.DownOperations);
         Assert.False(db.Database.HasPendingModelChanges());
-        Assert.Equal(FullSchemaBaseline.Migration,db.Database.GetMigrations().Last());
+        Assert.Contains(FullSchemaBaseline.Migration,db.Database.GetMigrations());
     }
 
     [Fact]

@@ -1,5 +1,8 @@
 # ERD — Enterprise IT Asset & Infrastructure Management System
 
+> Snapshot 11/10/2026: shared 18 bảng/41 FK/3 migrations; ghi chú 10/19 dưới đây là lịch sử. Source mới thêm 4 attributes users và asset-code sequence/trigger, không đổi 18 entities/41 relationships. Migration chỉ apply isolated, chưa shared. [Báo cáo](lecturer-feedback-remediation-report.md).
+
+
 > Trạng thái: **FULL LOGICAL DESIGN DOCUMENTED / UNDER REVIEW**; M1 physical subset 10 tables/19 FKs CREATED / VERIFIED 02/10/2026. Các bảng/quan hệ ngoài M1 vẫn PLANNED. [Implementation evidence](neon-database-setup.md).
 
 > Database Engine: **PostgreSQL**, hosting **Neon** — M1 setup CONNECTED / VERIFIED (ADR-022). Schema Baseline V1 vẫn **18 tables / 41 relationships**; Mermaid block giữ nguyên. `binary row_version` map app-managed bytea, `json` map jsonb, `datetime` map timestamptz UTC. Không thêm EF migration metadata vào logical diagram.
@@ -29,6 +32,10 @@ erDiagram
         string email
         string normalized_email UK
         string password_hash
+        boolean is_email_confirmed
+        binary activation_token_hash
+        datetime activation_expires_at_utc
+        string invitation_email_status
         string employee_code UK
         boolean is_active
         boolean is_admin_locked

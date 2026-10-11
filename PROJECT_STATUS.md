@@ -1,5 +1,13 @@
 # Project Status
 
+## 11/10/2026 — Lecturer feedback: LOCAL IMPLEMENTATION / UNDER REVIEW / NOT DEPLOYED
+
+Đã bổ sung source cho 6 nhận xét: nhóm quyền động, invitation qua email API/sandbox, activation UTC 30 phút một lần, tên phòng ban, bỏ “Đối tượng” ở Nhật ký, mã tài sản sequence/bất biến. [Test và trạng thái hoàn tất](docs/lecturer-feedback-remediation-report.md).
+
+Baseline đọc thực tế: main/origin/main và Render `1bc276741875573e85784d5cb57cfead8930c045`; shared Neon 18 bảng/41 FK/83 CHECK/96 indexes/3 migrations, 28 permissions/49 grants. Không ghi schema/dữ liệu/quyền shared; Assignment vẫn disabled. Migration mới `20261011103054_LecturerFeedbackIdentityAndAssetCodes` chỉ apply trên database riêng, shared **NOT APPLIED**. Ba migration cũ bất biến.
+
+Email Brevo đã được người dùng bổ sung/configure local và báo gửi được; source/template/provider-mock cases đã review PASS. E2E inbox/provider production **NOT VERIFIED**, không gửi email thật khi kiểm thử. Publication được duyệt trên nhánh `codex/lecturer-feedback`; chưa merge/deploy/apply shared. Kết quả: **332 unit + 225 integration + 114 frontend PASS**, 2 historical schema SKIP; live mail test không an toàn đã loại bỏ, không tính PASS. Release 0 warning/error; production package và 32 HTTP smoke offline PASS. CI/Linux Docker cần xác minh trên PR trước merge; migration shared cần duyệt riêng. WIP/report cũ giữ nguyên. Các checkpoint ngày 08–09/10 phía dưới là lịch sử, không thay thế snapshot ngày 11/10.
+
 ## Safe rollout preparation — 09/10/2026: PREPARED / UNDER REVIEW
 
 Đã tách patch A độc lập (model 10 bảng/19 FK, 25 permissions, chỉ InitialM1), thêm immutable `/health/version` và Assignment rollout mặc định false. Bật nhầm khi thiếu schema/grants trả 503 trước Controller, không 500. Dashboard thực tế: Render Live `9524a6c`/main/Docker, **On Commit** (khác YAML `checksPass`); public `/health/version` trả 404 nên A chưa deploy.

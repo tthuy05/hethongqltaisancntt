@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — 11/10/2026 — Sửa 6 nhận xét giảng viên
+
+- Added: Admin quản lý nhóm phẳng/ma trận checkbox và gán nhóm khi mời tài khoản; invitation HTTPS email API/sandbox, token SHA-256/UTC 30 phút/một lần/resend; migration bổ sung users/sequence/trigger.
+- Changed: mã tài sản tự sinh/bất biến, không đổi mã cũ; tên phòng ban; bỏ cột/dòng chi tiết/hai bộ lọc “Đối tượng” ở Nhật ký, giữ audit backend; menu không dẫn đến module chưa triển khai; bootstrap seed không tự khôi phục quyền đã thu hồi.
+- Fixed: loại bỏ test live Brevo gửi link không có token lưu trong database và báo PASS khi không chạy; giữ provider mock và luồng activation kiểm thử trên database riêng.
+- Verified/deployment: [báo cáo và test](docs/lecturer-feedback-remediation-report.md). Publication trên nhánh `codex/lecturer-feedback`; chưa merge/deploy hoặc apply shared, không sửa 3 migration cũ.
+
 ## 09/10/2026 — Chuẩn bị rollout Assignment an toàn
 
 ### Added

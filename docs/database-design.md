@@ -1,5 +1,14 @@
 # Thiết kế cơ sở dữ liệu
 
+## Physical/source snapshot 11/10/2026
+
+Shared Neon read-only: **18 bảng /41 FK /83 CHECK /96 indexes /3 migrations**, 28 permissions/49 grants. Schema Baseline V1 có thật, không đồng nghĩa mọi module có API. Checkpoint 10/19 phía dưới là lịch sử.
+
+Migration mới `20261011103054_LecturerFeedbackIdentityAndAssetCodes` thêm 4 cột users, 2 CHECK, bigint sequence và function/trigger bất biến assets code; không bảng/FK/index mới, không seed quyền. Isolated: 18/41/85 CHECK/96 indexes/4 migrations; shared NOT APPLIED. Users dùng hash SHA-256/UTC expiry 30 phút/confirmed default true cho account cũ, pending mới false. Roles dùng schema hiện có cho custom flat groups; xóa grant chỉ trong audited transaction/narrow guard, không hard-delete user/role.
+
+Sequence đặt sau suffix AST-n hiện có, có overflow guard; service nextval, lower(asset_code) unique xuyên archived; tối đa 10 collision retries, gaps được phép. Trigger cấm đổi mã. Giữ 3 migrations, mã và dữ liệu cũ. [Evidence/rollout](lecturer-feedback-remediation-report.md).
+
+
 > Trạng thái: **LOGICAL BASELINE DOCUMENTED / UNDER REVIEW; M1 PHYSICAL SUBSET CREATED / VERIFIED 02/10/2026.** 10 bảng M1/19 FKs đã map EF và apply Neon; 8 bảng còn lại PLANNED. Không đổi baseline 18 bảng/41 quan hệ.
 
 > Documentation: **COMPLETED / UNDER REVIEW** phần Thủy; **Schema Baseline V1: 18 tables / 41 relationships** bảo toàn. Platform update 01/10 theo ADR-018–020; initial M1 implementation 02/10 theo ADR-022 và [setup evidence](neon-database-setup.md), không redesign entity/FK/API.
@@ -90,6 +99,10 @@ Không thêm bảng nghiệp vụ ngoài baseline. `ef_migrations_history` là m
 | `email` | `varchar(320)` | Không | — | — | Email hiển thị đã trim. |
 | `normalized_email` | `varchar(320)` | Không | — | UQ | Email uppercase/normalized dùng login và unique. |
 | `password_hash` | `varchar(500)` | Không | — | — | Chỉ lưu hash có salt do password hasher tạo. |
+| `is_email_confirmed` | `boolean` | Không | true | — | Migration mới: account cũ true, lời mời mới false. |
+| `activation_token_hash` | `bytea` | Có | null | 32 bytes | SHA-256; cùng null với expiry hoặc user chưa confirmed + hash NOT NULL 32 bytes + expiry NOT NULL. |
+| `activation_expires_at_utc` | `timestamptz` | Có | null | đi cùng hash | UTC 30 phút, một lần/resend thay token. |
+| `invitation_email_status` | `varchar(30)` | Không | NotRequired | enum text CHECK | Pending/Sent/Sandboxed/Failed/NotConfigured/Activated; Sent không chứng minh inbox delivery. |
 | `full_name` | `varchar(200)` | Không | — | — | Họ tên. |
 | `employee_code` | `varchar(50)` | Có | — | UQ lọc khi khác null | Mã nhân viên. |
 | `department_id` | `bigint` | Có | — | — | Đơn vị hiện tại. |
@@ -135,7 +148,7 @@ Không thêm bảng nghiệp vụ ngoài baseline. `ef_migrations_history` là m
 
 **Chỉ mục:** `UQ_roles_code(lower(code))`; `IX_roles_active_name(is_active, name)`.
 
-**Quan hệ:** Nhiều-nhiều với `users` qua `user_roles`; nhiều-nhiều với `permissions` qua `role_permissions`. MVP chỉ seed đúng ba role cố định; `is_active` và bảng mapping hỗ trợ quản trị bằng migration/configuration có review, không có runtime API tạo/sửa/deactivate role definition.
+**Quan hệ:** Nhiều-nhiều với `users` qua `user_roles`; nhiều-nhiều với `permissions` qua `role_permissions`. Seed ba nhóm mặc định; source LF có API runtime nhóm tùy chỉnh/ma trận cho Admin, nhóm phẳng và không hard-delete.
 
 ### 3.4 `user_roles`
 
@@ -617,7 +630,7 @@ Khi seed dùng explicit positive bigint IDs, PostgreSQL identity sequence không
 ## 7. Chiến lược delete, timestamp và history
 
 - **Hard delete:** chỉ cân nhắc cho dữ liệu chưa từng được dùng và không có FK/history, qua quy trình quản trị riêng; API MVP không cung cấp hard delete cho dữ liệu nghiệp vụ.
-- **Deactivate:** `departments`, `users`, `asset_types`, `softwares`, `software_licenses`, `replacement_rules` dùng `is_active`; dữ liệu inactive vẫn xuất hiện trong lịch sử nhưng không được chọn cho giao dịch mới. `roles`/`permissions` cũng có `is_active` để quản trị seed/migration, nhưng không được deactivate qua runtime API trong MVP ba role cố định.
+- **Deactivate:** `departments`, `users`, `asset_types`, `softwares`, `software_licenses`, `replacement_rules` dùng `is_active`; dữ liệu inactive vẫn xuất hiện trong lịch sử nhưng không được chọn cho giao dịch mới. `roles` tùy chỉnh có API ngừng hoạt động khi không còn member; nhóm mặc định được bảo vệ. Permission definitions vẫn qua code/catalog review, không tùy ý tạo code ngoài hợp đồng.
 - **Archive:** `assets`, `asset_assignments`, `maintenance_tickets`, `license_assignments`, `replacement_recommendations` dùng `is_archived`; service kiểm tra precondition trước archive.
 - **Append-only:** status history, maintenance history và audit không update/delete. Assignment/allocation đã đóng cũng được xem là immutable; correction tạo event/record mới có lý do.
 - `created_at_utc` có trên aggregate/root và mapping cần truy vết; `updated_at_utc` chỉ có ở entity mutable. Actor chi tiết được lưu ở cột chuyên biệt hoặc `audit_logs`, tránh nhân đôi quá nhiều FK gây vòng bootstrap.

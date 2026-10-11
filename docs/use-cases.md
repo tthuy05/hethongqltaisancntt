@@ -1,5 +1,15 @@
 # Use Cases
 
+## LF use cases 11/10/2026 — source local / chưa deploy
+
+- Admin tạo nhóm → checkbox quyền thật → save/reload → gán Users → cùng phòng khác quyền → revoke hiệu lực request mới. Không ticket/maintenance permission giả.
+- Admin mời user/chọn nhóm → pending/email status → link → tự đặt/retype password trong 30 phút → activate atomic một lần → login. Resend thay token; failed/not configured có thể gửi lại sau cấu hình.
+- Tạo Asset không input code → sequence cấp → display/search/read-only edit; client code rejected, mã cũ giữ nguyên.
+- Tên phòng ban list/form/detail/filter; Nhật ký bỏ cả cột/detail/filters “Đối tượng”, giữ audit backend.
+
+[Demo/test](lecturer-feedback-remediation-report.md). UC tương lai dưới đây vẫn PLANNED theo module.
+
+
 > Trạng thái: **PLANNED — WEEK 2 ANALYSIS BASELINE**  
 > Các route và flow dưới đây là contract thiết kế, chưa có controller/API/database/test runtime. Base URL dự kiến: `/api/v1`.
 

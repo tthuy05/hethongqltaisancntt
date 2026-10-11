@@ -131,6 +131,9 @@ public sealed class DevelopmentSeed(AppDbContext db, IRepository repo, IUnitOfWo
                 foreach (var permissionCode in grants)
                 {
                     var permission = permissions.Single(x => x.Code == permissionCode);
+                    // Bootstrap newly introduced definitions only. Rerunning seed
+                    // must not undo an Admin's saved dynamic permission matrix.
+                    if (!created.Contains(role) && !created.Contains(permission)) continue;
                     if (!await db.Set<RolePermission>().AnyAsync(x => x.RoleId == role.Id && x.PermissionId == permission.Id, ct))
                     {
                         var grant = new RolePermission { RoleId = role.Id, PermissionId = permission.Id, GrantedAtUtc = DateTime.UtcNow };

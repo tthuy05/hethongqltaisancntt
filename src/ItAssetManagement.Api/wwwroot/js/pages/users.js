@@ -37,22 +37,22 @@ export async function userPage(services) {
       const save = button('Lưu hồ sơ', { type: 'submit', iconName: 'check' }); let modal;
       const departmentOptions = [{ value: '', label: 'Không có phòng ban' }, ...departments.filter(d => d.isActive).map(d => ({ value: d.id, label: d.name }))];
       if (item?.departmentId && !departmentOptions.some(d => Number(d.value) === item.departmentId)) {
-        departmentOptions.push({ value: item.departmentId, label: (departments.find(d => d.id === item.departmentId)?.name || '#' + item.departmentId) + ' (tham chiếu cũ)' });
+        departmentOptions.push({ value: item.departmentId, label: (item.departmentName || departments.find(d => d.id === item.departmentId)?.name || 'Phòng ban không còn khả dụng') + ' (tham chiếu cũ)' });
       }
+      const choices = roles.map(role => ({ role, input: h('input', { type: 'checkbox', name: 'roleIds', value: role.id }) }));
       const form = h('form', { noValidate: true, onSubmit: event => {
         event.preventDefault(); if (save.disabled) return;
-        const dto = Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, key === 'password' ? value.input.value : value.input.value.trim() || null]));
+        const dto = Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, value.input.value.trim() || null]));
         dto.departmentId = dto.departmentId ? Number(dto.departmentId) : null;
+        if (!item) dto.roleIds = choices.filter(choice => choice.input.checked).map(choice => choice.role.id);
         if (item) dto.rowVersion = item.rowVersion;
         const errors = validateUser(dto, { isUpdate: Boolean(item) }); displayErrors(fields, errors); feedback.replaceChildren();
-        if (Object.keys(errors).length) return;
+        if (Object.keys(errors).length) { if (errors.roleIds) feedback.append(formAlert(errors.roleIds.join(' '))); return; }
         busy(save, async () => {
           try {
             const response = item ? await services.users.update(item.id, dto) : await services.users.create(dto);
-            saved(modal, item ? 'Đã cập nhật hồ sơ.' : 'Đã tạo người dùng. Chọn Vai trò để cấp quyền đăng nhập.');
-            if (!item && alive()) showToast('Người dùng #' + response.id + ' chưa có vai trò mặc định.', 'info');
+            saved(modal, item ? 'Đã cập nhật hồ sơ.' : 'Đã tạo tài khoản chờ kích hoạt. ' + emailStatus(response.invitationEmailStatus));
           } catch (error) { if (modal.dialog.isConnected) { report(error, feedback, modal); displayErrors(fields, error.errors || {}); } }
-          finally { if (fields.password) fields.password.input.value = ''; }
         });
       } }, h('div', { className: 'dialog-body form-grid' },
         add({ name: 'displayName', label: 'Họ và tên', required: true, maxLength: 200 }),
@@ -61,10 +61,9 @@ export async function userPage(services) {
         add({ name: 'employeeCode', label: 'Mã nhân viên', maxLength: 50 }),
         add({ name: 'departmentId', label: 'Phòng ban', options: departmentOptions }),
         add({ name: 'phone', label: 'Số điện thoại', type: 'tel', maxLength: 30 }),
-        !item ? add({ name: 'password', label: 'Mật khẩu ban đầu', type: 'password', required: true, maxLength: 256, hint: '12–256 ký tự. Không tự gán vai trò; không có chức năng đặt lại mật khẩu.' }) : null,
+        !item ? h('fieldset', { className: 'role-choices' }, h('legend', {}, 'Nhóm quyền (chọn ít nhất một)'), choices.map(({ role, input }) => h('label', {}, input, h('span', {}, role.name))), h('p', { className: 'field-hint' }, 'Người dùng tự đặt mật khẩu qua liên kết email có hiệu lực 30 phút. Không tự cấp quyền theo phòng ban.')) : null,
         feedback), h('div', { className: 'dialog-footer' }, button('Hủy', { kind: 'secondary', onClick: () => modal.close() }), save));
-      if (fields.password) fields.password.input.autocomplete = 'new-password';
-      modal = openDialog({ title: item ? 'Sửa hồ sơ người dùng' : 'Thêm người dùng', body: form, onClose: () => { if (fields.password) fields.password.input.value = ''; } });
+      modal = openDialog({ title: item ? 'Sửa hồ sơ người dùng' : 'Thêm người dùng', body: form });
     } catch (error) { report(error); }
   }
   async function detailDialog(row) {
@@ -74,9 +73,11 @@ export async function userPage(services) {
       if (item.rowVersion !== state.rowVersion) throw new Error('Hồ sơ vừa thay đổi. Hãy mở lại chi tiết.');
       let modal;
       const pairs = [['Tên đăng nhập', item.username], ['Email', item.email], ['Mã nhân viên', item.employeeCode], ['Số điện thoại', item.phone],
-        ['Phòng ban', departments.find(d => d.id === item.departmentId)?.name || (item.departmentId ? '#' + item.departmentId : 'Không có')],
+        ['Phòng ban', item.departmentName || departments.find(d => d.id === item.departmentId)?.name || (item.departmentId ? 'Phòng ban không còn khả dụng' : 'Không có')],
         ['Vai trò', state.roleIds.map(id => roles.find(role => role.id === id)?.name || '#' + id).join(', ') || 'Chưa có vai trò'],
         ['Hoạt động', item.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động'], ['Khóa quản trị', state.isAdminLocked ? 'Đang khóa' : 'Không khóa'],
+        ['Xác nhận email', item.isEmailConfirmed ? 'Đã kích hoạt' : 'Chờ kích hoạt'], ['Gửi lời mời', emailStatus(item.invitationEmailStatus)],
+        ['Quyền hiệu lực', state.effectivePermissions?.join(', ') || 'Chưa có quyền'],
         ['Ngày tạo', date(item.createdAt)], ['Cập nhật', item.updatedAt ? date(item.updatedAt) : 'Chưa có']];
       modal = openDialog({ title: item.displayName, body: h('div', { className: 'dialog-body' }, h('dl', { className: 'user-details' }, pairs.map(([name, value]) => h('div', {}, h('dt', {}, name), h('dd', {}, value || '—')))), h('p', { className: 'meta' }, 'Khóa quản trị độc lập với trạng thái hoạt động. Không hiển thị mật khẩu, token hoặc dữ liệu bảo mật.')), footer: button('Đóng', { kind: 'secondary', onClick: () => modal.close() }) });
     } catch (error) { report(error); }
@@ -86,7 +87,7 @@ export async function userPage(services) {
       const state = await services.users.account(row.id); if (!alive()) return;
       const fields = {
         status: field({ name: 'status', label: 'Thao tác', value: state.isAdminLocked ? 'Unlocked' : state.isActive ? 'Inactive' : 'Active', options: [
-          { value: 'Active', label: 'Kích hoạt' }, { value: 'Inactive', label: 'Ngừng hoạt động' }, { value: 'Locked', label: 'Khóa quản trị' }, { value: 'Unlocked', label: 'Mở khóa quản trị' }] }),
+          { value: 'Active', label: 'Cho phép hoạt động' }, { value: 'Inactive', label: 'Ngừng hoạt động' }, { value: 'Locked', label: 'Khóa quản trị' }, { value: 'Unlocked', label: 'Mở khóa quản trị' }] }),
         reason: field({ name: 'reason', label: 'Lý do', required: true, maxLength: 1000, type: 'textarea' }),
       };
       const feedback = h('div', { 'aria-live': 'polite' }); let modal;
@@ -116,17 +117,23 @@ export async function userPage(services) {
       }) });
       modal = openDialog({ title: 'Vai trò — ' + row.displayName, body: h('div', { className: 'dialog-body' },
         h('fieldset', { className: 'role-choices' }, h('legend', {}, 'Chọn vai trò đăng nhập'), choices.map(({ role, input }) => h('label', {}, input, h('span', {}, role.name)))),
-        h('p', { className: 'info-note' }, 'Bỏ chọn tất cả sẽ thu hồi toàn bộ vai trò đăng nhập. Không tạo/sửa định nghĩa role. Backend bảo vệ Admin cuối cùng.'),
+        h('p', { className: 'info-note' }, 'Bỏ chọn tất cả sẽ thu hồi toàn bộ vai trò đăng nhập. Quản lý định nghĩa nhóm tại trang Phân quyền. Backend bảo vệ Admin cuối cùng.'),
         unmapped.length ? formAlert('Có vai trò cũ không còn trong danh mục hoạt động: ' + unmapped.join(', ') + '. Cần review; giao diện không tự loại bỏ.') : null, feedback),
         footer: [button('Hủy', { kind: 'secondary', onClick: () => modal.close() }), confirm] });
     } catch (error) { report(error); }
+  }
+  async function resend(row, control) {
+    await busy(control, async () => {
+      try { const result = await services.users.resendInvitation(row.id); if (alive()) { showToast(emailStatus(result.emailStatus)); refresh(); } }
+      catch (error) { report(error); }
+    });
   }
   const keyword = h('input', { className: 'input', type: 'search', maxLength: 200, value: query.keyword || '', placeholder: 'Tên, email, mã nhân viên…', 'aria-label': 'Tìm kiếm người dùng' });
   const department = h('select', { className: 'select', 'aria-label': 'Lọc phòng ban' }, option('', 'Tất cả phòng ban'), departments.map(d => option(d.id, d.name, String(d.id) === String(query.departmentId))));
   const role = h('select', { className: 'select', 'aria-label': 'Lọc vai trò', disabled: !can(services, 'roles.read') }, option('', 'Tất cả vai trò'), roles.map(r => option(r.id, r.name, String(r.id) === String(query.roleId))));
   const status = h('select', { className: 'select', 'aria-label': 'Lọc trạng thái người dùng' }, option('', 'Tất cả trạng thái'), option('Active', 'Đang hoạt động', query.status === 'Active'), option('Inactive', 'Ngừng hoạt động', query.status === 'Inactive'));
   const sort = h('select', { className: 'select', 'aria-label': 'Sắp xếp người dùng' }, [['displayName', 'Họ và tên'], ['username', 'Tên đăng nhập'], ['email', 'Email'], ['createdAt', 'Ngày tạo']].map(([value, label]) => option(value, label, query.sortBy === value)));
-  root.append(pageHeader('Người dùng', 'Quản lý hồ sơ, trạng thái tài khoản và vai trò đăng nhập. Không xóa tài khoản hoặc lịch sử.', { eyebrow: 'Quản trị', actions: can(services, 'users.create') ? [button('Thêm người dùng', { iconName: 'plus', onClick: () => profileDialog() })] : [] }),
+  root.append(pageHeader('Người dùng', 'Quản lý hồ sơ, trạng thái tài khoản và vai trò đăng nhập. Không xóa tài khoản hoặc lịch sử.', { eyebrow: 'Quản trị', actions: can(services, 'users.create') && can(services, 'roles.assign') && can(services, 'roles.read') ? [button('Thêm người dùng', { iconName: 'plus', onClick: () => profileDialog() })] : [] }),
     h('section', { className: 'card filters-card' }, h('form', { className: 'filters user-filters', onSubmit: event => { event.preventDefault(); setQuery('/users', { keyword: keyword.value.trim(), departmentId: department.value, roleId: role.value, status: status.value, sortBy: sort.value, sortDirection: 'asc', page: 1 }); } },
       h('div', { className: 'filter-field search-field' }, h('label', {}, 'Tìm kiếm'), keyword),
       h('div', { className: 'filter-field' }, h('label', {}, 'Phòng ban'), department), h('div', { className: 'filter-field' }, h('label', {}, 'Vai trò'), role),
@@ -134,12 +141,15 @@ export async function userPage(services) {
       h('div', { className: 'actions' }, button('Tìm kiếm', { type: 'submit', iconName: 'search' }), button('Đặt lại', { kind: 'secondary', onClick: () => route('/users') })))),
     h('section', { className: 'card' }, dataTable({ label: 'Danh sách người dùng', rows: result.items, columns: [
       { key: 'displayName', label: 'Người dùng', render: row => h('div', { className: 'asset-name' }, h('strong', {}, row.displayName), h('span', { className: 'meta' }, row.username)) },
-      { key: 'email', label: 'Email' }, { key: 'departmentId', label: 'Phòng ban', render: row => departments.find(d => d.id === row.departmentId)?.name || (row.departmentId ? '#' + row.departmentId : '—') },
+      { key: 'email', label: 'Email' }, { key: 'departmentId', label: 'Phòng ban', render: row => row.departmentName || departments.find(d => d.id === row.departmentId)?.name || (row.departmentId ? 'Phòng ban không còn khả dụng' : '—') },
+      { key: 'isEmailConfirmed', label: 'Kích hoạt', render: row => row.isEmailConfirmed ? 'Đã kích hoạt' : h('div', {}, 'Chờ kích hoạt', h('span', { className: 'meta' }, emailStatus(row.invitationEmailStatus))) },
       { key: 'isActive', label: 'Hoạt động', render: row => badge(row.isActive) },
       { key: 'actions', label: 'Thao tác', render: row => h('div', { className: 'actions' }, button('Xem', { kind: 'ghost', onClick: () => detailDialog(row) }),
         can(services, 'users.update') ? button('Sửa', { kind: 'ghost', onClick: () => profileDialog(row.id) }) : null,
         can(services, 'users.status.manage') ? button('Trạng thái', { kind: 'ghost', onClick: () => statusDialog(row) }) : null,
-        can(services, 'roles.assign') && can(services, 'roles.read') ? button('Vai trò', { kind: 'ghost', onClick: () => rolesDialog(row) }) : null) }
+        can(services, 'roles.assign') && can(services, 'roles.read') ? button('Vai trò', { kind: 'ghost', onClick: () => rolesDialog(row) }) : null,
+        !row.isEmailConfirmed && can(services, 'users.create') ? button('Gửi lại lời mời', { kind: 'ghost', onClick: event => resend(row, event.currentTarget) }) : null) }
     ] }), pagination(result, page => setQuery('/users', { ...query, page }))));
   return root;
 }
+function emailStatus(status) { return ({ Sent: 'Email đã được dịch vụ tiếp nhận.', Sandboxed: 'Đã gửi vào sandbox kiểm thử.', Failed: 'Gửi email thất bại; có thể gửi lại.', NotConfigured: 'Chưa cấu hình dịch vụ email; cần cấu hình rồi gửi lại.', Pending: 'Đang chờ gửi email.', Activated: 'Đã kích hoạt.', NotRequired: 'Tài khoản hiện có.' })[status] || 'Chưa có trạng thái email.'; }

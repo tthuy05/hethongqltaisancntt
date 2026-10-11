@@ -23,6 +23,10 @@ internal static class M1Model
             ("PasswordHash",500),("FullName",200),("EmployeeCode",50),("Phone",30));
         Foreign<User,Department>(u,"DepartmentId"); Actors(u); Mutable(u);
         u.Property(x => x.IsAdminLocked).HasDefaultValue(false);
+        u.Property(x => x.IsEmailConfirmed).HasDefaultValue(true);
+        u.Property(x => x.InvitationEmailStatus).HasMaxLength(30).HasDefaultValue("NotRequired");
+        Check(u,"activation_token", "(activation_token_hash IS NULL AND activation_expires_at_utc IS NULL) OR (NOT is_email_confirmed AND activation_token_hash IS NOT NULL AND octet_length(activation_token_hash) = 32 AND activation_expires_at_utc IS NOT NULL)");
+        Check(u,"invitation_status", "invitation_email_status IN ('NotRequired','Pending','Sent','Sandboxed','Failed','NotConfigured','Activated')");
         u.Property(x => x.FailedLoginCount).HasDefaultValue(0);
         u.Property(x => x.TokenVersion).HasDefaultValue(0);
         Check(u,"failed_login_nonnegative","failed_login_count >= 0");
@@ -109,6 +113,7 @@ internal static class M1Model
 
         AssignmentMaintenanceMappingProposal.Configure(model);
         FullSchemaMapping.Configure(model);
+        model.HasSequence<long>("asset_code_sequence", "public");
 
         foreach (var entity in model.Model.GetEntityTypes())
         {

@@ -47,7 +47,8 @@ public static class Validation
     }
     public static void Asset(AssetRequest x, bool update)
     {
-        x.AssetCode = Required(x.AssetCode, 50, "assetCode"); x.Name = Required(x.Name, 200, "name");
+        if(x.AssetCode != null) throw Invalid("assetCode", "Mã tài sản do hệ thống tự tạo và không thể chỉnh sửa.");
+        x.Name = Required(x.Name, 200, "name");
         if (x.AssetTypeId <= 0 || x.OwningDepartmentId <= 0) throw Invalid("references", "Loại tài sản và phòng ban bắt buộc.");
         x.SerialNumber = Optional(x.SerialNumber, 200, "serialNumber");
         x.Brand = Optional(x.Brand, 200, "brand"); x.Model = Optional(x.Model, 200, "model");

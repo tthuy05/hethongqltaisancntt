@@ -1,5 +1,25 @@
 # API Specification
 
+## Contract update 11/10/2026 — source local / chưa deploy
+
+Base /api/v1. LF contracts supersede fixed-role/initial-password/manual-code của thiết kế lịch sử. Assignment flag đóng, Maintenance không đăng ký runtime.
+
+| Endpoint | Contract / authorization |
+|---|---|
+| GET /roles/matrix | Admin membership + roles.assign + roles.permissions.read; id/code/module/action/available/requires/adminOnly |
+| POST /roles | Admin; name 1..200, description optional <=1000; custom code server generated, empty grants; 201 RoleDetail |
+| PUT /roles/{id} | Admin; name/description/rowVersion; custom only; stale 409 |
+| PUT /roles/{id}/permissions | Admin; unique active known permissionIds <=28 + rowVersion; read dependencies; disabled grants preserved; Admin core protected |
+| PATCH /roles/{id}/status | Admin; Active/Inactive + reason <=1000 + rowVersion; custom only, in-use 409 |
+| POST /users | users.create + roles.assign, fresh delegated checks; profile + roleIds 1..50 unique active; password forbidden; 201 pending UserDto/email status |
+| POST /users/{id}/invitation | users.create; pending active/unlocked user; new token invalidates old; 200 userId/emailStatus/expiresAt; no token |
+| POST /auth/activate | Public/rate-limited; token/password 12..256 not all whitespace/confirmPassword; 200 safe message; invalid/expired/replay 400 generic, validation 400, limiter 429 |
+
+UserDto thêm departmentName/isEmailConfirmed/invitationEmailStatus/activationExpiresAt; account thêm effectivePermissions. Không trả hash/security entity. Create commit trước email; gửi lỗi/chưa cấu hình vẫn pending/resendable. Sent là provider nhận, không chứng minh inbox delivery.
+
+Asset Create/Update không nhận assetCode; legacy non-null input trả 400 cả khi bằng mã hiện tại; response/search giữ code tự sinh/mã cũ. Status workflow/If-Match/cost masking giữ nguyên. Audit API giữ entityType/entityId compatibility, Audit UI không dùng/display chúng.
+
+
 > Trạng thái: **PLANNED — NOT IMPLEMENTED / NOT VERIFIED**. Đây là contract thiết kế Week 2; chưa có controller, OpenAPI runtime hoặc API test.
 
 ## 1. Conventions
@@ -91,9 +111,9 @@ Không có refresh/logout endpoint trong MVP. Logout xóa access token phía cli
 | EP-006 | `GET /users/{userId}` | Xem user | `users.read` | — | — | `UserDetail` | 200 | 400, 401, 403, 404 | BR-026 |
 | EP-007 | `PUT /users/{userId}` | Cập nhật profile/department | `users.update` | — | `UpdateUserRequest` + `rowVersion` | `UserDetail` | 200 | 400, 401, 403, 404, 409 | BR-009, BR-041, BR-043 |
 | EP-008 | `PATCH /users/{userId}/status` | Activate/disable/admin lock/unlock; auto lockout là trạng thái khác | `users.status.manage` | — | `ChangeStatusRequest` + reason/version | `UserDetail` | 200 | 400, 401, 403, 404, 409 | BR-024, BR-042 |
-| EP-009 | `PUT /users/{userId}/roles` | Thay toàn bộ role membership cố định; touch user row và tăng token version trong transaction | `roles.assign` | — | `{ roleIds, rowVersion }` | `UserDetail` | 200 | 400, 401, 403, 404, 409 | BR-009, BR-026, BR-042 |
-| EP-010 | `GET /roles` | Danh sách role cố định; Manager chỉ nhận ID/label | `roles.read` | `status,keyword`, paging/sort | — | `Paged<RoleSummary>` theo field scope | 200 | 400, 401, 403 | BR-026, BR-034 |
-| EP-011 | `GET /roles/permissions` | Xem permission catalog/mapping cố định | `roles.permissions.read` (Admin IT only) | `module,keyword` | — | `Permission[]` | 200 | 400, 401, 403 | BR-026 |
+| EP-009 | `PUT /users/{userId}/roles` | Thay toàn bộ role membership của nhóm đang hoạt động; touch user row và tăng token version trong transaction | `roles.assign` | — | `{ roleIds, rowVersion }` | `UserDetail` | 200 | 400, 401, 403, 404, 409 | BR-009, BR-026, BR-042 |
+| EP-010 | `GET /roles` | Danh sách nhóm mặc định/tùy chỉnh; Manager nhận ID/label/default flag | `roles.read` | `status,keyword`, paging/sort | — | `Paged<RoleSummary>` theo field scope | 200 | 400, 401, 403 | BR-026, BR-034 |
+| EP-011 | `GET /roles/permissions` | Xem permission catalog/mapping hợp lệ | `roles.permissions.read` (Admin IT only) | `module,keyword` | — | `Permission[]` | 200 | 400, 401, 403 | BR-026 |
 | EP-012 | `GET /roles/{roleId}` | Xem role và permissions | `roles.permissions.read` (Admin IT only) | — | — | `RoleDetail` | 200 | 400, 401, 403, 404 | BR-026 |
 | EP-013 | `GET /departments` | Search/list department | `departments.read` | paging; `status,keyword`; sort | — | `Paged<Department>` | 200 | 400, 401, 403 | BR-034 |
 | EP-014 | `POST /departments` | Tạo department | `departments.create` | — | `CreateDepartmentRequest` | `Department` + Location | 201 | 400, 401, 403, 409 | BR-043 |
@@ -239,13 +259,13 @@ Export áp dụng row limit cấu hình; nếu vượt giới hạn trả 413/Pr
 
 ### User/master data
 
-- Create/update user: email, display name, department, status; create nhận initial password qua TLS và hash ngay, response không echo.
+- Create/update user: email, display name, department, status; create nhận nhóm được chọn, tạo pending account và gửi email; người dùng đặt password khi kích hoạt, response không echo token/password.
 - Role catalog gồm đúng ba role baseline và chỉ đọc trong MVP. Admin IT quản lý membership qua EP-009; không tạo/sửa/deactivate role definition.
 - Department/type/software: code/name/description/status/version; code/name normalization và length limits.
 
 ### Asset
 
-`CreateAssetRequest` bắt buộc `assetCode`, `name`, `assetTypeId`, `owningDepartmentId`; optional `serialNumber`, `brand`, `model`, `specification`, `operatingSystem`, `purchaseDate`, `purchasePrice`, `warrantyExpirationDate`, `location`, `note`. Server luôn đặt initial status `InStock`. `UpdateAssetRequest` chỉ cho phép các metadata trên và `rowVersion`, không cho đổi `status`; đổi status chỉ qua EP-027/workflow được quyền. Currency là cấu hình chung của MVP, không có field per-record.
+`CreateAssetRequest` bắt buộc `name`, `assetTypeId`, `owningDepartmentId`; optional `serialNumber`, `brand`, `model`, `specification`, `operatingSystem`, `purchaseDate`, `purchasePrice`, `warrantyExpirationDate`, `location`, `note`. Server luôn đặt initial status `InStock`. `UpdateAssetRequest` chỉ cho phép các metadata trên và `rowVersion`, không cho đổi `status`; đổi status chỉ qua EP-027/workflow được quyền. Currency là cấu hình chung của MVP, không có field per-record.
 
 Validation: non-negative money, warranty không trước purchase date, max lengths, asset code/serial normalized. Create cần asset type/owning department active; update chỉ kiểm active với reference được chọn mới, giữ reference inactive không đổi theo BR-043. Current assigned user/department không cập nhật qua Asset DTO mà qua assignment service; `owningDepartmentId` là department sở hữu riêng và có thể đổi qua metadata update sau resource authorization/audit.
 
@@ -322,7 +342,7 @@ Database platform đổi theo ADR-018 không đổi endpoint path, request/respo
 
 | JSON field | Bắt buộc Create/Update | SQL column | Validation / semantics |
 |---|---|---|---|
-| `assetCode` | Có / Có | `asset_code` | Trim/normalize, 1–50 ký tự, unique; update mã được phép nếu vẫn unique và có audit. |
+| `assetCode` | Không / Không | `asset_code` | Backend sequence sinh, response read-only; non-null client input 400. Unique giữ nguyên kể cả archived; mã cũ không đổi. |
 | `name` | Có / Có | `name` | Trim, 1–200 ký tự. |
 | `assetTypeId` | Có / Có | `asset_type_id` | ID dương, reference tồn tại; reference mới phải active. |
 | `owningDepartmentId` | Có / Có | `owning_department_id` | ID dương, owning department tồn tại; reference mới phải active. |

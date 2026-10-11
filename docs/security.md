@@ -1,5 +1,16 @@
 # Thiết kế bảo mật
 
+## LF security update 11/10/2026 — chưa deploy
+
+Custom groups empty-by-default, unknown permission deny, union active refresh mỗi JWT request. Matrix/audit Admin-only; delegated operator không cấp Admin/quyền vượt quyền mình. Pending Admin không tính cho last-admin safety.
+
+Token random 32 bytes/base64url, DB chỉ SHA-256 + UTC expiry 30 phút. One-time activation serialized/audited; resend thay hash. Không gửi default password hoặc token/hash trong DTO/audit/log. Token trong fragment (không HTTP request), page xóa khỏi URL history khi mở; Referrer-Policy no-referrer. Mailbox/shared-device/bearer-link vẫn có rủi ro.
+
+HTTPS Brevo provider do người dùng bổ sung; Resend adapter giữ idempotency key. API key mới ngoài source; sandbox Development ngoài Git/content root. Chỉ fake addresses/mock/sandbox khi regression. Owner báo gửi mail local thành công; inbox/production E2E NOT VERIFIED, không chạy gửi mail thật trong lượt này. Không thay connection string hiện có.
+
+Rollout phối hợp: old backend chưa hiểu IsEmailConfirmed; không tạo pending user shared trước khi mọi Auth runtime cập nhật. Cần backup/restore drill mới trước shared apply, không automatic Down hoặc API C. [Báo cáo](lecturer-feedback-remediation-report.md).
+
+
 > Addendum07/10/2026: Render Production package/trusted-forwarding/secret injection đã IMPLEMENTED theo [runbook](render-deployment.md). Chỉ frontend API-only được publish, config Development/private/mock/Swagger bị loại; runtime cần persistent JWT+Neon secret. Public HTTPS/proxy/least privilege/credential rotation/review vẫn PENDING. Artifact sạch không vô hiệu owner credential đã lộ trong Git (**FAIL1/UNRESOLVED**) hoặc phê duyệt public Manager cho dữ liệu thật. Các checkpoint thiết kế phía dưới được giữ lịch sử.
 
 > **M1 Auth/JWT/DB-backed policies/audit/concurrency IMPLEMENTED / TESTED.** Production security/encryption/full hardening remain PLANNED. New explicit user exception: owner DefaultConnection in repository Development configuration (ADR-023), so secret finding/least-privilege risk remain unresolved. [Current evidence/limits](m1-backend-handoff.md); earlier setup report is historical.

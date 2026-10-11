@@ -1,5 +1,15 @@
 # Yêu cầu hệ thống
 
+## Addendum 11/10/2026 — nhận xét giảng viên (source local, chưa deploy)
+
+- LF-01: nhóm quyền phẳng tùy chỉnh, ma trận checkbox permission thật, union quyền active và Admin-only quản lý, giữ nhóm mặc định/last Admin; không suy quyền từ phòng ban/chức vụ.
+- LF-02/03: Admin mời tài khoản với nhóm đã chọn; pending không login, email không chứa password, token hash UTC 30 phút/một lần/resend thay token, phục hồi gửi thất bại.
+- LF-04: UI dùng tên phòng ban, ID/FK vẫn nội bộ.
+- LF-05: user xác nhận bỏ cột/dòng chi tiết/hai bộ lọc “Đối tượng” trên Nhật ký; giữ entity identity trong audit backend và nghiệp vụ Assignment.
+- LF-06: backend sinh mã AST bằng PostgreSQL sequence; client không nhập/sửa; mã cũ và unique constraint giữ nguyên.
+
+[Trace implementation/test/demo](lecturer-feedback-remediation-report.md). Requirement tương lai của Maintenance/Assignment không được tự coi đã hoàn thành.
+
 > Trạng thái: **PLANNED — WEEK 2 ANALYSIS BASELINE**  
 > Phạm vi tài liệu: mô tả yêu cầu, chưa xác nhận bất kỳ chức năng nghiệp vụ nào đã được triển khai hoặc kiểm thử.  
 > Tên hệ thống: **Enterprise IT Asset & Infrastructure Management System**.

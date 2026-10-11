@@ -49,7 +49,7 @@ public sealed class UserLookupHostTests
             operation.GetProperty("parameters").EnumerateArray().Select(x => x.GetProperty("name").GetString()).Order());
         foreach (var status in new[] { "200", "400", "401", "403" }) Assert.True(operation.GetProperty("responses").TryGetProperty(status, out _));
         var dto = document.GetProperty("components").GetProperty("schemas").GetProperty("UserLookupDto");
-        Assert.Equal(["departmentId", "displayName", "id"], dto.GetProperty("properties").EnumerateObject().Select(x => x.Name).Order());
+        Assert.Equal(["departmentId", "departmentName", "displayName", "id"], dto.GetProperty("properties").EnumerateObject().Select(x => x.Name).Order());
     }
 }
 
@@ -87,7 +87,7 @@ public sealed class UserLookupApiTests(MvpFixture fixture)
             var response = await Json(await client.GetAsync(Path + "?pageSize=100"));
             Assert.NotEmpty(response.GetProperty("items").EnumerateArray());
             foreach (var item in response.GetProperty("items").EnumerateArray())
-                Assert.Equal(["departmentId", "displayName", "id"], item.EnumerateObject().Select(x => x.Name).Order());
+                Assert.Equal(["departmentId", "departmentName", "displayName", "id"], item.EnumerateObject().Select(x => x.Name).Order());
             // Email is not a searchable field, even when the authenticated caller knows it.
             var emailSearch = await Json(await client.GetAsync(Path + "?keyword=" + Uri.EscapeDataString(email)));
             Assert.Equal(0, emailSearch.GetProperty("totalItems").GetInt32());
@@ -205,6 +205,6 @@ public sealed class UserLookupApiTests(MvpFixture fixture)
         Assert.Equal(users, await db.Set<User>().CountAsync()); Assert.Equal(audits, await db.Set<AuditLog>().CountAsync());
         Assert.False(db.Database.HasPendingModelChanges()); Assert.Empty(await db.Database.GetPendingMigrationsAsync());
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/roles")).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync("/api/v1/roles", new { code = "CUSTOM" })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/v1/roles", new { code = "CUSTOM" })).StatusCode);
     }
 }

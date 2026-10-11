@@ -86,6 +86,7 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
     return payload;
   }
   const auth = {
+    activate(dto) { return request('/auth/activate', { method: 'POST', body: dto, publicRequest: true }); },
     get session() { return copy(currentSession()); },
     onSessionInvalidated(listener) {
       if (typeof listener !== 'function') throw new TypeError('Session listener must be a function.');
@@ -139,6 +140,7 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
     return result;
   }
   const users = {
+    resendInvitation(id) { return request(`/users/${idPath(id)}/invitation`, { method: 'POST' }); },
     list(query = {}) { return request(`/users${queryString(query)}`); },
     get(id) { return request(`/users/${idPath(id)}`); },
     account(id) { return request(`/users/${idPath(id)}/account`); },
@@ -148,6 +150,11 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
     async replaceRoles(id, dto) { validate(validateUserRoles(dto)); return changeUser(id, `/users/${idPath(id)}/roles`, 'PUT', dto); },
   };
   const roles = {
+    matrix() { return request('/roles/matrix'); },
+    create(dto) { return request('/roles', { method: 'POST', body: dto }); },
+    update(id, dto) { return request(`/roles/${idPath(id)}`, { method: 'PUT', body: dto }); },
+    replacePermissions(id, dto) { return request(`/roles/${idPath(id)}/permissions`, { method: 'PUT', body: dto }); },
+    setStatus(id, dto) { return request(`/roles/${idPath(id)}/status`, { method: 'PATCH', body: dto }); },
     list(query = {}) { return request(`/roles${queryString(query)}`); },
     get(id) { return request(`/roles/${idPath(id)}`); },
     permissions(query = {}) { return request(`/roles/permissions${queryString(query)}`); },

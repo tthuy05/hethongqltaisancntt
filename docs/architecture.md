@@ -1,5 +1,12 @@
 # Kiến trúc hệ thống
 
+## LF update 11/10/2026 — local source
+
+Giữ Controller → Application Service → Repository/audited UOW → EF Core/Npgsql → Neon. RoleManagementService dùng 4 bảng RBAC, identity lock/rowVersion; Auth refresh union quyền mỗi request. UserInvitationService commit pending identity/membership rồi gọi IInvitationEmailSender ngoài transaction qua HTTPS HttpClient hoặc Development sandbox; lỗi gửi không rollback user. Activation kiểm hash/UTC, đặt password/confirmed atomic. AssetCodeGenerator dùng nextval trong UOW; DB trigger giữ mã bất biến. DepartmentName chỉ read projection.
+
+Không startup migration/seed, đổi connection config, mở Assignment hoặc đăng ký Maintenance scaffold. [Evidence/rollout](lecturer-feedback-remediation-report.md).
+
+
 **03/10/2026 scoped prerequisite:** EP-004 User Lookup follows the existing Controller → Application service → read-only repository → EF/Npgsql/Neon path. Three-field projection/filter/order/page stays in PostgreSQL; controller binds a strict query allowlist and existing DB-backed policy. No new layer/entity/DbContext mapping/migration or Assignment aggregate. [Contract/handoff](user-lookup-handoff.md); original full-project diagrams remain the design baseline.
 
 > **M1 backend/UI IMPLEMENTED 02–03/10/2026 theo yêu cầu mới:** Auth/JWT/policies, master/Asset services/repository/controllers, audited unit of work và real API-default frontend. [Current evidence](m1-backend-handoff.md). Week 2 independent review preserved; Week 4–7/production remain PLANNED.

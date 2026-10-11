@@ -1,5 +1,7 @@
 # Phân tích Actor
 
+> Source update 11/10/2026, chưa deploy: giữ ba nhóm mặc định, cho Admin tạo nhóm phẳng/ma trận quyền thật. Technical Support Lead là ví dụ nhóm do Admin tạo, không tự gán bởi department/job title. Ticket/maintenance scope vẫn PLANNED. Người được mời xác nhận email/tự đặt mật khẩu trước khi đăng nhập. [Báo cáo](lecturer-feedback-remediation-report.md).
+
 > Trạng thái: **PLANNED — WEEK 2 ANALYSIS BASELINE**  
 > Hệ thống MVP chỉ có ba authenticated role. Các mô tả dưới đây là mô hình quyền dự kiến, chưa có authentication/authorization runtime.
 

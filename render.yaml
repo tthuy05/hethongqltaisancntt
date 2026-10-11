@@ -24,3 +24,9 @@ services:
         sync: false
       - key: Jwt__SigningKey
         generateValue: true
+      - key: BREVO_API_KEY
+        sync: false
+      - key: Email__Mode
+        value: Brevo
+      - key: Email__From
+        value: hethongqlcntt@gmail.com

@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace ItAssetManagement.Api.Mvp;
 
 [ApiController, Route("api/v1/roles")]
-public sealed class RolesController(RoleCatalogService roles) : ControllerBase
+public sealed class RolesController(RoleCatalogService roles, RoleManagementService management) : ControllerBase
 {
     [HttpGet, Authorize(Policy = Permissions.RoleRead)]
     [ProducesResponseType<PagedResponse<RoleSummaryDto>>(200)]
@@ -35,4 +35,16 @@ public sealed class RolesController(RoleCatalogService roles) : ControllerBase
     {
         Errors.Query(Request, Array.Empty<string>()); return roles.GetAsync(roleId, ct);
     }
+
+    [HttpGet("matrix"), Authorize(Policy=Permissions.RoleAssign)]
+    public Task<List<PermissionOption>> Matrix(CancellationToken ct)=>management.CatalogAsync(ct);
+    [HttpPost, Authorize(Policy=Permissions.RoleAssign)]
+    public async Task<IActionResult> Create(RoleWriteRequest request,CancellationToken ct)
+    {var result=await management.CreateAsync(request,ct);return CreatedAtAction(nameof(Get),new{roleId=result.Id},result);}
+    [HttpPut("{roleId:long:min(1)}"), Authorize(Policy=Permissions.RoleAssign)]
+    public Task<RoleDetailDto> Update(long roleId,RoleWriteRequest request,CancellationToken ct)=>management.UpdateAsync(roleId,request,ct);
+    [HttpPut("{roleId:long:min(1)}/permissions"), Authorize(Policy=Permissions.RoleAssign)]
+    public Task<RoleDetailDto> SavePermissions(long roleId,RolePermissionsRequest request,CancellationToken ct)=>management.PermissionsAsync(roleId,request,ct);
+    [HttpPatch("{roleId:long:min(1)}/status"), Authorize(Policy=Permissions.RoleAssign)]
+    public Task<RoleDetailDto> Status(long roleId,StatusRequest request,CancellationToken ct)=>management.StatusAsync(roleId,request,ct);
 }

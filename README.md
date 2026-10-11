@@ -1,5 +1,11 @@
 # Hệ thống Quản lý & Tối ưu Hạ tầng CNTT Doanh nghiệp
 
+## Cập nhật 11/10/2026 — 6 nhận xét giảng viên
+
+Source bổ sung nhóm quyền tùy chỉnh/ma trận checkbox, mời tài khoản qua email, kích hoạt một lần trong 30 phút, mã tài sản do sequence cấp; hiển thị tên phòng ban và bỏ các mục “Đối tượng” trên Nhật ký. **Publication trên nhánh `codex/lecturer-feedback`, chưa merge/deploy/apply shared.** Không merge vào main trước khi duyệt migration và kế hoạch triển khai tương thích. [Báo cáo, kết quả kiểm thử và hướng dẫn demo](docs/lecturer-feedback-remediation-report.md).
+
+Baseline đọc thực tế: Git/Render `1bc276741875573e85784d5cb57cfead8930c045`, Neon **18 bảng/41 FK/83 CHECK/96 indexes/3 migrations**, 28 permissions/49 grants; Assignment API đóng. Các ghi chú ngày 08–09/10 phía dưới là lịch sử, không phải trạng thái database hiện tại. Có schema không đồng nghĩa nghiệp vụ cấp phát/bảo trì đã mở.
+
 Ứng dụng web giúp doanh nghiệp quản lý tập trung thiết bị và tài sản CNTT: có những thiết bị nào, thuộc phòng ban nào, đang ở trạng thái gì và đã thay đổi ra sao. Dự án hướng tới quản lý toàn bộ vòng đời tài sản, từ ghi nhận thông tin đến cấp phát, bảo trì và đề xuất thay thế.
 
 Hiện bản demo public đã có giao diện kết nối API và cơ sở dữ liệu PostgreSQL trên Neon cho đăng nhập, danh mục và quản lý tài sản. Core API cấp phát đang được tích hợp và đã kiểm thử trên DB test riêng, **chưa publish hoặc mở trên shared DB**; các phần cấp phát còn lại, bảo trì, bản quyền phần mềm và tối ưu ngân sách vẫn **DỰ KIẾN (PLANNED)**.
@@ -28,7 +34,7 @@ Phần “tối ưu” dự kiến sử dụng **quy tắc nghiệp vụ** về 
 
 ## 2. Ai sử dụng hệ thống?
 
-Hệ thống có ba vai trò đăng nhập. Bảng dưới đây mô tả quyền trong phần **đã triển khai**, không phải toàn bộ chức năng tương lai.
+Hệ thống giữ ba nhóm mặc định dưới đây. Source mới cho Admin tạo nhóm tùy chỉnh và sửa ma trận quyền đã hỗ trợ; phòng ban/chức vụ không tự sinh quyền. Bảng mô tả quyền bootstrap, không phải quyền bất biến của mọi tài khoản.
 
 | Vai trò | Quyền chính hiện tại |
 |---|---|
@@ -36,7 +42,7 @@ Hệ thống có ba vai trò đăng nhập. Bảng dưới đây mô tả quyề
 | Quản lý hệ thống (`SYSTEM_MANAGER`) | Xem và quản lý tài sản, xem chi phí và bảng tổng quan; xem danh mục tham chiếu. Không quản trị tài khoản hoặc sửa danh mục phòng ban/loại tài sản. |
 | Nhân viên hỗ trợ kỹ thuật (`TECHNICAL_SUPPORT`) | Xem dữ liệu tài sản và bảng tổng quan phục vụ vận hành; không xem chi phí, không sửa tài sản hoặc quản trị tài khoản. |
 
-Nhân viên nhận tài sản không nhất thiết có quyền đăng nhập. Tài khoản mới chỉ đăng nhập được sau khi được gán vai trò hợp lệ, đang hoạt động và không bị khóa. Quyền được kiểm tra tại API, không chỉ bằng việc ẩn nút trên giao diện.
+Nhân viên nhận tài sản không nhất thiết có quyền đăng nhập. Tài khoản được mời trong source mới phải xác nhận email, tự đặt mật khẩu, có nhóm hoạt động và không bị khóa trước khi đăng nhập. API nạp lại hợp các quyền hợp lệ của nhóm hoạt động mỗi request, không chỉ ẩn nút trên giao diện.
 
 Chi tiết: [Vai trò sử dụng](docs/actors.md), [Ma trận phân quyền](docs/permission-matrix.md) và [Bảo mật](docs/security.md).
 
@@ -50,7 +56,7 @@ Chi tiết: [Vai trò sử dụng](docs/actors.md), [Ma trận phân quyền](do
 - **Tra cứu:** tìm kiếm, lọc, phân trang và sắp xếp danh sách tài sản.
 - **Bảng tổng quan:** thống kê cơ bản từ dữ liệu thật; báo cáo và phân tích nâng cao chưa có.
 - **Quản lý người dùng (`User management`):** giao diện và API danh sách, tìm kiếm/lọc, tạo, xem, sửa hồ sơ; kích hoạt/vô hiệu hóa, khóa/mở khóa và gán vai trò bằng ID thật. Có bảo vệ quản trị viên cuối cùng, kiểm soát cập nhật đồng thời và thu hồi hiệu lực JWT cũ khi trạng thái/quyền thay đổi.
-- **Danh mục vai trò/quyền:** API đọc các role cố định; Quản lý hệ thống chỉ nhận ID/tên role, còn thông tin quyền chi tiết dành cho Quản trị IT. Không có chức năng tạo/sửa định nghĩa role.
+- **Nhóm quyền:** public trước thay đổi có ba role mặc định. Source local mới có trang Phân quyền/API nhóm phẳng cho Admin, checkbox permission thật, concurrency, audit và bảo vệ Admin cuối cùng; chưa triển khai public.
 - **Tra cứu người dùng (`User Lookup`):** API danh sách tối thiểu để chọn người nhận tài sản; nghiệp vụ cấp phát đang tích hợp như ghi chú dưới đây.
 - **Toàn vẹn dữ liệu:** kiểm tra dữ liệu đầu vào, ràng buộc cơ sở dữ liệu, giao dịch, kiểm soát cập nhật đồng thời và ghi nhật ký thao tác. Admin có API/màn hình tra cứu nhật ký; kết quả kiểm chứng mới ở mục dưới.
 - **Giao diện:** 10 màn hình dùng API thật — Đăng nhập, Tổng quan, Danh sách tài sản, Thêm tài sản, Sửa tài sản, Chi tiết tài sản, Phòng ban, Loại tài sản, Người dùng và Nhật ký thao tác; quản trị tài khoản và xem chi tiết nhật ký trong hộp thoại.
@@ -65,7 +71,7 @@ Chi tiết: [Vai trò sử dụng](docs/actors.md), [Ma trận phân quyền](do
 - Phần mềm, bản quyền, phân bổ bản quyền và cảnh báo hết hạn.
 - Đánh giá vòng đời, đề xuất thay thế thiết bị và dự toán ngân sách.
 - Báo cáo nâng cao, biểu đồ và nhập/xuất Excel.
-- Đặt lại mật khẩu, tạo/sửa định nghĩa vai trò và chỉnh ma trận quyền.
+- Đặt lại mật khẩu tài khoản đã kích hoạt. Nhóm tùy chỉnh/ma trận quyền đã có source local, chưa triển khai public.
 - API lịch sử cấp phát/điều chuyển và bảng `maintenance_histories` chưa hoàn thành; không nhầm API tra cứu nhật ký quản trị với lịch sử workflow chưa triển khai.
 - Triển khai chính thức và đánh giá đầy đủ về bảo mật, hiệu năng, khả năng tiếp cận.
 

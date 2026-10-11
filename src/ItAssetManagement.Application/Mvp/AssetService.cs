@@ -2,7 +2,7 @@ using ItAssetManagement.Domain.Entities;
 
 namespace ItAssetManagement.Application.Mvp;
 
-public sealed class AssetService(IRepository repo, IUnitOfWork uow, IAuditWriter audit, IActor actor)
+public sealed class AssetService(IRepository repo, IUnitOfWork uow, IAuditWriter audit, IActor actor, IAssetCodeGenerator? codes = null)
 {
     private IQueryable<AssetDto> Project(IQueryable<Asset> source)
     {
@@ -57,7 +57,8 @@ public sealed class AssetService(IRepository repo, IUnitOfWork uow, IAuditWriter
         var id = await uow.RunAsync(async () =>
         {
             await ReferencesAsync(x, null, ct); await UniqueAsync(x, 0, ct);
-            var asset = new Asset { CreatedByUserId = actor.UserId };
+            var asset = new Asset { CreatedByUserId = actor.UserId,
+                AssetCode = await (codes ?? throw new InvalidOperationException("Asset code generator required.")).NextAsync(ct) };
             Apply(asset, x); repo.Add(asset); await repo.SaveAsync(ct);
             repo.Add(new AssetStatusHistory { AssetId = asset.Id, ToStatus = "IN_STOCK", Source = "SYSTEM",
                 Reason = "Tạo tài sản", ChangedByUserId = actor.UserId, CorrelationId = actor.CorrelationId, ChangedAtUtc = DateTime.UtcNow });
@@ -130,15 +131,13 @@ public sealed class AssetService(IRepository repo, IUnitOfWork uow, IAuditWriter
     }
     private async Task UniqueAsync(AssetRequest x, long id, CancellationToken ct)
     {
-        var code = x.AssetCode.ToLowerInvariant(); var serial = x.SerialNumber?.ToLowerInvariant();
-        if (await repo.AnyAsync(repo.Query<Asset>().Where(a => a.Id != id && a.AssetCode.ToLower() == code), ct))
-            throw new BusinessException(409, "ASSET_CODE_CONFLICT", "Mã tài sản đã tồn tại.");
+        var serial = x.SerialNumber?.ToLowerInvariant();
         if (serial != null && await repo.AnyAsync(repo.Query<Asset>().Where(a => a.Id != id && a.SerialNumber != null && a.SerialNumber.ToLower() == serial), ct))
             throw new BusinessException(409, "ASSET_SERIAL_CONFLICT", "Serial đã tồn tại.");
     }
     private static void Apply(Asset a, AssetRequest x)
     {
-        a.AssetCode = x.AssetCode; a.Name = x.Name; a.AssetTypeId = x.AssetTypeId; a.OwningDepartmentId = x.OwningDepartmentId;
+        a.Name = x.Name; a.AssetTypeId = x.AssetTypeId; a.OwningDepartmentId = x.OwningDepartmentId;
         a.SerialNumber = x.SerialNumber; a.Manufacturer = x.Brand; a.Model = x.Model; a.Specification = x.Specification;
         a.OperatingSystem = x.OperatingSystem; a.Location = x.Location; a.PurchaseCost = x.PurchasePrice;
         a.PurchaseDate = x.PurchaseDate; a.WarrantyEndDate = x.WarrantyExpirationDate; a.Notes = x.Note;

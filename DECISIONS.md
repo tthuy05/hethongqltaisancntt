@@ -1,5 +1,17 @@
 # Architecture Decision Records
 
+## ADR-LF-20261011 — Nhóm quyền động, invitation và mã tài sản tự sinh
+
+**Date:** 11/10/2026. **Status:** ACCEPTED FOR LOCAL IMPLEMENTATION; NOT DEPLOYED.
+
+**Context:** Sáu nhận xét giảng viên cần thay ba role giới hạn cứng, mật khẩu do Admin đặt và mã tài sản editable; schema hiện có 18 bảng/41 FK.
+
+**Decision:** Tận dụng roles/permissions/user_roles/role_permissions cho nhóm phẳng. Admin IT quản lý ma trận; nhóm mới không có quyền mặc định, không suy quyền từ department/job title. Effective permissions là union permission hợp lệ/active trong role active, nạp mỗi request. Audit/ma trận giữ Admin-only; không mở Assignment/Maintenance. Bootstrap seed không tự khôi phục grant đã thu hồi.
+
+Invitation dùng 4 cột users vì chỉ một lời mời hiệu lực/tài khoản: random 32 bytes, SHA-256 hash, UTC 30 phút, một lần; resend thay token, password/confirmation atomic. Account cũ default confirmed=true. Email hiện dùng Brevo HTTPS do người dùng tích hợp, giữ adapter Resend và sandbox Development ngoài Git; secret email mới cấu hình ngoài source. PostgreSQL sequence cấp `AST-` tối thiểu 6 chữ số, có thể có khoảng trống; unique index giữ nguyên và trigger chặn đổi mã cũ.
+
+**Consequences:** Vẫn 18 bảng/41 FK và 28 permission codes, không bảng mới/native enum/nhóm Lead tự seed. Migration mới cần backup/restore drill và rollout phối hợp: backend cũ không hiểu pending confirmation và có contract sửa mã khác. Không tạo pending account shared trước khi mọi runtime Auth cập nhật. Không automatic Down vì mất trạng thái xác nhận có thể mở lại tài khoản chưa kích hoạt. Ba migration cũ bất biến; không publication/database change trong task này. [Evidence/runbook](docs/lecturer-feedback-remediation-report.md).
+
 > Week 2 status: decisions are **ACCEPTED FOR DESIGN — PLANNED FOR IMPLEMENTATION**. A decision being accepted does not mean its code, migration or test exists.
 
 > Current database decision: **ADR-018 — PostgreSQL hosted on Neon**, 01/10/2026. ADR-002 is superseded; database-specific wording in ADR-003/007/010/011/012/015 is historical and mapped by ADR-018–020. Their business/architecture intent remains valid; no SQL Server provider or native rowversion is planned going forward.
