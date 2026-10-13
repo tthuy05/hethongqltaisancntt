@@ -102,9 +102,8 @@ public sealed class AssetService(IRepository repo, IUnitOfWork uow, IAuditWriter
             repo.ExpectVersion(asset, version);
             if (asset.CurrentStatus is not ("IN_STOCK" or "BROKEN")) throw new BusinessException(409, "ASSET_STATUS_CONFLICT", "Chuyển trạng thái không hợp lệ.");
             if (await repo.HasActiveWorkflowAsync(id, ct)) throw Workflow();
-            repo.Add(new AssetStatusHistory { AssetId = id, FromStatus = asset.CurrentStatus, ToStatus = "RETIRED", Reason = reason,
-                Source = "ADMIN", ChangedAtUtc = DateTime.UtcNow, ChangedByUserId = actor.UserId, CorrelationId = actor.CorrelationId });
-            asset.CurrentStatus = "RETIRED"; asset.UpdatedByUserId = actor.UserId;
+            repo.Add(AssetStatusTransitions.Apply(asset, "RETIRED", AssetStatusChangeSource.Admin,
+                actor, DateTime.UtcNow, reason));
             Record("assets.status.change", asset, before); await repo.SaveAsync(ct); return true;
         }, ct);
         return await GetAsync(id, ct);

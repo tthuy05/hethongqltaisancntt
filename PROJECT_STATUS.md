@@ -1,5 +1,37 @@
 # Project Status
 
+## 14/10/2026 — Checkpoint nền Tuần 4 để bàn giao Thiện
+
+Đã gom shared status/scope/cost/audit/protocol/client thành [checkpoint review](docs/week-04-foundation-checkpoint.md). Full local verification: **494 unit +157 offline integration PASS**, 125 cloud SKIP; **119 frontend PASS**, Release 0 warning/error. Publication chuẩn bị trên nhánh PR #1 draft, không merge/deploy main hoặc chạy shared migration. Trạng thái local trong các addendum trước là evidence tại thời điểm thực hiện, không thay thế checkpoint này. Week 5 security prerequisites có thể chuẩn bị độc lập, không nhận M2 đã nghiệm thu.
+
+## 14/10/2026 — Thủy: shared Assignment API client (LOCAL / UNDER REVIEW)
+
+Đã bổ sung adapter 4 routes Assignment hiện có và user lookup, dùng cùng session/error transport; validate XOR/UTC/query/version trước request. [Bàn giao client cho Thiện](docs/week-04-api-client-handoff.md). **45 client/session/service +16 build/production packaging tests PASS**, 32 syntax +36 CSP/boundary checks PASS; production 31 local assets. D4-04/D5-03 mới đạt fallback client, page/menu và Maintenance adapter còn PLANNED. Source chưa commit/push/deploy, không mở feature flags hoặc ghi DB.
+
+## 12/10/2026 — Thủy: cross-module protocol verification (LOCAL)
+
+Đã bổ sung và chạy **5 isolated PostgreSQL test cases PASS /0 FAIL /0 SKIP** cho AssignmentService thật tương tác shared Maintenance status/audit helpers: repair về InUse/InStock/Broken, return khi đang sửa và rollback lỗi sau Save. [Phạm vi và evidence](docs/week-04-cross-module-verification.md). Các bước Maintenance là fixture transaction; D5-02 còn PARTIAL trước Service/Controller thật của Thiện. Chưa mở API, đổi schema/configuration hoặc commit/push. Build Release 0 warning/error; 36 giây test execution.
+
+## 12/10/2026 — Thủy: shared audit ticket/history (LOCAL / UNDER REVIEW)
+
+Đã bổ sung MaintenanceAuditState/MaintenanceAudit và writer/reader metadata allowlist: kiểm actor/correlation/snapshot, ghi audit cho cả ticket lẫn MaintenanceHistory, ghi dấu cost thay đổi nhưng không lưu số tiền/free text. [Bàn giao và verification](docs/week-04-maintenance-audit-handoff.md). Build Release 0 warning/error; focused 110 unit PASS. Helper chưa nối vào API Maintenance Thiện; D5-01 mới đạt phần shared helper, chưa nghiệm thu end-to-end. Source chưa commit/push; migration/configuration/production không đổi.
+
+PostgreSQL affected **3 PASS /0 FAIL /0 SKIP** trên target isolated đã có: commit đồng bộ và hai failure/rollback cases (thiếu history audit; lỗi sau audit). Không ghi shared database hoặc nghiệm thu endpoint chưa triển khai; evidence ở handoff.
+
+## 12/10/2026 — Thủy: Maintenance scope/cost helper (LOCAL / UNDER REVIEW)
+
+D4-02 có helper phân biệt permission/object scope/financial fields, chặn Support truy cập ticket người khác hoặc gửi cost kể cả null/0. D4-03 có 21 unit +9 HTTP policy-harness PASS; không phải endpoint Maintenance thật. [Bàn giao, test và giới hạn](docs/week-04-maintenance-access-handoff.md). Không đăng ký quyền/seed/grant mới, không sửa Controller/Service Thiện; queue policy, custom-group scope và endpoint integration chưa nghiệm thu. Source WIP chưa commit/push, DB/Render không đổi.
+
+Release build 0 warning/error. Regression lượt scope/cost: **476 unit +157 offline integration PASS**, 117 cloud/opt-in SKIP; không cộng lại 30 focused cases. Không truy cập Neon trong lượt helper này; 5 PostgreSQL PASS ở mục shared-status phía dưới là evidence lượt trước, không tuyên bố đã chạy lại.
+
+## 12/10/2026 — Thủy Tuần 4: shared status contract (LOCAL / UNDER REVIEW)
+
+Đã bổ sung helper chuyển trạng thái/history theo BR-007/013 và dùng trong retire hiện có, giữ permission/version/workflow guard. Contract cho Thiện, correlation/audit/transaction boundary và các trường hợp return/transfer/cancel không đổi status nằm tại [bàn giao Tuần 4](docs/week-04-shared-status-handoff.md). D1-04 đã chuẩn bị code/tài liệu, chờ Thiện review; D4-01 mới hoàn thành helper, chưa có Maintenance workflow end-to-end. Không sửa Controller/Service của Thiện, không migration/seed shared/bật Assignment API.
+
+Build Release 0 warning/error; offline 455 unit +148 integration PASS, 117 explicit-opt-in SKIP; chạy riêng 5 affected PostgreSQL tests PASS/0 FAIL/0 SKIP trên database isolated (bao gồm retire HTTP, active-workflow guard và rollback thật). Evidence chi tiết ở handoff; không kiểm shared bằng phép ghi. Chưa commit/push source lượt này; ba file báo cáo WIP cũ giữ nguyên.
+
+Cập nhật checkpoint trước: `5cbedf1` đã push lên nhánh PR #1; CI run `38159014305` và Linux Docker smoke PASS, PR còn draft. Không có deploy mới; không dùng CI này làm bằng chứng cho helper chưa commit. Các mục ngày 11/10 trở về trước là snapshot lịch sử.
+
 ## 11/10/2026 — Lecturer feedback: LOCAL IMPLEMENTATION / UNDER REVIEW / NOT DEPLOYED
 
 Đã bổ sung source cho 6 nhận xét: nhóm quyền động, invitation qua email API/sandbox, activation UTC 30 phút một lần, tên phòng ban, bỏ “Đối tượng” ở Nhật ký, mã tài sản sequence/bất biến. [Test và trạng thái hoàn tất](docs/lecturer-feedback-remediation-report.md).

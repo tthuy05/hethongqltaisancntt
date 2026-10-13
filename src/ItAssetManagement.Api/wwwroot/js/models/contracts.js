@@ -19,6 +19,11 @@ export const ASSET_METADATA_FIELDS = Object.freeze([
 /** @typedef {AssetSummary & CreateAssetRequest & {rowVersion:string, isArchived:boolean, currentAssignment:object|null}} AssetDetail */
 /** @template T @typedef {{items:T[], page:number, pageSize:number, totalItems:number, totalPages:number}} Paged */
 /** @typedef {{keyword?:string, departmentId?:number, assetTypeId?:number, status?:string, page?:number, pageSize?:number, sortBy?:string, sortDirection?:'asc'|'desc'}} AssetQuery */
+/** Current Assignment API shapes; enriched DTO/transfer/history remain planned. */
+/** @typedef {{id:number, assetId:number, assignedUserId:number|null, assignedDepartmentId:number|null, assignedAt:string, returnedAt:string|null, assignmentNote:string|null, returnNote:string|null, rowVersion:string}} Assignment */
+/** @typedef {{assetId:number, userId?:number|null, departmentId?:number|null, assignedAt?:string|null, note?:string|null}} AssignAssetRequest */
+/** @typedef {{rowVersion:string, note:string, returnedAt?:string|null}} ReturnAssetRequest */
+/** @typedef {{page?:number, pageSize?:number, assetId?:number|null, userId?:number|null, departmentId?:number|null, active?:boolean}} AssignmentQuery */
 
 export function copy(value) {
   return value == null ? value : structuredClone(value);

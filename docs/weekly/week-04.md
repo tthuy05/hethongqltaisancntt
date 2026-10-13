@@ -1,5 +1,15 @@
 # Week 04 — Assignment, Maintenance & Audit
 
+**Addendum 14/10 — D4-04/D5-03 fallback:** shared API client cho 4 routes Assignment hiện có và user lookup đã có, 45 frontend tests PASS. Page/menu/feature rollout chưa bật; Maintenance module Thiện chưa hoàn thiện nên tasks UI integration vẫn PARTIAL. [Bàn giao client](../week-04-api-client-handoff.md).
+
+**Addendum 12/10 — D5-02:** 5 test cases shared cross-module protocol **PASS /0 FAIL /0 SKIP** trên isolated PostgreSQL; sử dụng AssignmentService thật và Maintenance fixture/status/audit helpers. Chưa nghiệm thu Maintenance API, D5-02 còn PARTIAL. [Bằng chứng và giới hạn](../week-04-cross-module-verification.md).
+
+**Addendum 12/10 — D5-01 shared audit:** helper ticket/history và sanitized metadata đã chuẩn bị, 110 focused unit PASS. Endpoint/workflow integration với Thiện vẫn PLANNED, không nhận toàn D5-01 hoặc Tuần 4 DONE. [Bàn giao audit](../week-04-maintenance-audit-handoff.md).
+
+**Addendum 12/10 — D4-02/03:** đã chuẩn bị Maintenance scope/cost helper, 21 unit +9 HTTP policy-harness cases PASS; chưa nối vào API của Thiện, không seed hoặc mở menu. Queue/custom-group scope cần review; endpoint integration còn PLANNED. [Bàn giao](../week-04-maintenance-access-handoff.md).
+
+**Tiến độ thực tế 12/10/2026:** Thủy đã chuẩn bị contract status/history/audit D1-04 và shared helper của D4-01; retire hiện có dùng helper, Maintenance workflow vẫn PLANNED/phụ thuộc Thiện. [Bàn giao và test](../week-04-shared-status-handoff.md). Các task rows bên dưới giữ nguyên như kế hoạch gốc, không phải status runtime mới; không tạo lại schema/lookup đã có checkpoint, không nhận cả Tuần 4 DONE.
+
 > **PLANNED — NOT IMPLEMENTED.** Entry: M1 identity/asset/master data/DB gate đạt hoặc blocker có owner. Mỗi ngày Thủy 3M+2S, Thiện 2M+1S (7h/4,5h đại diện); M=1–3h, S<1h. Thủy giữ DbContext/migration/shared status/audit; Thiện giữ Assignment/Maintenance API/UI.
 
 **Database boundary — PLANNED:** development/manual integration/demo dùng shared Neon PostgreSQL; clean migration/automated integration/fixture dùng PostgreSQL target isolated theo [testing strategy](../testing-strategy.md), fail-closed nếu trỏ shared dev. Không drop/reset schema/database hoặc truncate toàn bộ tables trên shared DB. Thủy review/test rồi điều phối apply migration qua direct endpoint; Thiện sync trước mọi EF migration command.

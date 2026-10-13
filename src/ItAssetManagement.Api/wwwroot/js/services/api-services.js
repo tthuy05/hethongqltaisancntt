@@ -1,6 +1,7 @@
 import { ASSET_STATUSES, copy } from '../models/contracts.js';
 import { validateAsset, validateLogin, validateMaster, validateUser, validateUserStatus, validateUserRoles } from '../utils/validation.js';
 import { ServiceError } from './service-error.js';
+import { createAssignmentService } from './assignment-service.js';
 
 /** Same-origin client for M1 backend APIs; no automatic mock fallback. */
 export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThis), baseUrl = '/api/v1' } = {}) {
@@ -140,6 +141,7 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
     return result;
   }
   const users = {
+    lookup(query = {}) { return request(`/users/lookup${queryString(query)}`); },
     resendInvitation(id) { return request(`/users/${idPath(id)}/invitation`, { method: 'POST' }); },
     list(query = {}) { return request(`/users${queryString(query)}`); },
     get(id) { return request(`/users/${idPath(id)}`); },
@@ -174,5 +176,6 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
       return { totalAssets: recent.totalItems, inUse: byStatus.find((item) => item.status === 'InUse').count, maintenance: byStatus.find((item) => item.status === 'Maintenance').count, replacementNeeded: null, replacementStatus: 'PLANNED', byStatus, recentAssets: recent.items, dataMode: 'api' };
     },
   };
-  return { mode: 'api', auth, assets, departments: masterService('department'), assetTypes: masterService('assetType'), users, roles, auditLogs, dashboard };
+  const assignments = createAssignmentService({ request, idPath });
+  return { mode: 'api', auth, assets, departments: masterService('department'), assetTypes: masterService('assetType'), users, roles, auditLogs, dashboard, assignments };
 }

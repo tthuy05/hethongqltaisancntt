@@ -79,12 +79,13 @@ public sealed class AuditLogDetailDto : AuditLogSummaryDto
 // Revalidate historic JSON at the read boundary; never return the stored snapshot directly.
 public static class AuditSnapshot
 {
-    private static readonly string[] PositiveIds = ["assetTypeId", "owningDepartmentId", "userId", "roleId", "auditLogId", "assetId", "assignedByUserId"];
-    private static readonly string[] NullableIds = ["parentDepartmentId", "departmentId", "assignedUserId", "assignedDepartmentId", "returnedByUserId"];
-    private static readonly string[] UtcTimes = ["assignedAtUtc", "returnedAtUtc"];
+    private static readonly string[] PositiveIds = ["assetTypeId", "owningDepartmentId", "userId", "roleId", "auditLogId", "assetId", "assignedByUserId", "maintenanceTicketId"];
+    private static readonly string[] NullableIds = ["parentDepartmentId", "departmentId", "assignedUserId", "assignedDepartmentId", "returnedByUserId", "technicianId"];
+    private static readonly string[] UtcTimes = ["assignedAtUtc", "returnedAtUtc", "performedAtUtc"];
     private static readonly string[] Flags = ["isActive", "isArchived", "isAdminLocked", "emailChanged", "usernameChanged", "displayNameChanged",
-        "employeeCodeChanged", "phoneChanged", "adminRoleAssigned", "reasonProvided"];
-    private static readonly string[] Other = ["defaultUsefulLifeMonths", "roleCount", "currentStatus", "purchaseCost", "page", "pageSize", "returnedCount"];
+        "employeeCodeChanged", "phoneChanged", "adminRoleAssigned", "reasonProvided", "estimatedCostChanged", "actualCostChanged", "commentProvided"];
+    private static readonly string[] Other = ["defaultUsefulLifeMonths", "roleCount", "currentStatus", "purchaseCost", "page", "pageSize", "returnedCount",
+        "maintenanceStatus", "maintenancePriority", "eventType"];
     private static readonly Dictionary<string, string> Names = PositiveIds.Concat(NullableIds).Concat(UtcTimes).Concat(Flags).Concat(Other)
         .ToDictionary(x => x, x => x, StringComparer.OrdinalIgnoreCase);
 
@@ -120,6 +121,9 @@ public static class AuditSnapshot
             "defaultUsefulLifeMonths" => isNull || value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var months) && months > 0,
             "roleCount" => value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var count) && count is >= 0 and <= 3,
             "currentStatus" => value.ValueKind == JsonValueKind.String && StatusMap.Api.Values.Contains(value.GetString()),
+            "maintenanceStatus" => value.ValueKind == JsonValueKind.String && value.GetString() is "PENDING" or "IN_PROGRESS" or "RESOLVED" or "FAILED" or "CANCELLED",
+            "maintenancePriority" => value.ValueKind == JsonValueKind.String && value.GetString() is "LOW" or "MEDIUM" or "HIGH" or "CRITICAL",
+            "eventType" => value.ValueKind == JsonValueKind.String && value.GetString() is "CREATED" or "STATUS_CHANGED" or "ASSIGNED" or "COMMENTED" or "COST_UPDATED" or "RESOLVED" or "FAILED" or "CANCELLED",
             "purchaseCost" => canReadCost && (isNull || value.ValueKind == JsonValueKind.Number && value.TryGetDecimal(out var money) &&
                 money is >= 0 and <= 9999999999999999.99m && decimal.Round(money, 2) == money),
             "page" => value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var page) && page > 0,

@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased — 14/10/2026 — API client Tuần 4
+
+- Added: shared Assignment client list/detail/assign/return và user lookup, reuse auth/error/session transport; validation theo Controller hiện có. [Bàn giao và checks](docs/week-04-api-client-handoff.md). Chưa thêm page/menu, bật API hoặc deploy.
+
+## Unreleased — 12/10/2026 — Shared status contract Tuần 4
+
+- Added: isolated PostgreSQL cross-module scenarios cho AssignmentService/shared Maintenance status/audit protocol, bao gồm return trong lúc sửa, kết quả hỏng và rollback sau Save. [Verification](docs/week-04-cross-module-verification.md); Maintenance Service/API vẫn cần Thiện tích hợp.
+
+- Added: shared Maintenance ticket/history audit helper, immutable before snapshot và kiểm actor/correlation; metadata reader/writer giữ status/technician/event/change flags, không chứa cost amounts/free text. [Bàn giao audit](docs/week-04-maintenance-audit-handoff.md); chưa nối endpoint hoặc deploy.
+
+- Added: Maintenance scope/cost helper và policy harness cho phần Thủy D4-02/03; field-presence guard cả null/0, assigned-only scope và default-deny queue. Constants chưa vào active catalog/seed; [trạng thái tích hợp](docs/week-04-maintenance-access-handoff.md).
+
+- Added: helper transition/history cho Assignment/Maintenance/retire theo BR-007/013, UTC/actor/correlation và matrix default-deny; contract transaction/audit bàn giao Thiện.
+- Refactored: retire dùng helper chung, giữ nguyên API, quyền, version và active-workflow guard. Không mở Maintenance endpoint hoặc thay schema/config.
+- Verification và giới hạn: [bàn giao Tuần 4](docs/week-04-shared-status-handoff.md). Source local chưa commit/push/deploy.
+
 ## Unreleased — 11/10/2026 — Sửa 6 nhận xét giảng viên
 
 - Added: Admin quản lý nhóm phẳng/ma trận checkbox và gán nhóm khi mời tài khoản; invitation HTTPS email API/sandbox, token SHA-256/UTC 30 phút/một lần/resend; migration bổ sung users/sequence/trigger.

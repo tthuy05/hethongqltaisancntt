@@ -1,5 +1,9 @@
 # Permission Matrix
 
+## Shared helper 12/10/2026 — LOCAL / UNDER REVIEW, chưa bật module
+
+Đã chuẩn bị scope/field policy của Thủy cho Maintenance; constants chưa vào catalog active hoặc seed. [Contract và giới hạn](week-04-maintenance-access-handoff.md): Support assigned-only, queue/self-claim mặc định deny khi chưa có policy; cost presence kể cả null/0 cần quyền; nhóm tùy chỉnh không tự được global scope. Endpoint/DTO integration và scope review còn PLANNED. Không thay đổi grant production.
+
 ## Source update 11/10/2026 — chưa deploy
 
 Ba nhóm mặc định là baseline bootstrap, không còn là giới hạn runtime. Admin IT tạo/sửa nhóm tùy chỉnh, ngừng nhóm không còn member, sửa ma trận và gán nhóm qua Users. Không hard-delete; không vô hiệu/đổi tên nhóm mặc định hoặc bỏ quyền nền tảng Admin.

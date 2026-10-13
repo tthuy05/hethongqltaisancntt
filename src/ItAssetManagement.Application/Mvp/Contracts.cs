@@ -65,6 +65,12 @@ public static class Permissions
         UserStatus = "users.status.manage", RoleAssign = "roles.assign", RoleRead = "roles.read",
         RolePermissionsRead = "roles.permissions.read", AuditRead = "audit-logs.read",
         AssignmentRead = "assignments.read", AssignmentAssign = "assignments.assign", AssignmentReturn = "assignments.return";
+    // Week 4 integration contracts only: intentionally excluded from All/seed/policies
+    // until the Maintenance rollout is reviewed. Reuses Thien's read/create names.
+    public const string MaintenanceRead = "maintenance.read", MaintenanceCreate = "maintenance.create",
+        MaintenanceUpdate = "maintenance.update", MaintenanceAssign = "maintenance.assign",
+        MaintenanceWork = "maintenance.work", MaintenanceResolve = "maintenance.resolve",
+        MaintenanceCancel = "maintenance.cancel", MaintenanceCostWrite = "maintenance.cost.write";
     public static readonly string[] Read = [AssetRead, AssetHistory, DepartmentRead, TypeRead, DashboardRead, UserLookup];
     // Support assignment reads require a scoped support contract, not this unrestricted service.
     public static readonly string[] Operate = [AssetCreate, AssetUpdate, AssetArchive, AssetStatus, AssetCost, RoleRead,
