@@ -1,5 +1,14 @@
 # Open Questions và Assumptions
 
+## Lifecycle metrics review — 14/10/2026
+
+| ID | Câu cần chốt cho evaluator/API | Safe preparation | Status |
+|---|---|---|---|
+| OQ-W5-METRIC-COUNT | MaintenanceCount tính ticket nào, xử lý CANCELLED/archived ra sao? | Reader trả raw counts theo status/archived; không tự chọn aggregate cho rule. Cost vẫn từ actual_cost, không history snapshots. | OPEN |
+| OQ-W5-METRIC-ASOF | asOfDate chỉ dùng tuổi/bảo hành hay cần ticket-state/cost historical reconstruction? | Reader trả current counts/cost, date-based age/warranty; không nhận historical proof. | OPEN |
+
+[Query contract/evidence](week-05-lifecycle-metrics-handoff.md). Threshold/currency/estimate OQ cũ vẫn OPEN, không seed giá trị đoán.
+
 ## License prerequisite review — 14/10/2026
 
 | ID | Nội dung cần chốt trước module rollout | Default local / tác động | Status |

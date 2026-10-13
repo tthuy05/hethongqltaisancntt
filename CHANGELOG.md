@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — 14/10/2026 — Lifecycle input query
+
+- Added: readonly immutable lifecycle facts/metrics query, age/warranty và cost completeness; actual ticket costs không cộng history snapshots, raw status counts không tự chọn rule semantics. [Handoff](docs/week-05-lifecycle-metrics-handoff.md); evaluator/API còn PLANNED.
+
 ## Unreleased — 14/10/2026 — License security prerequisites
 
 - Added: versioned AES-256-GCM protector/external key-ring interface và Admin-only key field/reveal policy; 34 focused unit PASS. [Bàn giao](docs/week-05-license-security-handoff.md). Chưa DI, cấu hình secret thật, persist key, API hoặc migration.

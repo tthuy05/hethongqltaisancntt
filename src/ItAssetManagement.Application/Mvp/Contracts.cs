@@ -74,6 +74,7 @@ public static class Permissions
     // Week 5 security contracts; excluded from active policies/seed until module rollout.
     public const string LicenseRead = "licenses.read", LicenseKeyManage = "licenses.key.manage",
         LicenseKeyReveal = "licenses.key.reveal";
+    public const string ReplacementEvaluate = "replacement-recommendations.evaluate";
     public static readonly string[] Read = [AssetRead, AssetHistory, DepartmentRead, TypeRead, DashboardRead, UserLookup];
     // Support assignment reads require a scoped support contract, not this unrestricted service.
     public static readonly string[] Operate = [AssetCreate, AssetUpdate, AssetArchive, AssetStatus, AssetCost, RoleRead,

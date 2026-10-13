@@ -1,5 +1,11 @@
 # Project Status
 
+## 14/10/2026 — Lifecycle query preparation (LOCAL / UNDER REVIEW)
+
+Thủy chuẩn bị W5-D4-01/03: immutable facts và readonly query từ actual_cost, raw status counts, age/warranty và missing-data flags; 11 unit PASS. [Handoff/evidence](docs/week-05-lifecycle-metrics-handoff.md). Không chạy evaluator/seed rule hoặc mở API. Key-security checkpoint `53b6056` đã push, CI run38450841891 SUCCESS gồm Linux container step; CI đó chưa bao gồm metrics WIP.
+
+Final metrics: 11 unit +2 isolated PostgreSQL PASS; trước checkpoint full offline539unit/157integrationPASS,127cloudSKIP,Release0warning/error. Key-security CI run38450841891 kiểm528unit/157offline/119frontend và Linux Docker smokeOFF32/ON36, synthetic merge `de442c1`; không claim Render deploy.
+
 ## 14/10/2026 — License security prerequisites (LOCAL / UNDER REVIEW)
 
 Thủy chuẩn bị trước W5-D1-01/03 và D2-01: versioned AES-256-GCM/key-ring/key field policy, 34 focused unit PASS, Release 0 warning/error. [Bàn giao](docs/week-05-license-security-handoff.md). Chưa DI/secret production, persist key hoặc mở License API; M2 chưa nghiệm thu. Module của Thiện, key format/clear/recovery còn cần review.
