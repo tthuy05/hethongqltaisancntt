@@ -1,5 +1,7 @@
 # Week 05 — Software, License & Lifecycle
 
+**Chuẩn bị trước 14/10 — Thủy:** key-protector/key-ring/access policy đã có local source, 34 focused unit PASS. [Contract/evidence](../week-05-license-security-handoff.md). D1-01/03 và D2-01 mới đạt fallback primitives; production secrets/recovery/DI/License API còn PLANNED. Không đóng M2/Week5 hoặc tạo migration trùng S18.
+
 > **PLANNED — NOT IMPLEMENTED.** Entry: M2 Asset/Maintenance history and auth stable. Thủy owns key-protection/shared migration/security/API consistency; Thiện owns Software/License/Replacement API/UI. Daily capacity: Thủy 3M+2S, Thiện 2M+1S (7h/4,5h đại diện); M=1–3h, S<1h.
 
 **Database boundary — PLANNED:** development/manual integration/demo dùng shared Neon PostgreSQL; clean migration/automated integration/fixture dùng PostgreSQL target isolated theo [testing strategy](../testing-strategy.md), fail-closed nếu trỏ shared dev. Không drop/reset schema/database hoặc truncate toàn bộ tables trên shared DB. Thủy review/test rồi điều phối apply migration qua direct endpoint; Thiện sync trước mọi EF migration command.

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — 14/10/2026 — License security prerequisites
+
+- Added: versioned AES-256-GCM protector/external key-ring interface và Admin-only key field/reveal policy; 34 focused unit PASS. [Bàn giao](docs/week-05-license-security-handoff.md). Chưa DI, cấu hình secret thật, persist key, API hoặc migration.
+
 ## Unreleased — 14/10/2026 — API client Tuần 4
 
 - Added: shared Assignment client list/detail/assign/return và user lookup, reuse auth/error/session transport; validation theo Controller hiện có. [Bàn giao và checks](docs/week-04-api-client-handoff.md). Chưa thêm page/menu, bật API hoặc deploy.

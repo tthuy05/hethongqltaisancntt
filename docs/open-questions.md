@@ -1,5 +1,15 @@
 # Open Questions và Assumptions
 
+## License prerequisite review — 14/10/2026
+
+| ID | Nội dung cần chốt trước module rollout | Default local / tác động | Status |
+|---|---|---|---|
+| OQ-W5-KEY-SOURCE | Nguồn secret production, giữ version cũ và escrow/recovery khi mất key ring | Chỉ configuration contract; chưa DI hoặc secret thật. Không random fallback, không xóa key version cũ. | OPEN |
+| OQ-W5-KEY-FORMAT | DTO format/length và key ngắn có được hỗ trợ không? | Primitive strict UTF-8, 5+ scalars/4096-byte max; min5 tránh last4 lộ toàn key. Module owner phải review trước persist/API. | OPEN |
+| OQ-W5-KEY-CLEAR | Explicit null input có clear key không, cần reason/audit gì? | Omitted unchanged; null vẫn cần Admin key.manage. Không triển khai clear endpoint/semantics. | OPEN |
+
+[Implementation/evidence](week-05-license-security-handoff.md). Các câu này bổ sung OQ-007, không thay quyết định hoặc đánh câu cũ DECIDED.
+
 > Trạng thái: **PLANNED — WEEK 2 DESIGN REVIEW**  
 > Chỉ liệt kê câu hỏi còn ảnh hưởng thiết kế/scope/security/deployment. Mỗi câu có safe default để không chặn Week 2; default không được coi là Mentor đã xác nhận.
 

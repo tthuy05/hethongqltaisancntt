@@ -1,5 +1,7 @@
 # Checkpoint nền tích hợp Tuần 4 — Thủy
 
+**Publication verified 14/10:** checkpoint `c40db25b0c436fa9181d58006649ba9b0d1d6b9d` đã push nhánh PR #1 draft. [CI run 38448673624](https://github.com/tthuy05/hethongqltaisancntt/actions/runs/38448673624) SUCCESS: 494 unit/157 offline integration/119 frontend PASS,125 cloud SKIP, published smoke OFF32/ON36 và actual Linux Docker OFF32/ON36 PASS. Artifact stamp khớp synthetic merge `96aacc0e147b5be79098e93459d88757f42284df`. Không merge/deploy hoặc thay shared DB.
+
 Ngày **14/10/2026**. Phạm vi: chuẩn bị shared integration cho module Thiện. Checkpoint trên nhánh `codex/lecturer-feedback`, hậu duệ `5cbedf1`; không merge/deploy main hoặc thay shared database.
 
 ## Nội dung bàn giao

@@ -1,5 +1,15 @@
 # Architecture Decision Records
 
+## ADR-032 — Versioned license key protection prerequisite
+
+**Date:** 2026-10-14. **Status:** local implementation / under review, production integration PLANNED.
+
+**Context:** ADR-008 yêu cầu encrypted/masked key; schema S18 đã có ciphertext/last4/key_version nhưng module License chưa implement.
+
+**Decision candidate:** .NET AES-256-GCM, 96-bit random nonce/128-bit tag, purpose/license ID/version/last4 authenticated data; versioned external configuration key ring. Không fallback random hoặc dùng JWT/DB password. Active version encrypt, old version decrypt, temporary buffers erased.
+
+**Consequences:** phải giữ secret các version để recover, chốt format/length/clear semantics và rotation trước endpoint; source/DI/real secret production chưa cấu hình. Không thay 18/41 schema, migration hoặc feature flags. [Contract/tests](docs/week-05-license-security-handoff.md).
+
 ## ADR-LF-20261011 — Nhóm quyền động, invitation và mã tài sản tự sinh
 
 **Date:** 11/10/2026. **Status:** ACCEPTED FOR LOCAL IMPLEMENTATION; NOT DEPLOYED.

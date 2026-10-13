@@ -1,5 +1,11 @@
 # Project Status
 
+## 14/10/2026 — License security prerequisites (LOCAL / UNDER REVIEW)
+
+Thủy chuẩn bị trước W5-D1-01/03 và D2-01: versioned AES-256-GCM/key-ring/key field policy, 34 focused unit PASS, Release 0 warning/error. [Bàn giao](docs/week-05-license-security-handoff.md). Chưa DI/secret production, persist key hoặc mở License API; M2 chưa nghiệm thu. Module của Thiện, key format/clear/recovery còn cần review.
+
+Checkpoint Tuần4 `c40db25` đã push nhánh PR #1 draft. [CI run 38448673624](https://github.com/tthuy05/hethongqltaisancntt/actions/runs/38448673624) **SUCCESS**: 494 unit +157 offline integration PASS/125 cloud SKIP, 119 frontend PASS; actual Linux Docker smoke OFF32/ON36 PASS. CI artifact stamp là synthetic merge `96aacc0e147b5be79098e93459d88757f42284df`; không phải revision Render. CI này không chứng minh License WIP mới. Main/DB rollout vẫn blocked theo điều kiện đã ghi.
+
 ## 14/10/2026 — Checkpoint nền Tuần 4 để bàn giao Thiện
 
 Đã gom shared status/scope/cost/audit/protocol/client thành [checkpoint review](docs/week-04-foundation-checkpoint.md). Full local verification: **494 unit +157 offline integration PASS**, 125 cloud SKIP; **119 frontend PASS**, Release 0 warning/error. Publication chuẩn bị trên nhánh PR #1 draft, không merge/deploy main hoặc chạy shared migration. Trạng thái local trong các addendum trước là evidence tại thời điểm thực hiện, không thay thế checkpoint này. Week 5 security prerequisites có thể chuẩn bị độc lập, không nhận M2 đã nghiệm thu.

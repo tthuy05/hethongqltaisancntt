@@ -1,5 +1,9 @@
 # Thiết kế bảo mật
 
+## License security preparation — 14/10/2026
+
+Thủy đã chuẩn bị AES-256-GCM/key-ring và key field/reveal policy theo ADR-008; 34 focused unit PASS. [Hợp đồng và giới hạn](week-05-license-security-handoff.md). Secret source/recovery, DTO semantics, DI và reveal API còn PLANNED; không cấu hình khóa thật, seed quyền, đổi connection string hoặc deploy.
+
 ## LF security update 11/10/2026 — chưa deploy
 
 Custom groups empty-by-default, unknown permission deny, union active refresh mỗi JWT request. Matrix/audit Admin-only; delegated operator không cấp Admin/quyền vượt quyền mình. Pending Admin không tính cho last-admin safety.
