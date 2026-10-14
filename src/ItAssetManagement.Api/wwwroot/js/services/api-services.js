@@ -12,6 +12,19 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
   let expiryTimer = null;
   const invalidationListeners = new Set();
 
+  function readSession(user) {
+    const strings = values => Array.isArray(values) && values.every(value => typeof value === 'string' && value.trim().length > 0);
+    if (!user || !Number.isSafeInteger(user.id) || user.id <= 0 || !strings(user.roles) || !strings(user.permissions) ||
+        (user.departmentId != null && (!Number.isSafeInteger(user.departmentId) || user.departmentId <= 0)) ||
+        (user.displayName != null && typeof user.displayName !== 'string') || (user.email != null && typeof user.email !== 'string')) {
+      throw new ServiceError(502, 'INVALID_API_RESPONSE', 'Thông tin phiên không khớp contract API.');
+    }
+    // Store only CurrentUser fields. An accidental secret in a response must not
+    // become persistent session state; dynamic group codes remain supported.
+    return { id: user.id, displayName: user.displayName, email: user.email, departmentId: user.departmentId,
+      roles: [...user.roles], permissions: [...user.permissions] };
+  }
+
   function clearSession(reason = null) {
     const hadSession = Boolean(token || session);
     sessionRevision++;
@@ -98,16 +111,24 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
       validate(validateLogin({ email, password }));
       clearSession();
       const response = await request('/auth/login', { method: 'POST', body: { email: email.trim(), password }, publicRequest: true });
-      if (!response?.accessToken || response.tokenType !== 'Bearer' || !Number.isFinite(Date.parse(response.expiresAt)) || !response.user?.permissions || !response.user?.roles) {
+      if (typeof response?.accessToken !== 'string' || !response.accessToken.trim() || response.tokenType !== 'Bearer' ||
+          typeof response.expiresAt !== 'string' || !Number.isFinite(Date.parse(response.expiresAt))) {
         throw new ServiceError(502, 'INVALID_API_RESPONSE', 'Login response không khớp contract đã thiết kế.');
       }
+      const user = readSession(response.user);
       token = response.accessToken;
       expiresAt = response.expiresAt;
-      session = response.user;
+      session = user;
       scheduleExpiry(sessionRevision);
       return copy(response);
     },
-    async me() { const revision = sessionRevision; const user = await request('/auth/me'); if (revision !== sessionRevision) throw new ServiceError(401, 'SESSION_CHANGED', 'Phiên đã thay đổi.'); session = user; return copy(session); },
+    async me() {
+      const revision = sessionRevision; const user = await request('/auth/me');
+      if (revision !== sessionRevision) throw new ServiceError(401, 'SESSION_CHANGED', 'Phiên đã thay đổi.');
+      try { session = readSession(user); }
+      catch (error) { clearSession('invalid-response'); throw error; }
+      return copy(session);
+    },
     async logout() { clearSession(); },
   };
   const assets = {

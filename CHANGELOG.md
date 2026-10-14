@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — 14/10/2026 — Session response validation
+
+- Fixed: reject malformed login/me role/permission collections; safe CurrentUser-only session and array-only permission hints. 130 frontend PASS; [verification](docs/frontend-session-contract-handoff.md).
+
+## Unreleased — 14/10/2026 — License capacity protocol tests
+
+- Added: capacity transaction review và 2 isolated PostgreSQL protocol tests cho contention/reread và full-seat transfer rollback/history. Không implement Allocation API; [bàn giao](docs/week-05-license-capacity-review.md).
+
 ## Unreleased — 14/10/2026 — Shared UI permission hints
 
 - Added: immutable default-deny Maintenance scope/cost and Admin-only License key permission hints, 125 frontend PASS. [Bàn giao](docs/week-04-05-ui-permissions-handoff.md); chưa mở page/menu/module.

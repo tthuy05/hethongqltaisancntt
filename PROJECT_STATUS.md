@@ -1,5 +1,13 @@
 # Project Status
 
+## 14/10/2026 — Frontend session contract
+
+Thủy sửa login/me response validation và permission collection guard, không đổi backend API/token storage. 130 frontend PASS /0 FAIL/SKIP; 33 syntax /37 source-boundary PASS. [Evidence](docs/frontend-session-contract-handoff.md). CI mới phải xác minh riêng; shared Neon/Render/configuration giữ nguyên.
+
+## 14/10/2026 — License capacity protocol preparation
+
+Thủy review aggregate-capacity gap và coordinator protocol; 2 actual isolated PostgreSQL tests PASS (lock contention/reread, transfer rollback/commit). [Evidence/limitations](docs/week-05-license-capacity-review.md). Không sửa production code, schema, grants hoặc module của Thiện; Allocation API/HTTP/race acceptance vẫn PLANNED.
+
 ## 14/10/2026 — Shared UI hints
 
 Thủy đã chuẩn bị Maintenance scope/cost và License key flags cho owner page integration. 125 frontend PASS, 33 syntax /37 source-boundary checks PASS. [Giới hạn](docs/week-04-05-ui-permissions-handoff.md): permission hints không thay backend authorization, không xác nhận module readiness; pages/menu/reveal UX còn PLANNED, production không đổi.

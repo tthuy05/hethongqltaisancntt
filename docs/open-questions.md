@@ -1,5 +1,9 @@
 # Open Questions và Assumptions
 
+## Source decision clarification — 14/10/2026
+
+DQ-015 bên dưới là quyết định thiết kế Tuần2 **HISTORICAL / SUPERSEDED** bởi LF-01 ngày11/10 (nhóm quyền động/ma trận thật), không phải giới hạn runtime hiện tại. Source trên nhánh review hỗ trợ custom groups; ba nhóm mặc định chỉ là bootstrap. Production rollout vẫn PENDING, không ghi Mentor acceptance hoặc shared migration đã apply từ source decision này. Xem [requirements addendum](requirements.md) và [permission matrix](permission-matrix.md).
+
 ## Lifecycle metrics review — 14/10/2026
 
 | ID | Câu cần chốt cho evaluator/API | Safe preparation | Status |
