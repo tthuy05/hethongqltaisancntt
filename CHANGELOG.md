@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — 14/10/2026 — Shared UI permission hints
+
+- Added: immutable default-deny Maintenance scope/cost and Admin-only License key permission hints, 125 frontend PASS. [Bàn giao](docs/week-04-05-ui-permissions-handoff.md); chưa mở page/menu/module.
+
 ## Unreleased — 14/10/2026 — Audited license reveal prerequisites
 
 - Added: prepared reveal service rechecking DB identity/grants under coordinator lock, audit-before-response and no-store adapter; no route/DI/module activation. [Evidence](docs/week-05-license-reveal-handoff.md).

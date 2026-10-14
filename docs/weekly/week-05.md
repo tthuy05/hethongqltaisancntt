@@ -1,5 +1,7 @@
 # Week 05 — Software, License & Lifecycle
 
+**14/10 — D2-04 Thủy:** prepared shared key/cost permission hints, 6 focused /125 full frontend PASS; [handoff](../week-04-05-ui-permissions-handoff.md). Không có reveal UI/secret storage/module activation; actual owner page integration còn PLANNED.
+
 **Chuẩn bị trước 14/10 — reveal Thủy:** D2-02/03 có service refresh identity/grants trong audited transaction và no-store adapter; chưa route/DI/secret thật. [Evidence](../week-05-license-reveal-handoff.md): 569 unit +158 offline integration PASS, 128 cloud SKIP; 1 isolated PostgreSQL rollback PASS riêng. Không coi đây là HTTP reveal E2E hoặc nghiệm thu M3.
 
 **Chuẩn bị trước 14/10 — metrics Thủy:** W5-D4-01/03 có readonly facts/query và age/warranty/decimal/missing-data contract, 11 unit PASS; isolated evidence ở [handoff metrics](../week-05-lifecycle-metrics-handoff.md). Không chọn thresholds/count semantics hoặc viết evaluator Thiện; actual API/algorithm còn PLANNED.

@@ -1,5 +1,6 @@
 import { h } from '../utils/dom.js';
 import { button, showToast } from '../components.js';
+export { modulePermissions } from '../models/module-permissions.js';
 
 export const statusLabels = { InStock: 'Trong kho', InUse: 'Đang sử dụng', Maintenance: 'Đang bảo trì', Broken: 'Hỏng', Retired: 'Ngừng sử dụng' };
 export const date = value => value ? new Intl.DateTimeFormat('vi-VN', { timeZone: 'UTC' }).format(new Date(value)) : 'Chưa có thông tin';

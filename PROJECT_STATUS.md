@@ -1,5 +1,9 @@
 # Project Status
 
+## 14/10/2026 — Shared UI hints
+
+Thủy đã chuẩn bị Maintenance scope/cost và License key flags cho owner page integration. 125 frontend PASS, 33 syntax /37 source-boundary checks PASS. [Giới hạn](docs/week-04-05-ui-permissions-handoff.md): permission hints không thay backend authorization, không xác nhận module readiness; pages/menu/reveal UX còn PLANNED, production không đổi.
+
 ## 14/10/2026 — Reveal/audit follow-up
 
 Thủy chuẩn bị audited LicenseKeyRevealService/no-store response adapter, chưa DI/endpoint/secret thật/seed. Sửa audit reader cho dynamic RBAC/invitation metadata. [Bàn giao và giới hạn](docs/week-05-license-reveal-handoff.md): 569 unit +158 offline integration PASS, 128 cloud SKIP; 1 PostgreSQL isolated rollback PASS riêng. Shared Neon/Render/Assignment activation không thay đổi; owner review và production rollout vẫn PENDING.
