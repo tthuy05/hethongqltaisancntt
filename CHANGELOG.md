@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — 14/10/2026 — Audited license reveal prerequisites
+
+- Added: prepared reveal service rechecking DB identity/grants under coordinator lock, audit-before-response and no-store adapter; no route/DI/module activation. [Evidence](docs/week-05-license-reveal-handoff.md).
+- Fixed: audit reader preserves dynamic role/permission counts and typed invitation metadata, without exposing secrets or changing request validation.
+
 ## Unreleased — 14/10/2026 — Lifecycle input query
 
 - Added: readonly immutable lifecycle facts/metrics query, age/warranty và cost completeness; actual ticket costs không cộng history snapshots, raw status counts không tự chọn rule semantics. [Handoff](docs/week-05-lifecycle-metrics-handoff.md); evaluator/API còn PLANNED.

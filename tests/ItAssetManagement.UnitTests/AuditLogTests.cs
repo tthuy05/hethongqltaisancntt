@@ -163,7 +163,7 @@ public sealed class AuditLogTests
     }
     [Theory]
     [InlineData("\"assetTypeId\":0")] [InlineData("\"userId\":null")] [InlineData("\"departmentId\":-1")]
-    [InlineData("\"roleCount\":4")] [InlineData("\"isActive\":\"true\"")] [InlineData("\"defaultUsefulLifeMonths\":0")]
+    [InlineData("\"roleCount\":-1")] [InlineData("\"isActive\":\"true\"")] [InlineData("\"defaultUsefulLifeMonths\":0")]
     [InlineData("\"purchaseCost\":1.001")] [InlineData("\"purchaseCost\":-1")] [InlineData("\"purchaseCost\":10000000000000000")]
     [InlineData("\"currentStatus\":\"InStock\"")] [InlineData("\"pageSize\":101")] [InlineData("\"returnedCount\":-1")]
     [InlineData("\"isArchived\":[]")] [InlineData("\"isAdminLocked\":{\"password\":\"hidden\"}")]
@@ -172,6 +172,36 @@ public sealed class AuditLogTests
     {
         var result = AuditSnapshot.Read("{" + property + ",\"reasonProvided\":true}", true);
         Assert.True(result.Redacted); Assert.Equal(new[] { "reasonProvided" }, result.Values!.Keys);
+    }
+
+    [Theory]
+    [InlineData(4)] [InlineData(50)] [InlineData(500)]
+    public void Dynamic_role_and_permission_counts_preserve_historical_metadata(int count)
+    {
+        var result = AuditSnapshot.Read($"{{\"roleCount\":{count},\"permissionCount\":{count},\"permissionId\":8,\"isEmailConfirmed\":true}}", false);
+        Assert.False(result.Redacted); Assert.Equal(4, result.Values!.Count);
+        Assert.Equal(count, result.Values["roleCount"].GetInt32());
+        Assert.Equal(count, result.Values["permissionCount"].GetInt32());
+        Assert.Equal(8, result.Values["permissionId"].GetInt64());
+        Assert.True(result.Values["isEmailConfirmed"].GetBoolean());
+    }
+
+    [Theory]
+    [InlineData("Sent")] [InlineData("Sandboxed")] [InlineData("NotConfigured")] [InlineData("Failed")]
+    public void Invitation_delivery_metadata_preserves_only_known_statuses(string status)
+    {
+        var result = AuditSnapshot.Read(JsonSerializer.Serialize(new { emailStatus = status }), false);
+        Assert.False(result.Redacted); Assert.Equal(status, result.Values!["emailStatus"].GetString());
+    }
+
+    [Theory]
+    [InlineData("\"permissionId\":0")] [InlineData("\"permissionCount\":-1")]
+    [InlineData("\"roleCount\":2147483648")] [InlineData("\"permissionCount\":1.5")]
+    [InlineData("\"isEmailConfirmed\":\"true\"")] [InlineData("\"emailStatus\":\"password-secret\"")]
+    public void Dynamic_identity_metadata_rejects_invalid_types_and_arbitrary_strings(string property)
+    {
+        var result = AuditSnapshot.Read("{" + property + "}", true);
+        Assert.True(result.Redacted); Assert.Empty(result.Values!);
     }
 
     [Fact]

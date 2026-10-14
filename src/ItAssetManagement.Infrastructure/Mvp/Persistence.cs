@@ -80,7 +80,7 @@ public sealed class AuditWriter(AppDbContext db, IActor actor) : IAuditWriter
       "auditLogId", "page", "pageSize", "returnedCount", "assetId", "assignedUserId", "assignedDepartmentId",
       "assignedByUserId", "returnedByUserId", "assignedAtUtc", "returnedAtUtc", "permissionId", "permissionCount", "isEmailConfirmed", "emailStatus",
       "maintenanceTicketId", "maintenanceStatus", "maintenancePriority", "technicianId", "eventType", "performedAtUtc",
-      "estimatedCostChanged", "actualCostChanged", "commentProvided" };
+      "estimatedCostChanged", "actualCostChanged", "commentProvided", "licenseId", "keyVersion", "keyRevealed" };
     public void Record(string action, object? entity, long? actorId, string actorType, string outcome = "SUCCESS",
         object? before = null, object? after = null, string? failureCode = null)
     {

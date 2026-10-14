@@ -28,7 +28,7 @@ Create allocate ID thật với key tuple null trong audited transaction; Protec
 
 LicenseKeyAccessPolicy nhận CurrentUser refresh phía server. Read/manage/reveal là grants riêng, constants chưa vào active catalog/seed. Manage/reveal cần Admin membership; misgrant cho Manager/Support/custom group vẫn 403. Encrypted persistence fields không nhận từ client kể cả Admin. Reveal cần reason 1..1000 sau authorization.
 
-Thiện tích hợp state/scope, decrypt sau policy, sanitized audit/no-store response. Primitive không triển khai endpoint; metadata chỉ maskedKey, không entity/envelope. Chưa có ciphertext DB persistence hoặc production reveal proof. Schema đã có từ S18, không tạo migration Week5 trùng.
+Thiện tích hợp state/scope và endpoint; metadata chỉ maskedKey, không entity/envelope. Thủy đã chuẩn bị [audited reveal service/no-store adapter và isolated rollback proof](week-05-license-reveal-handoff.md). Chưa có production ciphertext persistence/reveal proof. Schema đã có từ S18, không tạo migration Week5 trùng.
 
 ## Verification
 
