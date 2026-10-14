@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — 14/10/2026 — Replacement rule access prerequisites
+
+- Added: prepared Admin-only rule configuration policy with explicit grants/read dependency, 7 unit PASS. [Bàn giao](docs/week-05-rule-policy-handoff.md); constants chưa active, API/projection/algorithm còn PLANNED.
+
 ## Unreleased — 14/10/2026 — Session response validation
 
 - Fixed: reject malformed login/me role/permission collections; safe CurrentUser-only session and array-only permission hints. 130 frontend PASS; [verification](docs/frontend-session-contract-handoff.md).

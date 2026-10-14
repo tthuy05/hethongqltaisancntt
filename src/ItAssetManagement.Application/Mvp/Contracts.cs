@@ -75,6 +75,8 @@ public static class Permissions
     public const string LicenseRead = "licenses.read", LicenseKeyManage = "licenses.key.manage",
         LicenseKeyReveal = "licenses.key.reveal";
     public const string ReplacementEvaluate = "replacement-recommendations.evaluate";
+    public const string ReplacementRuleRead = "replacement-rules.read", ReplacementRuleCreate = "replacement-rules.create",
+        ReplacementRuleUpdate = "replacement-rules.update";
     public static readonly string[] Read = [AssetRead, AssetHistory, DepartmentRead, TypeRead, DashboardRead, UserLookup];
     // Support assignment reads require a scoped support contract, not this unrestricted service.
     public static readonly string[] Operate = [AssetCreate, AssetUpdate, AssetArchive, AssetStatus, AssetCost, RoleRead,

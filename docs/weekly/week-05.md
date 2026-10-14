@@ -1,5 +1,7 @@
 # Week 05 — Software, License & Lifecycle
 
+**14/10 — D4-02 Thủy:** [rule configuration policy preparation](../week-05-rule-policy-handoff.md), 7 unit PASS. Admin-only mutation/grants/read dependency; chưa RuleService/endpoint/cost projection hoặc seed. Evaluate query evidence riêng, không chốt algorithm/threshold.
+
 **14/10 — D3-01/02 fallback Thủy:** [capacity protocol review và 2 isolated PostgreSQL cases PASS](../week-05-license-capacity-review.md): real lock contention/reread và transfer rollback/one-seat history. Chưa AllocationService/API/security validation; không nghiệm thu service concurrency từ fixture protocol.
 
 **14/10 — D2-04 Thủy:** prepared shared key/cost permission hints, 6 focused /125 full frontend PASS; [handoff](../week-04-05-ui-permissions-handoff.md). Không có reveal UI/secret storage/module activation; actual owner page integration còn PLANNED.
