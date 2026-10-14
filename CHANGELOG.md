@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — 14/10/2026 — License read UI preparation
+
+- Added: prepared License read adapter/list/detail with strict masked metadata and unknown-capacity display; default-disabled components, no app route/menu.
+- Fixed: prepared mobile empty state/message and nowrap license code/key. 142 frontend PASS; [browser QA/limits](docs/week-05-license-ui-handoff.md).
+
 ## Unreleased — 14/10/2026 — Replacement rule access prerequisites
 
 - Added: prepared Admin-only rule configuration policy with explicit grants/read dependency, 7 unit PASS. [Bàn giao](docs/week-05-rule-policy-handoff.md); constants chưa active, API/projection/algorithm còn PLANNED.

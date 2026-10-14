@@ -1,5 +1,9 @@
 # Project Status
 
+## 14/10/2026 — License frontend preparation
+
+Thủy có License read client/list/detail components, default disabled, chưa app menu/routes. 142 frontend PASS, 36 syntax/40 source-boundary PASS; isolated browser QA sửa mobile empty state. [DTO proposal/evidence](docs/week-05-license-ui-handoff.md). Không đổi backend Thiện, shared Neon, Render hoặc configuration.
+
 ## 14/10/2026 — Replacement rule policy preparation
 
 Thủy chuẩn bị Admin-only rule create/update policy và inactive permission constants; 7 focused unit PASS. [Limitations](docs/week-05-rule-policy-handoff.md): no DI/endpoint/seed, chưa owner version/state/field projection/evaluator integration. Không dùng helper tests để đóng M3.

@@ -2,6 +2,7 @@ import { ASSET_STATUSES, copy } from '../models/contracts.js';
 import { validateAsset, validateLogin, validateMaster, validateUser, validateUserStatus, validateUserRoles } from '../utils/validation.js';
 import { ServiceError } from './service-error.js';
 import { createAssignmentService } from './assignment-service.js';
+import { createLicenseReadService } from './license-service.js';
 
 /** Same-origin client for M1 backend APIs; no automatic mock fallback. */
 export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThis), baseUrl = '/api/v1' } = {}) {
@@ -198,5 +199,6 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
     },
   };
   const assignments = createAssignmentService({ request, idPath });
-  return { mode: 'api', auth, assets, departments: masterService('department'), assetTypes: masterService('assetType'), users, roles, auditLogs, dashboard, assignments };
+  const licenses = createLicenseReadService({ request, idPath });
+  return { mode: 'api', auth, assets, departments: masterService('department'), assetTypes: masterService('assetType'), users, roles, auditLogs, dashboard, assignments, licenses };
 }
