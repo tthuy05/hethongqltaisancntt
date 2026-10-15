@@ -5,10 +5,11 @@ export { modulePermissions } from '../models/module-permissions.js';
 export const statusLabels = { InStock: 'Trong kho', InUse: 'Đang sử dụng', Maintenance: 'Đang bảo trì', Broken: 'Hỏng', Retired: 'Ngừng sử dụng' };
 export const date = value => value ? new Intl.DateTimeFormat('vi-VN', { timeZone: 'UTC' }).format(new Date(value)) : 'Chưa có thông tin';
 export const money = value => value == null ? 'Chưa có thông tin' : new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 2 }).format(value);
-export const can = (services, permission) => {
-  const grants = services.auth.session?.permissions;
+export const hasPermission = (session, permission) => {
+  const grants = session?.permissions;
   return Array.isArray(grants) && grants.every(grant => typeof grant === 'string') && grants.includes(permission);
 };
+export const can = (services, permission) => hasPermission(services.auth?.session, permission);
 export const route = path => {
   if (window.location.hash.slice(1) === path) window.dispatchEvent(new Event('frontend-refresh'));
   else window.location.hash = path;

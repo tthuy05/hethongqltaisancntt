@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — 15/10/2026 — License async guards
+
+- Fixed: prepared License pages reject stale-account/revoked-read responses, use session/query snapshots and preserve matching filter/paging context.167 frontend PASS; no module activation.
+
 ## Unreleased — 15/10/2026 — Allocation draft form
 
 - Added: prepared allocation draft/form and separately opt-in License detail composition; no POST or runtime route activation.163 frontend PASS; [handoff](docs/week-05-allocation-draft-handoff.md).

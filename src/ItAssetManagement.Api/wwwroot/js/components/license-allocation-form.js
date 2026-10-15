@@ -1,6 +1,6 @@
 import { h } from '../utils/dom.js';
 import { button } from '../components.js';
-import { can } from '../pages/shared.js';
+import { hasPermission } from '../pages/shared.js';
 import { licenseView } from '../models/license-view.js';
 import { licenseAllocationDraft } from '../models/license-allocation-draft.js';
 import { licenseTargetPicker } from './license-target-picker.js';
@@ -12,8 +12,11 @@ let serial = 0;
 // onPrepared receives an immutable internal draft, not an approved backend DTO.
 export function licenseAllocationForm(services, { enabled = false, license, allowedTargets = [], onPrepared } = {}) {
   if (enabled !== true) return { element: h('p', { className: 'info-note' }, 'License allocation form — PLANNED.'), dispose() {} };
-  const authorize = () => services.mode === 'api' && Number.isSafeInteger(services.auth.session?.id) && services.auth.session.id > 0 &&
-    can(services, 'licenses.read') && can(services, 'license-assignments.assign');
+  const authorize = () => {
+    const user = services.auth?.session;
+    return services.mode === 'api' && Number.isSafeInteger(user?.id) && user.id > 0 &&
+      hasPermission(user, 'licenses.read') && hasPermission(user, 'license-assignments.assign');
+  };
   if (!authorize()) throw new ServiceError(403, 'FORBIDDEN', 'Bạn không có quyền chuẩn bị cấp license.');
   if (onPrepared != null && typeof onPrepared !== 'function') throw new TypeError('onPrepared must be a function.');
   const metadata = licenseView(license); const actorId = services.auth.session?.id;

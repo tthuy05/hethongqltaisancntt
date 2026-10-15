@@ -22,3 +22,9 @@ License detail có opt-in allocationPreparation riêng. Reader thiếu assign pe
 ## Integration còn chờ owner
 
 Thiện freeze actual Allocation request/response/errors/ETag/grants; owner review mapping từ internal draft. Không nối onPrepared vào POST thật hoặc đổi menu trước phê duyệt module/readiness/rollout. VOLUME/OTHER target contract không được đoán; revoke/transfer/history và actual service race/403/audit tests còn PLANNED. Shared Neon/Render/connection settings/migrations và3 report WIP giữ nguyên.
+
+## Async access/query guards — 15/10 follow-up
+
+Prepared License pages recheck read grant/account sau await; data của account cũ hoặc grant vừa bị thu hồi không render. Mỗi access guard dùng một session snapshot để tránh null-property crash nếu getter expire giữa hai lần đọc. Shared hasPermission nhận snapshot; can giữ semantics grant-array/default-deny.
+
+List request/filter/paging closures dùng immutable query snapshot; owner đổi object query đang pending không làm UI gắn data cũ vào filter mới. **4 regression cases mới**, full frontend **167 PASS /0 FAIL/SKIP**, **40 syntax/44 source checks PASS**. Command exit được kiểm trước bước source checks, không che failure bằng command sau. Không đổi auth/JWT/backend contract, không bật routes hoặc query shared Neon.163 PASS phía trên là checkpoint trước guards, không cộng hai checkpoint thành tổng.

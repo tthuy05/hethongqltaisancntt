@@ -1,5 +1,9 @@
 # Project Status
 
+## 15/10/2026 — License async access/query guards
+
+Thủy chặn late metadata sau revoke/account switch, snapshot session tránh expiry null crash và immutable query/filter/paging.167 frontend PASS /0 FAIL/SKIP;40 syntax/44 source checks PASS. [Regression addendum](docs/week-05-allocation-draft-handoff.md). No backend/schema/config/module activation changes; source rollout vẫn gated.
+
 ## 15/10/2026 — Allocation draft form
 
 Thủy dựng form chuẩn bị allocation và detail composition riêng sau target picker; không nối API ghi hoặc mở app route/menu.163 frontend PASS,40 syntax/44 source checks PASS; browser isolated1 outer form/1 local prepared draft. [Scope và giới hạn](docs/week-05-allocation-draft-handoff.md). Actual AllocationService/DTO/HTTP/race acceptance vẫn chờ Thiện.

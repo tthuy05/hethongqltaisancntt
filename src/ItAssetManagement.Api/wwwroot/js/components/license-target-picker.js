@@ -1,6 +1,6 @@
 import { h } from '../utils/dom.js';
 import { button } from '../components.js';
-import { can, option, busy } from '../pages/shared.js';
+import { hasPermission, option, busy } from '../pages/shared.js';
 import { ServiceError } from '../services/service-error.js';
 
 let serial = 0;
@@ -11,13 +11,14 @@ const labels = { user: 'Người dùng', asset: 'Tài sản' };
 // type; other license types need explicitly reviewed contract configuration.
 export function licenseTargetPicker(services, { enabled = false, licenseType, allowedTargets = [], onChange = () => {} } = {}) {
   if (enabled !== true) return { element: h('p', { className: 'info-note' }, 'Allocation target picker — PLANNED.'), dispose() {} };
-  if (services.mode !== 'api' || !can(services, 'licenses.read') || !can(services, 'license-assignments.assign'))
+  const session = services.auth?.session;
+  if (services.mode !== 'api' || !hasPermission(session, 'licenses.read') || !hasPermission(session, 'license-assignments.assign'))
     throw new ServiceError(403, 'FORBIDDEN', 'Bạn không có quyền chuẩn bị cấp license.');
   const types = licenseType === 'PER_USER' ? ['user'] : licenseType === 'PER_DEVICE' ? ['asset'] :
     ['VOLUME', 'SUBSCRIPTION', 'OTHER'].includes(licenseType) && Array.isArray(allowedTargets)
       ? [...new Set(allowedTargets.filter(type => type === 'user' || type === 'asset'))] : [];
   if (!types.length) return { element: h('p', { className: 'info-note' }, 'PLANNED — cần chốt loại target theo hợp đồng license trước khi cấp.'), dispose() {} };
-  const actorId = services.auth.session?.id;
+  const actorId = session?.id;
   if (!positive(actorId)) throw new ServiceError(403, 'FORBIDDEN', 'Phiên không hợp lệ.');
   let generation = 0, disposed = false, loadedTarget = null; let choices = new Map();
   const prefix = 'license-target-' + ++serial;
@@ -34,8 +35,11 @@ export function licenseTargetPicker(services, { enabled = false, licenseType, al
   const keyword = h('input', { id: prefix + '-keyword', className: 'input', maxLength: 200, placeholder: 'Tên, mã người dùng hoặc tài sản…',
     onKeyDown: event => { if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); performSearch(event); } } });
   const search = button('Tìm target', { type: 'button', kind: 'secondary', onClick: performSearch });
-  const authorized = target => can(services, 'licenses.read') && can(services, 'license-assignments.assign') &&
-    can(services, target === 'user' ? 'users.lookup' : 'assets.read');
+  const authorized = target => {
+    const user = services.auth?.session;
+    return user?.id === actorId && hasPermission(user, 'licenses.read') && hasPermission(user, 'license-assignments.assign') &&
+      hasPermission(user, target === 'user' ? 'users.lookup' : 'assets.read');
+  };
   const alive = () => !disposed && root.isConnected && services.auth.session?.id === actorId;
   function performSearch(event) {
     event.preventDefault(); if (search.disabled || !alive()) return;

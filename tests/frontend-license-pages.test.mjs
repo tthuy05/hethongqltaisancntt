@@ -86,3 +86,34 @@ test('detail composes draft form with lookup and local callback without an alloc
     assert.match(root.textContent, /PLANNED/); root.dispose();
   } finally { dom.restore(); }
 });
+test('license read revoked while awaiting metadata cannot render the formerly authorized response', async () => {
+  const source = services(); let release; source.licenses.list = () => new Promise(resolve => { release = resolve; });
+  const pending = licenseListPage(source, { enabled: true }); const rejected = assert.rejects(pending, error => error.status === 403);
+  source.auth.session.permissions = []; release({ items: [item()], page: 1, pageSize: 20, totalItems: 1, totalPages: 1 });
+  await rejected;
+});
+test('a different account cannot receive the previous account detail response', async () => {
+  const source = services(); let release; source.licenses.get = () => new Promise(resolve => { release = resolve; });
+  const pending = licenseDetailPage(source, 4, { enabled: true });
+  const rejected = assert.rejects(pending, error => error.status === 401 && error.code === 'SESSION_CHANGED');
+  source.auth.session = { id: 8, roles: ['SYSTEM_MANAGER'], permissions: ['licenses.read'] }; release(item());
+  await rejected;
+});
+test('list request and rendered filters use an immutable snapshot while caller changes its query object', async () => {
+  const dom = installDom(); try {
+    const source = services(); let release, received;
+    source.licenses.list = query => { received = query; return new Promise(resolve => { release = resolve; }); };
+    const query = { page: 1, pageSize: 20, keyword: 'Original keyword' };
+    const pending = licenseListPage(source, { enabled: true, query });
+    query.keyword = 'Changed while pending'; query.page = 9;
+    release({ items: [item()], page: 1, pageSize: 20, totalItems: 1, totalPages: 1 });
+    const root = await pending;
+    assert.ok(Object.isFrozen(received)); assert.equal(received.keyword, 'Original keyword'); assert.equal(received.page, 1);
+    assert.equal(descendants(root).find(n => n.getAttribute('name') === 'keyword').value, 'Original keyword');
+  } finally { dom.restore(); }
+});
+test('session expiry between access checks returns a typed session error, not a null-property crash', async () => {
+  const source = services(); const initial = source.auth.session; let reads = 0;
+  Object.defineProperty(source.auth, 'session', { get: () => ++reads === 1 ? initial : null });
+  await assert.rejects(licenseListPage(source, { enabled: true }), error => error.status === 401 && error.code === 'SESSION_CHANGED');
+});
