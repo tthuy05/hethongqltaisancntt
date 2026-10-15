@@ -2,6 +2,7 @@ import { h } from '../utils/dom.js';
 import { button, pageHeader, badge, showToast } from '../components.js';
 import { validateAsset } from '../utils/validation.js';
 import { allActive, route, field, displayErrors, formAlert, busy } from './shared.js';
+import { concurrencyFeedback } from '../components/concurrency-feedback.js';
 
 export async function assetFormPage(services, id = null) {
   const [asset, types, departments] = await Promise.all([id ? services.assets.get(id) : null, allActive(services.assetTypes), allActive(services.departments)]);
@@ -35,7 +36,7 @@ export async function assetFormPage(services, id = null) {
       } catch (error) {
         displayErrors(fields, error.errors || {});
         feedback.append(formAlert(error.message));
-        if (error.code === 'CONCURRENCY_CONFLICT') feedback.append(button('Tải lại bản ghi', { kind: 'secondary', onClick: () => window.dispatchEvent(new Event('frontend-refresh')) }));
+        if (error.code === 'CONCURRENCY_CONFLICT') feedback.append(concurrencyFeedback({ onRefresh: () => window.dispatchEvent(new Event('frontend-refresh')) }));
       }
     });
   } },

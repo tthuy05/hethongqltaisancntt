@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — 15/10/2026 — License target và shared409 UX
+
+- Added: prepared user/asset target lookup with XOR/stale-session guards, no allocation POST or module activation.
+- Changed: Asset edit409 keeps draft and offers explicit discard/read refresh, never retries mutation. 154 frontend PASS; [evidence](docs/week-05-license-target-conflict-handoff.md).
+
 ## Unreleased — 14/10/2026 — License read UI preparation
 
 - Added: prepared License read adapter/list/detail with strict masked metadata and unknown-capacity display; default-disabled components, no app route/menu.

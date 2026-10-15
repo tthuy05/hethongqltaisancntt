@@ -1,5 +1,9 @@
 # Project Status
 
+## 15/10/2026 — Target selection và conflict UX
+
+Thủy hoàn thiện prepared user/asset target picker và shared409 draft-preserving refresh, nối Asset edit hiện có. 154 frontend PASS, 38 syntax/42 source-boundary PASS; browser isolated Enter lookup kiểm thực tế. [Evidence/limits](docs/week-05-license-target-conflict-handoff.md). Chưa POST Allocation, app License route/menu/module activation; source/config/shared DB/Render gates giữ nguyên.
+
 ## 14/10/2026 — License frontend preparation
 
 Thủy có License read client/list/detail components, default disabled, chưa app menu/routes. 142 frontend PASS, 36 syntax/40 source-boundary PASS; isolated browser QA sửa mobile empty state. [DTO proposal/evidence](docs/week-05-license-ui-handoff.md). Không đổi backend Thiện, shared Neon, Render hoặc configuration.
