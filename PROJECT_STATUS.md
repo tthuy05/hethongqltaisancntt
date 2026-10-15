@@ -1,5 +1,9 @@
 # Project Status
 
+## 15/10/2026 — Allocation draft form
+
+Thủy dựng form chuẩn bị allocation và detail composition riêng sau target picker; không nối API ghi hoặc mở app route/menu.163 frontend PASS,40 syntax/44 source checks PASS; browser isolated1 outer form/1 local prepared draft. [Scope và giới hạn](docs/week-05-allocation-draft-handoff.md). Actual AllocationService/DTO/HTTP/race acceptance vẫn chờ Thiện.
+
 ## 15/10/2026 — Target selection và conflict UX
 
 Thủy hoàn thiện prepared user/asset target picker và shared409 draft-preserving refresh, nối Asset edit hiện có. 154 frontend PASS, 38 syntax/42 source-boundary PASS; browser isolated Enter lookup kiểm thực tế. [Evidence/limits](docs/week-05-license-target-conflict-handoff.md). Chưa POST Allocation, app License route/menu/module activation; source/config/shared DB/Render gates giữ nguyên.

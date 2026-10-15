@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — 15/10/2026 — Allocation draft form
+
+- Added: prepared allocation draft/form and separately opt-in License detail composition; no POST or runtime route activation.163 frontend PASS; [handoff](docs/week-05-allocation-draft-handoff.md).
+
 ## Unreleased — 15/10/2026 — License target và shared409 UX
 
 - Added: prepared user/asset target lookup with XOR/stale-session guards, no allocation POST or module activation.

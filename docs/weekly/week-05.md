@@ -1,5 +1,7 @@
 # Week 05 — Software, License & Lifecycle
 
+**15/10 — D3-03/04 draft form Thủy:** [allocation preparation form](../week-05-allocation-draft-handoff.md),163 frontend PASS; internal immutable draft,1 outer form, no allocation POST. Detail composition opt-in riêng; default routes/module vẫn closed, actual DTO/service integration chờ Thiện.
+
 **15/10 — D3-03/04 Thủy:** [target picker và shared409 UX](../week-05-license-target-conflict-handoff.md), 154 frontend PASS; giữ draft Asset edit, lookup XOR và stale-response guards. No allocation POST/module activation. Actual License allocation form/API integration vẫn PARTIAL.
 
 **14/10 — D3-03/04 UI Thủy:** [prepared License read client/list/detail](../week-05-license-ui-handoff.md), 12 focused/142 full frontend PASS và isolated browser QA. Default closed, no app route/menu; DTO proposal chờ Thiện review, allocation/reveal/cost còn PLANNED. Không coi fixture preview là live module.

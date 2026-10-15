@@ -3,6 +3,7 @@ import { pageHeader, button, dataTable, pagination } from '../components.js';
 import { can, date, route, setQuery } from './shared.js';
 import { licenseView, licensePageView } from '../models/license-view.js';
 import { ServiceError } from '../services/service-error.js';
+import { licenseAllocationForm } from '../components/license-allocation-form.js';
 
 const missing = value => value == null ? 'Chưa có dữ liệu' : String(value);
 const planned = () => h('div', {}, pageHeader('License phần mềm', 'Chuẩn bị giao diện theo kế hoạch Tuần5.'),
@@ -41,17 +42,25 @@ export async function licenseListPage(services, { enabled = false, query = { pag
       h('p', { className: 'table-empty', role: 'status' }, 'Chưa có license phù hợp.'),
       pagination(result, page => setQuery('/licenses', { ...query, page }))));
 }
-export async function licenseDetailPage(services, id, { enabled = false } = {}) {
+export async function licenseDetailPage(services, id, { enabled = false, allocationPreparation = null } = {}) {
   if (enabled !== true) return planned();
   requireRead(services);
   const value = licenseView(await services.licenses.get(id));
   const info = (label, content) => h('div', { className: 'detail-item' }, h('dt', {}, label), h('dd', {}, content));
-  return h('div', {}, pageHeader(value.licenseCode, 'Thông tin license — không reveal key từ trang metadata.',
+  const draftForm = allocationPreparation?.enabled === true && can(services, 'license-assignments.assign') ?
+    licenseAllocationForm(services, { enabled: true, license: value, allowedTargets: allocationPreparation.allowedTargets,
+      onPrepared: allocationPreparation.onPrepared }) : null;
+  const root = h('div', {}, pageHeader(value.licenseCode, 'Thông tin license — không reveal key từ trang metadata.',
     { actions: [button('Danh sách', { kind: 'secondary', onClick: () => route('/licenses') })] }),
     h('section', { className: 'card' }, h('dl', { className: 'card-body detail-grid' },
       info('Phần mềm', value.software?.name || 'Chưa có dữ liệu'), info('Loại', value.licenseType),
       info('Tổng seat', String(value.totalQuantity)), info('Đã dùng', missing(value.usedQuantity)),
       info('Còn lại', missing(value.availableQuantity)), info('Key', value.maskedKey ?? 'Chưa có thông tin key'),
       info('Hiệu lực', date(value.startsAt)), info('Hết hạn', date(value.expiresAt)))),
+    draftForm?.element,
+    allocationPreparation?.enabled === true && !can(services, 'license-assignments.assign') ?
+      h('p', { className: 'info-note' }, 'Bạn có quyền xem metadata nhưng không có quyền chuẩn bị cấp license.') : null,
     h('p', { className: 'info-note' }, 'Phân bổ/thu hồi/chuyển seat và reveal: PLANNED, chờ Allocation API/DTO của Thiện.'));
+  root.dispose = () => draftForm?.dispose();
+  return root;
 }

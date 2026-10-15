@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { licenseListPage, licenseDetailPage } from '../src/ItAssetManagement.Api/wwwroot/js/pages/licenses.js';
-import { installDom, descendants } from './support/test-dom.mjs';
+import { installDom, descendants, until } from './support/test-dom.mjs';
 
 const item = () => ({ id: 4, licenseCode: 'FIXTURE-LICENSE', software: { id: 2, name: 'Synthetic software' },
   licenseType: 'VOLUME', totalQuantity: 5, isActive: true, maskedKey: '****-ABCD' });
@@ -60,5 +60,29 @@ test('empty result uses a standalone readable status instead of an off-screen wi
     assert.match(root.textContent, /Chưa có license phù hợp/);
     assert.equal(descendants(root).filter(n => n.tagName === 'TABLE').length, 0);
     assert.ok(descendants(root).some(n => n.getAttribute('role') === 'status' && n.textContent === 'Chưa có license phù hợp.'));
+  } finally { dom.restore(); }
+});
+test('allocation preparation is separately opt-in and read-only caller still gets metadata', async () => {
+  const dom = installDom(); try {
+    const source = services(); const root = await licenseDetailPage(source, 4, { enabled: true, allocationPreparation: { enabled: true } });
+    assert.match(root.textContent, /FIXTURE-LICENSE/); assert.match(root.textContent, /không có quyền chuẩn bị/);
+    assert.equal(descendants(root).filter(n => n.tagName === 'FORM').length, 0); root.dispose();
+    source.auth.session.permissions.push('license-assignments.assign', 'users.lookup');
+    const closed = await licenseDetailPage(source, 4, { enabled: true });
+    assert.equal(descendants(closed).filter(n => n.tagName === 'FORM').length, 0); closed.dispose();
+  } finally { dom.restore(); }
+});
+test('detail composes draft form with lookup and local callback without an allocation API or route activation', async () => {
+  const dom = installDom(); try {
+    const source = services({ ...item(), licenseType: 'PER_USER' }); source.auth.session.permissions.push('license-assignments.assign', 'users.lookup');
+    source.users = { lookup: async () => ({ items: [{ id: 9, displayName: 'Synthetic recipient' }] }) };
+    const prepared = []; const root = await licenseDetailPage(source, 4, { enabled: true,
+      allocationPreparation: { enabled: true, onPrepared: draft => prepared.push(draft) } }); dom.body.append(root);
+    const nodes = descendants(root); const search = nodes.find(n => n.tagName === 'BUTTON' && n.textContent === 'Tìm target'); search.fire('click');
+    const selection = nodes.find(n => n.tagName === 'SELECT' && n.getAttribute('id')?.endsWith('-selection'));
+    await until(() => !selection.disabled); selection.value = '9'; selection.fire('change');
+    nodes.find(n => n.tagName === 'FORM').fire('submit'); await until(() => prepared.length === 1);
+    assert.deepEqual(prepared[0], { licenseId: 4, userId: 9, assetId: null, note: null });
+    assert.match(root.textContent, /PLANNED/); root.dispose();
   } finally { dom.restore(); }
 });
