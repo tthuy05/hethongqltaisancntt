@@ -1,5 +1,9 @@
 # Project Status
 
+## 15/10/2026 — Asset cost field authorization
+
+Thủy sửa metadata-only update bị403 nhầm và chặn create/update price trái cost grant; giá ẩn được giữ nguyên nếu costless caller bỏ field. UI omit price thật, không gửinull/0.583 unit +158 offline integration +193 frontend PASS,137 cloud SKIP;3 new isolated PostgreSQL HTTP cases PASS sau red-run2FAIL tái hiện. [Evidence/compatibility](docs/asset-cost-field-handoff.md), ADR-033. Không schema/grant/config/shared/Render changes; review branch only.
+
 ## 15/10/2026 — Asset retire UI
 
 Thủy nối action Retired qua endpoint hiện có, dialog lý do/xác nhận/version, chặn blind retry khi409/network hoặc kết quả write chưa rõ.190 frontend PASS /43syntax/47source checks;2 existing isolated PostgreSQL HTTP tests PASS. Backend không sửa; [handoff/evidence](docs/asset-retire-ui-handoff.md). Source branch review only, không đổi shared Neon/Render/module gates.

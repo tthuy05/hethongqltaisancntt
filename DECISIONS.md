@@ -1,5 +1,15 @@
 # Architecture Decision Records
 
+## ADR-033 — Explicit financial field presence for Asset writes
+
+**Date:** 2026-10-15. **Status:** source implemented/tested, under review; production rollout chưa phê duyệt.
+
+**Context / previous behavior:** Custom groups có thể nhận Asset create/update mà không nhận `assets.cost.read`. Update trước đây so nullable request price với stored price, chặn cả metadata-only update của tài sản có giá; create lại chưa kiểm cost-write grant. Nullable decimal một mình không phân biệt omission và explicitnull.
+
+**Decision:** Internal `[JsonIgnore] HasPurchasePrice` theo setter (không nhận flag từ client). Bất kỳ explicit price/null cần cost grant ngoài create/update grant. Không có grant và bỏ price: create unknown/null; update chỉ map nonfinancial fields và bảo toàn stored cost. Financial writer giữ PUT nullable semantics hiện tại; không đổi mọi metadata sang PATCH. UI chỉ dựng financial input khi có grant, omission thật không gửi null/NaN/0.
+
+**Consequences:** Metadata-only custom operator không cần biết/đoán giá; lỗi price-write luôn403 generic bất kể stored price. Old costless clients gửi `purchasePrice:null` phải bỏ field; UI/API source fix đi cùng checkpoint. Admin/Manager cost-granted flow không đổi. Client hiding không thay backend field authorization. Không cấp quyền mới/đổi Technical Support, schema/provider/migration/config hoặc module ownership. [Red/green evidence](docs/asset-cost-field-handoff.md).
+
 ## ADR-032 — Versioned license key protection prerequisite
 
 **Date:** 2026-10-14. **Status:** local implementation / under review, production integration PLANNED.

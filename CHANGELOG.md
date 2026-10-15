@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — 15/10/2026 — Asset financial field guard
+
+- Fixed: metadata-only custom operators can update assets without reading/clearing hidden price; create/update reject explicit financial fields without cost grant, includingnull.
+- Fixed: Asset form omits the financial input/property when unauthorized; cost-granted nullable PUT behavior retained. [Red/green tests and compatibility](docs/asset-cost-field-handoff.md), ADR-033. No schema/grant/production changes.
+
 ## Unreleased — 15/10/2026 — Asset retire UI
 
 - Added: permission-aware Asset detail retirement confirmation using the existing Retired-only endpoint; required reason/version, single-flight and explicit read refresh after conflicts/unknown write outcomes.

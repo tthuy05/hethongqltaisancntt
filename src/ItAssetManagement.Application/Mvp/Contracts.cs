@@ -103,6 +103,7 @@ public sealed class ListQuery
 }
 public sealed class AssetRequest
 {
+    private decimal? purchasePrice;
     public string? AssetCode { get; set; }
     public string Name { get; set; } = "";
     public long AssetTypeId { get; set; }
@@ -115,7 +116,10 @@ public sealed class AssetRequest
     public string? Location { get; set; }
     public DateOnly? PurchaseDate { get; set; }
     public DateOnly? WarrantyExpirationDate { get; set; }
-    public decimal? PurchasePrice { get; set; }
+    public decimal? PurchasePrice { get => purchasePrice; set { purchasePrice = value; HasPurchasePrice = true; } }
+    // Distinguish an omitted financial field from an explicit null/clear command.
+    // Never trust a client-supplied presence flag or serialize this internal state.
+    [JsonIgnore] public bool HasPurchasePrice { get; private set; }
     public string? Note { get; set; }
     public string? RowVersion { get; set; }
 }

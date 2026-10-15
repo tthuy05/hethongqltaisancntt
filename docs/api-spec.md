@@ -280,6 +280,8 @@ Export áp dụng row limit cấu hình; nếu vượt giới hạn trả 413/Pr
 
 `CreateAssetRequest` bắt buộc `name`, `assetTypeId`, `owningDepartmentId`; optional `serialNumber`, `brand`, `model`, `specification`, `operatingSystem`, `purchaseDate`, `purchasePrice`, `warrantyExpirationDate`, `location`, `note`. Server luôn đặt initial status `InStock`. `UpdateAssetRequest` chỉ cho phép các metadata trên và `rowVersion`, không cho đổi `status`; đổi status chỉ qua EP-027/workflow được quyền. Currency là cấu hình chung của MVP, không có field per-record.
 
+**Source correction15/10 — field authorization:** `purchasePrice` có mặt trong JSON (kể cả `null` hoặc bằng giá hiện tại) cần `assets.cost.read` ngoài quyền create/update. Không có quyền này: client **bỏ hẳn field**, create lưu giá chưa biết, update giữ nguyên giá DB; không mặc định0/clear hoặc so giá đoán với giá ẩn. Có quyền: PUT giữ nullable semantics hiện tại, gửi `null` để xóa giá; omission vẫn theo PUT cũ (null), không đổi toàn DTO thành PATCH. `HasPurchasePrice` là state nội bộ `[JsonIgnore]`, không phải request field có thể gán. Trái quyền trả403 generic không echo giá. UI không mount/input/hydrate giá nếu không có grant. [Red/green tests và compatibility](asset-cost-field-handoff.md).
+
 Validation: non-negative money, warranty không trước purchase date, max lengths, asset code/serial normalized. Create cần asset type/owning department active; update chỉ kiểm active với reference được chọn mới, giữ reference inactive không đổi theo BR-043. Current assigned user/department không cập nhật qua Asset DTO mà qua assignment service; `owningDepartmentId` là department sở hữu riêng và có thể đổi qua metadata update sau resource authorization/audit.
 
 ### Assignment

@@ -4,6 +4,8 @@
 
 Action **Ngừng sử dụng** tài sản cũng đã có trong source nhánh review: chỉ InStock/Broken → Retired, bắt buộc lý do/xác nhận/version, giữ nháp khi xung đột và không tự gửi lại thao tác. [Bàn giao](docs/asset-retire-ui-handoff.md). Chưa triển khai lên demo public.
 
+Nhóm tùy chỉnh được sửa metadata nhưng không có quyền chi phí sẽ không nhận/input/gửi giá mua; backend giữ nguyên giá ẩn và chặn field tài chính trái quyền. [Bản sửa và kiểm thử](docs/asset-cost-field-handoff.md), chưa deploy.
+
 ## Cập nhật 11/10/2026 — 6 nhận xét giảng viên
 
 Source bổ sung nhóm quyền tùy chỉnh/ma trận checkbox, mời tài khoản qua email, kích hoạt một lần trong 30 phút, mã tài sản do sequence cấp; hiển thị tên phòng ban và bỏ các mục “Đối tượng” trên Nhật ký. **Publication trên nhánh `codex/lecturer-feedback`, chưa merge/deploy/apply shared.** Không merge vào main trước khi duyệt migration và kế hoạch triển khai tương thích. [Báo cáo, kết quả kiểm thử và hướng dẫn demo](docs/lecturer-feedback-remediation-report.md).

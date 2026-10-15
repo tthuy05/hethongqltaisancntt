@@ -53,6 +53,7 @@ public sealed class AssetService(IRepository repo, IUnitOfWork uow, IAuditWriter
     }
     public async Task<AssetDto> CreateAsync(AssetRequest x, CancellationToken ct)
     {
+        RequireCostWrite(x);
         Validation.Asset(x, false);
         var id = await uow.RunAsync(async () =>
         {
@@ -68,15 +69,14 @@ public sealed class AssetService(IRepository repo, IUnitOfWork uow, IAuditWriter
     }
     public async Task<AssetDto> UpdateAsync(long id, AssetRequest x, CancellationToken ct)
     {
+        RequireCostWrite(x);
         Validation.Asset(x, true);
         await uow.RunAsync(async () =>
         {
             await repo.LockAssetAsync(id, ct);
             var asset = await TrackedAsync(id, ct); var before = Snapshot(asset);
             repo.ExpectVersion(asset, Validation.Version(x.RowVersion));
-            if (!actor.Has(Permissions.AssetCost) && x.PurchasePrice != asset.PurchaseCost)
-                throw new BusinessException(403, "FORBIDDEN", "Không có quyền sửa chi phí.");
-            await ReferencesAsync(x, asset, ct); await UniqueAsync(x, id, ct); Apply(asset, x);
+            await ReferencesAsync(x, asset, ct); await UniqueAsync(x, id, ct); Apply(asset, x, actor.Has(Permissions.AssetCost));
             asset.UpdatedByUserId = actor.UserId; Record("assets.update", asset, before); await repo.SaveAsync(ct); return true;
         }, ct);
         return await GetAsync(id, ct);
@@ -141,11 +141,17 @@ public sealed class AssetService(IRepository repo, IUnitOfWork uow, IAuditWriter
         if (serial != null && await repo.AnyAsync(repo.Query<Asset>().Where(a => a.Id != id && a.SerialNumber != null && a.SerialNumber.ToLower() == serial), ct))
             throw new BusinessException(409, "ASSET_SERIAL_CONFLICT", "Serial đã tồn tại.");
     }
-    private static void Apply(Asset a, AssetRequest x)
+    private void RequireCostWrite(AssetRequest x)
+    {
+        if (x.HasPurchasePrice && !actor.Has(Permissions.AssetCost))
+            throw new BusinessException(403, "FORBIDDEN", "Không có quyền sửa chi phí.");
+    }
+    private static void Apply(Asset a, AssetRequest x, bool updateCost = true)
     {
         a.Name = x.Name; a.AssetTypeId = x.AssetTypeId; a.OwningDepartmentId = x.OwningDepartmentId;
         a.SerialNumber = x.SerialNumber; a.Manufacturer = x.Brand; a.Model = x.Model; a.Specification = x.Specification;
-        a.OperatingSystem = x.OperatingSystem; a.Location = x.Location; a.PurchaseCost = x.PurchasePrice;
+        a.OperatingSystem = x.OperatingSystem; a.Location = x.Location;
+        if (updateCost) a.PurchaseCost = x.PurchasePrice;
         a.PurchaseDate = x.PurchaseDate; a.WarrantyEndDate = x.WarrantyExpirationDate; a.Notes = x.Note;
     }
     // Explicit safe allowlist: no credential, token or arbitrary entity serialization.

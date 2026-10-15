@@ -1,5 +1,9 @@
 # Thiết kế bảo mật
 
+## Asset price field authorization — 15/10/2026, source chưa deploy
+
+Thủy sửa create/update field-level guard: `purchasePrice` có mặt kể cảnull cần `assets.cost.read`; permission không có thì chỉ sửa metadata và giữ nguyên giá ẩn. Không so giá đoán với giá DB để quyết định grant, không return/echo giá trái quyền. Internal presence flag `[JsonIgnore]` không thể bị client override. UI không mount financial input khi thiếu grant; không dựa riêng ẩn input làm authorization. [Tái hiện, kiểm thử và compatibility](asset-cost-field-handoff.md). Không grant/seed/schema hoặc thay quyền Technical Support; source review only.
+
 ## License security preparation — 14/10/2026
 
 Thủy đã chuẩn bị AES-256-GCM/key-ring và key field/reveal policy theo ADR-008; 34 focused unit PASS. [Hợp đồng và giới hạn](week-05-license-security-handoff.md). Secret source/recovery, DTO semantics, DI và reveal API còn PLANNED; không cấu hình khóa thật, seed quyền, đổi connection string hoặc deploy.
