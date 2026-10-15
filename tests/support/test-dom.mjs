@@ -1,7 +1,7 @@
 // Small deterministic DOM for page behavior tests, not a browser layout substitute.
 export class TestNode {
   constructor(tag = '#text', text = '') { this.tagName=tag.toUpperCase();this.data=text;this.childNodes=[];this.attributes=new Map();this.dataset={};this.handlers=new Map();this.value='';this.disabled=false;this.style={setProperty(){}};this.className='';
-    this.classList={contains:n=>this.className.split(/\s+/).includes(n),add:n=>{this.className+=' '+n;},remove:n=>{this.className=this.className.split(/\s+/).filter(x=>x!==n).join(' ');}}; }
+    this.classList={contains:n=>this.className.split(/\s+/).includes(n),add:n=>{if(!this.classList.contains(n))this.className+=' '+n;},remove:n=>{this.className=this.className.split(/\s+/).filter(x=>x!==n).join(' ');},toggle:(n,force)=>{const on=force===undefined?!this.classList.contains(n):Boolean(force);if(on)this.classList.add(n);else this.classList.remove(n);return on;}}; }
   get textContent(){return this.tagName==='#TEXT'?this.data:this.childNodes.map(n=>n.textContent).join('');}
   set textContent(v){this.replaceChildren(new TestNode('#text',String(v)));}
   get isConnected(){let n=this;while(n.parentNode)n=n.parentNode;return n.tagName==='BODY';}

@@ -1,5 +1,7 @@
 # Hệ thống Quản lý & Tối ưu Hạ tầng CNTT Doanh nghiệp
 
+**Source cập nhật 15/10/2026:** tab lịch sử **Trạng thái** tài sản đã nối endpoint đọc hiện có, có phân trang, người thực hiện và thời điểm UTC. Phân bổ/Bảo trì vẫn PLANNED; chưa mở module mới hoặc deploy bản này. [Phạm vi và bằng chứng kiểm thử](docs/week-04-asset-status-history-handoff.md).
+
 ## Cập nhật 11/10/2026 — 6 nhận xét giảng viên
 
 Source bổ sung nhóm quyền tùy chỉnh/ma trận checkbox, mời tài khoản qua email, kích hoạt một lần trong 30 phút, mã tài sản do sequence cấp; hiển thị tên phòng ban và bỏ các mục “Đối tượng” trên Nhật ký. **Publication trên nhánh `codex/lecturer-feedback`, chưa merge/deploy/apply shared.** Không merge vào main trước khi duyệt migration và kế hoạch triển khai tương thích. [Báo cáo, kết quả kiểm thử và hướng dẫn demo](docs/lecturer-feedback-remediation-report.md).

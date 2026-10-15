@@ -1,5 +1,9 @@
 # Project Status
 
+## 15/10/2026 — Asset status history integration
+
+Thủy nối tab lịch sử trạng thái thực tế với EP-029, phân trang/UTC/tên người thực hiện hiện tại, guard quyền/phiên/late response và error/empty state. Backend chỉ thêm nullable display-name projection, không schema/quyền mới.181 frontend +576 unit +158 offline integration PASS,134 cloud SKIP;4 focused HTTP/PostgreSQL isolated PASS riêng. [Evidence/giới hạn](docs/week-04-asset-status-history-handoff.md). Không đóng Assignment/Maintenance acceptance, không thay shared Neon/Render/config; source branch only.
+
 ## 15/10/2026 — License async access/query guards
 
 Thủy chặn late metadata sau revoke/account switch, snapshot session tránh expiry null crash và immutable query/filter/paging.167 frontend PASS /0 FAIL/SKIP;40 syntax/44 source checks PASS. [Regression addendum](docs/week-05-allocation-draft-handoff.md). No backend/schema/config/module activation changes; source rollout vẫn gated.

@@ -3,6 +3,7 @@ import { validateAsset, validateLogin, validateMaster, validateUser, validateUse
 import { ServiceError } from './service-error.js';
 import { createAssignmentService } from './assignment-service.js';
 import { createLicenseReadService } from './license-service.js';
+import { createAssetHistoryReader } from './asset-history-service.js';
 
 /** Same-origin client for M1 backend APIs; no automatic mock fallback. */
 export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThis), baseUrl = '/api/v1' } = {}) {
@@ -133,6 +134,7 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
     async logout() { clearSession(); },
   };
   const assets = {
+    history: createAssetHistoryReader({ request, idPath }),
     list(query = {}) { return request(`/assets${queryString(query)}`); },
     get(id) { return request(`/assets/${idPath(id)}`); },
     async create(dto) { validate(validateAsset(dto)); return request('/assets', { method: 'POST', body: { ...dto, ...(dto.purchasePrice == null ? {} : { purchasePrice: Number(dto.purchasePrice) }) } }); },

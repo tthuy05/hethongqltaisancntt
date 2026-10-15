@@ -136,7 +136,20 @@ Không có refresh/logout endpoint trong MVP. Logout xóa access token phía cli
 | EP-026 | `PUT /assets/{assetId}` | Cập nhật asset metadata | `assets.update` | — | `UpdateAssetRequest` + version | `AssetDetail` | 200 | 400, 401, 403, 404, 409 | BR-008, BR-009, BR-047 |
 | EP-027 | `PATCH /assets/{assetId}/status` | Chuyển trạng thái quản trị | `assets.status.manage` | — | `ChangeAssetStatusRequest` | `AssetDetail` | 200 | 400, 401, 403, 404, 409 | BR-003, BR-007, BR-009, BR-013 |
 | EP-028 | `DELETE /assets/{assetId}` | Archive asset, không xóa lịch sử | `assets.archive` | —; `If-Match` required | — | — | 204 | 400, 401, 403, 404, 409, 428 | BR-003, BR-039, BR-040 |
-| EP-029 | `GET /assets/{assetId}/status-history` | Xem lịch sử status | `assets.history.read` | paging; `from,to,status` | — | `Paged<AssetStatusHistory>` | 200 | 400, 401, 403, 404 | BR-007, BR-014, BR-034 |
+| EP-029 | `GET /assets/{assetId}/status-history` | Xem lịch sử status | `assets.history.read` + `assets.read` | Runtime: `page,pageSize` only; `from,to,status` PLANNED | — | `Paged<HistoryDto>` (runtime contract dưới đây) | 200 | 400, 401, 403, 404 | BR-007, BR-014, BR-034 |
+
+#### EP-029 — runtime source, cập nhật 15/10/2026
+
+Endpoint đã có; Thủy nối tab **Trạng thái** tại trang chi tiết tài sản. Source nhánh review, chưa tuyên bố deploy production. Query chỉ nhận `page` (mặc định1), `pageSize` (mặc định20,1..100), offset tối đa int32. Không hỗ trợ lọc `from,to,status` hoặc sort trong implementation hiện tại; chúng trả400, không bị âm thầm bỏ qua. Luôn sắp `changedAtUtc DESC, id DESC`.
+
+Response: `{ items, page, pageSize, totalItems, totalPages }`, `totalPages=ceil(totalItems/pageSize)` (0 nếu rỗng). Mỗi item:
+
+- `id`, `fromStatus` nullable (null=khởi tạo), `toStatus`: API values `InStock|InUse|Maintenance|Broken|Retired`.
+- `reason` nullable, tối đa1000; `source`: `SYSTEM|ADMIN|IMPORT|ASSIGNMENT|MAINTENANCE`.
+- `changedAtUtc`: UTC ISO8601; `changedByUserId` nullable; `correlationId`: UUID.
+- `changedByDisplayName`: **additive nullable** field từ left join user, tối đa200; là tên **hiện tại**, không phải snapshot tên quá khứ. Client vẫn đọc được backend cũ thiếu field này, hiển thị chưa có tên; không tự đoán tên hoặc gọi API quản trị user.
+
+Không trả giá mua, email, password hoặc grants. Controller kiểm `assets.history.read`, service đọc asset bằng `assets.read`; 401/403/404 giữ nguyên. Tài sản archived/missing không khả dụng qua endpoint hiện tại. Không thêm endpoint/quyền/seed/migration; Assignment/Maintenance history tiếp tục PLANNED. [Kiểm thử và giới hạn](week-04-asset-status-history-handoff.md).
 
 ### 2.4 Asset assignments
 

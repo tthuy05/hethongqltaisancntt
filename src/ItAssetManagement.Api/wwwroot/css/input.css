@@ -155,6 +155,7 @@ strong, b { font-weight: 600; }
 .data-table tbody tr:hover { background: #FBFCFF; }
 .data-table tbody tr:last-child td { border-bottom: 0; }
 .data-table .name-cell { min-width: 180px; max-width: 270px; }
+.asset-history-reason { min-width: 240px; max-width: 400px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .data-table .row-actions { display: flex; gap: 3px; white-space: nowrap; }
 .data-table .nowrap, .nowrap { white-space: nowrap; }
 .data-table .text-right { text-align: right; }

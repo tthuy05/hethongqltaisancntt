@@ -169,4 +169,9 @@ public sealed class AssetDto
     public object? CurrentAssignment { get; set; }
 }
 public sealed record HistoryDto(long Id, string? FromStatus, string ToStatus, string? Reason, string Source,
-    DateTime ChangedAtUtc, long? ChangedByUserId, Guid CorrelationId);
+    DateTime ChangedAtUtc, long? ChangedByUserId, Guid CorrelationId)
+{
+    // Additive read projection; keeps the original constructor/deconstruction.
+    // This is the user's current display name, not a historical name snapshot.
+    public string? ChangedByDisplayName { get; init; }
+}

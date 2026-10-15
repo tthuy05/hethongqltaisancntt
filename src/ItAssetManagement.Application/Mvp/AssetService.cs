@@ -112,9 +112,16 @@ public sealed class AssetService(IRepository repo, IUnitOfWork uow, IAuditWriter
     {
         await GetAsync(id, ct); Validation.List(q, true);
         var query = repo.Query<AssetStatusHistory>().Where(x => x.AssetId == id); var total = await repo.CountAsync(query, ct);
-        var items = await repo.ListAsync(query.OrderByDescending(x => x.ChangedAtUtc).ThenByDescending(x => x.Id)
-            .Skip((q.Page - 1) * q.PageSize).Take(q.PageSize)
-            .Select(x => new HistoryDto(x.Id, x.FromStatus, x.ToStatus, x.Reason, x.Source, x.ChangedAtUtc, x.ChangedByUserId, x.CorrelationId)), ct);
+        var page = query.OrderByDescending(x => x.ChangedAtUtc).ThenByDescending(x => x.Id)
+            .Skip((q.Page - 1) * q.PageSize).Take(q.PageSize);
+        var projection = from history in page
+                         join user in repo.Query<User>() on history.ChangedByUserId equals (long?)user.Id into actors
+                         from user in actors.DefaultIfEmpty()
+                         orderby history.ChangedAtUtc descending, history.Id descending
+                         select new HistoryDto(history.Id, history.FromStatus, history.ToStatus, history.Reason,
+                             history.Source, history.ChangedAtUtc, history.ChangedByUserId, history.CorrelationId)
+                         { ChangedByDisplayName = user == null ? null : user.FullName };
+        var items = await repo.ListAsync(projection, ct);
         return new(items.Select(x => x with { FromStatus = x.FromStatus == null ? null : StatusMap.ToApi(x.FromStatus), ToStatus = StatusMap.ToApi(x.ToStatus) }).ToList(),
             q.Page, q.PageSize, total, (int)Math.Ceiling(total / (double)q.PageSize));
     }

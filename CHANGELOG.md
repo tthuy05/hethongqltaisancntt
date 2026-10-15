@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — 15/10/2026 — Asset status history
+
+- Added: actual Asset detail status-history tab consuming the existing paging-only endpoint, with UTC timestamps, current actor names, permission/session guards and honest loading/error/empty states.
+- Changed: history read projection includes additive nullable `changedByDisplayName`; no schema, new permission or workflow activation.181 frontend and4 focused isolated PostgreSQL HTTP tests PASS; [handoff](docs/week-04-asset-status-history-handoff.md).
+
 ## Unreleased — 15/10/2026 — License async guards
 
 - Fixed: prepared License pages reject stale-account/revoked-read responses, use session/query snapshots and preserve matching filter/paging context.167 frontend PASS; no module activation.

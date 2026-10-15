@@ -1,6 +1,7 @@
 import { h } from '../utils/dom.js';
 import { button, pageHeader, badge, dataTable, pagination, showToast } from '../components.js';
 import { allCatalog, can, route, queryFrom, setQuery, option, date, money, statusLabels, archiveDialog } from './shared.js';
+import { createAssetStatusHistory } from '../components/asset-status-history.js';
 
 export async function assetListPage(services) {
   const query = { page: 1, pageSize: 10, sortBy: 'assetCode', sortDirection: 'asc', ...queryFrom() };
@@ -36,8 +37,16 @@ export async function assetDetailPage(services, id) {
   const asset = await services.assets.get(id);
   const tabs = h('div', { className: 'tab-list', role: 'tablist', 'aria-label': 'Lịch sử tài sản' });
   const panel = h('div', { className: 'card-body', role: 'tabpanel', id: 'history-panel', tabindex: 0, 'aria-live': 'polite' });
-  const history = [{ key: 'assignment', label: 'Phân bổ', note: 'Assignment History — PLANNED. Chưa kết nối API lịch sử phân bổ.' }, { key: 'maintenance', label: 'Bảo trì', note: 'Maintenance History — PLANNED. Chưa kết nối API bảo trì.' }, { key: 'status', label: 'Trạng thái', note: 'Status History — PLANNED. Chưa kết nối API lịch sử trạng thái.' }];
-  const choose = key => { for (const child of tabs.children) { const selected = child.dataset.key === key; child.classList.toggle('active', selected); child.setAttribute('aria-selected', String(selected)); child.tabIndex = selected ? 0 : -1; } panel.setAttribute('aria-labelledby', 'history-tab-' + key); panel.textContent = history.find(item => item.key === key).note; };
+  const history = [{ key: 'assignment', label: 'Phân bổ', note: 'Assignment History — PLANNED. Chưa kết nối API lịch sử phân bổ.' }, { key: 'maintenance', label: 'Bảo trì', note: 'Maintenance History — PLANNED. Chưa kết nối API bảo trì.' }, { key: 'status', label: 'Trạng thái' }];
+  let statusHistory = null;
+  const choose = key => {
+    statusHistory?.dispose(); statusHistory = null;
+    for (const child of tabs.children) { const selected = child.dataset.key === key; child.classList.toggle('active', selected); child.setAttribute('aria-selected', String(selected)); child.tabIndex = selected ? 0 : -1; }
+    panel.setAttribute('aria-labelledby', 'history-tab-' + key);
+    if (key !== 'status') { panel.textContent = history.find(item => item.key === key).note; return; }
+    statusHistory = createAssetStatusHistory(services, id);
+    panel.replaceChildren(statusHistory.element); void statusHistory.load();
+  };
   history.forEach((item, index) => tabs.append(button(item.label, { kind: 'ghost', className: 'tab-button', role: 'tab', id: 'history-tab-' + item.key, 'aria-controls': 'history-panel', dataset: { key: item.key }, onClick: () => choose(item.key), onKeyDown: event => {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
     event.preventDefault();

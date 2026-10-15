@@ -1,5 +1,7 @@
 # Week 04 — Assignment, Maintenance & Audit
 
+**15/10 — Thủy bổ sung actual status-history UI:** tab Trạng thái đã nối endpoint đọc có sẵn, phân trang/UTC/current actor name và permission/session guards.181 frontend +4 focused isolated PostgreSQL HTTP PASS; [handoff](../week-04-asset-status-history-handoff.md). Không mở Assignment/Maintenance hoặc đánh dấu các module của Thiện hoàn thành; source nhánh review, production không đổi.
+
 **14/10 — UI hints Thủy:** shared Maintenance scope/cost flags đã chuẩn bị, chưa mở menu/route. [Bàn giao chung Week4–5](../week-04-05-ui-permissions-handoff.md); actual Thiện pages/readiness và owner review vẫn PENDING.
 
 **Addendum 14/10 — D4-04/D5-03 fallback:** shared API client cho 4 routes Assignment hiện có và user lookup đã có, 45 frontend tests PASS. Page/menu/feature rollout chưa bật; Maintenance module Thiện chưa hoàn thiện nên tasks UI integration vẫn PARTIAL. [Bàn giao client](../week-04-api-client-handoff.md).
