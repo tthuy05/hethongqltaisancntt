@@ -1,5 +1,9 @@
 # Project Status
 
+## 15/10/2026 — Asset retire UI
+
+Thủy nối action Retired qua endpoint hiện có, dialog lý do/xác nhận/version, chặn blind retry khi409/network hoặc kết quả write chưa rõ.190 frontend PASS /43syntax/47source checks;2 existing isolated PostgreSQL HTTP tests PASS. Backend không sửa; [handoff/evidence](docs/asset-retire-ui-handoff.md). Source branch review only, không đổi shared Neon/Render/module gates.
+
 ## 15/10/2026 — Asset status history integration
 
 Thủy nối tab lịch sử trạng thái thực tế với EP-029, phân trang/UTC/tên người thực hiện hiện tại, guard quyền/phiên/late response và error/empty state. Backend chỉ thêm nullable display-name projection, không schema/quyền mới.181 frontend +576 unit +158 offline integration PASS,134 cloud SKIP;4 focused HTTP/PostgreSQL isolated PASS riêng. [Evidence/giới hạn](docs/week-04-asset-status-history-handoff.md). Không đóng Assignment/Maintenance acceptance, không thay shared Neon/Render/config; source branch only.

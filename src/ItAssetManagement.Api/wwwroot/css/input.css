@@ -210,6 +210,9 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--primary); widt
 .input-with-action .input { flex: 1; }
 .info-note { display: flex; gap: 10px; padding: 14px 16px; border-radius: 9px; color: #315481; background: #EEF5FF; font-size: 13px; line-height: 1.65; }
 .info-note > .icon { margin-top: 2px; }
+.concurrency-feedback { flex-direction: column; align-items: flex-start; }
+.concurrency-feedback > p:empty { display: none; }
+.concurrency-feedback > .button { white-space: normal; text-align: left; }
 
 .breadcrumb { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-bottom: 16px; }
 .breadcrumb .icon { width: 14px; height: 14px; }

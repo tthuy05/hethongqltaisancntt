@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — 15/10/2026 — Asset retire UI
+
+- Added: permission-aware Asset detail retirement confirmation using the existing Retired-only endpoint; required reason/version, single-flight and explicit read refresh after conflicts/unknown write outcomes.
+- Fixed: stacked shared concurrency feedback on narrow dialogs.190 frontend PASS;2 isolated backend contract tests PASS. No backend/schema/module activation changes; [handoff](docs/asset-retire-ui-handoff.md).
+
 ## Unreleased — 15/10/2026 — Asset status history
 
 - Added: actual Asset detail status-history tab consuming the existing paging-only endpoint, with UTC timestamps, current actor names, permission/session guards and honest loading/error/empty states.

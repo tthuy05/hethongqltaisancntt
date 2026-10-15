@@ -149,7 +149,7 @@ Response: `{ items, page, pageSize, totalItems, totalPages }`, `totalPages=ceil(
 - `changedAtUtc`: UTC ISO8601; `changedByUserId` nullable; `correlationId`: UUID.
 - `changedByDisplayName`: **additive nullable** field từ left join user, tối đa200; là tên **hiện tại**, không phải snapshot tên quá khứ. Client vẫn đọc được backend cũ thiếu field này, hiển thị chưa có tên; không tự đoán tên hoặc gọi API quản trị user.
 
-Không trả giá mua, email, password hoặc grants. Controller kiểm `assets.history.read`, service đọc asset bằng `assets.read`; 401/403/404 giữ nguyên. Tài sản archived/missing không khả dụng qua endpoint hiện tại. Không thêm endpoint/quyền/seed/migration; Assignment/Maintenance history tiếp tục PLANNED. [Kiểm thử và giới hạn](week-04-asset-status-history-handoff.md).
+Không trả giá mua, email, password hoặc grants. Controller kiểm `assets.history.read`; service kiểm asset tồn tại/chưa archived qua `GetAsync` (không phải một authorization check `assets.read` độc lập). Permission matrix yêu cầu grant history kèm asset-read; UI cũng yêu cầu cả hai. 401/403/404 giữ nguyên. Tài sản archived/missing không khả dụng qua endpoint hiện tại. Không thêm endpoint/quyền/seed/migration; Assignment/Maintenance history tiếp tục PLANNED. [Kiểm thử và giới hạn](week-04-asset-status-history-handoff.md).
 
 ### 2.4 Asset assignments
 

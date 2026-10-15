@@ -17,7 +17,7 @@ export function concurrencyFeedback({ onRefresh }) {
         error?.status === 403 ? 'Không đủ quyền tải bản mới.' : 'Không tải được bản mới. Vui lòng kiểm tra kết nối.';
     } finally { pending = false; refresh.disabled = false; refresh.removeAttribute('aria-busy'); }
   } });
-  const root = h('div', { className: 'info-note', role: 'group', 'aria-label': 'Xử lý dữ liệu thay đổi' },
+  const root = h('div', { className: 'info-note concurrency-feedback', role: 'group', 'aria-label': 'Xử lý dữ liệu thay đổi' },
     h('p', {}, 'Dữ liệu trên server đã thay đổi. Bản bạn đang nhập vẫn được giữ; không tự gửi lại thao tác lưu.'),
     h('p', {}, 'Tải bản mới sẽ bỏ các thay đổi chưa lưu trong form này.'), refresh, status);
   return root;

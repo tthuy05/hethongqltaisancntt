@@ -135,6 +135,18 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
   };
   const assets = {
     history: createAssetHistoryReader({ request, idPath }),
+    async retire(id, dto) {
+      if (!Number.isSafeInteger(id) || id <= 0 || !dto || typeof dto !== 'object' || Array.isArray(dto) ||
+          Object.keys(dto).some(key => !['reason', 'rowVersion'].includes(key))) {
+        throw new ServiceError(400, 'VALIDATION_ERROR', 'Yêu cầu ngừng sử dụng không hợp lệ.');
+      }
+      const reason = typeof dto.reason === 'string' ? dto.reason.trim() : '';
+      if (!reason || reason.length > 1000) throw new ServiceError(400, 'VALIDATION_ERROR', 'Vui lòng nhập lý do, tối đa 1000 ký tự.', { reason: ['Lý do là bắt buộc, tối đa 1000 ký tự.'] });
+      let validVersion = false;
+      try { validVersion = typeof dto.rowVersion === 'string' && atob(dto.rowVersion).length === 16 && btoa(atob(dto.rowVersion)) === dto.rowVersion; } catch { /* Invalid Base64 is a validation error. */ }
+      if (!validVersion) throw new ServiceError(400, 'VALIDATION_ERROR', 'Tải lại tài sản để lấy phiên bản hợp lệ.', { rowVersion: ['Thiếu hoặc sai phiên bản tài sản.'] });
+      return request(`/assets/${idPath(id)}/status`, { method: 'PATCH', body: { status: 'Retired', reason, rowVersion: dto.rowVersion } });
+    },
     list(query = {}) { return request(`/assets${queryString(query)}`); },
     get(id) { return request(`/assets/${idPath(id)}`); },
     async create(dto) { validate(validateAsset(dto)); return request('/assets', { method: 'POST', body: { ...dto, ...(dto.purchasePrice == null ? {} : { purchasePrice: Number(dto.purchasePrice) }) } }); },
