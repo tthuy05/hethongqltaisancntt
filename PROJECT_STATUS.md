@@ -1,5 +1,9 @@
 # Project Status
 
+## 15/10/2026 — Workflow guard fallback verification
+
+Thủy kiểm thêm3 actual Asset HTTP/PostgreSQL cases với ticket snapshots: open work chặn đúng, terminal work không chặn nhầm, version/history/audit bảo toàn. UI phân biệt dữ liệu Assignment chưa tích hợp với unassigned.583unit/158offline/205frontend PASS,140cloud SKIP; [evidence](docs/week-04-workflow-guard-verification.md). Không Maintenance API acceptance, schema/shared/config/Render hoặc activation changes.
+
 ## 15/10/2026 — Asset save lifecycle
 
 Thủy chặn late save redirect/toast sau navigation/account change, default-deny save access và blind resubmit khi kết quả write chưa rõ. Giữ draft, explicit read reconciliation link không chuyển JWT;201 frontend PASS/43syntax/47source. [Giới hạn và kiểm thử](docs/asset-save-lifecycle-handoff.md). Không idempotency guarantee, backend/schema/config/shared/Render changes hoặc module activation.

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — 15/10/2026 — Workflow guard verification
+
+- Added:3 actual isolated PostgreSQL/Asset HTTP regression cases for open and terminal Maintenance fixture snapshots; no Maintenance API implementation/acceptance claim.
+- Fixed: Asset API-mode list/detail labels unavailable current-assignment data as unknown, not unassigned;205 frontend PASS. [Evidence](docs/week-04-workflow-guard-verification.md).
+
 ## Unreleased — 15/10/2026 — Asset save lifecycle
 
 - Fixed: stale Asset form responses cannot redirect/toast after navigation or account/permission changes; unknown write outcomes preserve draft and block blind resubmit, with explicit same-origin read reconciliation.
