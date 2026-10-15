@@ -35,7 +35,7 @@ test('real Asset edit component retains draft after 409 and offers explicit disc
   const dom = installDom('/assets/4/edit'); try {
     let writes = 0, reloads = 0; window.dispatchEvent = () => { reloads++; };
     const catalog = async () => ({ items: [{ id: 1, name: 'Fixture reference', isActive: true }], page: 1, pageSize: 100, totalItems: 1, totalPages: 1 });
-    const services = { mode: 'api', assetTypes: { list: catalog }, departments: { list: catalog }, assets: {
+    const services = { mode: 'api', auth: { session: { id: 7, permissions: ['assets.read', 'assets.update'] } }, assetTypes: { list: catalog }, departments: { list: catalog }, assets: {
       get: async () => ({ id: 4, name: 'Original', assetCode: 'AST-FIXTURE', assetTypeId: 1, owningDepartmentId: 1,
         assetType: { id: 1, name: 'Fixture reference' }, owningDepartment: { id: 1, name: 'Fixture reference' }, status: 'InStock', rowVersion: 'AAAAAAAAAAAAAAAAAAAAAA==' }),
       update: async () => { writes++; throw Object.assign(new Error('Data changed'), { status: 409, code: 'CONCURRENCY_CONFLICT' }); }

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — 15/10/2026 — Asset save lifecycle
+
+- Fixed: stale Asset form responses cannot redirect/toast after navigation or account/permission changes; unknown write outcomes preserve draft and block blind resubmit, with explicit same-origin read reconciliation.
+- Added:8 lifecycle regression cases,201 frontend PASS; no token persistence/cross-tab transfer, backend idempotency or production changes. [Handoff](docs/asset-save-lifecycle-handoff.md).
+
 ## Unreleased — 15/10/2026 — Asset financial field guard
 
 - Fixed: metadata-only custom operators can update assets without reading/clearing hidden price; create/update reject explicit financial fields without cost grant, includingnull.

@@ -1,5 +1,9 @@
 # Project Status
 
+## 15/10/2026 — Asset save lifecycle
+
+Thủy chặn late save redirect/toast sau navigation/account change, default-deny save access và blind resubmit khi kết quả write chưa rõ. Giữ draft, explicit read reconciliation link không chuyển JWT;201 frontend PASS/43syntax/47source. [Giới hạn và kiểm thử](docs/asset-save-lifecycle-handoff.md). Không idempotency guarantee, backend/schema/config/shared/Render changes hoặc module activation.
+
 ## 15/10/2026 — Asset cost field authorization
 
 Thủy sửa metadata-only update bị403 nhầm và chặn create/update price trái cost grant; giá ẩn được giữ nguyên nếu costless caller bỏ field. UI omit price thật, không gửinull/0.583 unit +158 offline integration +193 frontend PASS,137 cloud SKIP;3 new isolated PostgreSQL HTTP cases PASS sau red-run2FAIL tái hiện. [Evidence/compatibility](docs/asset-cost-field-handoff.md), ADR-033. Không schema/grant/config/shared/Render changes; review branch only.
