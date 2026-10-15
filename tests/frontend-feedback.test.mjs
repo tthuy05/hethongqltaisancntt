@@ -35,7 +35,7 @@ test('non-Admin is denied matrix before fetching data',async()=>{
 });
 test('public activation removes token from URL, validates confirmation, sends exact contract and clears passwords',async()=>{
   const token='A'.repeat(43);const dom=installDom('/activate?token='+token);try{
-    let sent;const root=activationPage({mode:'api',auth:{activate:async dto=>{sent=dto;}}});dom.body.append(root);
+    let sent;const root=activationPage({mode:'api',auth:{activate:async dto=>{sent=structuredClone(dto);}}});dom.body.append(root);
     assert.equal(dom.history.at(-1),'/#/activate');assert.equal(root.textContent.includes(token),false);
     const inputs=root.querySelectorAll('input');inputs[0].value='Synthetic-password-2026!';inputs[1].value='mismatch';root.querySelector('form').fire('submit');assert.equal(sent,undefined);
     inputs[1].value=inputs[0].value;root.querySelector('form').fire('submit');await until(()=>root.textContent.includes('Kích hoạt thành công'));

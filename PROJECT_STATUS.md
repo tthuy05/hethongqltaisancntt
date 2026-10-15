@@ -1,5 +1,9 @@
 # Project Status
 
+## 15/10/2026 — Activation client safety
+
+Thủy kiểm canonical token/DTO, duplicate URL token, single-flight/readonly và expired/unknown outcomes; không gửi mail thật hoặc đổi backend email/identity.215 frontend PASS/43syntax/47source. [Evidence](docs/activation-client-safety-handoff.md). Asset save cũng block same-account SESSION_CHANGED replay; shared/config/Render và module gates không đổi.
+
 ## 15/10/2026 — Workflow guard fallback verification
 
 Thủy kiểm thêm3 actual Asset HTTP/PostgreSQL cases với ticket snapshots: open work chặn đúng, terminal work không chặn nhầm, version/history/audit bảo toàn. UI phân biệt dữ liệu Assignment chưa tích hợp với unassigned.583unit/158offline/205frontend PASS,140cloud SKIP; [evidence](docs/week-04-workflow-guard-verification.md). Không Maintenance API acceptance, schema/shared/config/Render hoặc activation changes.

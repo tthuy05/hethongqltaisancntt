@@ -55,7 +55,7 @@ export async function assetFormPage(services, id = null) {
         if (!active()) return;
         if (!sameActor()) { blocked = true; feedback.replaceChildren(formAlert('Phiên hoặc quyền đã thay đổi. Hãy tải lại để kiểm tra kết quả thực tế.')); return; }
         const uncertain = services.mode === 'api' && (![400, 401, 403, 409, 413, 415, 422, 429].includes(error?.status) ||
-          error?.code === 'API_UNAVAILABLE' || error?.code === 'INVALID_API_RESPONSE');
+          ['API_UNAVAILABLE', 'INVALID_API_RESPONSE', 'SESSION_CHANGED'].includes(error?.code));
         if (uncertain) {
           blocked = true;
           feedback.replaceChildren(formAlert('Chưa xác nhận được kết quả lưu; server có thể đã xử lý. Bản đang nhập được giữ, không gửi lại để tránh tạo trùng hoặc ghi đè.'),

@@ -44,8 +44,9 @@ test('double submit sends one write and a detached save never redirects or toast
 });
 test('lost response or invalid saved ID blocks duplicate creation, keeps draft and opens only an explicit read tab', async () => {
   const dom = installDom('/assets/new'); try {
-    for (const outcome of [0, 404, 503, 'invalid']) {
-      const services = source(async () => { if (outcome === 'invalid') return { id: '5' }; throw Object.assign(new Error('synthetic-secret'), { status: outcome }); });
+    for (const outcome of [0, 404, 503, 'invalid', 'same-account-relogin']) {
+      const services = source(async () => { if (outcome === 'invalid') return { id: '5' }; throw Object.assign(new Error('synthetic-secret'),
+        outcome === 'same-account-relogin' ? { status: 401, code: 'SESSION_CHANGED' } : { status: outcome }); });
       const root = await mount(dom, services); form(root).fire('submit');
       await until(() => root.textContent.includes('server có thể đã xử lý')); await until(() => submit(root).getAttribute('aria-busy') === null);
       assert.equal(submit(root).disabled, true); assert.equal(control(root, 'name').value, 'New synthetic asset');

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — 15/10/2026 — Activation client safety
+
+- Fixed: strict activation DTO/canonical token validation, duplicate fragment token rejection, single-flight/readonly passwords and expired/unknown outcome handling without replay or stale page updates.
+- Fixed: Asset save blocks replay after same-account SESSION_CHANGED.215 frontend PASS; [handoff](docs/activation-client-safety-handoff.md). No backend/email/schema/production changes.
+
 ## Unreleased — 15/10/2026 — Workflow guard verification
 
 - Added:3 actual isolated PostgreSQL/Asset HTTP regression cases for open and terminal Maintenance fixture snapshots; no Maintenance API implementation/acceptance claim.

@@ -1,5 +1,9 @@
 # Thiết kế bảo mật
 
+## Activation client safety — 15/10/2026, source chưa deploy
+
+Public activation client validate canonical32-byte token/allowlisted DTO, scrub URL, single-flight/readonly password inputs và clear own references/DOM values; invalid/expired/unknown outcome không tự replay. Không memory-zeroization guarantee, auto login/token persistence hoặc real-email proof. [Kiểm thử/giới hạn](activation-client-safety-handoff.md). Backend hash/TTL/single-use/audit và email sender owner không sửa.
+
 ## Asset price field authorization — 15/10/2026, source chưa deploy
 
 Thủy sửa create/update field-level guard: `purchasePrice` có mặt kể cảnull cần `assets.cost.read`; permission không có thì chỉ sửa metadata và giữ nguyên giá ẩn. Không so giá đoán với giá DB để quyết định grant, không return/echo giá trái quyền. Internal presence flag `[JsonIgnore]` không thể bị client override. UI không mount financial input khi thiếu grant; không dựa riêng ẩn input làm authorization. [Tái hiện, kiểm thử và compatibility](asset-cost-field-handoff.md). Không grant/seed/schema hoặc thay quyền Technical Support; source review only.

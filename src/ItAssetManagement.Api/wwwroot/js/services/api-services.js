@@ -1,5 +1,5 @@
 import { ASSET_STATUSES, copy } from '../models/contracts.js';
-import { validateAsset, validateLogin, validateMaster, validateUser, validateUserStatus, validateUserRoles } from '../utils/validation.js';
+import { validateActivation, validateAsset, validateLogin, validateMaster, validateUser, validateUserStatus, validateUserRoles } from '../utils/validation.js';
 import { ServiceError } from './service-error.js';
 import { createAssignmentService } from './assignment-service.js';
 import { createLicenseReadService } from './license-service.js';
@@ -102,7 +102,7 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
     return payload;
   }
   const auth = {
-    activate(dto) { return request('/auth/activate', { method: 'POST', body: dto, publicRequest: true }); },
+    async activate(dto) { validate(validateActivation(dto)); return request('/auth/activate', { method: 'POST', body: { token: dto.token, password: dto.password, confirmPassword: dto.confirmPassword }, publicRequest: true }); },
     get session() { return copy(currentSession()); },
     onSessionInvalidated(listener) {
       if (typeof listener !== 'function') throw new TypeError('Session listener must be a function.');

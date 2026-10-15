@@ -88,6 +88,18 @@ export function validateLogin({ email, password } = {}) {
   return errors;
 }
 
+// Matches ActivationTokens.Hash: canonical unpadded Base64URL for32 random bytes.
+export const isActivationToken = value => typeof value === 'string' && /^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/.test(value);
+export function validateActivation(dto) {
+  const errors = {};
+  if (!dto || typeof dto !== 'object' || Array.isArray(dto)) return { body: ['Yêu cầu kích hoạt không hợp lệ.'] };
+  for (const key of Object.keys(dto)) if (!['token', 'password', 'confirmPassword'].includes(key)) error(errors, key, 'Trường không thuộc yêu cầu kích hoạt.');
+  if (!isActivationToken(dto.token)) error(errors, 'token', 'Liên kết kích hoạt không hợp lệ.');
+  if (typeof dto.password !== 'string' || dto.password.length < 12 || dto.password.length > 256 || !dto.password.trim()) error(errors, 'password', 'Mật khẩu cần 12–256 ký tự.');
+  if (typeof dto.confirmPassword !== 'string' || dto.password !== dto.confirmPassword) error(errors, 'confirmPassword', 'Mật khẩu nhập lại chưa khớp.');
+  return errors;
+}
+
 export function validateUser(dto = {}, { isUpdate = false } = {}) {
   const errors = {};
   for (const [name, max] of [['username', 100], ['email', 320], ['displayName', 200]]) text(errors, dto, name, max, true);
