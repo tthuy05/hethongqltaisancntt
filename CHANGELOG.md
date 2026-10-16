@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — 16/10/2026 — Client error boundary
+
+- Fixed: public activation401 cannot revoke an unrelated bearer session; malformed JSON error envelopes retain HTTP status with safe typed fallbacks instead of TypeError.
+- Added:3 transport regressions,246frontend PASS; private401 invalidation and valid validation metadata preserved. No backend/config/production changes.
+
 ## Unreleased — 16/10/2026 — Pending Asset inputs
 
 - Fixed: prevent editing captured Asset fields during save and restore original control states on completion, including detached forms.243 frontend PASS; no API/backend/production changes.

@@ -48,3 +48,47 @@ test('shared can never treats a string or object as a permission collection', ()
     assert.equal(can({ auth: { session: { permissions } } }, 'assets.read'), false);
   }
 });
+
+test('401 from public activation never revokes an unrelated logged-in session, while private 401 still does', async () => {
+  for (const publicRequest of [true, false]) for (const json of [true, false]) {
+    const events = []; const services = createApiServices({ fetchImpl: async url => {
+      if (url.endsWith('/auth/login')) return Response.json(response(validUser()));
+      return json ? Response.json({ code: 'UNAUTHENTICATED' }, { status: 401 }) : new Response('Not JSON', { status: 401 });
+    } });
+    services.auth.onSessionInvalidated(event => events.push(event)); await services.auth.login(credentials);
+    try {
+      const action = publicRequest ? services.auth.activate({ token: 'A'.repeat(43), password: 'synthetic-password', confirmPassword: 'synthetic-password' }) : services.assets.get(5);
+      await assert.rejects(action, { status: 401 });
+      assert.equal(services.auth.session?.id ?? null, publicRequest ? 7 : null);
+      assert.deepEqual(events, publicRequest ? [] : [{ reason: 'unauthorized' }]);
+    } finally { await services.auth.logout(); }
+  }
+});
+
+test('malformed JSON error envelopes preserve HTTP status and safe ServiceError contract without leaking scalar payloads', async () => {
+  for (const payload of [null, [], true, 'synthetic-private-detail', {}, { code: {}, detail: {}, title: [], errors: 'synthetic-private-detail', traceId: {} }]) {
+    const services = createApiServices({ fetchImpl: async url => url.endsWith('/auth/login') ? Response.json(response(validUser())) : Response.json(payload, { status: 503 }) });
+    await services.auth.login(credentials);
+    try {
+      await assert.rejects(services.assets.get(5), error => {
+        assert.equal(error.name, 'ServiceError'); assert.equal(error.status, 503); assert.equal(typeof error.code, 'string');
+        assert.equal(typeof error.message, 'string'); assert.deepEqual(error.errors, {}); assert.equal(error.traceId, null);
+        assert.doesNotMatch(error.message, /synthetic-private-detail/); return true;
+      });
+      assert.equal(services.auth.session.id, 7);
+    } finally { await services.auth.logout(); }
+  }
+});
+
+test('valid problem details keep field validation and Retry-After metadata', async () => {
+  const services = createApiServices({ fetchImpl: async url => url.endsWith('/auth/login') ? Response.json(response(validUser())) : Response.json({
+    code: 'VALIDATION_ERROR', detail: 'Known fixture validation', errors: { name: ['Fixture field error'] }, traceId: 'fixture-trace'
+  }, { status: 400, headers: { 'Retry-After': '10' } }) });
+  await services.auth.login(credentials);
+  try {
+    await assert.rejects(services.assets.get(5), error => {
+      assert.equal(error.status, 400); assert.equal(error.code, 'VALIDATION_ERROR'); assert.equal(error.message, 'Known fixture validation');
+      assert.deepEqual(error.errors, { name: ['Fixture field error'] }); assert.equal(error.traceId, 'fixture-trace'); assert.equal(error.retryAfter, '10'); return true;
+    });
+  } finally { await services.auth.logout(); }
+});

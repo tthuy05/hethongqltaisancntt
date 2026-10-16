@@ -27,6 +27,7 @@ PR#1 DRAFT/BLOCK MERGE; không merge/deploy/migrate/seed/shared write hoặc b�
 Form dùng các catalog read API hiện có; custom operator cần có quyền đọc reference catalog để mở form đầy đủ. Không tự grant quyền hoặc viết lại Department/AssetType service của Thiện; reference-lookup contract/dependency còn cần owner review nếu muốn giảm quyền catalog. Điều này không phủ định HTTP metadata-only cost fix đã kiểm với refs hợp lệ.
 
 **15/10 follow-up:** `SESSION_CHANGED` từ transport cũng là unknown write outcome dù account ID không đổi (cùng người login lại); không cho replay create. Regression thêm outcome này trong case hiện có; activation/client checkpoint có215 full frontendPASS, không cộng case loop thành test mới.
+
 ## Pending-input addendum — 16/10/2026
 
 Form snapshot readonly/disabled state của từng field sau validation, khóa input/textarea và select khi đang lưu DTO đã capture; finally khôi phục chính xác trạng thái trước gửi kể cả detach hoặc validation rejection. Không cho người dùng sửa trong lúc chờ rồi hiểu nhầm đó là dữ liệu đã gửi. Không khóa khả năng Hủy/chuyển trang, không đổi mutation contract, draft/reconciliation hoặc grants.

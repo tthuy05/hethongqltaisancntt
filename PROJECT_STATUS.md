@@ -1,5 +1,9 @@
 # Project Status
 
+## 16/10/2026 — Public request session isolation
+
+Thủy tách401 public activation khỏi invalidation của bearer session và xử lý lỗi JSON malformed bằng ServiceError giữ HTTP status.246frontend PASS/43syntax/47source checks; [evidence](docs/frontend-session-contract-handoff.md). Private401/expiry/revision rules giữ nguyên, không thay backend/email/config/production.
+
 ## 16/10/2026 — Asset pending inputs
 
 Thủy khóa field khi lưu DTO đã capture, khôi phục readonly/disabled states sau completion/detach;243frontend PASS/43syntax/47source checks. [Addendum](docs/asset-save-lifecycle-handoff.md). Không thay API/backend/config/production.

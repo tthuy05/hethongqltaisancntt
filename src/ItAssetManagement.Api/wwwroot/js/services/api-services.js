@@ -91,13 +91,20 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
     let payload;
     try { payload = await response.json(); } catch {
       if (revision !== sessionRevision) throw new ServiceError(401, 'SESSION_CHANGED', 'Phiên đã thay đổi.');
-      if (response.status === 401) clearSession('unauthorized');
+      if (response.status === 401 && !publicRequest) clearSession('unauthorized');
       throw new ServiceError(response.ok ? 502 : response.status, 'API_UNAVAILABLE', 'API chưa sẵn sàng hoặc không trả JSON theo contract.');
     }
     if (revision !== sessionRevision) throw new ServiceError(401, 'SESSION_CHANGED', 'Phiên đã thay đổi. Vui lòng đăng nhập lại.');
     if (!response.ok) {
-      if (response.status === 401) clearSession('unauthorized');
-      throw new ServiceError(response.status, payload.code || 'API_ERROR', payload.detail || payload.title || 'Không thể thực hiện yêu cầu.', payload.errors || {}, { traceId: payload.traceId, retryAfter: response.headers.get('Retry-After') });
+      // Public activation sends no bearer token. Its 401 cannot prove that an
+      // unrelated authenticated session has expired; only private calls revoke it.
+      if (response.status === 401 && !publicRequest) clearSession('unauthorized');
+      const problem = payload && typeof payload === 'object' && !Array.isArray(payload) ? payload : {};
+      const nonempty = value => typeof value === 'string' && value.trim().length > 0;
+      const errors = problem.errors && typeof problem.errors === 'object' && !Array.isArray(problem.errors) ? problem.errors : {};
+      throw new ServiceError(response.status, nonempty(problem.code) ? problem.code : 'API_ERROR',
+        nonempty(problem.detail) ? problem.detail : nonempty(problem.title) ? problem.title : 'Không thể thực hiện yêu cầu.', errors,
+        { traceId: typeof problem.traceId === 'string' ? problem.traceId : null, retryAfter: response.headers.get('Retry-After') });
     }
     return payload;
   }
