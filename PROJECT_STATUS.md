@@ -1,5 +1,9 @@
 # Project Status
 
+## 16/10/2026 — User write lifecycle
+
+Thủy khóa captured User fields khi pending, kiểm response identity và giữ draft/khóa replay sau conflict/unknown; self-change→Login giữ nguyên.270frontend PASS/43syntax/47source checks; [addendum](docs/user-dialog-access-handoff.md). Không email thật/backend/config/shared/Render changes.
+
 ## 16/10/2026 — User dialog access
 
 Thủy kiểm actor/hash/grant trước-sau reads và trước confirm trên User dialogs, chặn stale completion/resend feedback.265frontend PASS/43syntax/47source checks; [evidence và follow-up](docs/user-dialog-access-handoff.md). Không gửi email thật hoặc đổi backend/config/production; chưa đóng toàn User administration acceptance.

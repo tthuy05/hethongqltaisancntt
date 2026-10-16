@@ -75,3 +75,88 @@ test('invitation resend checks the current grant and single-flights without late
     assert.equal(refreshes, 0); assert.doesNotMatch(dom.body.textContent, /Email đã được dịch vụ tiếp nhận/);
   } finally { dom.restore(); }
 });
+
+const scenarios = [['Sửa', 'Lưu hồ sơ', 'update'], ['Trạng thái', 'Xác nhận trạng thái', 'setStatus'], ['Vai trò', 'Lưu vai trò', 'replaceRoles']];
+async function mountCommand(dom, services, action) {
+  const root = await userPage(services); dom.body.append(root); button(root, action).fire('click'); await until(() => dialogs(dom).length === 1);
+  const reason = descendants(dom.body).find(n => n.getAttribute('name') === 'reason'); if (reason) reason.value = 'Fixture reason'; return root;
+}
+function sendCommand(dom, action, confirm) {
+  if (action === 'Sửa') descendants(dialogs(dom)[0]).find(n => n.tagName === 'FORM').fire('submit'); else button(dom.body, confirm).fire('click');
+}
+
+test('user commands lock captured inputs, single-flight, and release detached controls after pending completion', async () => {
+  const dom = installDom('/users'); try {
+    for (const [action, label, method] of scenarios) {
+      let finish; const calls = []; const services = source(); services.users[method] = async (...args) => { calls.push(structuredClone(args)); return new Promise(resolve => { finish = resolve; }); };
+      const root = await mountCommand(dom, services, action); const confirm = button(dom.body, label); const modal = dialogs(dom)[0];
+      const inputs = descendants(modal).filter(n => ['INPUT', 'SELECT', 'TEXTAREA'].includes(n.tagName)); sendCommand(dom, action, label);
+      try {
+        for (const input of inputs) assert.equal(input.tagName === 'SELECT' || input.getAttribute('type') === 'checkbox' ? input.disabled : input.readOnly, true);
+        sendCommand(dom, action, label);
+        assert.equal(calls.length, 1); assert.equal(calls[0][0], 21); assert.equal(calls[0][1].rowVersion, version);
+      } finally { modal.remove(); finish(method === 'update' ? user : { user, warnings: [] }); await until(() => confirm.getAttribute('aria-busy') === null); }
+      for (const input of inputs) assert.equal(input.tagName === 'SELECT' || input.getAttribute('type') === 'checkbox' ? input.disabled : input.readOnly, false);
+      assert.doesNotMatch(dom.body.textContent, /Đã cập nhật/); root.remove();
+    }
+  } finally { dom.restore(); }
+});
+
+test('user unknown outcomes and version conflicts keep dialog draft but block blind write replay', async () => {
+  const dom = installDom('/users'); try {
+    for (const [action, label, method] of scenarios) for (const [status, code] of [[0, 'NETWORK_ERROR'], [409, 'CONCURRENCY_CONFLICT'], [401, 'SESSION_CHANGED']]) {
+      const services = source(); services.users[method] = async () => { services.calls.writes++; throw Object.assign(Error('synthetic-private-detail'), { status, code }); };
+      const root = await mountCommand(dom, services, action); const confirm = button(dom.body, label); sendCommand(dom, action, label);
+      await until(() => confirm.getAttribute('aria-busy') === null); assert.equal(confirm.disabled, true);
+      assert.doesNotMatch(dom.body.textContent, /synthetic-private-detail/); sendCommand(dom, action, label); assert.equal(services.calls.writes, 1);
+      assert.ok(button(dom.body, 'Đóng và tải lại danh sách người dùng')); dialogs(dom)[0].remove(); root.remove();
+    }
+  } finally { dom.restore(); }
+});
+
+test('malformed successful user-command responses cannot show success or allow replay', async () => {
+  const dom = installDom('/users'); try {
+    for (const [action, label, method] of scenarios) {
+      const services = source(); services.users[method] = async () => { services.calls.writes++; return method === 'update' ? { ...user, id: 99 } : { user: { ...user, id: 99 }, warnings: [] }; };
+      const root = await mountCommand(dom, services, action); const confirm = button(dom.body, label); sendCommand(dom, action, label);
+      await until(() => confirm.getAttribute('aria-busy') === null); assert.equal(confirm.disabled, true);
+      assert.doesNotMatch(dom.body.textContent, /Đã cập nhật/); assert.equal(services.calls.writes, 1); dialogs(dom)[0].remove(); root.remove();
+    }
+  } finally { dom.restore(); }
+});
+
+test('known user validation remains editable, while self-update still returns to Login after adapter clears session', async () => {
+  const dom = installDom('/users'); try {
+    const services = source(); services.users.update = async () => { throw Object.assign(Error('synthetic-private-detail'), { status: 400, code: 'VALIDATION_ERROR', errors: { displayName: ['Fixture validation'] } }); };
+    const root = await mountCommand(dom, services, 'Sửa'); const confirm = button(dom.body, 'Lưu hồ sơ'); sendCommand(dom, 'Sửa', 'Lưu hồ sơ');
+    await until(() => confirm.getAttribute('aria-busy') === null); assert.equal(confirm.disabled, false); assert.match(dom.body.textContent, /Fixture validation/);
+    assert.doesNotMatch(dom.body.textContent, /synthetic-private-detail/); dialogs(dom)[0].remove(); root.remove();
+    const self = source(); self.users.list = async () => page([{ ...user, id: 7 }]); self.users.get = async () => ({ ...user, id: 7 });
+    self.users.update = async () => { self.auth.session = null; return { ...user, id: 7 }; };
+    await mountCommand(dom, self, 'Sửa'); sendCommand(dom, 'Sửa', 'Lưu hồ sơ'); await until(() => /\/?login$/.test(location.hash));
+    assert.equal(self.auth.session, null);
+  } finally { dom.restore(); }
+});
+
+test('user creation captures selected roles without a password, and handles pending invitation outcomes without sending email', async () => {
+  const dom = installDom('/users'); try {
+    for (const outcome of ['known', 'unknown', 'invalid']) {
+      const calls = []; let finish, fail; const services = source(); services.users.create = async dto => {
+        calls.push(structuredClone(dto)); return new Promise((resolve, reject) => { finish = resolve; fail = reject; });
+      };
+      const root = await userPage(services); dom.body.append(root); button(root, 'Thêm người dùng').fire('click'); await until(() => dialogs(dom).length === 1);
+      const modal = dialogs(dom)[0]; const controls = descendants(modal); const input = name => controls.find(n => n.getAttribute('name') === name);
+      input('displayName').value = 'Fixture new staff'; input('username').value = 'fixture.new'; input('email').value = 'new@example.test'; input('roleIds').checked = true;
+      const form = controls.find(n => n.tagName === 'FORM'); const confirm = button(modal, 'Lưu hồ sơ'); form.fire('submit'); form.fire('submit');
+      assert.equal(calls.length, 1); assert.equal(input('roleIds').disabled, true); assert.equal(input('displayName').readOnly, true);
+      assert.deepEqual(calls[0], { displayName: 'Fixture new staff', username: 'fixture.new', email: 'new@example.test', employeeCode: null, departmentId: null, phone: null, roleIds: [7] });
+      assert.ok(!controls.some(n => n.getAttribute('type') === 'password'));
+      if (outcome === 'unknown') fail(Object.assign(Error('synthetic-private-detail'), { status: 0 }));
+      else finish(outcome === 'invalid' ? null : { ...user, isEmailConfirmed: false, invitationEmailStatus: 'NotConfigured' });
+      await until(() => confirm.getAttribute('aria-busy') === null);
+      if (outcome === 'known') { assert.match(dom.body.textContent, /Chưa cấu hình dịch vụ email/); assert.equal(dialogs(dom).length, 0); }
+      else { assert.equal(confirm.disabled, true); assert.equal(input('displayName').value, 'Fixture new staff'); form.fire('submit'); assert.equal(calls.length, 1); modal.remove(); }
+      assert.doesNotMatch(dom.body.textContent, /synthetic-private-detail/); descendants(dom.body).filter(n => n.classList.contains('toast-container')).forEach(n => n.remove()); root.remove();
+    }
+  } finally { dom.restore(); }
+});

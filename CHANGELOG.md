@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — 16/10/2026 — User write lifecycle
+
+- Fixed: User create/profile/status/membership dialogs lock captured inputs, validate response identity and block uncertain replay while preserving self-change Login and known field validation.
+- Added:5 write lifecycle cases,270frontend PASS; no backend/email/config/production changes.
+
 ## Unreleased — 16/10/2026 — User dialog access
 
 - Fixed: User dialogs recheck actor/route/grants before reads and confirmation, suppress stale completions, and guard invitation resend single-flight without changing email delivery.
