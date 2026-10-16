@@ -17,3 +17,9 @@ Red baseline6 cases:1PASS/5FAIL. Sau sửa7 focused cases PASS, full **242 front
 Browser fixture dùng actual assetListPage, chỉ synthetic assets.read: Asset row vẫn thấy, hai dropdown disabled có ID đang lọc,0 catalog calls, không mutation controls. Ảnh local ignored `test-results/week4-archive-ui/asset-only-reader-20261016.jpg` đã xem; không API/Neon writes và không phải live server evidence.
 
 Checkpoint parent Archive1c6da96 có235frontend; CI mới cần xác minh riêng. Backend/migrations/config/shared Neon/Render giữ nguyên; không bật Assignment/Maintenance/License hoặc đóng M2. PR vẫn DRAFT/BLOCK MERGE, ba report WIP không thay đổi.
+
+## HTTP/PostgreSQL follow-up — 16/10/2026
+
+Thêm một actual HTTP case cho custom role có đúng một grant `assets.read`: list/detail200 với reference names từ Asset DTO, cost field omitted; Department/Asset Type/history403, create/update/Retired/archive403. Sau denied commands, name/version/cost/status/archived state và một initial history giữ nguyên, không có successful mutation audit. Không cấp thêm catalog quyền để làm UI PASS.
+
+Focused `AssetCostWriteApiTests`: **4 PASS /0 FAIL/SKIP** gồm1 case mới và3 existing financial guard regressions (không cộng rerun thành tests mới). Target duy nhất `it_asset_management_full_schema_verify_fb_20261011_b21b`, guard target name + actual database identity; fixture unique user/role/asset/audit được giữ lại. Không ghi shared `neondb`, reset test DB hoặc gửi mail thật. TRX ignored: `test-results/week4-asset-read-access/asset-read-access_net10.0_20261016222535.trx`. Production vẫn chưa xác minh bằng authenticated requests trong lượt này.

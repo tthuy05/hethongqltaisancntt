@@ -19,7 +19,7 @@ public sealed class AssetCostWriteApiTests(MvpFixture fixture)
         Assert.Matches(@"\Ait_asset_management_full_schema_verify_[a-z0-9_]{1,24}\z", target ?? "");
         Assert.Equal(target, db.Database.GetDbConnection().Database);
     }
-    private async Task<HttpClient> NonfinancialWriterAsync()
+    private async Task<HttpClient> NonfinancialWriterAsync(bool readOnly = false)
     {
         var suffix = Guid.NewGuid().ToString("N")[..8]; var code = "NONFIN_" + suffix.ToUpperInvariant();
         await using (var scope = fixture.Factory.Services.CreateAsyncScope())
@@ -31,9 +31,9 @@ public sealed class AssetCostWriteApiTests(MvpFixture fixture)
             var audit = scope.ServiceProvider.GetRequiredService<IAuditWriter>();
             await scope.ServiceProvider.GetRequiredService<IUnitOfWork>().RunAsync(async () =>
             {
-                var role = new Role { Code = code, Name = "Isolated nonfinancial writer", IsActive = true };
+                var role = new Role { Code = code, Name = readOnly ? "Isolated Asset reader" : "Isolated nonfinancial writer", IsActive = true };
                 db.Add(role); audit.Record("fixture.asset-cost", role, null, "SYSTEM"); await db.SaveChangesAsync();
-                var codes = new[] { Permissions.AssetRead, Permissions.AssetCreate, Permissions.AssetUpdate };
+                var codes = readOnly ? new[] { Permissions.AssetRead } : new[] { Permissions.AssetRead, Permissions.AssetCreate, Permissions.AssetUpdate };
                 foreach (var definition in await db.Set<Permission>().Where(p => codes.Contains(p.Code)).ToListAsync())
                 {
                     var grant = new RolePermission { RoleId = role.Id, PermissionId = definition.Id };
@@ -49,6 +49,38 @@ public sealed class AssetCostWriteApiTests(MvpFixture fixture)
         ["name"] = name, ["assetTypeId"] = fixture.TypeId, ["owningDepartmentId"] = fixture.DepartmentId,
         ["rowVersion"] = rowVersion
     };
+    [NeonFact]
+    public async Task Asset_only_reader_needs_no_catalog_grants_and_denied_commands_preserve_asset_and_history()
+    {
+        using var reader = await NonfinancialWriterAsync(readOnly: true); using var admin = await fixture.ClientAsync();
+        var me = (await reader.GetFromJsonAsync<CurrentUser>("/api/v1/auth/me"))!;
+        Assert.Equal(Permissions.AssetRead, Assert.Single(me.Permissions));
+        using var created = await admin.PostAsJsonAsync("/api/v1/assets", fixture.Asset()); Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var asset = (await created.Content.ReadFromJsonAsync<AssetDto>())!; var path = $"/api/v1/assets/{asset.Id}";
+        var detail = await reader.GetFromJsonAsync<JsonElement>(path);
+        Assert.Equal(asset.Id, detail.GetProperty("id").GetInt64()); Assert.False(detail.TryGetProperty("purchasePrice", out _));
+        Assert.Equal(asset.AssetType.Name, detail.GetProperty("assetType").GetProperty("name").GetString());
+        Assert.Equal(asset.OwningDepartment.Name, detail.GetProperty("owningDepartment").GetProperty("name").GetString());
+        var list = await reader.GetFromJsonAsync<JsonElement>("/api/v1/assets?keyword=" + Uri.EscapeDataString(asset.AssetCode));
+        var row = Assert.Single(list.GetProperty("items").EnumerateArray()); Assert.Equal(asset.Id, row.GetProperty("id").GetInt64());
+        Assert.False(row.TryGetProperty("purchasePrice", out _));
+        foreach (var route in new[] { "/api/v1/departments", "/api/v1/asset-types", path + "/status-history" })
+        {
+            using var denied = await reader.GetAsync(route); Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+        }
+        using var create = await reader.PostAsJsonAsync("/api/v1/assets", fixture.Asset()); Assert.Equal(HttpStatusCode.Forbidden, create.StatusCode);
+        using var update = await reader.PutAsJsonAsync(path, Metadata("Forbidden metadata", asset.RowVersion)); Assert.Equal(HttpStatusCode.Forbidden, update.StatusCode);
+        using var status = await reader.PatchAsJsonAsync(path + "/status", new StatusRequest("Retired", "Forbidden fixture transition", asset.RowVersion)); Assert.Equal(HttpStatusCode.Forbidden, status.StatusCode);
+        using var command = new HttpRequestMessage(HttpMethod.Delete, path); command.Headers.TryAddWithoutValidation("If-Match", '"' + asset.RowVersion + '"');
+        using var archive = await reader.SendAsync(command); Assert.Equal(HttpStatusCode.Forbidden, archive.StatusCode);
+        var after = (await admin.GetFromJsonAsync<AssetDto>(path))!;
+        Assert.Equal(asset.Name, after.Name); Assert.Equal(asset.RowVersion, after.RowVersion); Assert.Equal(asset.PurchasePrice, after.PurchasePrice);
+        Assert.False(after.IsArchived); Assert.Equal(asset.Status, after.Status);
+        await using var scope = fixture.Factory.Services.CreateAsyncScope(); var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal(1, await db.Set<AssetStatusHistory>().CountAsync(h => h.AssetId == asset.Id));
+        Assert.False(await db.Set<AuditLog>().AnyAsync(a => a.EntityType == "Asset" && a.EntityId == asset.Id.ToString() &&
+            (a.Action == "assets.update" || a.Action == "assets.archive" || a.Action == "assets.status.change") && a.Outcome == "SUCCESS"));
+    }
     [NeonFact]
     public async Task Metadata_only_writer_preserves_hidden_cost_and_cannot_probe_or_clear_it()
     {

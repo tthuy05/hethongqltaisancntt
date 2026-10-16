@@ -4,6 +4,8 @@
 
 Thủy tách optional catalog reads khỏi điều kiện tải danh sách Asset: respect từng grant, hiển thị lỗi lookup riêng, giữ URL filter và chặn stale actor/grant.242 frontend PASS/43 syntax/47 source checks; [evidence](docs/asset-list-access-handoff.md). Không cấp thêm quyền, sửa module Thiện hoặc thay backend/production.
 
+Follow-up actual HTTP/PostgreSQL isolated:1 new exact-single-grant reader case +3 affected cost cases PASS. Asset data/history không đổi sau denied writes; shared Neon/config/Render giữ nguyên. CI9b6c601 PASS242frontend/583unit/158offline,140cloud SKIP, Linux Docker smoke; case mới kiểm riêng, không tính cloud SKIP thành PASS.
+
 ## 16/10/2026 — Archive lifecycle
 
 Thủy sửa xác nhận Archive/late response/single-flight và khóa replay sau unknown outcome; canonical If-Match,235 frontend PASS/43 syntax/47 source checks. [Evidence](docs/asset-archive-lifecycle-handoff.md). Không backend/schema/config/Neon/Render changes; branch review only.

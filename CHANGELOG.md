@@ -4,6 +4,7 @@
 
 - Fixed: Asset readers can view results without unrelated catalog grants; optional lookup failures disable only their filters, preserve URL IDs and never hide session expiration.
 - Added:7 access/lifecycle regression cases,242 frontend PASS; no backend/grant/production changes. [Handoff](docs/asset-list-access-handoff.md).
+- Added: actual isolated HTTP/PostgreSQL verification for a single-grant Asset reader, including denied mutations and preserved data/history;1 new +3 affected financial cases PASS.
 
 ## Unreleased — 16/10/2026 — Archive lifecycle
 
