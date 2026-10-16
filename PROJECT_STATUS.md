@@ -1,5 +1,9 @@
 # Project Status
 
+## 16/10/2026 — User dialog access
+
+Thủy kiểm actor/hash/grant trước-sau reads và trước confirm trên User dialogs, chặn stale completion/resend feedback.265frontend PASS/43syntax/47source checks; [evidence và follow-up](docs/user-dialog-access-handoff.md). Không gửi email thật hoặc đổi backend/config/production; chưa đóng toàn User administration acceptance.
+
 ## 16/10/2026 — Group editor lifecycle
 
 Thủy nối native Enter-submit, capture/readonly/single-flight và unknown-outcome recovery cho tạo/đổi tên nhóm;260frontend PASS/43syntax/47source checks. [Addendum](docs/permission-save-lifecycle-handoff.md). Không thay backend/grants/config/shared/Render; không coi frontend evidence là production RBAC acceptance.

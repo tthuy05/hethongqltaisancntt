@@ -1,26 +1,33 @@
 import { h } from '../utils/dom.js';
 import { button, pageHeader, badge, dataTable, pagination, showToast } from '../components.js';
 import { validateUser, validateUserStatus, validateUserRoles } from '../utils/validation.js';
-import { can, route, queryFrom, setQuery, option, field, displayErrors, formAlert, busy, openDialog, allCatalog, allActive, date } from './shared.js';
+import { can, hasPermission, route, queryFrom, setQuery, option, field, displayErrors, formAlert, busy, openDialog, allCatalog, allActive, date } from './shared.js';
 
 export async function userPage(services) {
   if (!can(services, 'users.read') || services.mode !== 'api') throw Object.assign(new Error('Bạn không có quyền quản lý người dùng.'), { status: 403 });
+  const actorId = services.auth.session.id, pageHash = window.location.hash;
+  const permitted = (...permissions) => { const session = services.auth?.session; return session?.id === actorId &&
+    hasPermission(session, 'users.read') && permissions.every(permission => hasPermission(session, permission)); };
   const query = { page: 1, pageSize: 10, sortBy: 'displayName', ...queryFrom() };
   const [result, departments, roles] = await Promise.all([
     services.users.list(query), can(services, 'departments.read') ? allCatalog(services.departments) : [],
     can(services, 'roles.read') ? allActive(services.roles) : [],
   ]);
+  if (!permitted()) throw Object.assign(new Error('Phiên hoặc quyền đã thay đổi. Vui lòng mở lại trang.'), { status: 401, code: 'SESSION_CHANGED' });
   const root = h('div', { className: 'user-admin-page' });
-  const alive = () => root.isConnected && Boolean(services.auth.session);
-  const refresh = () => { if (root.isConnected) window.dispatchEvent(new Event('frontend-refresh')); };
+  const active = () => root.isConnected && window.location.hash === pageHash;
+  const alive = (...permissions) => active() && permitted(...permissions);
+  const refresh = () => { if (alive()) window.dispatchEvent(new Event('frontend-refresh')); };
   function report(error, feedback, modal) {
     // Old dialogs/requests must not change the screen or session that replaced them.
-    if (!root.isConnected || error.code === 'SESSION_CHANGED') return;
-    if (error.status === 401) { modal?.close(); route('/login'); return; }
+    if (!active() || error.code === 'SESSION_CHANGED') return;
+    if (error.status === 401) { if (!services.auth.session) { modal?.close(); route('/login'); } return; }
+    if (!alive()) return;
     const message = error.code === 'CONCURRENCY_CONFLICT' ? 'Dữ liệu đã thay đổi. Đóng hộp thoại và mở lại để kiểm tra trước khi lưu; hệ thống không tự ghi đè.' : error.message;
     if (feedback) feedback.replaceChildren(formAlert(message)); else showToast(message, 'error');
   }
   function saved(modal, message, warnings = []) {
+    if (!active() || !modal.dialog.isConnected) return;
     modal.close();
     if (!services.auth.session) { showToast('Tài khoản của bạn đã thay đổi. Vui lòng đăng nhập lại.', 'info'); route('/login'); return; }
     if (!alive()) return;
@@ -29,9 +36,11 @@ export async function userPage(services) {
     refresh();
   }
   async function profileDialog(id = null) {
+    const required = id ? ['users.update'] : ['users.create', 'roles.assign', 'roles.read'];
+    if (!alive(...required)) return;
     try {
       const item = id ? await services.users.get(id) : null;
-      if (!alive()) return;
+      if (!alive(...required)) return;
       const fields = {}, feedback = h('div', { 'aria-live': 'polite' });
       const add = config => { const value = field({ value: item?.[config.name] ?? '', ...config }); fields[config.name] = value; return value.element; };
       const save = button('Lưu hồ sơ', { type: 'submit', iconName: 'check' }); let modal;
@@ -41,7 +50,8 @@ export async function userPage(services) {
       }
       const choices = roles.map(role => ({ role, input: h('input', { type: 'checkbox', name: 'roleIds', value: role.id }) }));
       const form = h('form', { noValidate: true, onSubmit: event => {
-        event.preventDefault(); if (save.disabled) return;
+        event.preventDefault(); if (save.disabled || !form.isConnected) return;
+        if (!alive(...required)) { save.disabled = true; feedback.replaceChildren(formAlert('Phiên hoặc quyền đã thay đổi. Vui lòng mở lại trang.')); return; }
         const dto = Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, value.input.value.trim() || null]));
         dto.departmentId = dto.departmentId ? Number(dto.departmentId) : null;
         if (!item) dto.roleIds = choices.filter(choice => choice.input.checked).map(choice => choice.role.id);
@@ -67,6 +77,7 @@ export async function userPage(services) {
     } catch (error) { report(error); }
   }
   async function detailDialog(row) {
+    if (!alive()) return;
     try {
       const [item, state] = await Promise.all([services.users.get(row.id), services.users.account(row.id)]);
       if (!alive()) return;
@@ -83,38 +94,48 @@ export async function userPage(services) {
     } catch (error) { report(error); }
   }
   async function statusDialog(row) {
+    if (!alive('users.status.manage')) return;
     try {
-      const state = await services.users.account(row.id); if (!alive()) return;
+      const state = await services.users.account(row.id); if (!alive('users.status.manage')) return;
       const fields = {
         status: field({ name: 'status', label: 'Thao tác', value: state.isAdminLocked ? 'Unlocked' : state.isActive ? 'Inactive' : 'Active', options: [
           { value: 'Active', label: 'Cho phép hoạt động' }, { value: 'Inactive', label: 'Ngừng hoạt động' }, { value: 'Locked', label: 'Khóa quản trị' }, { value: 'Unlocked', label: 'Mở khóa quản trị' }] }),
         reason: field({ name: 'reason', label: 'Lý do', required: true, maxLength: 1000, type: 'textarea' }),
       };
       const feedback = h('div', { 'aria-live': 'polite' }); let modal;
-      const confirm = button('Xác nhận trạng thái', { onClick: () => busy(confirm, async () => {
+      const confirm = button('Xác nhận trạng thái', { onClick: () => {
+        if (confirm.disabled || !modal.dialog.isConnected) return;
+        if (!alive('users.status.manage')) { confirm.disabled = true; feedback.replaceChildren(formAlert('Phiên hoặc quyền đã thay đổi. Vui lòng mở lại trang.')); return; }
+        return busy(confirm, async () => {
         const dto = { status: fields.status.input.value, reason: fields.reason.input.value.trim(), rowVersion: state.rowVersion };
         const errors = validateUserStatus(dto); displayErrors(fields, errors); feedback.replaceChildren(); if (Object.keys(errors).length) return;
         try { const response = await services.users.setStatus(row.id, dto); saved(modal, 'Đã cập nhật trạng thái tài khoản.', response.warnings); }
         catch (error) { if (modal.dialog.isConnected) report(error, feedback, modal); }
-      }) });
+        });
+      } });
       modal = openDialog({ title: 'Trạng thái tài khoản — ' + row.displayName, body: h('div', { className: 'dialog-body' },
         h('p', { className: 'info-note' }, (state.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động') + ' · ' + (state.isAdminLocked ? 'Đang khóa quản trị' : 'Không khóa quản trị') + '. Kích hoạt không tự mở khóa; mở khóa không tự kích hoạt. JWT cũ sẽ bị thu hồi.'),
         fields.status.element, fields.reason.element, feedback), footer: [button('Hủy', { kind: 'secondary', onClick: () => modal.close() }), confirm] });
     } catch (error) { report(error); }
   }
   async function rolesDialog(row) {
+    if (!alive('roles.assign', 'roles.read')) return;
     try {
-      const [state, catalog] = await Promise.all([services.users.account(row.id), allActive(services.roles)]); if (!alive()) return;
+      const [state, catalog] = await Promise.all([services.users.account(row.id), allActive(services.roles)]); if (!alive('roles.assign', 'roles.read')) return;
       const unmapped = state.roleIds.filter(id => !catalog.some(role => role.id === id));
       const choices = catalog.map(role => ({ role, input: h('input', { type: 'checkbox', name: 'roleIds', value: role.id, checked: state.roleIds.includes(role.id) }) }));
       const feedback = h('div', { 'aria-live': 'polite' }); let modal;
-      const confirm = button('Lưu vai trò', { disabled: Boolean(unmapped.length), onClick: () => busy(confirm, async () => {
+      const confirm = button('Lưu vai trò', { disabled: Boolean(unmapped.length), onClick: () => {
+        if (confirm.disabled || !modal.dialog.isConnected) return;
+        if (!alive('roles.assign', 'roles.read')) { confirm.disabled = true; feedback.replaceChildren(formAlert('Phiên hoặc quyền đã thay đổi. Vui lòng mở lại trang.')); return; }
+        return busy(confirm, async () => {
         const dto = { roleIds: choices.filter(choice => choice.input.checked).map(choice => choice.role.id), rowVersion: state.rowVersion };
         const errors = validateUserRoles(dto); feedback.replaceChildren();
         if (Object.keys(errors).length) { feedback.append(formAlert(Object.values(errors).flat().join(' '))); return; }
         try { const response = await services.users.replaceRoles(row.id, dto); saved(modal, 'Đã cập nhật vai trò. JWT cũ của tài khoản đã bị thu hồi.', response.warnings); }
         catch (error) { if (modal.dialog.isConnected) report(error, feedback, modal); }
-      }) });
+        });
+      } });
       modal = openDialog({ title: 'Vai trò — ' + row.displayName, body: h('div', { className: 'dialog-body' },
         h('fieldset', { className: 'role-choices' }, h('legend', {}, 'Chọn vai trò đăng nhập'), choices.map(({ role, input }) => h('label', {}, input, h('span', {}, role.name)))),
         h('p', { className: 'info-note' }, 'Bỏ chọn tất cả sẽ thu hồi toàn bộ vai trò đăng nhập. Quản lý định nghĩa nhóm tại trang Phân quyền. Backend bảo vệ Admin cuối cùng.'),
@@ -123,8 +144,9 @@ export async function userPage(services) {
     } catch (error) { report(error); }
   }
   async function resend(row, control) {
+    if (control.disabled || !control.isConnected || !alive('users.create')) return;
     await busy(control, async () => {
-      try { const result = await services.users.resendInvitation(row.id); if (alive()) { showToast(emailStatus(result.emailStatus)); refresh(); } }
+      try { const result = await services.users.resendInvitation(row.id); if (alive('users.create')) { showToast(emailStatus(result.emailStatus)); refresh(); } }
       catch (error) { report(error); }
     });
   }

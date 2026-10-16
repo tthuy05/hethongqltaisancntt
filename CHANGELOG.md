@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — 16/10/2026 — User dialog access
+
+- Fixed: User dialogs recheck actor/route/grants before reads and confirmation, suppress stale completions, and guard invitation resend single-flight without changing email delivery.
+- Added:5 access regressions,265frontend PASS; no backend/config/shared/production changes.
+
 ## Unreleased — 16/10/2026 — Group editor lifecycle
 
 - Fixed: create/rename group forms support Enter and guard captured commands, pending inputs, stale responses and uncertain outcomes; require whole-catalog reconciliation after unknown metadata writes.

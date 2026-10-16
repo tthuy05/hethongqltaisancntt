@@ -221,7 +221,11 @@ test('unknown create followed by closing editor reloads the whole catalog, inclu
       const root = await permissionPage(services); dom.body.append(root); if (!empty) await until(() => Boolean(checkbox(root, 'Quản lý tài sản Sửa')));
       findButton(root, 'Tạo nhóm quyền').fire('click'); editorInput(dom, 'groupName').value = 'Fixture group'; editorForm(dom).fire('submit');
       const submit = findButton(dom.body, 'Lưu nhóm'); await until(() => submit.getAttribute('aria-busy') === null); closeEditor(dom);
-      findButton(root, 'Tải lại').fire('click'); assert.equal(refreshes, 1); assert.equal(calls, 1); root.remove();
+      buttonAfterUnknown(root, empty).fire('click'); assert.equal(refreshes, 1); assert.equal(calls, 1); root.remove();
     }
   } finally { dom.restore(); }
 });
+
+function buttonAfterUnknown(root, empty) {
+  return empty ? findButton(root, 'Tải lại') : descendants(root).find(n => n.tagName === 'BUTTON' && n.textContent === 'Synthetic group · Tùy chỉnh');
+}
