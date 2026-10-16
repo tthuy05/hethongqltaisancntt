@@ -1,5 +1,9 @@
 # Project Status
 
+## 16/10/2026 — Group status lifecycle
+
+Thủy chặn stale/repeated group-status commands, giữ draft sau unknown/conflict và kiểm response state/permission sets.255frontend PASS/43syntax/47source checks; [addendum](docs/permission-save-lifecycle-handoff.md). Không thay backend/grants/config/shared/Render; create/rename editor follow-up còn riêng.
+
 ## 16/10/2026 — Permission matrix save lifecycle
 
 Thủy snapshot/guard pending matrix save, giữ draft và chặn replay khi conflict/unknown, kiểm result trước selected state và hỗ trợ retry initial GET.252frontend PASS/43syntax/47source checks; [phạm vi và giới hạn](docs/permission-save-lifecycle-handoff.md). Không thay quyền thật, backend/config/shared/Render hoặc đóng toàn RBAC acceptance.

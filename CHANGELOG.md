@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — 16/10/2026 — Group status lifecycle
+
+- Fixed: group status confirmation snapshots target/version, warns about unsaved matrix, locks pending commands and blocks uncertain replay; check returned state and matrix permission sets before claiming success.
+- Added:3 status lifecycle cases,255frontend PASS; no backend/grant/production changes.
+
 ## Unreleased — 16/10/2026 — Permission matrix save
 
 - Fixed: snapshot reviewed matrix commands, lock pending controls, reject stale/malformed success and block blind replay after unknown outcomes; preserve draft until explicit read refresh.

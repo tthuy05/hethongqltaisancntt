@@ -105,10 +105,34 @@ export async function permissionPage(services) {
     editor = openDialog({ title: existing ? 'Chỉnh sửa nhóm quyền' : 'Tạo nhóm quyền', body: h('div', { className: 'dialog-body' }, name.element, details.element, error), footer: submit });
   }
   const edit = button('Sửa nhóm', { kind: 'secondary', disabled: true, onClick: () => dirty ? confirmAction('Bỏ thay đổi ma trận chưa lưu để sửa nhóm?', () => groupDialog(selected)) : groupDialog(selected) });
-  const status = button('Ngừng sử dụng nhóm', { kind: 'secondary', disabled: true, onClick: () => confirmAction('Chỉ có thể ngừng nhóm tùy chỉnh khi đã bỏ gán khỏi mọi người dùng. Tiếp tục?', async () => {
-    try { selected = await services.roles.setStatus(selected.id, { status: selected.isActive ? 'Inactive' : 'Active', reason: 'Admin thay đổi nhóm quyền', rowVersion: selected.rowVersion }); dirty = false; draw(); showToast('Đã cập nhật trạng thái nhóm.'); }
-    catch (error) { feedback.replaceChildren(formAlert(error.message)); }
-  }) });
+  const status = button('Ngừng sử dụng nhóm', { kind: 'secondary', disabled: true, onClick: () => {
+    if (!active() || saving || loading || blocked || !selected || selected.isSystem) return;
+    const command = { id: selected.id, dto: { status: selected.isActive ? 'Inactive' : 'Active', reason: 'Admin thay đổi nhóm quyền', rowVersion: selected.rowVersion } };
+    confirmAction((dirty ? 'Bỏ thay đổi ma trận chưa lưu và đổi trạng thái nhóm? ' : '') +
+      'Chỉ có thể ngừng nhóm tùy chỉnh khi đã bỏ gán khỏi mọi người dùng. Tiếp tục?', async () => {
+      if (!active() || saving || loading || blocked) return;
+      if (!authorized()) { blocked = true; feedback.replaceChildren(formAlert('Phiên hoặc quyền đã thay đổi. Vui lòng mở lại trang.')); syncControls(); return; }
+      saving = true; syncControls(); status.setAttribute('aria-busy', 'true'); status.textContent = 'Đang xử lý…';
+      try {
+        const result = await services.roles.setStatus(command.id, command.dto);
+        if (!active()) return;
+        if (!authorized()) { blocked = true; feedback.replaceChildren(formAlert('Phiên hoặc quyền đã thay đổi. Hãy tải lại để đối chiếu kết quả thực tế.')); return; }
+        const reviewed = reviewedGroup(result, command.id);
+        if (reviewed.isActive !== (command.dto.status === 'Active')) throw new Error('INVALID_API_RESPONSE');
+        selected = reviewed;
+        const index = groups.findIndex(group => group.id === selected.id); if (index >= 0) groups[index] = selected;
+        dirty = false; draw(); populate(); feedback.replaceChildren(); showToast('Đã cập nhật trạng thái nhóm.');
+      } catch (error) {
+        if (!active()) return;
+        blocked = true;
+        feedback.replaceChildren(formAlert(error?.code === 'ROLE_IN_USE' ? 'Nhóm còn người dùng được gán. Hãy bỏ gán và tải lại trước khi ngừng sử dụng.' :
+          error?.code === 'CONCURRENCY_CONFLICT' ? 'Nhóm vừa được cập nhật. Hãy tải lại trước khi đổi trạng thái.' :
+          'Chưa xác nhận được kết quả đổi trạng thái nhóm. Bản đang nhập vẫn giữ; không tự gửi lại. Dùng Tải lại để đối chiếu.'));
+      } finally {
+        saving = false; status.removeAttribute('aria-busy'); status.textContent = selected?.isActive ? 'Ngừng sử dụng nhóm' : 'Kích hoạt nhóm'; syncControls();
+      }
+    });
+  } });
   const save = button('Lưu phân quyền', { iconName: 'check', disabled: true, onClick: () => {
     if (loading || saving || blocked || !dirty || !active()) return;
     const command = { id: selected.id, dto: { permissionIds: [...draft], rowVersion: selected.rowVersion } };
@@ -121,7 +145,11 @@ export async function permissionPage(services) {
           const result = await services.roles.replacePermissions(command.id, command.dto);
           if (!active()) return;
           if (!authorized()) { blocked = true; feedback.replaceChildren(formAlert('Phiên hoặc quyền đã thay đổi. Hãy kiểm tra kết quả thực tế trước khi tiếp tục.')); return; }
-          selected = reviewedGroup(result, command.id); draw(); showToast('Đã lưu phân quyền. Các request mới dùng quyền mới.');
+          const reviewed = reviewedGroup(result, command.id);
+          if (reviewed.permissions.length !== command.dto.permissionIds.length ||
+              !reviewed.permissions.every(item => command.dto.permissionIds.includes(item.id)) ||
+              new Set(reviewed.permissions.map(item => item.id)).size !== reviewed.permissions.length) throw new Error('INVALID_API_RESPONSE');
+          selected = reviewed; draw(); showToast('Đã lưu phân quyền. Các request mới dùng quyền mới.');
         } catch (error) {
           if (!active()) return;
           blocked = true;

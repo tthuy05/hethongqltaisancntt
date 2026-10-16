@@ -72,7 +72,8 @@ test('revoked matrix permission before final confirmation prevents a write', asy
 
 test('malformed successful save result cannot overwrite reviewed group or unlock replay', async () => {
   const dom = installDom('/permissions'); try {
-    for (const invalid of [null, { ...group(), id: 99 }, { ...group(), permissions: [null] }, { ...group(), rowVersion: null }]) {
+    for (const invalid of [null, { ...group(), id: 99 }, { ...group(), permissions: [null] }, { ...group(), rowVersion: null }, group(),
+      { ...group(), permissions: [{ id: 2 }, { id: 2 }] }]) {
       const services = source(async () => invalid); const root = await mount(dom, services); dirty(root); const save = findButton(root, 'Lưu phân quyền'); confirm(dom, root);
       await until(() => save.getAttribute('aria-busy') === null); assert.equal(save.disabled, true);
       assert.equal(checkbox(root, 'Quản lý tài sản Sửa').checked, true); assert.match(root.textContent, /Chưa xác nhận được kết quả/);
@@ -89,5 +90,55 @@ test('failed initial group read can be explicitly retried without dereferencing 
     assert.doesNotMatch(root.textContent, /synthetic-private-detail/); findButton(root, 'Tải lại').fire('click');
     await until(() => Boolean(checkbox(root, 'Quản lý tài sản Sửa'))); assert.equal(reads, 2); assert.equal(services.writes.length, 0);
     assert.equal(checkbox(root, 'Quản lý tài sản Sửa').disabled, false);
+  } finally { dom.restore(); }
+});
+
+test('group status snapshots target/version and locks competing commands until a valid reviewed result', async () => {
+  const dom = installDom('/permissions'); try {
+    let finish; const calls = []; const services = source(async (_id, dto) => result(dto));
+    services.roles.setStatus = async (id, dto) => { calls.push(structuredClone({ id, dto })); return new Promise(resolve => { finish = () => resolve({ ...group(), isActive: false }); }); };
+    const root = await mount(dom, services); dirty(root); const status = findButton(root, 'Ngừng sử dụng nhóm'); status.fire('click');
+    assert.match(dom.body.textContent, /Bỏ thay đổi ma trận/); findButton(dom.body, 'Xác nhận').fire('click');
+    try {
+      assert.equal(status.disabled, true); assert.equal(checkbox(root, 'Quản lý tài sản Sửa').disabled, true);
+      status.fire('click'); assert.equal(calls.length, 1);
+      assert.deepEqual(calls[0], { id: 12, dto: { status: 'Inactive', reason: 'Admin thay đổi nhóm quyền', rowVersion: version } });
+    } finally { finish(); await until(() => status.getAttribute('aria-busy') === null); }
+    assert.equal(status.textContent, 'Kích hoạt nhóm'); assert.equal(status.disabled, false);
+    assert.equal(checkbox(root, 'Quản lý tài sản Sửa').checked, false); assert.equal(checkbox(root, 'Quản lý tài sản Sửa').disabled, true);
+  } finally { dom.restore(); }
+});
+
+test('group status conflict, unknown outcome or malformed result preserves draft and requires a fresh read', async () => {
+  const dom = installDom('/permissions'); try {
+    for (const outcome of ['ROLE_IN_USE', 'CONCURRENCY_CONFLICT', 'NETWORK_ERROR', 'invalid', 'mismatched']) {
+      let calls = 0; const services = source(async (_id, dto) => result(dto));
+      services.roles.setStatus = async () => { calls++; if (outcome === 'invalid') return null; if (outcome === 'mismatched') return group();
+        throw Object.assign(Error('synthetic-private-detail'), { status: outcome === 'NETWORK_ERROR' ? 0 : 409, code: outcome }); };
+      const root = await mount(dom, services); dirty(root); const status = findButton(root, 'Ngừng sử dụng nhóm'); status.fire('click'); findButton(dom.body, 'Xác nhận').fire('click');
+      await until(() => status.getAttribute('aria-busy') === null);
+      assert.equal(status.disabled, true); assert.equal(checkbox(root, 'Quản lý tài sản Sửa').checked, true);
+      assert.doesNotMatch(root.textContent, /synthetic-private-detail/); status.fire('click'); assert.equal(calls, 1);
+      if (outcome === 'ROLE_IN_USE') assert.match(root.textContent, /còn người dùng/);
+      findButton(root, 'Tải lại').fire('click'); findButton(dom.body, 'Xác nhận').fire('click');
+      await until(() => !status.disabled); assert.equal(calls, 1); root.remove();
+    }
+  } finally { dom.restore(); }
+});
+
+test('group status checks permission at confirmation and suppresses late success after navigation', async () => {
+  const dom = installDom('/permissions'); try {
+    for (const change of ['revoke', 'detach', 'hash']) {
+      location.hash = '#/permissions'; let finish, calls = 0; const services = source(async (_id, dto) => result(dto));
+      services.roles.setStatus = async () => { calls++; return new Promise(resolve => { finish = () => resolve({ ...group(), isActive: false }); }); };
+      const root = await mount(dom, services); const status = findButton(root, 'Ngừng sử dụng nhóm'); status.fire('click');
+      if (change === 'revoke') services.auth.session.permissions = ['roles.read']; findButton(dom.body, 'Xác nhận').fire('click');
+      if (change === 'revoke') { assert.equal(calls, 0); assert.match(root.textContent, /Phiên hoặc quyền/); }
+      else {
+        if (change === 'detach') root.remove(); else location.hash = '#/assets'; finish(); await until(() => status.getAttribute('aria-busy') === null);
+        assert.doesNotMatch(dom.body.textContent, /Đã cập nhật trạng thái nhóm/); assert.equal(calls, 1);
+      }
+      root.remove();
+    }
   } finally { dom.restore(); }
 });
