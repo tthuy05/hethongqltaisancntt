@@ -1,5 +1,9 @@
 # Project Status
 
+## 16/10/2026 — Login lifecycle
+
+Thủy chặn stale login navigation/logout, khóa input khi gửi, xóa password input và kiểm return path nội bộ; 226 frontend PASS,43 syntax/47 source checks PASS. [Evidence và giới hạn](docs/login-lifecycle-handoff.md). Backend/config/shared Neon/Render giữ nguyên; không triển khai module của Thiện.
+
 ## 15/10/2026 — Activation client safety
 
 Thủy kiểm canonical token/DTO, duplicate URL token, single-flight/readonly và expired/unknown outcomes; không gửi mail thật hoặc đổi backend email/identity.215 frontend PASS/43syntax/47source. [Evidence](docs/activation-client-safety-handoff.md). Asset save cũng block same-account SESSION_CHANGED replay; shared/config/Render và module gates không đổi.

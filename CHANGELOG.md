@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — 16/10/2026 — Login lifecycle
+
+- Fixed: stale login page responses cannot redirect after navigation or logout a newer session; readonly pending inputs, bounded password validation and password clearing on completion.
+- Added:11 regression cases,226 frontend PASS; no backend/config/production changes. [Handoff](docs/login-lifecycle-handoff.md).
+
 ## Unreleased — 15/10/2026 — Activation client safety
 
 - Fixed: strict activation DTO/canonical token validation, duplicate fragment token rejection, single-flight/readonly passwords and expired/unknown outcome handling without replay or stale page updates.

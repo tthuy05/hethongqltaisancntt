@@ -84,7 +84,7 @@ export function validateMaster(dto = {}, options = {}) {
 export function validateLogin({ email, password } = {}) {
   const errors = {};
   if (typeof email !== 'string' || email.trim().length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) error(errors, 'email', 'Vui lòng nhập email hợp lệ.');
-  if (typeof password !== 'string' || !password.length) error(errors, 'password', 'Vui lòng nhập mật khẩu (chỉ luồng demo).');
+  if (typeof password !== 'string' || !password.length || password.length > 256) error(errors, 'password', 'Mật khẩu là bắt buộc, tối đa 256 ký tự.');
   return errors;
 }
 
