@@ -101,3 +101,23 @@ test('cost grant revoked during initial read does not hydrate price, or start a 
     assert.equal(services.calls.length, 0); assert.equal(submit(financial).disabled, true);
   } finally { dom.restore(); }
 });
+
+test('pending Asset save locks the submitted inputs and restores prior states after validation rejection or detach', async () => {
+  const dom = installDom('/assets/new'); try {
+    for (const detached of [false, true]) {
+      let reject; const services = source(() => new Promise((_resolve, fail) => { reject = fail; })); const root = await mount(dom, services);
+      const note = control(root, 'note'); note.readOnly = true;
+      form(root).fire('submit');
+      try {
+        assert.equal(control(root, 'name').readOnly, true); assert.equal(control(root, 'assetTypeId').disabled, true);
+        assert.equal(control(root, 'owningDepartmentId').disabled, true); assert.equal(note.readOnly, true);
+        assert.equal(services.calls[0].name, 'New synthetic asset'); if (detached) root.remove();
+      } finally {
+        reject(Object.assign(Error('Known fixture validation'), { status: 400, code: 'VALIDATION_ERROR' }));
+        await until(() => submit(root).getAttribute('aria-busy') === null); await new Promise(resolve => setImmediate(resolve));
+      }
+      assert.equal(control(root, 'name').readOnly, false); assert.equal(control(root, 'assetTypeId').disabled, false);
+      assert.equal(note.readOnly, true); assert.equal(control(root, 'name').value, 'New synthetic asset'); root.remove();
+    }
+  } finally { dom.restore(); }
+});

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — 16/10/2026 — Pending Asset inputs
+
+- Fixed: prevent editing captured Asset fields during save and restore original control states on completion, including detached forms.243 frontend PASS; no API/backend/production changes.
+
 ## Unreleased — 16/10/2026 — Asset list access
 
 - Fixed: Asset readers can view results without unrelated catalog grants; optional lookup failures disable only their filters, preserve URL IDs and never hide session expiration.

@@ -44,6 +44,12 @@ export async function assetFormPage(services, id = null) {
     displayErrors(fields, errors); feedback.replaceChildren();
     if (Object.keys(errors).length) return;
     if (Object.hasOwn(dto, 'purchasePrice') && dto.purchasePrice !== null) dto.purchasePrice = Number(dto.purchasePrice);
+    // The request uses the captured DTO. Do not let edits while pending look
+    // like they were part of that write; restore original states, not defaults.
+    const pendingFields = Object.values(fields).map(({ input }) => ({ input, readOnly: input.readOnly, disabled: input.disabled }));
+    for (const { input } of pendingFields) {
+      if (input.tagName === 'SELECT') input.disabled = true; else input.readOnly = true;
+    }
     busy(submit, async () => {
       try {
         const saved = id ? await services.assets.update(id, dto) : await services.assets.create(dto);
@@ -67,7 +73,10 @@ export async function assetFormPage(services, id = null) {
         feedback.append(formAlert(error?.message || 'Không thể lưu tài sản.'));
         if (error?.code === 'CONCURRENCY_CONFLICT') { blocked = true; feedback.append(concurrencyFeedback({ onRefresh: () => window.dispatchEvent(new Event('frontend-refresh')) })); }
       }
-    }).finally(() => { if (form.isConnected && blocked) submit.disabled = true; });
+    }).finally(() => {
+      for (const { input, readOnly, disabled } of pendingFields) { input.readOnly = readOnly; input.disabled = disabled; }
+      if (form.isConnected && blocked) submit.disabled = true;
+    });
   } },
   !types.length || !departments.length ? h('p', { className: 'info-note' }, id ? 'Danh mục đang hoạt động không đủ. Bạn vẫn được giữ tham chiếu cũ khi sửa; không chọn tham chiếu mới đã ngừng hoạt động.' : 'Cần ít nhất một loại tài sản và một phòng ban đang hoạt động. Tạo danh mục trước khi thêm tài sản.') : null,
   section('Thông tin chung', 'Những thông tin nhận diện thiết bị. Dấu * là bắt buộc.', [h('div', { className: 'field' }, h('span', {}, 'Mã tài sản'), h('strong', {}, asset?.assetCode || 'Mã tài sản sẽ được tự động tạo khi lưu')), add({ name: 'name', label: 'Tên tài sản', required: true, maxLength: 200 }), add({ name: 'assetTypeId', label: 'Loại tài sản', required: true, options: references(types, asset?.assetType) }), add({ name: 'serialNumber', label: 'Serial Number', maxLength: 200 }), add({ name: 'brand', label: 'Thương hiệu', maxLength: 200 }), add({ name: 'model', label: 'Model', maxLength: 200 })]),
