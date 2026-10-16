@@ -13,7 +13,7 @@ export async function permissionPage(services) {
   if (!authorized()) throw Object.assign(new Error('Phiên hoặc quyền đã thay đổi.'), { status: 403 });
   const root = h('div', { className: 'permission-page' });
   const active = () => root.isConnected && window.location.hash === pageHash;
-  let selected = null, dirty = false, draft = new Set(), controls = new Map(), modal, selectionRequest = 0, loading = false, saving = false, blocked = false;
+  let selected = null, dirty = false, draft = new Set(), controls = new Map(), modal, selectionRequest = 0, loading = false, saving = false, blocked = false, groupEditorOpen = false, needsCatalogRefresh = false;
   const feedback = h('div', { 'aria-live': 'polite' });
   const notice = h('p', { className: 'meta', role: 'status' });
   const matrix = h('div', { className: 'permission-matrix table-wrap' });
@@ -21,7 +21,7 @@ export async function permissionPage(services) {
   const description = h('p', { className: 'meta' });
   const groupList = h('div', { className: 'permission-groups', 'aria-label': 'Các nhóm quyền' });
   function reviewedGroup(value, id) {
-    if (!value || value.id !== id || typeof value.name !== 'string' || !value.name.trim() || typeof value.code !== 'string' ||
+    if (!value || !Number.isSafeInteger(value.id) || value.id <= 0 || value.id !== id || typeof value.name !== 'string' || !value.name.trim() || typeof value.code !== 'string' ||
         typeof value.isSystem !== 'boolean' || typeof value.isActive !== 'boolean' || !Number.isSafeInteger(value.memberCount) || value.memberCount < 0 ||
         typeof value.rowVersion !== 'string' || !value.rowVersion || !Array.isArray(value.permissions) ||
         !value.permissions.every(item => Number.isSafeInteger(item?.id) && item.id > 0) ||
@@ -88,21 +88,68 @@ export async function permissionPage(services) {
     catch { if (active() && own === selectionRequest) { blocked = true; feedback.replaceChildren(formAlert('Không tải được nhóm quyền. Bản đang nhập vẫn giữ; chưa được gửi lại thay đổi.')); } }
     finally { if (own === selectionRequest) { loading = false; syncControls(); } }
   }
-  function choose(id) { if (saving || loading || !active() || !authorized()) return; if (dirty) confirmAction('Thay đổi quyền chưa được lưu. Bỏ thay đổi và chuyển nhóm?', () => load(id)); else load(id); }
+  function choose(id) {
+    if (saving || loading || !active() || !authorized()) return;
+    if (needsCatalogRefresh) { reloadGroups(); return; }
+    if (dirty) confirmAction('Thay đổi quyền chưa được lưu. Bỏ thay đổi và chuyển nhóm?', () => load(id)); else load(id);
+  }
+  function reloadGroups() {
+    if (saving || loading || !active() || !authorized()) return;
+    const id = selected?.id ?? groups[0]?.id;
+    if (!needsCatalogRefresh && id) { choose(id); return; }
+    const refresh = () => { if (active() && authorized()) window.dispatchEvent(new Event('frontend-refresh')); };
+    if (dirty) confirmAction('Bỏ thay đổi ma trận chưa lưu và tải lại toàn bộ danh sách nhóm?', refresh); else refresh();
+  }
   function groupDialog(existing = null) {
+    if (groupEditorOpen || saving || loading || blocked || !active() || !authorized() || existing?.isSystem) return;
+    const target = existing ? { id: existing.id, rowVersion: existing.rowVersion } : null;
     const name = field({ name: 'groupName', label: 'Tên nhóm', required: true, maxLength: 200, value: existing?.name });
     const details = field({ name: 'groupDescription', label: 'Mô tả', type: 'textarea', maxLength: 1000, value: existing?.description });
-    const error = h('div', { 'aria-live': 'polite' }); let editor;
-    const submit = button('Lưu nhóm', { onClick: () => busy(submit, async () => {
-      if (!name.input.value.trim()) { error.replaceChildren(formAlert('Vui lòng nhập tên nhóm.')); return; }
-      const dto = { name: name.input.value.trim(), description: details.input.value.trim() || null, ...(existing ? { rowVersion: existing.rowVersion } : {}) };
+    const error = h('div', { 'aria-live': 'polite' }); let editor, pending = false, closed = false, uncertain = false;
+    const liveEditor = () => !closed && active() && editor.dialog.isConnected;
+    const stop = message => {
+      uncertain = blocked = needsCatalogRefresh = true; submit.disabled = true;
+      error.replaceChildren(formAlert(message), button('Bỏ bản đang nhập và tải lại danh sách nhóm', { kind: 'secondary', onClick: () => {
+        if (!liveEditor()) return; editor.close(); window.dispatchEvent(new Event('frontend-refresh'));
+      } }));
+    };
+    const formId = 'group-editor-form';
+    const submit = button('Lưu nhóm', { type: 'submit', form: formId });
+    const form = h('form', { id: formId, className: 'dialog-body', noValidate: true, onSubmit: async event => {
+      event.preventDefault(); if (pending || saving || loading || blocked || uncertain || !liveEditor()) return;
+      if (!authorized()) { stop('Phiên hoặc quyền đã thay đổi. Vui lòng mở lại trang.'); syncControls(); return; }
+      const text = name.input.value.trim(), description = details.input.value.trim();
+      if (!text || text.length > 200 || description.length > 1000) { error.replaceChildren(formAlert('Tên nhóm là bắt buộc, tối đa 200 ký tự; mô tả tối đa 1000 ký tự.')); return; }
+      const dto = { name: text, description: description || null, ...(target ? { rowVersion: target.rowVersion } : {}) };
+      pending = saving = true; syncControls(); submit.disabled = true; submit.setAttribute('aria-busy', 'true');
+      name.input.readOnly = details.input.readOnly = true; error.replaceChildren();
       try {
-        const result = existing ? await services.roles.update(existing.id, dto) : await services.roles.create(dto);
-        editor.close(); dirty = false; showToast('Đã lưu nhóm quyền.');
-        if (root.isConnected) { const index = groups.findIndex(group => group.id === result.id); if (index < 0) groups.push(result); else groups[index] = result; populate(); await load(result.id); }
-      } catch (failure) { error.replaceChildren(formAlert(failure.message)); }
-    }) });
-    editor = openDialog({ title: existing ? 'Chỉnh sửa nhóm quyền' : 'Tạo nhóm quyền', body: h('div', { className: 'dialog-body' }, name.element, details.element, error), footer: submit });
+        const result = target ? await services.roles.update(target.id, dto) : await services.roles.create(dto);
+        if (!liveEditor()) return;
+        if (!authorized()) { stop('Phiên hoặc quyền đã thay đổi. Hãy tải lại để đối chiếu kết quả thực tế.'); return; }
+        const reviewed = reviewedGroup(result, target?.id ?? result?.id);
+        if (reviewed.isSystem || reviewed.name !== text) throw new Error('INVALID_API_RESPONSE');
+        const index = groups.findIndex(group => group.id === reviewed.id); if (index < 0) groups.push(reviewed); else groups[index] = reviewed;
+        selected = reviewed; dirty = false; pending = false; editor.close(); draw(); populate(); feedback.replaceChildren(); showToast('Đã lưu nhóm quyền.');
+      } catch (failure) {
+        if (!liveEditor()) return;
+        if (failure?.status === 400 && failure?.code === 'VALIDATION_ERROR') error.replaceChildren(formAlert('Thông tin nhóm không hợp lệ. Kiểm tra tên và mô tả rồi sửa lại.'));
+        else stop(failure?.code === 'CONCURRENCY_CONFLICT' ? 'Nhóm vừa được cập nhật. Giữ bản đang nhập và tải lại trước khi lưu tiếp.' :
+          'Chưa xác nhận được kết quả lưu nhóm. Giữ bản đang nhập, không tự gửi lại; hãy tải lại danh sách nhóm để đối chiếu.');
+      } finally {
+        pending = saving = false; submit.removeAttribute('aria-busy'); submit.disabled = uncertain || blocked || !authorized();
+        name.input.readOnly = details.input.readOnly = false; syncControls();
+      }
+    } }, name.element, details.element, error);
+    groupEditorOpen = true;
+    editor = openDialog({ title: existing ? 'Chỉnh sửa nhóm quyền' : 'Tạo nhóm quyền', body: form, footer: submit, onClose: () => {
+      closed = true; groupEditorOpen = false;
+      if (pending) {
+        blocked = needsCatalogRefresh = true;
+        if (active()) feedback.replaceChildren(formAlert('Đã đóng hộp thoại trong lúc đang gửi. Hãy tải lại danh sách nhóm để đối chiếu kết quả trước khi thao tác tiếp.'));
+        syncControls();
+      }
+    } });
   }
   const edit = button('Sửa nhóm', { kind: 'secondary', disabled: true, onClick: () => dirty ? confirmAction('Bỏ thay đổi ma trận chưa lưu để sửa nhóm?', () => groupDialog(selected)) : groupDialog(selected) });
   const status = button('Ngừng sử dụng nhóm', { kind: 'secondary', disabled: true, onClick: () => {
@@ -164,7 +211,7 @@ export async function permissionPage(services) {
   populate();
   root.append(pageHeader('Quản lý phân quyền', 'Quyền phụ thuộc nhóm được gán, không phụ thuộc phòng ban hay chức vụ. Chỉ Admin IT được quản lý ma trận và xem Nhật ký thao tác.'),
     h('div', { className: 'permission-layout' }, h('section', { className: 'card' }, h('div', { className: 'card-body' }, h('h2', {}, 'Thiết lập nhóm người dùng'), groupList, create, h('p', { className: 'meta' }, 'Gán nhóm tại trang Người dùng.'), button('Quản lý người dùng', { kind: 'secondary', onClick: () => dirty ? confirmAction('Bỏ thay đổi chưa lưu và chuyển trang?', () => route('/users')) : route('/users') }))),
-      h('section', { className: 'card' }, h('div', { className: 'card-body' }, title, description, matrix, notice, feedback, h('div', { className: 'actions' }, edit, status, button('Tải lại', { kind: 'secondary', onClick: () => choose(selected?.id ?? groups[0]?.id) }), save)))));
+      h('section', { className: 'card' }, h('div', { className: 'card-body' }, title, description, matrix, notice, feedback, h('div', { className: 'actions' }, edit, status, button('Tải lại', { kind: 'secondary', onClick: reloadGroups }), save)))));
   // Bind once per live page; listeners from removed pages are inert and disposed.
   const controller = new AbortController();
   const guard = event => { if (!root.isConnected) { controller.abort(); return; } if (dirty) { event.preventDefault(); event.returnValue = ''; } };

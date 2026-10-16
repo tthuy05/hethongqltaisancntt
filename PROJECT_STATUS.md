@@ -1,5 +1,9 @@
 # Project Status
 
+## 16/10/2026 — Group editor lifecycle
+
+Thủy nối native Enter-submit, capture/readonly/single-flight và unknown-outcome recovery cho tạo/đổi tên nhóm;260frontend PASS/43syntax/47source checks. [Addendum](docs/permission-save-lifecycle-handoff.md). Không thay backend/grants/config/shared/Render; không coi frontend evidence là production RBAC acceptance.
+
 ## 16/10/2026 — Group status lifecycle
 
 Thủy chặn stale/repeated group-status commands, giữ draft sau unknown/conflict và kiểm response state/permission sets.255frontend PASS/43syntax/47source checks; [addendum](docs/permission-save-lifecycle-handoff.md). Không thay backend/grants/config/shared/Render; create/rename editor follow-up còn riêng.

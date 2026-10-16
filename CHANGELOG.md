@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — 16/10/2026 — Group editor lifecycle
+
+- Fixed: create/rename group forms support Enter and guard captured commands, pending inputs, stale responses and uncertain outcomes; require whole-catalog reconciliation after unknown metadata writes.
+- Added:5 editor regressions,260frontend PASS; no backend/grant/config/production changes.
+
 ## Unreleased — 16/10/2026 — Group status lifecycle
 
 - Fixed: group status confirmation snapshots target/version, warns about unsaved matrix, locks pending commands and blocks uncertain replay; check returned state and matrix permission sets before claiming success.

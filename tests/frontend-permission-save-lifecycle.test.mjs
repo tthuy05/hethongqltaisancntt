@@ -142,3 +142,86 @@ test('group status checks permission at confirmation and suppresses late success
     }
   } finally { dom.restore(); }
 });
+
+const editorInput = (dom, name) => descendants(dom.body).find(n => n.getAttribute('name') === name);
+const editorForm = dom => descendants(dom.body).find(n => n.tagName === 'FORM');
+const closeEditor = dom => descendants(dom.body).find(n => n.getAttribute('aria-label') === 'Đóng hộp thoại').fire('click');
+
+test('group editor uses one keyboard-submit form, validates before sending, and captures readonly single-flight metadata', async () => {
+  const dom = installDom('/permissions'); try {
+    for (const editing of [false, true]) {
+      let finish; const calls = []; const services = source(async (_id, dto) => result(dto));
+      const handler = async (...args) => { calls.push(structuredClone(args)); return new Promise(resolve => { finish = () => resolve({ ...group(), id: editing ? 12 : 20, name: 'Reviewed name' }); }); };
+      services.roles.create = handler; services.roles.update = handler;
+      const root = await mount(dom, services); findButton(root, editing ? 'Sửa nhóm' : 'Tạo nhóm quyền').fire('click');
+      assert.ok(editorForm(dom)); editorInput(dom, 'groupName').value = ' '; editorForm(dom).fire('submit'); assert.equal(calls.length, 0);
+      editorInput(dom, 'groupName').value = ' Reviewed name '; editorInput(dom, 'groupDescription').value = ' Fixture description ';
+      editorForm(dom).fire('submit'); const submit = findButton(dom.body, 'Lưu nhóm'); editorForm(dom).fire('submit');
+      try {
+        assert.equal(calls.length, 1); assert.equal(editorInput(dom, 'groupName').readOnly, true);
+        assert.deepEqual(calls[0], editing ? [12, { name: 'Reviewed name', description: 'Fixture description', rowVersion: version }] : [{ name: 'Reviewed name', description: 'Fixture description' }]);
+      } finally { finish(); await until(() => submit.getAttribute('aria-busy') === null); }
+      assert.match(dom.body.textContent, /Đã lưu nhóm quyền/); assert.ok(!editorForm(dom));
+      descendants(dom.body).filter(n => n.classList.contains('toast-container')).forEach(n => n.remove()); root.remove();
+    }
+  } finally { dom.restore(); }
+});
+
+test('group editor unknown outcome or wrong identity preserves text and cannot replay a mutation', async () => {
+  const dom = installDom('/permissions'); try {
+    for (const outcome of ['NETWORK_ERROR', 'CONCURRENCY_CONFLICT', 'SESSION_CHANGED', 'invalid']) {
+      let calls = 0; const services = source(async (_id, dto) => result(dto)); services.roles.update = async () => {
+        calls++; if (outcome === 'invalid') return { ...group(), id: 99 }; throw Object.assign(Error('synthetic-private-detail'), { status: outcome === 'NETWORK_ERROR' ? 0 : 409, code: outcome });
+      };
+      const root = await mount(dom, services); findButton(root, 'Sửa nhóm').fire('click'); const form = editorForm(dom);
+      editorInput(dom, 'groupName').value = 'Keep this draft'; form.fire('submit'); const submit = findButton(dom.body, 'Lưu nhóm');
+      await until(() => submit.getAttribute('aria-busy') === null); assert.equal(submit.disabled, true); form.fire('submit'); assert.equal(calls, 1);
+      assert.equal(editorInput(dom, 'groupName').value, 'Keep this draft'); assert.doesNotMatch(dom.body.textContent, /synthetic-private-detail/);
+      assert.ok(findButton(dom.body, 'Bỏ bản đang nhập và tải lại danh sách nhóm'));
+      closeEditor(dom); root.remove();
+    }
+  } finally { dom.restore(); }
+});
+
+test('group editor cannot write after grant revocation and cannot toast after closing or navigation', async () => {
+  const dom = installDom('/permissions'); try {
+    for (const change of ['revoke', 'close', 'hash']) {
+      location.hash = '#/permissions'; let finish, calls = 0; const services = source(async (_id, dto) => result(dto));
+      services.roles.create = async () => { calls++; return new Promise(resolve => { finish = () => resolve({ ...group(), id: 20 }); }); };
+      const root = await mount(dom, services); findButton(root, 'Tạo nhóm quyền').fire('click'); const form = editorForm(dom); editorInput(dom, 'groupName').value = 'Fixture group';
+      if (change === 'revoke') services.auth.session.permissions = ['roles.read']; form.fire('submit');
+      if (change === 'revoke') { assert.equal(calls, 0); closeEditor(dom); }
+      else {
+        const submit = findButton(dom.body, 'Lưu nhóm'); if (change === 'close') closeEditor(dom); else location.hash = '#/assets';
+        finish(); await until(() => submit.getAttribute('aria-busy') === null); assert.equal(calls, 1); assert.doesNotMatch(dom.body.textContent, /Đã lưu nhóm quyền/);
+        if (change === 'hash') closeEditor(dom);
+      }
+      root.remove();
+    }
+  } finally { dom.restore(); }
+});
+
+test('known group validation rejection allows correction without throwing away draft or altering permissions', async () => {
+  const dom = installDom('/permissions'); try {
+    let calls = 0; const services = source(async (_id, dto) => result(dto)); services.roles.create = async () => { calls++; throw Object.assign(Error('synthetic-private-detail'), { status: 400, code: 'VALIDATION_ERROR' }); };
+    const root = await mount(dom, services); findButton(root, 'Tạo nhóm quyền').fire('click'); editorInput(dom, 'groupName').value = 'Fixture group';
+    editorForm(dom).fire('submit'); const submit = findButton(dom.body, 'Lưu nhóm'); await until(() => submit.getAttribute('aria-busy') === null);
+    assert.equal(submit.disabled, false); assert.equal(editorInput(dom, 'groupName').readOnly, false); assert.equal(editorInput(dom, 'groupName').value, 'Fixture group');
+    assert.equal(calls, 1); assert.doesNotMatch(dom.body.textContent, /synthetic-private-detail/);
+    closeEditor(dom); root.remove();
+  } finally { dom.restore(); }
+});
+
+test('unknown create followed by closing editor reloads the whole catalog, including an initially empty group list', async () => {
+  const dom = installDom('/permissions'); try {
+    for (const empty of [false, true]) {
+      let calls = 0, refreshes = 0; window.dispatchEvent = () => { refreshes++; };
+      const services = source(async (_id, dto) => result(dto)); services.roles.create = async () => { calls++; throw Object.assign(Error('synthetic failure'), { status: 0 }); };
+      if (empty) services.roles.list = async () => ({ items: [], totalPages: 0 });
+      const root = await permissionPage(services); dom.body.append(root); if (!empty) await until(() => Boolean(checkbox(root, 'Quản lý tài sản Sửa')));
+      findButton(root, 'Tạo nhóm quyền').fire('click'); editorInput(dom, 'groupName').value = 'Fixture group'; editorForm(dom).fire('submit');
+      const submit = findButton(dom.body, 'Lưu nhóm'); await until(() => submit.getAttribute('aria-busy') === null); closeEditor(dom);
+      findButton(root, 'Tải lại').fire('click'); assert.equal(refreshes, 1); assert.equal(calls, 1); root.remove();
+    }
+  } finally { dom.restore(); }
+});

@@ -25,3 +25,15 @@ Tiếp tục riêng Active/Inactive command: snapshot target/version/desired sta
 3 new focused cases PASS; red baseline6PASS/3FAIL trước status fix. Full **255frontend PASS /0 FAIL/SKIP**,43syntax/47source checks. Matrix write follow-up kiểm returned permission ID set khớp command (không thiếu/trùng), thêm fixture outcomes vào case malformed hiện có, không cộng thành test mới. Không write vào server thật hoặc đổi protected-role/backend rules.
 
 Ghi chú “group activation chưa chứng nhận” ở mục trước là snapshot252 đã được supersede riêng cho frontend status lifecycle có3 cases này; **create/rename group editors vẫn cần follow-up riêng**, không chứng nhận tất cả RBAC/UI/production từ addendum.
+
+## Group editor addendum — 16/10/2026
+
+Tạo/đổi tên nhóm dùng một native form, submit button liên kết form và Enter thực tế. Validate name1..200/description<=1000 trước gửi; DTO capture exact target/version/text, readonly pending và single-flight. Kiểm lại actor/grants và returned group identity/name trước success; không late toast sau đóng editor/navigation. Known structured400 validation cho sửa lại, còn conflict/unknown/invalid response giữ text và khóa replay. Đóng lúc pending báo cần đối chiếu từ thời điểm đóng, không tuyên bố write đã bị hủy.
+
+Unknown metadata write yêu cầu fresh **whole catalog** read, không chỉ reload selected group có thể bỏ sót nhóm vừa tạo. Có explicit discard/read action trong editor và recovery sau khi đóng, kể cả danh sách nhóm ban đầu rỗng. Không auto retry tạo nhóm hoặc bảo đảm exactly-once. Backend role/grant/protection rules không đổi; đổi tên không phải cấp thêm quyền.
+
+5 new focused cases PASS; full **260frontend PASS /0 FAIL/SKIP**,43syntax/47source checks. Red baseline4 editor cases FAIL trước có form; đó gồm expected new keyboard contract, không gọi4 failures là4 backend bugs. First test-iteration close locator nhầm visible “Đóng” với aria-label “Đóng hộp thoại” đã sửa locator theo DOM, không bỏ assertion hành vi.
+
+Browser static synthetic: Enter trong name input submit được, unknown result giữ text và khóa Lưu nhóm, có discard/read action; ảnh ignored `test-results/week4-archive-ui/group-editor-enter-20261016.jpg` đã xem. Exact label locator có required-asterisk không match, đã quan sát lại và dùng field ID có trên AX. Preview không có HTTP/grant/DB writes, không production hoặc backend RBAC acceptance.
+
+Create/rename frontend gap trong ghi chú trước đã được xử lý riêng bằng addendum này; full backend/production acceptance và User profile/status/membership lifecycle vẫn là phạm vi riêng. Shared/config/Render/module gates và3 report WIP giữ nguyên.
