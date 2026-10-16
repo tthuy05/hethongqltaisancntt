@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — 16/10/2026 — Asset list access
+
+- Fixed: Asset readers can view results without unrelated catalog grants; optional lookup failures disable only their filters, preserve URL IDs and never hide session expiration.
+- Added:7 access/lifecycle regression cases,242 frontend PASS; no backend/grant/production changes. [Handoff](docs/asset-list-access-handoff.md).
+
 ## Unreleased — 16/10/2026 — Archive lifecycle
 
 - Fixed: Archive confirmation captures reviewed ID/version, rejects stale page/session actions and blocks blind replay after conflicts or uncertain outcomes; list confirmation reads single-flight safely.

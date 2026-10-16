@@ -7,20 +7,55 @@ import { assetRetireDialog, canRetireAsset } from '../components/asset-retire-di
 export async function assetListPage(services) {
   const actorId = services.auth?.session?.id;
   const pageHash = window.location.hash;
+  const requireReader = () => {
+    const session = services.auth?.session;
+    if (!session || session.id !== actorId) throw Object.assign(new Error('Phiên đăng nhập đã thay đổi.'), { status: 401, code: 'SESSION_CHANGED' });
+    if (!Number.isSafeInteger(actorId) || actorId <= 0 || !hasPermission(session, 'assets.read'))
+      throw Object.assign(new Error('Bạn không có quyền xem tài sản.'), { status: 403, code: 'FORBIDDEN' });
+  };
+  requireReader();
   const query = { page: 1, pageSize: 10, sortBy: 'assetCode', sortDirection: 'asc', ...queryFrom() };
-  const [result, departments, types] = await Promise.all([services.assets.list(query), allCatalog(services.departments), allCatalog(services.assetTypes)]);
+  // Catalog read grants are independent from Asset read. Never hide an otherwise
+  // readable list because an optional lookup is forbidden or temporarily down.
+  const catalog = async (service, permission) => {
+    if (!can(services, permission)) return { items: [], state: 'forbidden' };
+    try { return { items: await allCatalog(service), state: 'ready' }; }
+    catch (error) {
+      if (error?.status === 401 || error?.code === 'SESSION_CHANGED') throw error;
+      return { items: [], state: error?.status === 403 ? 'forbidden' : 'unavailable' };
+    }
+  };
+  const [result, departments, types] = await Promise.all([services.assets.list(query),
+    catalog(services.departments, 'departments.read'), catalog(services.assetTypes, 'asset-types.read')]);
+  requireReader();
   // Summary DTO deliberately has no brand/model/warranty. Use documented detail endpoints for the visible page only.
   const details = await Promise.allSettled(result.items.map(item => services.assets.get(item.id)));
+  requireReader();
+  if (!can(services, 'departments.read')) { departments.items = []; departments.state = 'forbidden'; }
+  if (!can(services, 'asset-types.read')) { types.items = []; types.state = 'forbidden'; }
   const rows = result.items.map((item, index) => ({ ...item, detail: details[index].status === 'fulfilled' ? details[index].value : null }));
   const input = h('input', { className: 'input', name: 'keyword', value: query.keyword || '', maxLength: 200, placeholder: 'Mã tài sản, tên hoặc serial…', 'aria-label': 'Tìm kiếm tài sản' });
-  const type = h('select', { className: 'select', name: 'assetTypeId', 'aria-label': 'Lọc loại tài sản' }, option('', 'Tất cả loại'), types.map(item => option(item.id, item.name, String(item.id) === query.assetTypeId)));
-  const department = h('select', { className: 'select', name: 'departmentId', 'aria-label': 'Lọc phòng ban' }, option('', 'Tất cả phòng ban'), departments.map(item => option(item.id, item.name, String(item.id) === query.departmentId)));
+  const lookup = (name, label, all, result, fallback) => {
+    const selected = query[name] || '';
+    const missing = selected && !result.items.some(item => String(item.id) === selected);
+    const select = h('select', { className: 'select', name, disabled: result.state !== 'ready', 'aria-label': label,
+      ...(result.state !== 'ready' ? { 'aria-describedby': name + '-hint' } : {}) },
+      option('', all), result.items.map(item => option(item.id, item.name, String(item.id) === selected)),
+      missing ? option(selected, fallback + selected, true) : null);
+    select.value = selected;
+    return select;
+  };
+  const type = lookup('assetTypeId', 'Lọc loại tài sản', 'Tất cả loại', types, 'ID loại tài sản: ');
+  const department = lookup('departmentId', 'Lọc phòng ban', 'Tất cả phòng ban', departments, 'ID phòng ban: ');
+  const catalogHint = (name, result) => result.state === 'ready' ? null : h('span', { id: name + '-hint', className: 'field-hint' },
+    (result.state === 'forbidden' ? 'Không có quyền tải danh mục.' : 'Không tải được danh mục.') +
+      ' Bộ lọc URL hiện tại vẫn được giữ; dùng Đặt lại để bỏ bộ lọc.');
   const status = h('select', { className: 'select', name: 'status', 'aria-label': 'Lọc trạng thái' }, option('', 'Tất cả trạng thái'), Object.entries(statusLabels).map(([value, label]) => option(value, label, value === query.status)));
   const sort = h('select', { className: 'select', name: 'sortBy', 'aria-label': 'Sắp xếp tài sản' }, ['assetCode', 'name', 'status', 'createdAt', 'updatedAt'].map((value, index) => option(value, ['Mã tài sản', 'Tên', 'Trạng thái', 'Ngày tạo', 'Cập nhật'][index], value === query.sortBy)));
   const direction = h('select', { className: 'select', name: 'sortDirection', 'aria-label': 'Chiều sắp xếp' }, option('asc', 'Tăng dần', query.sortDirection === 'asc'), option('desc', 'Giảm dần', query.sortDirection === 'desc'));
   const filters = h('form', { className: 'filters', onSubmit: event => { event.preventDefault(); setQuery('/assets', { keyword: input.value.trim(), assetTypeId: type.value, departmentId: department.value, status: status.value, sortBy: sort.value, sortDirection: direction.value, page: 1, pageSize: 10 }); } },
     h('div', { className: 'filter-field search-field' }, h('label', {}, 'Tìm kiếm'), input),
-    h('div', { className: 'filter-field' }, h('label', {}, 'Loại tài sản'), type), h('div', { className: 'filter-field' }, h('label', {}, 'Phòng ban'), department), h('div', { className: 'filter-field' }, h('label', {}, 'Trạng thái'), status),
+    h('div', { className: 'filter-field' }, h('label', {}, 'Loại tài sản'), type, catalogHint('assetTypeId', types)), h('div', { className: 'filter-field' }, h('label', {}, 'Phòng ban'), department, catalogHint('departmentId', departments)), h('div', { className: 'filter-field' }, h('label', {}, 'Trạng thái'), status),
     h('div', { className: 'filter-field' }, h('label', {}, 'Sắp xếp'), sort), h('div', { className: 'filter-field' }, h('label', {}, 'Chiều'), direction), h('div', { className: 'actions' }, button('Tìm kiếm', { type: 'submit', iconName: 'search' }), button('Đặt lại', { kind: 'secondary', iconName: 'rotate-ccw', onClick: () => route('/assets') })));
   const archiveAction = row => {
     let pending = false;

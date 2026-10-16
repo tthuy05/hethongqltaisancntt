@@ -1,5 +1,9 @@
 # Project Status
 
+## 16/10/2026 — Asset-only reader
+
+Thủy tách optional catalog reads khỏi điều kiện tải danh sách Asset: respect từng grant, hiển thị lỗi lookup riêng, giữ URL filter và chặn stale actor/grant.242 frontend PASS/43 syntax/47 source checks; [evidence](docs/asset-list-access-handoff.md). Không cấp thêm quyền, sửa module Thiện hoặc thay backend/production.
+
 ## 16/10/2026 — Archive lifecycle
 
 Thủy sửa xác nhận Archive/late response/single-flight và khóa replay sau unknown outcome; canonical If-Match,235 frontend PASS/43 syntax/47 source checks. [Evidence](docs/asset-archive-lifecycle-handoff.md). Không backend/schema/config/Neon/Render changes; branch review only.
