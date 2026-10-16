@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — 16/10/2026 — Permission matrix save
+
+- Fixed: snapshot reviewed matrix commands, lock pending controls, reject stale/malformed success and block blind replay after unknown outcomes; preserve draft until explicit read refresh.
+- Added:6 lifecycle cases,252frontend PASS. No backend/grant/config/production changes; [handoff](docs/permission-save-lifecycle-handoff.md).
+
 ## Unreleased — 16/10/2026 — Client error boundary
 
 - Fixed: public activation401 cannot revoke an unrelated bearer session; malformed JSON error envelopes retain HTTP status with safe typed fallbacks instead of TypeError.

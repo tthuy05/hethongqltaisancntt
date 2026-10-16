@@ -1,5 +1,9 @@
 # Project Status
 
+## 16/10/2026 — Permission matrix save lifecycle
+
+Thủy snapshot/guard pending matrix save, giữ draft và chặn replay khi conflict/unknown, kiểm result trước selected state và hỗ trợ retry initial GET.252frontend PASS/43syntax/47source checks; [phạm vi và giới hạn](docs/permission-save-lifecycle-handoff.md). Không thay quyền thật, backend/config/shared/Render hoặc đóng toàn RBAC acceptance.
+
 ## 16/10/2026 — Public request session isolation
 
 Thủy tách401 public activation khỏi invalidation của bearer session và xử lý lỗi JSON malformed bằng ServiceError giữ HTTP status.246frontend PASS/43syntax/47source checks; [evidence](docs/frontend-session-contract-handoff.md). Private401/expiry/revision rules giữ nguyên, không thay backend/email/config/production.
