@@ -1,10 +1,12 @@
 import { h } from '../utils/dom.js';
 import { button, pageHeader, badge, dataTable, pagination, showToast } from '../components.js';
-import { allCatalog, can, route, queryFrom, setQuery, option, date, money, statusLabels, archiveDialog } from './shared.js';
+import { allCatalog, can, hasPermission, route, queryFrom, setQuery, option, date, money, statusLabels, archiveDialog } from './shared.js';
 import { createAssetStatusHistory } from '../components/asset-status-history.js';
 import { assetRetireDialog, canRetireAsset } from '../components/asset-retire-dialog.js';
 
 export async function assetListPage(services) {
+  const actorId = services.auth?.session?.id;
+  const pageHash = window.location.hash;
   const query = { page: 1, pageSize: 10, sortBy: 'assetCode', sortDirection: 'asc', ...queryFrom() };
   const [result, departments, types] = await Promise.all([services.assets.list(query), allCatalog(services.departments), allCatalog(services.assetTypes)]);
   // Summary DTO deliberately has no brand/model/warranty. Use documented detail endpoints for the visible page only.
@@ -20,6 +22,23 @@ export async function assetListPage(services) {
     h('div', { className: 'filter-field search-field' }, h('label', {}, 'Tìm kiếm'), input),
     h('div', { className: 'filter-field' }, h('label', {}, 'Loại tài sản'), type), h('div', { className: 'filter-field' }, h('label', {}, 'Phòng ban'), department), h('div', { className: 'filter-field' }, h('label', {}, 'Trạng thái'), status),
     h('div', { className: 'filter-field' }, h('label', {}, 'Sắp xếp'), sort), h('div', { className: 'filter-field' }, h('label', {}, 'Chiều'), direction), h('div', { className: 'actions' }, button('Tìm kiếm', { type: 'submit', iconName: 'search' }), button('Đặt lại', { kind: 'secondary', iconName: 'rotate-ccw', onClick: () => route('/assets') })));
+  const archiveAction = row => {
+    let pending = false;
+    const active = () => control.isConnected && window.location.hash === pageHash;
+    const allowed = () => { const session = services.auth?.session; return Number.isSafeInteger(actorId) && actorId > 0 && session?.id === actorId &&
+      hasPermission(session, 'assets.read') && hasPermission(session, 'assets.archive'); };
+    const control = button('Archive', { kind: 'ghost', iconName: 'archive', 'aria-label': 'Archive ' + row.assetCode, onClick: async () => {
+      if (pending || !active() || !allowed()) return;
+      pending = true; control.disabled = true; control.setAttribute('aria-busy', 'true');
+      try {
+        const asset = await services.assets.get(row.id);
+        if (active() && allowed()) archiveDialog(services, asset, () => window.dispatchEvent(new Event('frontend-refresh')));
+      } catch {
+        if (active() && allowed()) showToast('Không tải được tài sản để xác nhận archive. Chưa gửi thao tác archive.', 'error');
+      } finally { pending = false; control.disabled = false; control.removeAttribute('aria-busy'); }
+    } });
+    return control;
+  };
   const columns = [
     { key: 'assetCode', label: 'Mã tài sản', render: row => button(row.assetCode, { kind: 'ghost', onClick: () => route('/assets/' + row.id) }) },
     { key: 'name', label: 'Tên tài sản', render: row => h('div', { className: 'asset-name' }, h('strong', {}, row.name), h('span', { className: 'meta' }, row.serialNumber || 'Chưa có serial')) },
@@ -29,7 +48,7 @@ export async function assetListPage(services) {
     { key: 'user', label: 'Người sử dụng', render: row => row.detail?.currentAssignment?.user?.displayName || (services.mode === 'mock' ? 'Chưa phân bổ' : 'Chưa có dữ liệu cấp phát') },
     { key: 'status', label: 'Trạng thái', render: row => badge(row.status) },
     { key: 'warranty', label: 'Bảo hành', render: row => row.detail ? date(row.detail.warrantyExpirationDate) : 'Không tải được' },
-    { key: 'actions', label: 'Thao tác', render: row => h('div', { className: 'actions' }, button('Xem', { kind: 'ghost', iconName: 'eye', onClick: () => route('/assets/' + row.id), 'aria-label': 'Xem ' + row.assetCode }), can(services, 'assets.update') ? button('Sửa', { kind: 'ghost', iconName: 'pencil', onClick: () => route('/assets/' + row.id + '/edit'), 'aria-label': 'Sửa ' + row.assetCode }) : null, can(services, 'assets.archive') ? button('Archive', { kind: 'ghost', iconName: 'archive', onClick: async () => { try { archiveDialog(services, await services.assets.get(row.id), () => { window.dispatchEvent(new Event('frontend-refresh')); }); } catch (error) { showToast(error.message, 'error'); } }, 'aria-label': 'Archive ' + row.assetCode }) : null) }
+    { key: 'actions', label: 'Thao tác', render: row => h('div', { className: 'actions' }, button('Xem', { kind: 'ghost', iconName: 'eye', onClick: () => route('/assets/' + row.id), 'aria-label': 'Xem ' + row.assetCode }), can(services, 'assets.update') ? button('Sửa', { kind: 'ghost', iconName: 'pencil', onClick: () => route('/assets/' + row.id + '/edit'), 'aria-label': 'Sửa ' + row.assetCode }) : null, can(services, 'assets.read') && can(services, 'assets.archive') ? archiveAction(row) : null) }
   ];
   return h('div', {}, pageHeader('Danh sách tài sản', 'Tra cứu, theo dõi và quản lý thiết bị trong doanh nghiệp.', { eyebrow: 'Tài sản', actions: can(services, 'assets.create') ? [button('Thêm tài sản', { iconName: 'plus', onClick: () => route('/assets/new') })] : [] }), h('section', { className: 'card filters-card' }, filters), h('section', { className: 'card' }, h('div', { className: 'card-header' }, h('h2', {}, 'Danh mục thiết bị'), h('span', { className: 'meta' }, result.totalItems + ' tài sản')), dataTable({ columns, rows, emptyMessage: 'Không tìm thấy tài sản. Thử thay đổi hoặc đặt lại bộ lọc.' }), pagination(result, page => setQuery('/assets', { ...query, page }))));
 }

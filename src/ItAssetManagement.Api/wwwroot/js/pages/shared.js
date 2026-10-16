@@ -57,14 +57,51 @@ export function openDialog({ title, body, footer, onClose }) {
   return { dialog, close };
 }
 export function archiveDialog(services, asset, onDone) {
-  let modal;
+  const session = services.auth?.session;
+  const allowed = session => Number.isSafeInteger(session?.id) && session.id > 0 &&
+    hasPermission(session, 'assets.read') && hasPermission(session, 'assets.archive');
+  if (!allowed(session) || !['api', 'mock'].includes(services.mode) || typeof services.assets?.archive !== 'function' ||
+      !Number.isSafeInteger(asset?.id) || asset.id <= 0 || asset.isArchived === true) return null;
+  // Capture the exact record/version the user reviewed; do not follow a mutable DTO.
+  const { id, rowVersion } = asset; const actorId = session.id; const openedHash = window.location.hash;
+  let modal, pending = false, closed = false, blocked = false;
   const feedback = h('div', { 'aria-live': 'polite' });
-  const confirm = button('Archive tài sản', { kind: 'danger', onClick: () => busy(confirm, async () => {
+  const active = () => !closed && feedback.isConnected && window.location.hash === openedHash;
+  const currentActor = () => { const current = services.auth?.session; return current?.id === actorId && allowed(current); };
+  const stop = message => {
+    blocked = true; confirm.disabled = true;
+    feedback.replaceChildren(formAlert(message), button('Đóng và tải lại danh sách', { kind: 'secondary', onClick: () => {
+      if (!active()) return; modal.close(); window.dispatchEvent(new Event('frontend-refresh'));
+    } }));
+  };
+  const confirm = button('Archive tài sản', { kind: 'danger', onClick: async () => {
+    if (pending || blocked || !active()) return;
+    if (!currentActor()) { stop('Phiên hoặc quyền đã thay đổi. Hãy tải lại để kiểm tra tài sản.'); return; }
+    pending = true; confirm.disabled = true; confirm.setAttribute('aria-busy', 'true');
     feedback.replaceChildren();
-    try { await services.assets.archive(asset.id, asset.rowVersion); modal.close(); showToast(services.mode === 'mock' ? 'Đã archive trong dữ liệu minh họa. Lịch sử được giữ lại.' : 'Đã archive tài sản. Lịch sử được giữ lại.'); onDone(); }
-    catch (error) { feedback.append(formAlert(error.message)); }
-  }) });
-  modal = openDialog({ title: 'Archive tài sản', body: h('div', { className: 'dialog-body' }, h('p', {}, 'Archive ', h('strong', {}, asset.assetCode), ' — ', asset.name, '? Thao tác không xóa vĩnh viễn hoặc mất lịch sử.'), h('p', { className: 'meta' }, services.mode === 'mock' ? 'Chỉ thay đổi dữ liệu demo trong bộ nhớ trình duyệt.' : 'Backend sẽ kiểm tra quyền, version và quy trình đang hoạt động.'), feedback), footer: [button('Hủy', { kind: 'secondary', onClick: () => modal.close() }), confirm] });
+    try {
+      await services.assets.archive(id, rowVersion);
+      if (!active()) return;
+      if (!currentActor()) { stop('Phiên hoặc quyền đã thay đổi. Hãy tải lại để kiểm tra kết quả thực tế.'); return; }
+      modal.close(); showToast(services.mode === 'mock' ? 'Đã archive trong dữ liệu minh họa. Lịch sử được giữ lại.' : 'Đã archive tài sản. Lịch sử được giữ lại.'); onDone?.();
+    } catch (error) {
+      if (!active()) return;
+      if (!currentActor()) { stop('Phiên hoặc quyền đã thay đổi. Hãy tải lại để kiểm tra kết quả thực tế.'); return; }
+      const message = error?.code === 'CONCURRENCY_CONFLICT' ? 'Tài sản đã được cập nhật bởi người khác.' :
+        error?.code === 'ASSET_ACTIVE_WORKFLOW' ? 'Tài sản còn quy trình cấp phát/bảo trì đang hoạt động.' :
+        error?.code === 'SESSION_CHANGED' ? 'Phiên đăng nhập đã thay đổi. Hãy kiểm tra kết quả thực tế.' :
+        error?.status === 401 ? 'Phiên đăng nhập đã hết hạn.' : error?.status === 403 ? 'Bạn không có quyền archive tài sản.' :
+        error?.status === 404 ? 'Tài sản không còn khả dụng; chưa thể kết luận thao tác này đã thành công.' :
+        'Chưa xác nhận được kết quả archive. Không tự gửi lại; hãy tải lại danh sách để đối chiếu.';
+      // A network error may follow a committed DELETE. Require a fresh read,
+      // including after a same-account SESSION_CHANGED; never replay blindly.
+      stop(message);
+    } finally {
+      pending = false; confirm.removeAttribute('aria-busy'); if (active()) confirm.disabled = blocked;
+    }
+  } });
+  modal = openDialog({ title: 'Archive tài sản', body: h('div', { className: 'dialog-body' }, h('p', {}, 'Archive ', h('strong', {}, asset.assetCode), ' — ', asset.name, '? Thao tác không xóa vĩnh viễn hoặc mất lịch sử.'), h('p', { className: 'meta' }, services.mode === 'mock' ? 'Chỉ thay đổi dữ liệu demo trong bộ nhớ trình duyệt.' : 'Backend sẽ kiểm tra quyền, version và quy trình đang hoạt động.'), feedback), footer: [button('Hủy', { kind: 'secondary', onClick: () => modal.close() }), confirm], onClose: () => { closed = true; } });
+  return modal;
 }
 export async function allCatalog(service, filters = {}) {
   const first = await service.list({ ...filters, page: 1, pageSize: 100 });

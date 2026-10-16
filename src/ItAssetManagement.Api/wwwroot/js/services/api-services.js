@@ -153,7 +153,9 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
     async update(id, dto) { validate(validateAsset(dto, { isUpdate: true })); return request(`/assets/${idPath(id)}`, { method: 'PUT', body: { ...dto, ...(dto.purchasePrice == null ? {} : { purchasePrice: Number(dto.purchasePrice) }) } }); },
     archive(id, rowVersion) {
       if (!rowVersion) return Promise.reject(new ServiceError(428, 'PRECONDITION_REQUIRED', 'Tải lại tài sản trước khi archive.'));
-      if (typeof rowVersion !== 'string' || !/^[A-Za-z0-9+/]{22}==$/.test(rowVersion)) return Promise.reject(new ServiceError(400, 'VALIDATION_ERROR', 'Phiên bản archive không hợp lệ.'));
+      let validVersion = false;
+      try { validVersion = typeof rowVersion === 'string' && atob(rowVersion).length === 16 && btoa(atob(rowVersion)) === rowVersion; } catch { /* Malformed Base64 must not reach DELETE. */ }
+      if (!validVersion) return Promise.reject(new ServiceError(400, 'VALIDATION_ERROR', 'Phiên bản archive không hợp lệ.'));
       return request(`/assets/${idPath(id)}`, { method: 'DELETE', headers: { 'If-Match': `"${rowVersion}"` } });
     },
   };

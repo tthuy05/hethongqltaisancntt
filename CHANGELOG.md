@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — 16/10/2026 — Archive lifecycle
+
+- Fixed: Archive confirmation captures reviewed ID/version, rejects stale page/session actions and blocks blind replay after conflicts or uncertain outcomes; list confirmation reads single-flight safely.
+- Fixed: reject noncanonical strong If-Match before DELETE.235 frontend PASS; [handoff](docs/asset-archive-lifecycle-handoff.md). No backend/schema/production changes.
+
 ## Unreleased — 16/10/2026 — Login lifecycle
 
 - Fixed: stale login page responses cannot redirect after navigation or logout a newer session; readonly pending inputs, bounded password validation and password clearing on completion.

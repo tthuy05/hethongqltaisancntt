@@ -1,5 +1,9 @@
 # Project Status
 
+## 16/10/2026 — Archive lifecycle
+
+Thủy sửa xác nhận Archive/late response/single-flight và khóa replay sau unknown outcome; canonical If-Match,235 frontend PASS/43 syntax/47 source checks. [Evidence](docs/asset-archive-lifecycle-handoff.md). Không backend/schema/config/Neon/Render changes; branch review only.
+
 ## 16/10/2026 — Login lifecycle
 
 Thủy chặn stale login navigation/logout, khóa input khi gửi, xóa password input và kiểm return path nội bộ; 226 frontend PASS,43 syntax/47 source checks PASS. [Evidence và giới hạn](docs/login-lifecycle-handoff.md). Backend/config/shared Neon/Render giữ nguyên; không triển khai module của Thiện.
