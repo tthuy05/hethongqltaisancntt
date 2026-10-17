@@ -4,6 +4,7 @@ import { ServiceError } from './service-error.js';
 import { createAssignmentService } from './assignment-service.js';
 import { createLicenseReadService } from './license-service.js';
 import { createAssetHistoryReader } from './asset-history-service.js';
+import { createDashboardV2Reader } from './dashboard-v2-service.js';
 
 /** Same-origin client for M1 backend APIs; no automatic mock fallback. */
 export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThis), baseUrl = '/api/v1' } = {}) {
@@ -223,5 +224,6 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
   };
   const assignments = createAssignmentService({ request, idPath });
   const licenses = createLicenseReadService({ request, idPath });
-  return { mode: 'api', auth, assets, departments: masterService('department'), assetTypes: masterService('assetType'), users, roles, auditLogs, dashboard, assignments, licenses };
+  const dashboardV2 = createDashboardV2Reader({ request, queryString, getSession: currentSession });
+  return { mode: 'api', auth, assets, departments: masterService('department'), assetTypes: masterService('assetType'), users, roles, auditLogs, dashboard, dashboardV2, assignments, licenses };
 }

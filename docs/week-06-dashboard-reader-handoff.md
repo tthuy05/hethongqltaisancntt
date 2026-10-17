@@ -1,0 +1,7 @@
+# Thủy — Dashboard Week 6 reader (prepared), 17/10/2026
+
+`dashboardV2` trong API services cung cấp bốn GET theo contract W6 đang được chuẩn bị: EP-072 `summary`, EP-073 `assets`, EP-074 `alerts`, EP-075 `costs`. Client kiểm phiên và `dashboard.read`; endpoint chi phí đòi `dashboard.cost.read` riêng. `departmentId`, `groupBy`, `daysAhead` (1–365), thời gian ISO UTC hợp lệ và thứ tự khoảng thời gian được kiểm trước HTTP. Transport dùng bearer, no-store, không body, không retry/fallback sang số liệu Asset M1 khi API lỗi. Response muộn của phiên cũ vẫn bị API adapter chặn.
+
+Đây là **PREPARED**, chưa là Dashboard W6 đang chạy: `dashboardPage` và `dashboard.summary()` M1 không đổi; chưa có route hoặc menu gọi `dashboardV2`, chưa có widget/charts/cost UI, không gọi endpoint mới trên Render. Backend Dashboard/Reports cùng DTO đang là WIP địa phương và chưa nằm trong checkpoint nhánh review; contract này cần đối chiếu lại lúc tích hợp. W6-THUY-D2-03 vẫn PLANNED/PARTIAL, không đánh dấu DONE từ client này.
+
+4 ca reader synthetic PASS: đúng GET/filter/headers, deny trước fetch, ngày sai và interval đảo, 403/no retry/no fallback, SESSION_CHANGED không tiêu thụ response cũ. Toàn bộ frontend **283 PASS, 0 FAIL/SKIP**; 44 syntax/48 source checks PASS; build production API-only 39 assets PASS. Local WIP backend Release build 0 warning/error, 647 unit +158 offline PASS, 141 cloud SKIP; số liệu này không phải CI của checkpoint reader và không chứng minh truy vấn PostgreSQL thật. Không sửa migration, shared Neon, Render, config hoặc module Thiện.
