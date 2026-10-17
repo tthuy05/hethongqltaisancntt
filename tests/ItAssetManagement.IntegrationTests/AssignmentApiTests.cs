@@ -15,7 +15,7 @@ namespace ItAssetManagement.IntegrationTests;
 public sealed class AssignmentApiTests(MvpFixture fixture)
 {
     private const string Path = "/api/v1/asset-assignments";
-    private const string IsolatedDatabase = "it_asset_management_m1_verify_20261002";
+    private static string IsolatedDatabase => Environment.GetEnvironmentVariable("ITAM_TEST_DATABASE") ?? "it_asset_management_m1_verify_20261002";
 
     private async Task<T> ReadAsync<T>(Func<AppDbContext, Task<T>> work)
     {

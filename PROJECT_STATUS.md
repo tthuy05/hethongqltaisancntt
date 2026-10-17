@@ -1,5 +1,167 @@
 # Project Status
 
+## 17/10/2026 — Rà soát và publication helper Tuần 5 của Thủy
+
+Phạm vi đã chọn: License capacity/alerts, batch lifecycle metrics, Replacement policy và typed audit metadata; helper **PREPARED / UNIT-VERIFIED**, owner service integration/transaction race/production acceptance **PENDING**. Sửa 5 nhóm regression về transfer, count âm, schema bounds, self-transition và object mutation khi note không hợp lệ.
+
+Checkout riêng của source publication: Release 0 warning/error;643 unit PASS;158 offline integration PASS/141 cloud SKIP;283 frontend PASS;44 syntax/48 boundary PASS;69 published files/39 assets;32/36 Production HTTP smoke PASS. Linux container/CI cần kết quả đúng commit sau push. [Phạm vi và evidence](docs/thuy-review-2026-10-17.md), [handoff](docs/week-05-capacity-alert-query-handoff.md).
+
+Dashboard/Reports/Import/Export và báo cáo nghiệm thu Tuần 6–8 còn là **WIP / NOT ACCEPTED**; các bản nháp hoàn thành 100%, p95/EXPLAIN/PITR/live rehearsal chưa đủ bằng chứng. Không đưa chúng vào publication này. Không đổi config/migration/shared Neon/Render, không bật Assignment API và không đóng 30-task evidence Tuần 2 hoặc task phụ thuộc Thiện.
+
+## 16/10/2026 — User write lifecycle
+
+Thủy khóa captured User fields khi pending, kiểm response identity và giữ draft/khóa replay sau conflict/unknown; self-change→Login giữ nguyên.270frontend PASS/43syntax/47source checks; [addendum](docs/user-dialog-access-handoff.md). Không email thật/backend/config/shared/Render changes.
+
+## 16/10/2026 — User dialog access
+
+Thủy kiểm actor/hash/grant trước-sau reads và trước confirm trên User dialogs, chặn stale completion/resend feedback.265frontend PASS/43syntax/47source checks; [evidence và follow-up](docs/user-dialog-access-handoff.md). Không gửi email thật hoặc đổi backend/config/production; chưa đóng toàn User administration acceptance.
+
+## 16/10/2026 — Group editor lifecycle
+
+Thủy nối native Enter-submit, capture/readonly/single-flight và unknown-outcome recovery cho tạo/đổi tên nhóm;260frontend PASS/43syntax/47source checks. [Addendum](docs/permission-save-lifecycle-handoff.md). Không thay backend/grants/config/shared/Render; không coi frontend evidence là production RBAC acceptance.
+
+## 16/10/2026 — Group status lifecycle
+
+Thủy chặn stale/repeated group-status commands, giữ draft sau unknown/conflict và kiểm response state/permission sets.255frontend PASS/43syntax/47source checks; [addendum](docs/permission-save-lifecycle-handoff.md). Không thay backend/grants/config/shared/Render; create/rename editor follow-up còn riêng.
+
+## 16/10/2026 — Permission matrix save lifecycle
+
+Thủy snapshot/guard pending matrix save, giữ draft và chặn replay khi conflict/unknown, kiểm result trước selected state và hỗ trợ retry initial GET.252frontend PASS/43syntax/47source checks; [phạm vi và giới hạn](docs/permission-save-lifecycle-handoff.md). Không thay quyền thật, backend/config/shared/Render hoặc đóng toàn RBAC acceptance.
+
+## 16/10/2026 — Public request session isolation
+
+Thủy tách401 public activation khỏi invalidation của bearer session và xử lý lỗi JSON malformed bằng ServiceError giữ HTTP status.246frontend PASS/43syntax/47source checks; [evidence](docs/frontend-session-contract-handoff.md). Private401/expiry/revision rules giữ nguyên, không thay backend/email/config/production.
+
+## 16/10/2026 — Asset pending inputs
+
+Thủy khóa field khi lưu DTO đã capture, khôi phục readonly/disabled states sau completion/detach;243frontend PASS/43syntax/47source checks. [Addendum](docs/asset-save-lifecycle-handoff.md). Không thay API/backend/config/production.
+
+## 16/10/2026 — Asset-only reader
+
+Thủy tách optional catalog reads khỏi điều kiện tải danh sách Asset: respect từng grant, hiển thị lỗi lookup riêng, giữ URL filter và chặn stale actor/grant.242 frontend PASS/43 syntax/47 source checks; [evidence](docs/asset-list-access-handoff.md). Không cấp thêm quyền, sửa module Thiện hoặc thay backend/production.
+
+Follow-up actual HTTP/PostgreSQL isolated:1 new exact-single-grant reader case +3 affected cost cases PASS. Asset data/history không đổi sau denied writes; shared Neon/config/Render giữ nguyên. CI9b6c601 PASS242frontend/583unit/158offline,140cloud SKIP, Linux Docker smoke; case mới kiểm riêng, không tính cloud SKIP thành PASS.
+
+## 16/10/2026 — Archive lifecycle
+
+Thủy sửa xác nhận Archive/late response/single-flight và khóa replay sau unknown outcome; canonical If-Match,235 frontend PASS/43 syntax/47 source checks. [Evidence](docs/asset-archive-lifecycle-handoff.md). Không backend/schema/config/Neon/Render changes; branch review only.
+
+## 16/10/2026 — Login lifecycle
+
+Thủy chặn stale login navigation/logout, khóa input khi gửi, xóa password input và kiểm return path nội bộ; 226 frontend PASS,43 syntax/47 source checks PASS. [Evidence và giới hạn](docs/login-lifecycle-handoff.md). Backend/config/shared Neon/Render giữ nguyên; không triển khai module của Thiện.
+
+## 15/10/2026 — Activation client safety
+
+Thủy kiểm canonical token/DTO, duplicate URL token, single-flight/readonly và expired/unknown outcomes; không gửi mail thật hoặc đổi backend email/identity.215 frontend PASS/43syntax/47source. [Evidence](docs/activation-client-safety-handoff.md). Asset save cũng block same-account SESSION_CHANGED replay; shared/config/Render và module gates không đổi.
+
+## 15/10/2026 — Workflow guard fallback verification
+
+Thủy kiểm thêm3 actual Asset HTTP/PostgreSQL cases với ticket snapshots: open work chặn đúng, terminal work không chặn nhầm, version/history/audit bảo toàn. UI phân biệt dữ liệu Assignment chưa tích hợp với unassigned.583unit/158offline/205frontend PASS,140cloud SKIP; [evidence](docs/week-04-workflow-guard-verification.md). Không Maintenance API acceptance, schema/shared/config/Render hoặc activation changes.
+
+## 15/10/2026 — Asset save lifecycle
+
+Thủy chặn late save redirect/toast sau navigation/account change, default-deny save access và blind resubmit khi kết quả write chưa rõ. Giữ draft, explicit read reconciliation link không chuyển JWT;201 frontend PASS/43syntax/47source. [Giới hạn và kiểm thử](docs/asset-save-lifecycle-handoff.md). Không idempotency guarantee, backend/schema/config/shared/Render changes hoặc module activation.
+
+## 15/10/2026 — Asset cost field authorization
+
+Thủy sửa metadata-only update bị403 nhầm và chặn create/update price trái cost grant; giá ẩn được giữ nguyên nếu costless caller bỏ field. UI omit price thật, không gửinull/0.583 unit +158 offline integration +193 frontend PASS,137 cloud SKIP;3 new isolated PostgreSQL HTTP cases PASS sau red-run2FAIL tái hiện. [Evidence/compatibility](docs/asset-cost-field-handoff.md), ADR-033. Không schema/grant/config/shared/Render changes; review branch only.
+
+## 15/10/2026 — Asset retire UI
+
+Thủy nối action Retired qua endpoint hiện có, dialog lý do/xác nhận/version, chặn blind retry khi409/network hoặc kết quả write chưa rõ.190 frontend PASS /43syntax/47source checks;2 existing isolated PostgreSQL HTTP tests PASS. Backend không sửa; [handoff/evidence](docs/asset-retire-ui-handoff.md). Source branch review only, không đổi shared Neon/Render/module gates.
+
+## 15/10/2026 — Asset status history integration
+
+Thủy nối tab lịch sử trạng thái thực tế với EP-029, phân trang/UTC/tên người thực hiện hiện tại, guard quyền/phiên/late response và error/empty state. Backend chỉ thêm nullable display-name projection, không schema/quyền mới.181 frontend +576 unit +158 offline integration PASS,134 cloud SKIP;4 focused HTTP/PostgreSQL isolated PASS riêng. [Evidence/giới hạn](docs/week-04-asset-status-history-handoff.md). Không đóng Assignment/Maintenance acceptance, không thay shared Neon/Render/config; source branch only.
+
+## 15/10/2026 — License async access/query guards
+
+Thủy chặn late metadata sau revoke/account switch, snapshot session tránh expiry null crash và immutable query/filter/paging.167 frontend PASS /0 FAIL/SKIP;40 syntax/44 source checks PASS. [Regression addendum](docs/week-05-allocation-draft-handoff.md). No backend/schema/config/module activation changes; source rollout vẫn gated.
+
+## 15/10/2026 — Allocation draft form
+
+Thủy dựng form chuẩn bị allocation và detail composition riêng sau target picker; không nối API ghi hoặc mở app route/menu.163 frontend PASS,40 syntax/44 source checks PASS; browser isolated1 outer form/1 local prepared draft. [Scope và giới hạn](docs/week-05-allocation-draft-handoff.md). Actual AllocationService/DTO/HTTP/race acceptance vẫn chờ Thiện.
+
+## 15/10/2026 — Target selection và conflict UX
+
+Thủy hoàn thiện prepared user/asset target picker và shared409 draft-preserving refresh, nối Asset edit hiện có. 154 frontend PASS, 38 syntax/42 source-boundary PASS; browser isolated Enter lookup kiểm thực tế. [Evidence/limits](docs/week-05-license-target-conflict-handoff.md). Chưa POST Allocation, app License route/menu/module activation; source/config/shared DB/Render gates giữ nguyên.
+
+## 14/10/2026 — License frontend preparation
+
+Thủy có License read client/list/detail components, default disabled, chưa app menu/routes. 142 frontend PASS, 36 syntax/40 source-boundary PASS; isolated browser QA sửa mobile empty state. [DTO proposal/evidence](docs/week-05-license-ui-handoff.md). Không đổi backend Thiện, shared Neon, Render hoặc configuration.
+
+## 14/10/2026 — Replacement rule policy preparation
+
+Thủy chuẩn bị Admin-only rule create/update policy và inactive permission constants; 7 focused unit PASS. [Limitations](docs/week-05-rule-policy-handoff.md): no DI/endpoint/seed, chưa owner version/state/field projection/evaluator integration. Không dùng helper tests để đóng M3.
+
+## 14/10/2026 — Frontend session contract
+
+Thủy sửa login/me response validation và permission collection guard, không đổi backend API/token storage. 130 frontend PASS /0 FAIL/SKIP; 33 syntax /37 source-boundary PASS. [Evidence](docs/frontend-session-contract-handoff.md). CI mới phải xác minh riêng; shared Neon/Render/configuration giữ nguyên.
+
+## 14/10/2026 — License capacity protocol preparation
+
+Thủy review aggregate-capacity gap và coordinator protocol; 2 actual isolated PostgreSQL tests PASS (lock contention/reread, transfer rollback/commit). [Evidence/limitations](docs/week-05-license-capacity-review.md). Không sửa production code, schema, grants hoặc module của Thiện; Allocation API/HTTP/race acceptance vẫn PLANNED.
+
+## 14/10/2026 — Shared UI hints
+
+Thủy đã chuẩn bị Maintenance scope/cost và License key flags cho owner page integration. 125 frontend PASS, 33 syntax /37 source-boundary checks PASS. [Giới hạn](docs/week-04-05-ui-permissions-handoff.md): permission hints không thay backend authorization, không xác nhận module readiness; pages/menu/reveal UX còn PLANNED, production không đổi.
+
+## 14/10/2026 — Reveal/audit follow-up
+
+Thủy chuẩn bị audited LicenseKeyRevealService/no-store response adapter, chưa DI/endpoint/secret thật/seed. Sửa audit reader cho dynamic RBAC/invitation metadata. [Bàn giao và giới hạn](docs/week-05-license-reveal-handoff.md): 569 unit +158 offline integration PASS, 128 cloud SKIP; 1 PostgreSQL isolated rollback PASS riêng. Shared Neon/Render/Assignment activation không thay đổi; owner review và production rollout vẫn PENDING.
+
+## 14/10/2026 — Lifecycle query preparation (LOCAL / UNDER REVIEW)
+
+Thủy chuẩn bị W5-D4-01/03: immutable facts và readonly query từ actual_cost, raw status counts, age/warranty và missing-data flags; 11 unit PASS. [Handoff/evidence](docs/week-05-lifecycle-metrics-handoff.md). Không chạy evaluator/seed rule hoặc mở API. Key-security checkpoint `53b6056` đã push, CI run38450841891 SUCCESS gồm Linux container step; CI đó chưa bao gồm metrics WIP.
+
+Final metrics: 11 unit +2 isolated PostgreSQL PASS; trước checkpoint full offline539unit/157integrationPASS,127cloudSKIP,Release0warning/error. Key-security CI run38450841891 kiểm528unit/157offline/119frontend và Linux Docker smokeOFF32/ON36, synthetic merge `de442c1`; không claim Render deploy.
+
+## 14/10/2026 — License security prerequisites (LOCAL / UNDER REVIEW)
+
+Thủy chuẩn bị trước W5-D1-01/03 và D2-01: versioned AES-256-GCM/key-ring/key field policy, 34 focused unit PASS, Release 0 warning/error. [Bàn giao](docs/week-05-license-security-handoff.md). Chưa DI/secret production, persist key hoặc mở License API; M2 chưa nghiệm thu. Module của Thiện, key format/clear/recovery còn cần review.
+
+Checkpoint Tuần4 `c40db25` đã push nhánh PR #1 draft. [CI run 38448673624](https://github.com/tthuy05/hethongqltaisancntt/actions/runs/38448673624) **SUCCESS**: 494 unit +157 offline integration PASS/125 cloud SKIP, 119 frontend PASS; actual Linux Docker smoke OFF32/ON36 PASS. CI artifact stamp là synthetic merge `96aacc0e147b5be79098e93459d88757f42284df`; không phải revision Render. CI này không chứng minh License WIP mới. Main/DB rollout vẫn blocked theo điều kiện đã ghi.
+
+## 14/10/2026 — Checkpoint nền Tuần 4 để bàn giao Thiện
+
+Đã gom shared status/scope/cost/audit/protocol/client thành [checkpoint review](docs/week-04-foundation-checkpoint.md). Full local verification: **494 unit +157 offline integration PASS**, 125 cloud SKIP; **119 frontend PASS**, Release 0 warning/error. Publication chuẩn bị trên nhánh PR #1 draft, không merge/deploy main hoặc chạy shared migration. Trạng thái local trong các addendum trước là evidence tại thời điểm thực hiện, không thay thế checkpoint này. Week 5 security prerequisites có thể chuẩn bị độc lập, không nhận M2 đã nghiệm thu.
+
+## 14/10/2026 — Thủy: shared Assignment API client (LOCAL / UNDER REVIEW)
+
+Đã bổ sung adapter 4 routes Assignment hiện có và user lookup, dùng cùng session/error transport; validate XOR/UTC/query/version trước request. [Bàn giao client cho Thiện](docs/week-04-api-client-handoff.md). **45 client/session/service +16 build/production packaging tests PASS**, 32 syntax +36 CSP/boundary checks PASS; production 31 local assets. D4-04/D5-03 mới đạt fallback client, page/menu và Maintenance adapter còn PLANNED. Source chưa commit/push/deploy, không mở feature flags hoặc ghi DB.
+
+## 12/10/2026 — Thủy: cross-module protocol verification (LOCAL)
+
+Đã bổ sung và chạy **5 isolated PostgreSQL test cases PASS /0 FAIL /0 SKIP** cho AssignmentService thật tương tác shared Maintenance status/audit helpers: repair về InUse/InStock/Broken, return khi đang sửa và rollback lỗi sau Save. [Phạm vi và evidence](docs/week-04-cross-module-verification.md). Các bước Maintenance là fixture transaction; D5-02 còn PARTIAL trước Service/Controller thật của Thiện. Chưa mở API, đổi schema/configuration hoặc commit/push. Build Release 0 warning/error; 36 giây test execution.
+
+## 12/10/2026 — Thủy: shared audit ticket/history (LOCAL / UNDER REVIEW)
+
+Đã bổ sung MaintenanceAuditState/MaintenanceAudit và writer/reader metadata allowlist: kiểm actor/correlation/snapshot, ghi audit cho cả ticket lẫn MaintenanceHistory, ghi dấu cost thay đổi nhưng không lưu số tiền/free text. [Bàn giao và verification](docs/week-04-maintenance-audit-handoff.md). Build Release 0 warning/error; focused 110 unit PASS. Helper chưa nối vào API Maintenance Thiện; D5-01 mới đạt phần shared helper, chưa nghiệm thu end-to-end. Source chưa commit/push; migration/configuration/production không đổi.
+
+PostgreSQL affected **3 PASS /0 FAIL /0 SKIP** trên target isolated đã có: commit đồng bộ và hai failure/rollback cases (thiếu history audit; lỗi sau audit). Không ghi shared database hoặc nghiệm thu endpoint chưa triển khai; evidence ở handoff.
+
+## 12/10/2026 — Thủy: Maintenance scope/cost helper (LOCAL / UNDER REVIEW)
+
+D4-02 có helper phân biệt permission/object scope/financial fields, chặn Support truy cập ticket người khác hoặc gửi cost kể cả null/0. D4-03 có 21 unit +9 HTTP policy-harness PASS; không phải endpoint Maintenance thật. [Bàn giao, test và giới hạn](docs/week-04-maintenance-access-handoff.md). Không đăng ký quyền/seed/grant mới, không sửa Controller/Service Thiện; queue policy, custom-group scope và endpoint integration chưa nghiệm thu. Source WIP chưa commit/push, DB/Render không đổi.
+
+Release build 0 warning/error. Regression lượt scope/cost: **476 unit +157 offline integration PASS**, 117 cloud/opt-in SKIP; không cộng lại 30 focused cases. Không truy cập Neon trong lượt helper này; 5 PostgreSQL PASS ở mục shared-status phía dưới là evidence lượt trước, không tuyên bố đã chạy lại.
+
+## 12/10/2026 — Thủy Tuần 4: shared status contract (LOCAL / UNDER REVIEW)
+
+Đã bổ sung helper chuyển trạng thái/history theo BR-007/013 và dùng trong retire hiện có, giữ permission/version/workflow guard. Contract cho Thiện, correlation/audit/transaction boundary và các trường hợp return/transfer/cancel không đổi status nằm tại [bàn giao Tuần 4](docs/week-04-shared-status-handoff.md). D1-04 đã chuẩn bị code/tài liệu, chờ Thiện review; D4-01 mới hoàn thành helper, chưa có Maintenance workflow end-to-end. Không sửa Controller/Service của Thiện, không migration/seed shared/bật Assignment API.
+
+Build Release 0 warning/error; offline 455 unit +148 integration PASS, 117 explicit-opt-in SKIP; chạy riêng 5 affected PostgreSQL tests PASS/0 FAIL/0 SKIP trên database isolated (bao gồm retire HTTP, active-workflow guard và rollback thật). Evidence chi tiết ở handoff; không kiểm shared bằng phép ghi. Chưa commit/push source lượt này; ba file báo cáo WIP cũ giữ nguyên.
+
+Cập nhật checkpoint trước: `5cbedf1` đã push lên nhánh PR #1; CI run `38159014305` và Linux Docker smoke PASS, PR còn draft. Không có deploy mới; không dùng CI này làm bằng chứng cho helper chưa commit. Các mục ngày 11/10 trở về trước là snapshot lịch sử.
+
+## 11/10/2026 — Lecturer feedback: LOCAL IMPLEMENTATION / UNDER REVIEW / NOT DEPLOYED
+
+Đã bổ sung source cho 6 nhận xét: nhóm quyền động, invitation qua email API/sandbox, activation UTC 30 phút một lần, tên phòng ban, bỏ “Đối tượng” ở Nhật ký, mã tài sản sequence/bất biến. [Test và trạng thái hoàn tất](docs/lecturer-feedback-remediation-report.md).
+
+Baseline đọc thực tế: main/origin/main và Render `1bc276741875573e85784d5cb57cfead8930c045`; shared Neon 18 bảng/41 FK/83 CHECK/96 indexes/3 migrations, 28 permissions/49 grants. Không ghi schema/dữ liệu/quyền shared; Assignment vẫn disabled. Migration mới `20261011103054_LecturerFeedbackIdentityAndAssetCodes` chỉ apply trên database riêng, shared **NOT APPLIED**. Ba migration cũ bất biến.
+
+Email Brevo đã được người dùng bổ sung/configure local và báo gửi được; source/template/provider-mock cases đã review PASS. E2E inbox/provider production **NOT VERIFIED**, không gửi email thật khi kiểm thử. Publication được duyệt trên nhánh `codex/lecturer-feedback`; chưa merge/deploy/apply shared. Kết quả: **332 unit + 225 integration + 114 frontend PASS**, 2 historical schema SKIP; live mail test không an toàn đã loại bỏ, không tính PASS. Release 0 warning/error; production package và 32 HTTP smoke offline PASS. CI/Linux Docker cần xác minh trên PR trước merge; migration shared cần duyệt riêng. WIP/report cũ giữ nguyên. Các checkpoint ngày 08–09/10 phía dưới là lịch sử, không thay thế snapshot ngày 11/10.
+
 ## Safe rollout preparation — 09/10/2026: PREPARED / UNDER REVIEW
 
 Đã tách patch A độc lập (model 10 bảng/19 FK, 25 permissions, chỉ InitialM1), thêm immutable `/health/version` và Assignment rollout mặc định false. Bật nhầm khi thiếu schema/grants trả 503 trước Controller, không 500. Dashboard thực tế: Render Live `9524a6c`/main/Docker, **On Commit** (khác YAML `checksPass`); public `/health/version` trả 404 nên A chưa deploy.

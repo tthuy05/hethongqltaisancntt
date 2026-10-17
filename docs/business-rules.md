@@ -1,5 +1,14 @@
 # Business Rules
 
+## LF rules — 11/10/2026, source local / chưa deploy
+
+1. Nhóm mới không có grant; union permission active/known từ role active, refresh mỗi request. Admin membership bắt buộc khi quản lý matrix hoặc xem audit; delegated role assign không được cấp Admin/quyền vượt quyền hiện tại. Default groups protected, last confirmed/unlocked/active Admin protected; pending Admin không được tính là Admin dự phòng.
+2. Invitation tạo user + selected role links + audit atomic. Pending không login. Random token 32 bytes, chỉ lưu SHA-256, hạn UTC 30 phút; tại expiry là invalid, một lần; resend thay hash; email thất bại không tạo user trùng. Activation đặt password hash/confirmed/token version và xóa hash/expiry trong transaction. Không log token/password.
+3. Mã tài sản sequence AST tự sinh, unique xuyên cả archived assets; immutable trên service/EF/DB trigger. Không renumber mã cũ hoặc khi chuyển phòng/status. Sequence gaps được phép.
+4. Department ID/FK/audit identity không xóa; UI hiển thị tên hoặc “không còn khả dụng”. Bỏ “Đối tượng” chỉ tại Audit UI theo xác nhận user.
+
+[Evidence](lecturer-feedback-remediation-report.md). Các rule Tuần 2 phía dưới giữ làm baseline thiết kế; addendum này thay phần fixed roles/manual asset code/initial password đã bị supersede.
+
 > Trạng thái: **PLANNED — WEEK 2 ANALYSIS BASELINE**  
 > Các rule là contract xuyên suốt service, database, authorization, API error và test. Chưa rule nào được coi là implemented hoặc verified.
 

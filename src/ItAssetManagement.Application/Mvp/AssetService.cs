@@ -2,7 +2,7 @@ using ItAssetManagement.Domain.Entities;
 
 namespace ItAssetManagement.Application.Mvp;
 
-public sealed class AssetService(IRepository repo, IUnitOfWork uow, IAuditWriter audit, IActor actor)
+public sealed class AssetService(IRepository repo, IUnitOfWork uow, IAuditWriter audit, IActor actor, IAssetCodeGenerator? codes = null)
 {
     private IQueryable<AssetDto> Project(IQueryable<Asset> source)
     {
@@ -53,11 +53,13 @@ public sealed class AssetService(IRepository repo, IUnitOfWork uow, IAuditWriter
     }
     public async Task<AssetDto> CreateAsync(AssetRequest x, CancellationToken ct)
     {
+        RequireCostWrite(x);
         Validation.Asset(x, false);
         var id = await uow.RunAsync(async () =>
         {
             await ReferencesAsync(x, null, ct); await UniqueAsync(x, 0, ct);
-            var asset = new Asset { CreatedByUserId = actor.UserId };
+            var asset = new Asset { CreatedByUserId = actor.UserId,
+                AssetCode = await (codes ?? throw new InvalidOperationException("Asset code generator required.")).NextAsync(ct) };
             Apply(asset, x); repo.Add(asset); await repo.SaveAsync(ct);
             repo.Add(new AssetStatusHistory { AssetId = asset.Id, ToStatus = "IN_STOCK", Source = "SYSTEM",
                 Reason = "Tạo tài sản", ChangedByUserId = actor.UserId, CorrelationId = actor.CorrelationId, ChangedAtUtc = DateTime.UtcNow });
@@ -67,15 +69,14 @@ public sealed class AssetService(IRepository repo, IUnitOfWork uow, IAuditWriter
     }
     public async Task<AssetDto> UpdateAsync(long id, AssetRequest x, CancellationToken ct)
     {
+        RequireCostWrite(x);
         Validation.Asset(x, true);
         await uow.RunAsync(async () =>
         {
             await repo.LockAssetAsync(id, ct);
             var asset = await TrackedAsync(id, ct); var before = Snapshot(asset);
             repo.ExpectVersion(asset, Validation.Version(x.RowVersion));
-            if (!actor.Has(Permissions.AssetCost) && x.PurchasePrice != asset.PurchaseCost)
-                throw new BusinessException(403, "FORBIDDEN", "Không có quyền sửa chi phí.");
-            await ReferencesAsync(x, asset, ct); await UniqueAsync(x, id, ct); Apply(asset, x);
+            await ReferencesAsync(x, asset, ct); await UniqueAsync(x, id, ct); Apply(asset, x, actor.Has(Permissions.AssetCost));
             asset.UpdatedByUserId = actor.UserId; Record("assets.update", asset, before); await repo.SaveAsync(ct); return true;
         }, ct);
         return await GetAsync(id, ct);
@@ -101,9 +102,8 @@ public sealed class AssetService(IRepository repo, IUnitOfWork uow, IAuditWriter
             repo.ExpectVersion(asset, version);
             if (asset.CurrentStatus is not ("IN_STOCK" or "BROKEN")) throw new BusinessException(409, "ASSET_STATUS_CONFLICT", "Chuyển trạng thái không hợp lệ.");
             if (await repo.HasActiveWorkflowAsync(id, ct)) throw Workflow();
-            repo.Add(new AssetStatusHistory { AssetId = id, FromStatus = asset.CurrentStatus, ToStatus = "RETIRED", Reason = reason,
-                Source = "ADMIN", ChangedAtUtc = DateTime.UtcNow, ChangedByUserId = actor.UserId, CorrelationId = actor.CorrelationId });
-            asset.CurrentStatus = "RETIRED"; asset.UpdatedByUserId = actor.UserId;
+            repo.Add(AssetStatusTransitions.Apply(asset, "RETIRED", AssetStatusChangeSource.Admin,
+                actor, DateTime.UtcNow, reason));
             Record("assets.status.change", asset, before); await repo.SaveAsync(ct); return true;
         }, ct);
         return await GetAsync(id, ct);
@@ -112,9 +112,16 @@ public sealed class AssetService(IRepository repo, IUnitOfWork uow, IAuditWriter
     {
         await GetAsync(id, ct); Validation.List(q, true);
         var query = repo.Query<AssetStatusHistory>().Where(x => x.AssetId == id); var total = await repo.CountAsync(query, ct);
-        var items = await repo.ListAsync(query.OrderByDescending(x => x.ChangedAtUtc).ThenByDescending(x => x.Id)
-            .Skip((q.Page - 1) * q.PageSize).Take(q.PageSize)
-            .Select(x => new HistoryDto(x.Id, x.FromStatus, x.ToStatus, x.Reason, x.Source, x.ChangedAtUtc, x.ChangedByUserId, x.CorrelationId)), ct);
+        var page = query.OrderByDescending(x => x.ChangedAtUtc).ThenByDescending(x => x.Id)
+            .Skip((q.Page - 1) * q.PageSize).Take(q.PageSize);
+        var projection = from history in page
+                         join user in repo.Query<User>() on history.ChangedByUserId equals (long?)user.Id into actors
+                         from user in actors.DefaultIfEmpty()
+                         orderby history.ChangedAtUtc descending, history.Id descending
+                         select new HistoryDto(history.Id, history.FromStatus, history.ToStatus, history.Reason,
+                             history.Source, history.ChangedAtUtc, history.ChangedByUserId, history.CorrelationId)
+                         { ChangedByDisplayName = user == null ? null : user.FullName };
+        var items = await repo.ListAsync(projection, ct);
         return new(items.Select(x => x with { FromStatus = x.FromStatus == null ? null : StatusMap.ToApi(x.FromStatus), ToStatus = StatusMap.ToApi(x.ToStatus) }).ToList(),
             q.Page, q.PageSize, total, (int)Math.Ceiling(total / (double)q.PageSize));
     }
@@ -130,17 +137,21 @@ public sealed class AssetService(IRepository repo, IUnitOfWork uow, IAuditWriter
     }
     private async Task UniqueAsync(AssetRequest x, long id, CancellationToken ct)
     {
-        var code = x.AssetCode.ToLowerInvariant(); var serial = x.SerialNumber?.ToLowerInvariant();
-        if (await repo.AnyAsync(repo.Query<Asset>().Where(a => a.Id != id && a.AssetCode.ToLower() == code), ct))
-            throw new BusinessException(409, "ASSET_CODE_CONFLICT", "Mã tài sản đã tồn tại.");
+        var serial = x.SerialNumber?.ToLowerInvariant();
         if (serial != null && await repo.AnyAsync(repo.Query<Asset>().Where(a => a.Id != id && a.SerialNumber != null && a.SerialNumber.ToLower() == serial), ct))
             throw new BusinessException(409, "ASSET_SERIAL_CONFLICT", "Serial đã tồn tại.");
     }
-    private static void Apply(Asset a, AssetRequest x)
+    private void RequireCostWrite(AssetRequest x)
     {
-        a.AssetCode = x.AssetCode; a.Name = x.Name; a.AssetTypeId = x.AssetTypeId; a.OwningDepartmentId = x.OwningDepartmentId;
+        if (x.HasPurchasePrice && !actor.Has(Permissions.AssetCost))
+            throw new BusinessException(403, "FORBIDDEN", "Không có quyền sửa chi phí.");
+    }
+    private static void Apply(Asset a, AssetRequest x, bool updateCost = true)
+    {
+        a.Name = x.Name; a.AssetTypeId = x.AssetTypeId; a.OwningDepartmentId = x.OwningDepartmentId;
         a.SerialNumber = x.SerialNumber; a.Manufacturer = x.Brand; a.Model = x.Model; a.Specification = x.Specification;
-        a.OperatingSystem = x.OperatingSystem; a.Location = x.Location; a.PurchaseCost = x.PurchasePrice;
+        a.OperatingSystem = x.OperatingSystem; a.Location = x.Location;
+        if (updateCost) a.PurchaseCost = x.PurchasePrice;
         a.PurchaseDate = x.PurchaseDate; a.WarrantyEndDate = x.WarrantyExpirationDate; a.Notes = x.Note;
     }
     // Explicit safe allowlist: no credential, token or arbitrary entity serialization.

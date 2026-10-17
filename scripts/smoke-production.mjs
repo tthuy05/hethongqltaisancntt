@@ -14,6 +14,7 @@ const fixture = {
   Jwt__SigningKey: 'synthetic-deployment-smoke-key-never-used-for-real-tokens-2026',
   AllowedHosts: 'localhost;127.0.0.1', Frontend__Enabled: 'true', Swagger__Enabled: 'false',
   Features__AssignmentApi__Enabled: 'false',
+  Maintenance__Enabled: 'false',
   RENDER: 'true', RENDER_EXTERNAL_HOSTNAME: 'itam-offline-fixture.onrender.com',
 };
 
@@ -25,7 +26,7 @@ async function freePort() {
   return port;
 }
 
-async function check(origin, expectedRevision) {
+async function check(origin, expectedRevision, maintenance) {
   const request = (target, options = {}) => fetch(`${origin}${target}`, { signal: AbortSignal.timeout(5000), ...options });
   // Node fetch intentionally ignores caller Host overrides. Raw HTTP is needed
   // to verify the real ASP.NET HostFiltering middleware, not a helper string.
@@ -53,9 +54,51 @@ async function check(origin, expectedRevision) {
   const version = await versionResponse.json();
   assert.equal(version.workflowCompatibility, 'asset-workflow-per-asset-v1');
   assert.equal(version.assignmentApiEnabled, false, 'Stage A must report Assignment rollout disabled.');
+  assert.equal(version.maintenanceModeEnabled, maintenance, 'Maintenance state must match the process configuration.');
   assert(version.artifactRevision === null || /^[0-9a-f]{40}$/u.test(version.artifactRevision));
   if (expectedRevision) assert.equal(version.artifactRevision, expectedRevision, 'Published artifact revision does not match the expected commit.');
   checks++;
+  if (maintenance) {
+    for (const [target, method] of [
+      ['/health/live', 'HEAD'], ['/health/version', 'HEAD'], ['/HEALTH/VERSION?maintenance=false', 'GET'],
+    ]) {
+      const response = await request(target, { method });
+      assert.equal(response.status, 200, `Maintenance health allowlist failed: ${method} ${target}`);
+      if (method === 'HEAD') assert.equal(await response.text(), '');
+      checks++;
+    }
+    for (const [target, method] of [
+      ['/', 'GET'], ['/', 'HEAD'], ['/index.html', 'GET'], ['/css/app.css', 'GET'], ['/js/app.js', 'GET'],
+      ['/api/v1/assets', 'GET'], ['/api/v1/assets', 'POST'], ['/api/v1/assets/1', 'PUT'],
+      ['/api/v1/assets/1/status', 'PATCH'], ['/api/v1/assets/1', 'DELETE'],
+      ['/api/v1/auth/login', 'POST'], ['/api/v1/auth/me', 'GET'], ['/api/v1/auth/activate', 'POST'],
+      ['/api/v1/users', 'POST'], ['/api/v1/roles/1/permissions', 'PUT'], ['/api/v1/departments', 'GET'],
+      ['/api/v1/asset-types', 'GET'], ['/api/v1/audit-logs', 'GET'], ['/api/v1/asset-assignments', 'GET'],
+      ['/api/v1/asset-assignments/1/return', 'POST'], ['/health/ready', 'GET'], ['/swagger/', 'GET'],
+      ['/openapi/v1.json', 'GET'], ['/health/live/', 'GET'], ['/health/live-extra', 'GET'],
+      ['/health/version/anything', 'GET'], ['/health/live', 'POST'], ['/health/version', 'OPTIONS'],
+      ['/not-a-route?maintenance=false&bypass=true', 'GET'],
+    ]) {
+      const response = await request(target, {
+        method, headers: { Authorization: 'Bearer invalid-synthetic-token', 'X-Maintenance-Bypass': 'true', 'Content-Type': 'application/json' },
+        ...(!['GET', 'HEAD'].includes(method) ? { body: 'not-json' } : {}),
+      });
+      assert.equal(response.status, 503, `Maintenance bypass: ${method} ${target}`);
+      assert.equal(response.headers.get('cache-control'), 'no-store');
+      assert.equal(response.headers.get('retry-after'), '60');
+      assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+      if (method === 'HEAD') assert.equal(await response.text(), '');
+      else {
+        const error = await response.json();
+        assert.equal(error.code, 'MAINTENANCE_MODE'); assert.equal(error.status, 503);
+        assert.equal(error.detail, 'Hệ thống đang bảo trì. Vui lòng thử lại sau.');
+      }
+      checks++;
+    }
+    assert.equal(await hostStatus(fixture.RENDER_EXTERNAL_HOSTNAME), 200); checks++;
+    assert.equal(await hostStatus('unlisted-host.invalid'), 400); checks++;
+    return checks;
+  }
   // Stage A must not instantiate a business Controller/service against missing
   // workflow tables. Synthetic DB credentials make accidental access fail.
   for (const [target, method] of [
@@ -93,10 +136,13 @@ async function check(origin, expectedRevision) {
 
 async function main() {
   const [mode, target, ...rest] = process.argv.slice(2);
-  assert(['--publish', '--image'].includes(mode) && target && (rest.length === 0 ||
-    rest.length === 2 && rest[0] === '--expected-revision' && /^[0-9a-fA-F]{40}$/u.test(rest[1])),
-  'Usage: node scripts/smoke-production.mjs (--publish <directory> | --image <docker-image>) [--expected-revision <full-commit-sha>]');
-  const expectedRevision = rest.length === 2 ? rest[1].toLowerCase() : null;
+  const maintenance = rest.at(-1) === '--maintenance';
+  const revisionArguments = maintenance ? rest.slice(0, -1) : rest;
+  assert(['--publish', '--image'].includes(mode) && target && (revisionArguments.length === 0 ||
+    revisionArguments.length === 2 && revisionArguments[0] === '--expected-revision' && /^[0-9a-fA-F]{40}$/u.test(revisionArguments[1])),
+  'Usage: node scripts/smoke-production.mjs (--publish <directory> | --image <docker-image>) [--expected-revision <full-commit-sha>] [--maintenance]');
+  const expectedRevision = revisionArguments.length === 2 ? revisionArguments[1].toLowerCase() : null;
+  fixture.Maintenance__Enabled = maintenance ? 'true' : 'false';
   const port = await freePort();
   const origin = `http://127.0.0.1:${port}`;
   let child;
@@ -120,8 +166,8 @@ async function main() {
       const result = spawnSync('docker', arguments_, { encoding: 'utf8', windowsHide: true, timeout: 30000 });
       assert.equal(result.status, 0, 'Could not start the synthetic Production smoke container.');
     }
-    const checks = await check(origin, expectedRevision);
-    console.log(`PASS: ${checks} Production HTTP smoke checks (${mode === '--image' ? 'Linux Docker container' : 'published .NET application'}). No database query, seed or migration; live Neon login/data verification remains a separate manual gate.`);
+    const checks = await check(origin, expectedRevision, maintenance);
+    console.log(`PASS: ${checks} Production HTTP smoke checks (${mode === '--image' ? 'Linux Docker container' : 'published .NET application'}, maintenance ${maintenance ? 'ON' : 'OFF'}). No database query, seed or migration; live Neon login/data verification remains a separate manual gate.`);
   } catch (error) {
     if (mode === '--image') output = spawnSync('docker', ['logs', container], { encoding: 'utf8', windowsHide: true, timeout: 10000 }).stdout || '';
     // Only this synthetic test process is logged; real hosting secrets are never supplied.

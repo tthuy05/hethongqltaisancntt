@@ -1,5 +1,12 @@
 # Chiến lược kiểm thử
 
+## LF regression 11/10/2026
+
+Database mới độc lập, không reuse old fixture/neondb. Synthetic legacy rows tạo ở S18 rồi migrate mới để kiểm giữ code/password hash/confirmed default. Unit kiểm token/hash/HTTPS email/sandbox/migration SQL. HTTP/EF integration kiểm custom roles, pending activation/resend/expiry/replay/concurrency, revocation và sequence/immutable trigger. Behavioral DOM tests chạy chính UI modules, không thay thế browser layout QA. Isolated fixture dùng IP giả riêng mỗi request để tránh limiter test nhiễu chéo, không nới policy production.
+
+Kết quả cuối source có Brevo: 332 unit/225 integration/114 frontend PASS; 9 Lecturer HTTP cases nằm trong 225. Một live email test của người dùng excluded/NOT RUN vì không gửi thư thật, và token riêng của bài test không phải token account lưu DB. Hai historical FullSchema tests opt-in riêng chưa rerun: S18/12→18 đã hoàn tất trước task, không viết lại migration cũ. Docker local NOT RUN nếu engine unavailable. Không real mail/production writes. [Lệnh, kết quả, skip và evidence](lecturer-feedback-remediation-report.md).
+
+
 > Deploy-preparation addendum07/10/2026: đã thêm tests cho API-only Production graph/publish-secret boundary/host-port-trusted-proxy, published HTTP smoke và Docker Linux smoke trong CI. Workflow không dùng Neon secret, opt-out cloud tests và báo SKIP đúng thực tế; không DML/reset shared DB. [Kết quả lượt mới và public checklist](render-deployment.md) độc lập với historical320PASS và human acceptance; có workflow không đồng nghĩa GitHub CI đã chạy.
 
 > **M1 business/unit/HTTP/live Neon tests EXECUTED** 02–03/10/2026. [Current totals/commands/isolation/limitations](m1-backend-handoff.md); historical 25 tests/37 setup and Week 2 21/24 checks preserved separately. Existing isolated DB reused; no new DB, no shared reset. Tests require explicit opt-in and retain namespaced fixtures.

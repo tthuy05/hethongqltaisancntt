@@ -29,9 +29,9 @@ public static class UserAccountValidation
     }
     public static byte[] Roles(ReplaceUserRolesRequest request)
     {
-        if (request.RoleIds == null || request.RoleIds.Length > Permissions.Roles.Length ||
+        if (request.RoleIds == null || request.RoleIds.Length > 50 ||
             request.RoleIds.Any(x => x <= 0) || request.RoleIds.Distinct().Count() != request.RoleIds.Length)
-            throw Validation.Invalid("roleIds", "Danh sách tối đa 3 ID dương, không trùng; [] để bỏ mọi role.");
+            throw Validation.Invalid("roleIds", "Danh sách tối đa 50 ID dương, không trùng; [] để bỏ mọi nhóm.");
         request.RoleIds = request.RoleIds.Order().ToArray();
         return Validation.Version(request.RowVersion);
     }
@@ -55,13 +55,13 @@ public sealed class UserAccountService(IRepository repo, IAccountPersistence acc
         // Same shared identity lock as profile writes; one global lock serializes last-Admin checks.
         await repo.LockAsync("users-identity", ct);
         var caller = await repo.FirstAsync(repo.Query<User>().Where(x => x.Id == actor.UserId), ct);
-        if (caller == null || !caller.IsActive || caller.IsAdminLocked || caller.LockoutEndUtc > DateTime.UtcNow ||
+        if (caller == null || !caller.IsEmailConfirmed || !caller.IsActive || caller.IsAdminLocked || caller.LockoutEndUtc > DateTime.UtcNow ||
             actor.TokenVersion == null || caller.TokenVersion != actor.TokenVersion)
             throw new BusinessException(401, "UNAUTHORIZED", "Yêu cầu đăng nhập hợp lệ.");
         var allowed = from link in repo.Query<UserRole>() join role in repo.Query<Role>() on link.RoleId equals role.Id
                       join grant in repo.Query<RolePermission>() on role.Id equals grant.RoleId
                       join definition in repo.Query<Permission>() on grant.PermissionId equals definition.Id
-                      where link.UserId == caller.Id && role.IsActive && Permissions.Roles.Contains(role.Code) &&
+                      where link.UserId == caller.Id && role.IsActive &&
                           definition.IsActive && definition.Code == permission select definition.Id;
         if (!await repo.AnyAsync(allowed, ct)) throw new BusinessException(403, "FORBIDDEN", "Quyền đã thay đổi; tải lại phiên làm việc.");
         var user = await repo.FirstAsync(repo.Query<User>(true).Where(x => x.Id == id), ct)
@@ -77,10 +77,10 @@ public sealed class UserAccountService(IRepository repo, IAccountPersistence acc
     private async Task ProtectLastAdminAsync(User user, bool becomesUnavailable, CancellationToken ct)
     {
         var now = DateTime.UtcNow;
-        if (!becomesUnavailable || !user.IsActive || user.IsAdminLocked || user.LockoutEndUtc > now ||
+        if (!becomesUnavailable || !user.IsEmailConfirmed || !user.IsActive || user.IsAdminLocked || user.LockoutEndUtc > now ||
             !await repo.AnyAsync(AdminUsers().Where(x => x == user.Id), ct)) return;
         var admins = AdminUsers();
-        var other = repo.Query<User>().Where(x => x.Id != user.Id && x.IsActive && !x.IsAdminLocked &&
+        var other = repo.Query<User>().Where(x => x.Id != user.Id && x.IsEmailConfirmed && x.IsActive && !x.IsAdminLocked &&
             (x.LockoutEndUtc == null || x.LockoutEndUtc <= now) && admins.Contains(x.Id));
         if (!await repo.AnyAsync(other, ct))
             throw new BusinessException(409, "LAST_ADMIN_PROTECTED", "Không được làm mất Admin đang có thể đăng nhập cuối cùng.");
@@ -116,9 +116,20 @@ public sealed class UserAccountService(IRepository repo, IAccountPersistence acc
         return uow.RunAsync(async () =>
         {
             var user = await BeginAsync(id, Permissions.RoleAssign, version, ct);
-            var selected = await repo.ListAsync(repo.Query<Role>().Where(x => request.RoleIds.Contains(x.Id) &&
-                x.IsActive && Permissions.Roles.Contains(x.Code)), ct);
-            if (selected.Count != request.RoleIds.Length) throw Validation.Invalid("roleIds", "Role phải tồn tại, active và thuộc bộ ba cố định.");
+            var selected = await repo.ListAsync(repo.Query<Role>().Where(x => request.RoleIds.Contains(x.Id) && x.IsActive), ct);
+            if (selected.Count != request.RoleIds.Length) throw Validation.Invalid("roleIds", "Nhóm phải tồn tại và đang hoạt động.");
+            // Delegated identity operators cannot grant themselves or anyone else more
+            // permissions than they currently hold, or grant the protected Admin role.
+            var callerIsAdmin = await repo.AnyAsync(AdminUsers().Where(x => x == actor.UserId), ct);
+            if (!callerIsAdmin)
+            {
+                var grants = from grant in repo.Query<RolePermission>() join definition in repo.Query<Permission>() on grant.PermissionId equals definition.Id
+                             where request.RoleIds.Contains(grant.RoleId) && definition.IsActive select definition.Code;
+                var codes = await repo.ListAsync(grants.Distinct(), ct);
+                var currentCodes = await repo.ListAsync(EffectivePermissionQuery.ForUser(repo, actor.UserId!.Value), ct);
+                if (selected.Any(x => x.Code == "ADMIN_IT") || codes.Any(code => !currentCodes.Contains(code)))
+                    throw new BusinessException(403, "PRIVILEGE_ESCALATION", "Không được cấp quyền vượt quyền hiện tại.");
+            }
             await ProtectLastAdminAsync(user, !selected.Any(x => x.Code == "ADMIN_IT"), ct);
             var current = await repo.ListAsync(repo.Query<UserRole>(true).Where(x => x.UserId == id), ct);
             var existingIds = current.Select(x => x.RoleId).ToHashSet();
@@ -146,7 +157,9 @@ public sealed class UserAccountService(IRepository repo, IAccountPersistence acc
         return new(new UserDto
         {
             Id = user.Id, Username = user.Username, Email = user.Email, DisplayName = user.FullName, EmployeeCode = user.EmployeeCode,
-            DepartmentId = user.DepartmentId, Phone = user.Phone, IsActive = user.IsActive, CreatedAtUtc = user.CreatedAtUtc,
+            DepartmentId = user.DepartmentId, DepartmentName = await repo.FirstAsync(repo.Query<Department>().Where(x => x.Id == user.DepartmentId).Select(x => x.Name), ct),
+            IsEmailConfirmed = user.IsEmailConfirmed, InvitationEmailStatus = user.InvitationEmailStatus, ActivationExpiresAt = user.ActivationExpiresAtUtc,
+            Phone = user.Phone, IsActive = user.IsActive, CreatedAtUtc = user.CreatedAtUtc,
             UpdatedAtUtc = user.UpdatedAtUtc, RowVersion = Convert.ToBase64String(user.RowVersion)
         }, user.IsAdminLocked, roleIds.ToArray(), warnings);
     }

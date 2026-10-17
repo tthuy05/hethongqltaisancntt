@@ -1,5 +1,162 @@
 # Changelog
 
+## Unreleased — 17/10/2026 — License/lifecycle preparation review
+
+- Added: License capacity/alert helpers, batch lifecycle metrics, Replacement policy and typed audit metadata with unit tests; owner module integration remains PENDING.
+- Fixed: foreign-license/future-effective transfer guards, negative seat counts, schema bounds, ACTIVE self-transition and tracked-object mutation before note validation.
+- Verified: selected source in a separate checkout:643 unit/158 offline integration/283 frontend PASS;141 cloud SKIP;Release0 warning/error;32/36 published HTTP smoke PASS. Linux container and exact pushed revision await CI.
+- Documented: [review scope and deferred WIP](docs/thuy-review-2026-10-17.md). Reporting/import/export and final-acceptance drafts are excluded; no config, migration, shared database or deployment changes.
+
+## Unreleased — 16/10/2026 — User write lifecycle
+
+- Fixed: User create/profile/status/membership dialogs lock captured inputs, validate response identity and block uncertain replay while preserving self-change Login and known field validation.
+- Added:5 write lifecycle cases,270frontend PASS; no backend/email/config/production changes.
+
+## Unreleased — 16/10/2026 — User dialog access
+
+- Fixed: User dialogs recheck actor/route/grants before reads and confirmation, suppress stale completions, and guard invitation resend single-flight without changing email delivery.
+- Added:5 access regressions,265frontend PASS; no backend/config/shared/production changes.
+
+## Unreleased — 16/10/2026 — Group editor lifecycle
+
+- Fixed: create/rename group forms support Enter and guard captured commands, pending inputs, stale responses and uncertain outcomes; require whole-catalog reconciliation after unknown metadata writes.
+- Added:5 editor regressions,260frontend PASS; no backend/grant/config/production changes.
+
+## Unreleased — 16/10/2026 — Group status lifecycle
+
+- Fixed: group status confirmation snapshots target/version, warns about unsaved matrix, locks pending commands and blocks uncertain replay; check returned state and matrix permission sets before claiming success.
+- Added:3 status lifecycle cases,255frontend PASS; no backend/grant/production changes.
+
+## Unreleased — 16/10/2026 — Permission matrix save
+
+- Fixed: snapshot reviewed matrix commands, lock pending controls, reject stale/malformed success and block blind replay after unknown outcomes; preserve draft until explicit read refresh.
+- Added:6 lifecycle cases,252frontend PASS. No backend/grant/config/production changes; [handoff](docs/permission-save-lifecycle-handoff.md).
+
+## Unreleased — 16/10/2026 — Client error boundary
+
+- Fixed: public activation401 cannot revoke an unrelated bearer session; malformed JSON error envelopes retain HTTP status with safe typed fallbacks instead of TypeError.
+- Added:3 transport regressions,246frontend PASS; private401 invalidation and valid validation metadata preserved. No backend/config/production changes.
+
+## Unreleased — 16/10/2026 — Pending Asset inputs
+
+- Fixed: prevent editing captured Asset fields during save and restore original control states on completion, including detached forms.243 frontend PASS; no API/backend/production changes.
+
+## Unreleased — 16/10/2026 — Asset list access
+
+- Fixed: Asset readers can view results without unrelated catalog grants; optional lookup failures disable only their filters, preserve URL IDs and never hide session expiration.
+- Added:7 access/lifecycle regression cases,242 frontend PASS; no backend/grant/production changes. [Handoff](docs/asset-list-access-handoff.md).
+- Added: actual isolated HTTP/PostgreSQL verification for a single-grant Asset reader, including denied mutations and preserved data/history;1 new +3 affected financial cases PASS.
+
+## Unreleased — 16/10/2026 — Archive lifecycle
+
+- Fixed: Archive confirmation captures reviewed ID/version, rejects stale page/session actions and blocks blind replay after conflicts or uncertain outcomes; list confirmation reads single-flight safely.
+- Fixed: reject noncanonical strong If-Match before DELETE.235 frontend PASS; [handoff](docs/asset-archive-lifecycle-handoff.md). No backend/schema/production changes.
+
+## Unreleased — 16/10/2026 — Login lifecycle
+
+- Fixed: stale login page responses cannot redirect after navigation or logout a newer session; readonly pending inputs, bounded password validation and password clearing on completion.
+- Added:11 regression cases,226 frontend PASS; no backend/config/production changes. [Handoff](docs/login-lifecycle-handoff.md).
+
+## Unreleased — 15/10/2026 — Activation client safety
+
+- Fixed: strict activation DTO/canonical token validation, duplicate fragment token rejection, single-flight/readonly passwords and expired/unknown outcome handling without replay or stale page updates.
+- Fixed: Asset save blocks replay after same-account SESSION_CHANGED.215 frontend PASS; [handoff](docs/activation-client-safety-handoff.md). No backend/email/schema/production changes.
+
+## Unreleased — 15/10/2026 — Workflow guard verification
+
+- Added:3 actual isolated PostgreSQL/Asset HTTP regression cases for open and terminal Maintenance fixture snapshots; no Maintenance API implementation/acceptance claim.
+- Fixed: Asset API-mode list/detail labels unavailable current-assignment data as unknown, not unassigned;205 frontend PASS. [Evidence](docs/week-04-workflow-guard-verification.md).
+
+## Unreleased — 15/10/2026 — Asset save lifecycle
+
+- Fixed: stale Asset form responses cannot redirect/toast after navigation or account/permission changes; unknown write outcomes preserve draft and block blind resubmit, with explicit same-origin read reconciliation.
+- Added:8 lifecycle regression cases,201 frontend PASS; no token persistence/cross-tab transfer, backend idempotency or production changes. [Handoff](docs/asset-save-lifecycle-handoff.md).
+
+## Unreleased — 15/10/2026 — Asset financial field guard
+
+- Fixed: metadata-only custom operators can update assets without reading/clearing hidden price; create/update reject explicit financial fields without cost grant, includingnull.
+- Fixed: Asset form omits the financial input/property when unauthorized; cost-granted nullable PUT behavior retained. [Red/green tests and compatibility](docs/asset-cost-field-handoff.md), ADR-033. No schema/grant/production changes.
+
+## Unreleased — 15/10/2026 — Asset retire UI
+
+- Added: permission-aware Asset detail retirement confirmation using the existing Retired-only endpoint; required reason/version, single-flight and explicit read refresh after conflicts/unknown write outcomes.
+- Fixed: stacked shared concurrency feedback on narrow dialogs.190 frontend PASS;2 isolated backend contract tests PASS. No backend/schema/module activation changes; [handoff](docs/asset-retire-ui-handoff.md).
+
+## Unreleased — 15/10/2026 — Asset status history
+
+- Added: actual Asset detail status-history tab consuming the existing paging-only endpoint, with UTC timestamps, current actor names, permission/session guards and honest loading/error/empty states.
+- Changed: history read projection includes additive nullable `changedByDisplayName`; no schema, new permission or workflow activation.181 frontend and4 focused isolated PostgreSQL HTTP tests PASS; [handoff](docs/week-04-asset-status-history-handoff.md).
+
+## Unreleased — 15/10/2026 — License async guards
+
+- Fixed: prepared License pages reject stale-account/revoked-read responses, use session/query snapshots and preserve matching filter/paging context.167 frontend PASS; no module activation.
+
+## Unreleased — 15/10/2026 — Allocation draft form
+
+- Added: prepared allocation draft/form and separately opt-in License detail composition; no POST or runtime route activation.163 frontend PASS; [handoff](docs/week-05-allocation-draft-handoff.md).
+
+## Unreleased — 15/10/2026 — License target và shared409 UX
+
+- Added: prepared user/asset target lookup with XOR/stale-session guards, no allocation POST or module activation.
+- Changed: Asset edit409 keeps draft and offers explicit discard/read refresh, never retries mutation. 154 frontend PASS; [evidence](docs/week-05-license-target-conflict-handoff.md).
+
+## Unreleased — 14/10/2026 — License read UI preparation
+
+- Added: prepared License read adapter/list/detail with strict masked metadata and unknown-capacity display; default-disabled components, no app route/menu.
+- Fixed: prepared mobile empty state/message and nowrap license code/key. 142 frontend PASS; [browser QA/limits](docs/week-05-license-ui-handoff.md).
+
+## Unreleased — 14/10/2026 — Replacement rule access prerequisites
+
+- Added: prepared Admin-only rule configuration policy with explicit grants/read dependency, 7 unit PASS. [Bàn giao](docs/week-05-rule-policy-handoff.md); constants chưa active, API/projection/algorithm còn PLANNED.
+
+## Unreleased — 14/10/2026 — Session response validation
+
+- Fixed: reject malformed login/me role/permission collections; safe CurrentUser-only session and array-only permission hints. 130 frontend PASS; [verification](docs/frontend-session-contract-handoff.md).
+
+## Unreleased — 14/10/2026 — License capacity protocol tests
+
+- Added: capacity transaction review và 2 isolated PostgreSQL protocol tests cho contention/reread và full-seat transfer rollback/history. Không implement Allocation API; [bàn giao](docs/week-05-license-capacity-review.md).
+
+## Unreleased — 14/10/2026 — Shared UI permission hints
+
+- Added: immutable default-deny Maintenance scope/cost and Admin-only License key permission hints, 125 frontend PASS. [Bàn giao](docs/week-04-05-ui-permissions-handoff.md); chưa mở page/menu/module.
+
+## Unreleased — 14/10/2026 — Audited license reveal prerequisites
+
+- Added: prepared reveal service rechecking DB identity/grants under coordinator lock, audit-before-response and no-store adapter; no route/DI/module activation. [Evidence](docs/week-05-license-reveal-handoff.md).
+- Fixed: audit reader preserves dynamic role/permission counts and typed invitation metadata, without exposing secrets or changing request validation.
+
+## Unreleased — 14/10/2026 — Lifecycle input query
+
+- Added: readonly immutable lifecycle facts/metrics query, age/warranty và cost completeness; actual ticket costs không cộng history snapshots, raw status counts không tự chọn rule semantics. [Handoff](docs/week-05-lifecycle-metrics-handoff.md); evaluator/API còn PLANNED.
+
+## Unreleased — 14/10/2026 — License security prerequisites
+
+- Added: versioned AES-256-GCM protector/external key-ring interface và Admin-only key field/reveal policy; 34 focused unit PASS. [Bàn giao](docs/week-05-license-security-handoff.md). Chưa DI, cấu hình secret thật, persist key, API hoặc migration.
+
+## Unreleased — 14/10/2026 — API client Tuần 4
+
+- Added: shared Assignment client list/detail/assign/return và user lookup, reuse auth/error/session transport; validation theo Controller hiện có. [Bàn giao và checks](docs/week-04-api-client-handoff.md). Chưa thêm page/menu, bật API hoặc deploy.
+
+## Unreleased — 12/10/2026 — Shared status contract Tuần 4
+
+- Added: isolated PostgreSQL cross-module scenarios cho AssignmentService/shared Maintenance status/audit protocol, bao gồm return trong lúc sửa, kết quả hỏng và rollback sau Save. [Verification](docs/week-04-cross-module-verification.md); Maintenance Service/API vẫn cần Thiện tích hợp.
+
+- Added: shared Maintenance ticket/history audit helper, immutable before snapshot và kiểm actor/correlation; metadata reader/writer giữ status/technician/event/change flags, không chứa cost amounts/free text. [Bàn giao audit](docs/week-04-maintenance-audit-handoff.md); chưa nối endpoint hoặc deploy.
+
+- Added: Maintenance scope/cost helper và policy harness cho phần Thủy D4-02/03; field-presence guard cả null/0, assigned-only scope và default-deny queue. Constants chưa vào active catalog/seed; [trạng thái tích hợp](docs/week-04-maintenance-access-handoff.md).
+
+- Added: helper transition/history cho Assignment/Maintenance/retire theo BR-007/013, UTC/actor/correlation và matrix default-deny; contract transaction/audit bàn giao Thiện.
+- Refactored: retire dùng helper chung, giữ nguyên API, quyền, version và active-workflow guard. Không mở Maintenance endpoint hoặc thay schema/config.
+- Verification và giới hạn: [bàn giao Tuần 4](docs/week-04-shared-status-handoff.md). Source local chưa commit/push/deploy.
+
+## Unreleased — 11/10/2026 — Sửa 6 nhận xét giảng viên
+
+- Added: Admin quản lý nhóm phẳng/ma trận checkbox và gán nhóm khi mời tài khoản; invitation HTTPS email API/sandbox, token SHA-256/UTC 30 phút/một lần/resend; migration bổ sung users/sequence/trigger.
+- Changed: mã tài sản tự sinh/bất biến, không đổi mã cũ; tên phòng ban; bỏ cột/dòng chi tiết/hai bộ lọc “Đối tượng” ở Nhật ký, giữ audit backend; menu không dẫn đến module chưa triển khai; bootstrap seed không tự khôi phục quyền đã thu hồi.
+- Fixed: loại bỏ test live Brevo gửi link không có token lưu trong database và báo PASS khi không chạy; giữ provider mock và luồng activation kiểm thử trên database riêng.
+- Verified/deployment: [báo cáo và test](docs/lecturer-feedback-remediation-report.md). Publication trên nhánh `codex/lecturer-feedback`; chưa merge/deploy hoặc apply shared, không sửa 3 migration cũ.
+
 ## 09/10/2026 — Chuẩn bị rollout Assignment an toàn
 
 ### Added

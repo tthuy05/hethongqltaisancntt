@@ -51,6 +51,7 @@ public interface IPasswordService
     void DummyVerify(string password);
 }
 public interface ITokenIssuer { LoginResponse Issue(CurrentUser user, int tokenVersion); }
+public interface IAssetCodeGenerator { Task<string> NextAsync(CancellationToken ct); }
 
 public static class Permissions
 {
@@ -64,6 +65,18 @@ public static class Permissions
         UserStatus = "users.status.manage", RoleAssign = "roles.assign", RoleRead = "roles.read",
         RolePermissionsRead = "roles.permissions.read", AuditRead = "audit-logs.read",
         AssignmentRead = "assignments.read", AssignmentAssign = "assignments.assign", AssignmentReturn = "assignments.return";
+    // Week 4 integration contracts only: intentionally excluded from All/seed/policies
+    // until the Maintenance rollout is reviewed. Reuses Thien's read/create names.
+    public const string MaintenanceRead = "maintenance.read", MaintenanceCreate = "maintenance.create",
+        MaintenanceUpdate = "maintenance.update", MaintenanceAssign = "maintenance.assign",
+        MaintenanceWork = "maintenance.work", MaintenanceResolve = "maintenance.resolve",
+        MaintenanceCancel = "maintenance.cancel", MaintenanceCostWrite = "maintenance.cost.write";
+    // Week 5 security contracts; excluded from active policies/seed until module rollout.
+    public const string LicenseRead = "licenses.read", LicenseKeyManage = "licenses.key.manage",
+        LicenseKeyReveal = "licenses.key.reveal";
+    public const string ReplacementEvaluate = "replacement-recommendations.evaluate";
+    public const string ReplacementRuleRead = "replacement-rules.read", ReplacementRuleCreate = "replacement-rules.create",
+        ReplacementRuleUpdate = "replacement-rules.update";
     public static readonly string[] Read = [AssetRead, AssetHistory, DepartmentRead, TypeRead, DashboardRead, UserLookup];
     // Support assignment reads require a scoped support contract, not this unrestricted service.
     public static readonly string[] Operate = [AssetCreate, AssetUpdate, AssetArchive, AssetStatus, AssetCost, RoleRead,
@@ -90,7 +103,8 @@ public sealed class ListQuery
 }
 public sealed class AssetRequest
 {
-    public string AssetCode { get; set; } = "";
+    private decimal? purchasePrice;
+    public string? AssetCode { get; set; }
     public string Name { get; set; } = "";
     public long AssetTypeId { get; set; }
     public long OwningDepartmentId { get; set; }
@@ -102,7 +116,10 @@ public sealed class AssetRequest
     public string? Location { get; set; }
     public DateOnly? PurchaseDate { get; set; }
     public DateOnly? WarrantyExpirationDate { get; set; }
-    public decimal? PurchasePrice { get; set; }
+    public decimal? PurchasePrice { get => purchasePrice; set { purchasePrice = value; HasPurchasePrice = true; } }
+    // Distinguish an omitted financial field from an explicit null/clear command.
+    // Never trust a client-supplied presence flag or serialize this internal state.
+    [JsonIgnore] public bool HasPurchasePrice { get; private set; }
     public string? Note { get; set; }
     public string? RowVersion { get; set; }
 }
@@ -156,4 +173,9 @@ public sealed class AssetDto
     public object? CurrentAssignment { get; set; }
 }
 public sealed record HistoryDto(long Id, string? FromStatus, string ToStatus, string? Reason, string Source,
-    DateTime ChangedAtUtc, long? ChangedByUserId, Guid CorrelationId);
+    DateTime ChangedAtUtc, long? ChangedByUserId, Guid CorrelationId)
+{
+    // Additive read projection; keeps the original constructor/deconstruction.
+    // This is the user's current display name, not a historical name snapshot.
+    public string? ChangedByDisplayName { get; init; }
+}

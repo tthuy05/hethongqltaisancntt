@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace ItAssetManagement.Api.Mvp;
 
 [ApiController, Route("api/v1/users")]
-public sealed class UsersController(UserLookupService service, UserService users, UserAccountService accounts, UserAccountReadService accountReads) : ControllerBase
+public sealed class UsersController(UserLookupService service, UserService users, UserAccountService accounts, UserAccountReadService accountReads, UserInvitationService invitations) : ControllerBase
 {
     [HttpGet, Authorize(Policy = Permissions.UserRead)]
     [ProducesResponseType<PagedResponse<UserDto>>(StatusCodes.Status200OK)]
@@ -80,6 +80,10 @@ public sealed class UsersController(UserLookupService service, UserService users
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public Task<AccountChangeResult> Roles(long userId, ReplaceUserRolesRequest request, CancellationToken ct) => accounts.RolesAsync(userId, request, ct);
+
+    [HttpPost("{userId:long:min(1)}/invitation"), Authorize(Policy = Permissions.UserCreate)]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("login")]
+    public Task<InvitationResult> Resend(long userId,CancellationToken ct)=>invitations.ResendAsync(userId,ct);
 
     [HttpGet("lookup"), Authorize(Policy = Permissions.UserLookup)]
     [ProducesResponseType<PagedResponse<UserLookupDto>>(StatusCodes.Status200OK)]

@@ -1,5 +1,37 @@
 # Architecture Decision Records
 
+## ADR-033 — Explicit financial field presence for Asset writes
+
+**Date:** 2026-10-15. **Status:** source implemented/tested, under review; production rollout chưa phê duyệt.
+
+**Context / previous behavior:** Custom groups có thể nhận Asset create/update mà không nhận `assets.cost.read`. Update trước đây so nullable request price với stored price, chặn cả metadata-only update của tài sản có giá; create lại chưa kiểm cost-write grant. Nullable decimal một mình không phân biệt omission và explicitnull.
+
+**Decision:** Internal `[JsonIgnore] HasPurchasePrice` theo setter (không nhận flag từ client). Bất kỳ explicit price/null cần cost grant ngoài create/update grant. Không có grant và bỏ price: create unknown/null; update chỉ map nonfinancial fields và bảo toàn stored cost. Financial writer giữ PUT nullable semantics hiện tại; không đổi mọi metadata sang PATCH. UI chỉ dựng financial input khi có grant, omission thật không gửi null/NaN/0.
+
+**Consequences:** Metadata-only custom operator không cần biết/đoán giá; lỗi price-write luôn403 generic bất kể stored price. Old costless clients gửi `purchasePrice:null` phải bỏ field; UI/API source fix đi cùng checkpoint. Admin/Manager cost-granted flow không đổi. Client hiding không thay backend field authorization. Không cấp quyền mới/đổi Technical Support, schema/provider/migration/config hoặc module ownership. [Red/green evidence](docs/asset-cost-field-handoff.md).
+
+## ADR-032 — Versioned license key protection prerequisite
+
+**Date:** 2026-10-14. **Status:** local implementation / under review, production integration PLANNED.
+
+**Context:** ADR-008 yêu cầu encrypted/masked key; schema S18 đã có ciphertext/last4/key_version nhưng module License chưa implement.
+
+**Decision candidate:** .NET AES-256-GCM, 96-bit random nonce/128-bit tag, purpose/license ID/version/last4 authenticated data; versioned external configuration key ring. Không fallback random hoặc dùng JWT/DB password. Active version encrypt, old version decrypt, temporary buffers erased.
+
+**Consequences:** phải giữ secret các version để recover, chốt format/length/clear semantics và rotation trước endpoint; source/DI/real secret production chưa cấu hình. Không thay 18/41 schema, migration hoặc feature flags. [Contract/tests](docs/week-05-license-security-handoff.md).
+
+## ADR-LF-20261011 — Nhóm quyền động, invitation và mã tài sản tự sinh
+
+**Date:** 11/10/2026. **Status:** ACCEPTED FOR LOCAL IMPLEMENTATION; NOT DEPLOYED.
+
+**Context:** Sáu nhận xét giảng viên cần thay ba role giới hạn cứng, mật khẩu do Admin đặt và mã tài sản editable; schema hiện có 18 bảng/41 FK.
+
+**Decision:** Tận dụng roles/permissions/user_roles/role_permissions cho nhóm phẳng. Admin IT quản lý ma trận; nhóm mới không có quyền mặc định, không suy quyền từ department/job title. Effective permissions là union permission hợp lệ/active trong role active, nạp mỗi request. Audit/ma trận giữ Admin-only; không mở Assignment/Maintenance. Bootstrap seed không tự khôi phục grant đã thu hồi.
+
+Invitation dùng 4 cột users vì chỉ một lời mời hiệu lực/tài khoản: random 32 bytes, SHA-256 hash, UTC 30 phút, một lần; resend thay token, password/confirmation atomic. Account cũ default confirmed=true. Email hiện dùng Brevo HTTPS do người dùng tích hợp, giữ adapter Resend và sandbox Development ngoài Git; secret email mới cấu hình ngoài source. PostgreSQL sequence cấp `AST-` tối thiểu 6 chữ số, có thể có khoảng trống; unique index giữ nguyên và trigger chặn đổi mã cũ.
+
+**Consequences:** Vẫn 18 bảng/41 FK và 28 permission codes, không bảng mới/native enum/nhóm Lead tự seed. Migration mới cần backup/restore drill và rollout phối hợp: backend cũ không hiểu pending confirmation và có contract sửa mã khác. Không tạo pending account shared trước khi mọi runtime Auth cập nhật. Không automatic Down vì mất trạng thái xác nhận có thể mở lại tài khoản chưa kích hoạt. Ba migration cũ bất biến; không publication/database change trong task này. [Evidence/runbook](docs/lecturer-feedback-remediation-report.md).
+
 > Week 2 status: decisions are **ACCEPTED FOR DESIGN — PLANNED FOR IMPLEMENTATION**. A decision being accepted does not mean its code, migration or test exists.
 
 > Current database decision: **ADR-018 — PostgreSQL hosted on Neon**, 01/10/2026. ADR-002 is superseded; database-specific wording in ADR-003/007/010/011/012/015 is historical and mapped by ADR-018–020. Their business/architecture intent remains valid; no SQL Server provider or native rowversion is planned going forward.

@@ -1,5 +1,25 @@
 # Permission Matrix
 
+## Shared helper 12/10/2026 — LOCAL / UNDER REVIEW, chưa bật module
+
+Đã chuẩn bị scope/field policy của Thủy cho Maintenance; constants chưa vào catalog active hoặc seed. [Contract và giới hạn](week-04-maintenance-access-handoff.md): Support assigned-only, queue/self-claim mặc định deny khi chưa có policy; cost presence kể cả null/0 cần quyền; nhóm tùy chỉnh không tự được global scope. Endpoint/DTO integration và scope review còn PLANNED. Không thay đổi grant production.
+
+## Source update 11/10/2026 — chưa deploy
+
+Ba nhóm mặc định là baseline bootstrap, không còn là giới hạn runtime. Admin IT tạo/sửa nhóm tùy chỉnh, ngừng nhóm không còn member, sửa ma trận và gán nhóm qua Users. Không hard-delete; không vô hiệu/đổi tên nhóm mặc định hoặc bỏ quyền nền tảng Admin.
+
+| Tính năng | Admin IT | Manager/Support theo bootstrap | Nhóm tùy chỉnh |
+|---|---|---|---|
+| Quản lý nhóm/ma trận | Có; cần roles.assign + roles.permissions.read + Admin membership | Không | Không kể cả có các code trên |
+| Gán nhóm | Có | Không | Có thể ủy quyền roles.assign; không cấp Admin/quyền vượt quyền caller |
+| Mời tài khoản | Có, chọn nhóm ngay | Không | Cần users.create + roles.assign, cùng giới hạn chống nâng quyền |
+| Xem audit | Admin + audit-logs.read | Không | Không |
+| Asset operations/cost | Theo quyền + business rules | Giữ quyền cũ | Chỉ quyền được cấp, không tự suy từ phòng ban |
+| Assignment | API đóng, giữ grant hiện có | API đóng | Không thêm grant khi đóng |
+| Maintenance/ticket scope | PLANNED | PLANNED | PLANNED; không checkbox giả |
+
+Union quyền active của các role active refresh mỗi request. Quyền thao tác cần quyền xem tương ứng. [Test cùng phòng khác quyền, revocation và bảo vệ Admin](lecturer-feedback-remediation-report.md). Các ma trận tương lai/PLANNED dưới đây là thiết kế lịch sử Tuần 2; đọc cùng trạng thái module hiện tại.
+
 > Trạng thái: **PLANNED — WEEK 2 ANALYSIS BASELINE**  
 > Đây là authorization contract dự kiến. Chưa có policy, endpoint hay role runtime nào được implement/verified.
 
@@ -25,7 +45,7 @@
 | Users | Hard delete | ✗ | ✗ | ✗ |
 | Roles | View role definitions | ✓ | △ Chỉ role label cần cho vận hành | ✗ |
 | Roles | Assign/remove role | ✓, trừ làm mất Admin cuối | ✗ | ✗ |
-| Roles | Create/update/delete role definition | ✗ Ba role cố định trong MVP | ✗ | ✗ |
+| Roles | Create/update custom role; stop unused group | ✓ Source mới; không hard-delete/default-role disable | ✗ | ✗ |
 
 ## 3. Organization và master data
 

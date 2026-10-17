@@ -57,8 +57,8 @@ public sealed class UserAccountApiTests(MvpFixture fixture)
     {
         var key = fixture.Prefix + Guid.NewGuid().ToString("N")[..8];
         var response = await client.PostAsJsonAsync("/api/v1/users", new CreateUserRequest
-        { Username = key, Email = key + "@fixture.test", DisplayName = "Isolated account test", Password = MvpFixture.Password });
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode); return (await response.Content.ReadFromJsonAsync<UserDto>())!;
+        { Username = key, Email = key + "@fixture.test", DisplayName = "Isolated account test", RoleIds = [fixture.SupportRoleId] });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode); return await fixture.ActivateUserAsync((await response.Content.ReadFromJsonAsync<UserDto>())!);
     }
     private async Task<UserDto> Get(HttpClient client, long id) => (await client.GetFromJsonAsync<UserDto>(Path + id))!;
     private async Task<long> Role(string code)
@@ -90,7 +90,7 @@ public sealed class UserAccountApiTests(MvpFixture fixture)
         Assert.Equal(HttpStatusCode.Unauthorized, (await caller.GetAsync("/api/v1/auth/me")).StatusCode);
         await using var scope = fixture.Factory.Services.CreateAsyncScope(); var sp = scope.ServiceProvider; var db = sp.GetRequiredService<AppDbContext>();
         var stored = await db.Set<User>().SingleAsync(x => x.Id == user.Id);
-        Assert.True(sp.GetRequiredService<IPasswordService>().Verify(stored, MvpFixture.Password)); Assert.Equal(2, stored.TokenVersion);
+        Assert.True(sp.GetRequiredService<IPasswordService>().Verify(stored, MvpFixture.Password)); Assert.Equal(3, stored.TokenVersion);
         var membership = await db.Set<UserRole>().SingleAsync(x => x.UserId == user.Id);
         Assert.Equal(changed.RoleIds[0], membership.RoleId); Assert.NotNull(membership.AssignedByUserId); Assert.Equal(DateTimeKind.Utc, membership.AssignedAtUtc.Kind);
         Assert.Equal(2, await db.Set<AuditLog>().CountAsync(x => x.EntityId == user.Id.ToString() && x.Action == "users.roles.replace"));
@@ -164,7 +164,7 @@ public sealed class UserAccountApiTests(MvpFixture fixture)
     public async Task Invalid_roles_status_unknown_fields_and_missing_roleIds_are_400_and_missing_user_is_404()
     {
         using var admin = await fixture.ClientAsync(); var user = await Create(admin); var path = Path + user.Id;
-        foreach (var ids in new long[][] { [0], [-1], [1, 1], [1, 2, 3, 4], [long.MaxValue] })
+        foreach (var ids in new long[][] { [0], [-1], [1, 1], Enumerable.Range(1,51).Select(x=>(long)x).ToArray(), [long.MaxValue] })
             await Error(await admin.PutAsJsonAsync(path + "/roles", new { roleIds = ids, rowVersion = user.RowVersion }), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
         await Error(await admin.PutAsJsonAsync(path + "/roles", new { rowVersion = user.RowVersion }), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
         await Error(await admin.PutAsJsonAsync(path + "/roles", new { roleIds = (long[]?)null, rowVersion = user.RowVersion }), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
@@ -302,7 +302,7 @@ public sealed class UserAccountApiTests(MvpFixture fixture)
         });
         var current = await Get(admin, user.Id);
         await Error(await admin.PutAsJsonAsync(Path + user.Id + "/roles", new { roleIds = new[] { await Role("TECHNICAL_SUPPORT") }, rowVersion = current.RowVersion }), HttpStatusCode.Conflict, "USER_TOKEN_VERSION_EXHAUSTED");
-        Assert.Empty(await db.Set<UserRole>().Where(x => x.UserId == user.Id).ToListAsync()); Assert.Equal(current.RowVersion, (await Get(admin, user.Id)).RowVersion);
+        Assert.Single(await db.Set<UserRole>().Where(x => x.UserId == user.Id).ToListAsync()); Assert.Equal(current.RowVersion, (await Get(admin, user.Id)).RowVersion);
         Assert.False(await db.Set<AuditLog>().AnyAsync(x => x.Action == "users.roles.replace" && x.EntityId == user.Id.ToString()));
     }
     [NeonFact]

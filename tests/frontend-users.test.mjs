@@ -19,12 +19,12 @@ async function client(handler = () => ({})) {
   return { services, calls };
 }
 test('user profile validation matches nullable IDs and blocks security mass assignment', () => {
-  assert.deepEqual(validateUser({ ...profile, password: ' 0123456789  ' }), {});
+  assert.deepEqual(validateUser({ ...profile, roleIds: [731] }), {});
   assert.deepEqual(validateUser({ ...profile, rowVersion: version }, { isUpdate: true }), {});
   for (const extra of [{ isActive: true }, { roles: [] }, { tokenVersion: 1 }, { isAdminLocked: false }, { normalizedEmail: 'X' }])
-    assert.ok(Object.keys(validateUser({ ...profile, password: 'valid-test-password', ...extra })).length);
+    assert.ok(Object.keys(validateUser({ ...profile, roleIds: [731], ...extra })).length);
   for (const bad of [{ email: 'bad' }, { departmentId: -1 }, { username: '' }, { displayName: 'a'.repeat(201) }, { password: ' '.repeat(12) }, { password: 'short' }, { phone: 'x'.repeat(31) }])
-    assert.ok(Object.keys(validateUser({ ...profile, password: 'valid-test-password', ...bad })).length);
+    assert.ok(Object.keys(validateUser({ ...profile, roleIds: [731], ...bad })).length);
   assert.ok(validateUser({ ...profile, password: 'not-an-update', rowVersion: version }, { isUpdate: true }).password);
 });
 test('status commands are explicit independent axes with required reason and version', () => {
@@ -35,7 +35,7 @@ test('status commands are explicit independent axes with required reason and ver
 test('role replacement requires explicitly present bounded unique numeric IDs, empty array is allowed', () => {
   assert.deepEqual(validateUserRoles({ roleIds: [], rowVersion: version }), {});
   assert.deepEqual(validateUserRoles({ roleIds: [31, 7], rowVersion: version }), {});
-  for (const roleIds of [undefined, null, [1, 1], [0], [-1], ['7'], [1, 2, 3, 4]]) assert.ok(validateUserRoles({ roleIds, rowVersion: version }).roleIds);
+  for (const roleIds of [undefined, null, [1, 1], [0], [-1], ['7'], Array.from({ length: 51 }, (_, i) => i + 1)]) assert.ok(validateUserRoles({ roleIds, rowVersion: version }).roleIds);
   assert.ok(validateUserRoles({ roleIds: [], rowVersion: 'bad' }).rowVersion);
 });
 test('user and catalog reads preserve real IDs, query names, paging and same-origin paths', async () => {
@@ -48,12 +48,12 @@ test('user and catalog reads preserve real IDs, query names, paging and same-ori
   assert.deepEqual(calls.slice(2).map(c => c.url), ['/api/v1/users/41', '/api/v1/users/41/account', '/api/v1/roles?status=Active', '/api/v1/roles/731', '/api/v1/roles/permissions?module=users&keyword=read']);
   for (const call of calls.slice(1)) { assert.equal(call.headers.Authorization, 'Bearer synthetic-test-token'); assert.equal(call.method, 'GET'); assert.equal(call.cache, 'no-store'); }
 });
-test('create sends untouched password whitespace and never includes default roles/status', async () => {
+test('create sends selected groups and no admin password or status', async () => {
   const { services, calls } = await client(() => ({ id: 41 }));
-  await services.users.create({ ...profile, password: ' 0123456789  ' });
+  await services.users.create({ ...profile, roleIds: [731] });
   const call = calls.at(-1); assert.equal(call.method, 'POST'); assert.equal(call.url, '/api/v1/users');
-  const dto = JSON.parse(call.body); assert.equal(dto.password, ' 0123456789  ');
-  assert.equal(Object.hasOwn(dto, 'roleIds'), false); assert.equal(Object.hasOwn(dto, 'isActive'), false);
+  const dto = JSON.parse(call.body); assert.equal(Object.hasOwn(dto, 'password'), false);
+  assert.deepEqual(dto.roleIds, [731]); assert.equal(Object.hasOwn(dto, 'isActive'), false);
   assert.equal(services.auth.session.id, 9);
 });
 test('profile status and role mutations use exact methods and rowVersion without extra fields', async () => {
@@ -83,7 +83,7 @@ test('409 and 403 are surfaced once without blind retry or clearing a still-vali
 });
 test('invalid write fields are rejected before fetch and IDs cannot inject URL paths', async () => {
   const { services, calls } = await client();
-  await assert.rejects(services.users.create({ ...profile, password: 'valid-test-password', roleIds: [1] }), error => error.status === 400);
+  await assert.rejects(services.users.create({ ...profile, roleIds: [731], password: 'admin-password-forbidden' }), error => error.status === 400);
   await assert.rejects(services.users.setStatus(41, { status: 'Disable', reason: 'test', rowVersion: version }), error => error.status === 400);
   await assert.rejects(services.users.replaceRoles(41, { roleIds: null, rowVersion: version }), error => error.status === 400);
   assert.throws(() => services.users.account('../roles'), error => error.status === 400);

@@ -18,6 +18,7 @@ public sealed record UserLookupDto
     public long Id { get; init; }
     public string DisplayName { get; init; } = "";
     public long? DepartmentId { get; init; }
+    public string? DepartmentName { get; init; }
 }
 
 // Workflow picker only, not a user directory/admin API or a technician-eligibility check.
@@ -31,7 +32,8 @@ public sealed class UserLookupService(IRepository repo, IActor actor)
         var users = repo.Query<User>().Where(x => x.IsActive);
         if (query.DepartmentId != null) users = users.Where(x => x.DepartmentId == query.DepartmentId);
         // Project before materialization: never select security/contact fields into the response.
-        var result = users.Select(x => new UserLookupDto { Id = x.Id, DisplayName = x.FullName, DepartmentId = x.DepartmentId });
+        var result = users.Select(x => new UserLookupDto { Id = x.Id, DisplayName = x.FullName, DepartmentId = x.DepartmentId,
+            DepartmentName=repo.Query<Department>().Where(d=>d.Id==x.DepartmentId).Select(d=>d.Name).FirstOrDefault() });
         if (query.Keyword != null)
         {
             var keyword = query.Keyword.ToLowerInvariant();

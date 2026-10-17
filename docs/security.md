@@ -1,5 +1,28 @@
 # Thiết kế bảo mật
 
+## Activation client safety — 15/10/2026, source chưa deploy
+
+Public activation client validate canonical32-byte token/allowlisted DTO, scrub URL, single-flight/readonly password inputs và clear own references/DOM values; invalid/expired/unknown outcome không tự replay. Không memory-zeroization guarantee, auto login/token persistence hoặc real-email proof. [Kiểm thử/giới hạn](activation-client-safety-handoff.md). Backend hash/TTL/single-use/audit và email sender owner không sửa.
+
+## Asset price field authorization — 15/10/2026, source chưa deploy
+
+Thủy sửa create/update field-level guard: `purchasePrice` có mặt kể cảnull cần `assets.cost.read`; permission không có thì chỉ sửa metadata và giữ nguyên giá ẩn. Không so giá đoán với giá DB để quyết định grant, không return/echo giá trái quyền. Internal presence flag `[JsonIgnore]` không thể bị client override. UI không mount financial input khi thiếu grant; không dựa riêng ẩn input làm authorization. [Tái hiện, kiểm thử và compatibility](asset-cost-field-handoff.md). Không grant/seed/schema hoặc thay quyền Technical Support; source review only.
+
+## License security preparation — 14/10/2026
+
+Thủy đã chuẩn bị AES-256-GCM/key-ring và key field/reveal policy theo ADR-008; 34 focused unit PASS. [Hợp đồng và giới hạn](week-05-license-security-handoff.md). Secret source/recovery, DTO semantics, DI và reveal API còn PLANNED; không cấu hình khóa thật, seed quyền, đổi connection string hoặc deploy.
+
+## LF security update 11/10/2026 — chưa deploy
+
+Custom groups empty-by-default, unknown permission deny, union active refresh mỗi JWT request. Matrix/audit Admin-only; delegated operator không cấp Admin/quyền vượt quyền mình. Pending Admin không tính cho last-admin safety.
+
+Token random 32 bytes/base64url, DB chỉ SHA-256 + UTC expiry 30 phút. One-time activation serialized/audited; resend thay hash. Không gửi default password hoặc token/hash trong DTO/audit/log. Token trong fragment (không HTTP request), page xóa khỏi URL history khi mở; Referrer-Policy no-referrer. Mailbox/shared-device/bearer-link vẫn có rủi ro.
+
+HTTPS Brevo provider do người dùng bổ sung; Resend adapter giữ idempotency key. API key mới ngoài source; sandbox Development ngoài Git/content root. Chỉ fake addresses/mock/sandbox khi regression. Owner báo gửi mail local thành công; inbox/production E2E NOT VERIFIED, không chạy gửi mail thật trong lượt này. Không thay connection string hiện có.
+
+Rollout phối hợp: old backend chưa hiểu IsEmailConfirmed; không tạo pending user shared trước khi mọi Auth runtime cập nhật. Cần backup/restore drill mới trước shared apply, không automatic Down hoặc API C. [Báo cáo](lecturer-feedback-remediation-report.md).
+
+
 > Addendum07/10/2026: Render Production package/trusted-forwarding/secret injection đã IMPLEMENTED theo [runbook](render-deployment.md). Chỉ frontend API-only được publish, config Development/private/mock/Swagger bị loại; runtime cần persistent JWT+Neon secret. Public HTTPS/proxy/least privilege/credential rotation/review vẫn PENDING. Artifact sạch không vô hiệu owner credential đã lộ trong Git (**FAIL1/UNRESOLVED**) hoặc phê duyệt public Manager cho dữ liệu thật. Các checkpoint thiết kế phía dưới được giữ lịch sử.
 
 > **M1 Auth/JWT/DB-backed policies/audit/concurrency IMPLEMENTED / TESTED.** Production security/encryption/full hardening remain PLANNED. New explicit user exception: owner DefaultConnection in repository Development configuration (ADR-023), so secret finding/least-privilege risk remain unresolved. [Current evidence/limits](m1-backend-handoff.md); earlier setup report is historical.

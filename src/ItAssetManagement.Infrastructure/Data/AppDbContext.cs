@@ -12,17 +12,23 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     private readonly HashSet<object> _audited = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<long> _historyAssets = [];
     private readonly HashSet<UserRole> _membershipDeletes = new(ReferenceEqualityComparer.Instance);
+    private readonly HashSet<RolePermission> _grantDeletes = new(ReferenceEqualityComparer.Instance);
     protected override void OnModelCreating(ModelBuilder modelBuilder) => M1Model.Configure(modelBuilder);
     internal void BeginAuditedWrite()
     {
         if (_writing) throw new InvalidOperationException("Nested write transaction is not supported.");
-        _writing = true; _written.Clear(); _audited.Clear(); _historyAssets.Clear(); _membershipDeletes.Clear();
+        _writing = true; _written.Clear(); _audited.Clear(); _historyAssets.Clear(); _membershipDeletes.Clear(); _grantDeletes.Clear();
     }
     internal void Cover(object entity) => _audited.Add(entity);
     internal void RemoveRoleMembership(UserRole membership)
     {
         if (!_writing) throw new InvalidOperationException("Role removal requires an audited transaction.");
         _membershipDeletes.Add(membership); Remove(membership);
+    }
+    internal void RemoveRoleGrant(RolePermission grant)
+    {
+        if (!_writing) throw new InvalidOperationException("Grant removal requires an audited transaction.");
+        _grantDeletes.Add(grant); Remove(grant);
     }
     internal void VerifyAuditCoverage()
     {
@@ -32,7 +38,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     }
     internal void EndAuditedWrite(bool rollback)
     {
-        _writing = false; _written.Clear(); _audited.Clear(); _historyAssets.Clear(); _membershipDeletes.Clear();
+        _writing = false; _written.Clear(); _audited.Clear(); _historyAssets.Clear(); _membershipDeletes.Clear(); _grantDeletes.Clear();
         if (rollback) ChangeTracker.Clear();
     }
     private void Prepare()
@@ -43,9 +49,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         {
             // Only explicitly approved mutable membership links may be removed. They
             // still enter _written and must have an audit event before commit.
-            var membershipRemoval = e.Entity is UserRole link && _membershipDeletes.Contains(link);
+            var membershipRemoval = e.Entity is UserRole link && _membershipDeletes.Contains(link) || e.Entity is RolePermission grant && _grantDeletes.Contains(grant);
             if (e.State == EntityState.Deleted && !membershipRemoval || e.State == EntityState.Modified && e.Entity is AuditLog or AssetStatusHistory or MaintenanceHistory)
                 throw new InvalidOperationException("Hard delete and append-only history mutation are forbidden.");
+            if (e.State == EntityState.Modified && e.Entity is Asset && e.Property("AssetCode").IsModified)
+                throw new InvalidOperationException("Asset code is server-generated and immutable.");
             if (e.State == EntityState.Modified && e.Entity is AssetAssignment)
             {
                 var immutable = new[] { "AssetId", "AssignedUserId", "AssignedDepartmentId", "AssignedAtUtc", "AssignedByUserId", "CreatedAtUtc" };

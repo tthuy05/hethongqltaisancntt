@@ -44,9 +44,9 @@ public sealed class RoleCatalogTests
     {
         var service = new RoleCatalogService(Data(), new Actor(Permissions.RoleRead));
         var page = await service.ListAsync(new() { Status = "Active", PageSize = 1, SortDirection = "desc" }, default);
-        Assert.Equal(2, page.TotalItems); Assert.Equal(7, page.Items[0].Id);
+        Assert.Equal(3, page.TotalItems); Assert.Equal(7, page.Items[0].Id);
         var json = JsonSerializer.SerializeToElement(page.Items[0], new JsonSerializerOptions(JsonSerializerDefaults.Web));
-        Assert.Equal(["id", "name"], json.EnumerateObject().Select(x => x.Name).Order());
+        Assert.Equal(["id", "isSystem", "name"], json.EnumerateObject().Select(x => x.Name).Order());
         Assert.Empty((await service.ListAsync(new() { Keyword = "ADMIN_IT" }, default)).Items);
         Assert.Equal(403, (await Assert.ThrowsAsync<BusinessException>(() => service.GetAsync(31, default))).Status);
     }
@@ -56,7 +56,7 @@ public sealed class RoleCatalogTests
         var service = new RoleCatalogService(Data(), new Actor(Permissions.RoleRead, Permissions.RolePermissionsRead));
         var result = await service.ListAsync(new() { Keyword = "%_", Status = "Inactive" }, default);
         Assert.Equal("TECHNICAL_SUPPORT", Assert.Single(result.Items).Code); Assert.False(result.Items[0].IsActive);
-        var outside = await service.ListAsync(new() { Page = 99 }, default); Assert.Empty(outside.Items); Assert.Equal(3, outside.TotalItems);
+        var outside = await service.ListAsync(new() { Page = 99 }, default); Assert.Empty(outside.Items); Assert.Equal(4, outside.TotalItems);
     }
     [Fact]
     public async Task Permission_mapping_is_allowlisted_and_retains_inactive_flags()
@@ -66,7 +66,7 @@ public sealed class RoleCatalogTests
         Assert.False(result.Permissions[0].IsActive);
         Assert.Equal(4, Assert.Single(await service.PermissionsAsync("roles", " rEaD ", default)).Id);
         Assert.Empty(await service.PermissionsAsync("unknown", null, default));
-        Assert.Equal(404, (await Assert.ThrowsAsync<BusinessException>(() => service.GetAsync(99, default))).Status);
+        Assert.Equal("CUSTOM", (await service.GetAsync(99, default)).Code);
         Assert.Equal(400, (await Assert.ThrowsAsync<BusinessException>(() => service.GetAsync(0, default))).Status);
         Assert.Throws<BusinessException>(() => Validation.Optional(new string('x', 101), 100, "module"));
     }
@@ -77,7 +77,7 @@ public sealed class RoleCatalogTests
         var result = await service.GetAsync(8, default);
         Assert.False(result.IsActive); Assert.True(result.IsAdminLocked); Assert.Equal([7L, 31L], result.RoleIds);
         Assert.Equal(16, Convert.FromBase64String(result.RowVersion).Length);
-        Assert.Equal(["Id", "IsActive", "IsAdminLocked", "RoleIds", "RowVersion"], typeof(UserAccountStateDto).GetProperties().Select(x => x.Name).Order());
+        Assert.Equal(["EffectivePermissions", "Id", "IsActive", "IsAdminLocked", "RoleIds", "RowVersion"], typeof(UserAccountStateDto).GetProperties().Select(x => x.Name).Order());
         Assert.Equal(404, (await Assert.ThrowsAsync<BusinessException>(() => service.GetAsync(999, default))).Status);
         Assert.Equal(400, (await Assert.ThrowsAsync<BusinessException>(() => service.GetAsync(0, default))).Status);
     }
@@ -99,7 +99,7 @@ public sealed class RoleCatalogTests
     private sealed class Repository(params Array[] data) : IRepository
     {
         public IQueryable<T> Query<T>(bool tracking = false) where T : class
-        { Assert.False(tracking); return data.OfType<T[]>().Single().AsQueryable(); }
+        { Assert.False(tracking); var rows=data.OfType<T[]>().Single(); foreach(var role in rows.OfType<Role>()) role.RowVersion ??= new byte[16]; return rows.AsQueryable(); }
         public Task<List<T>> ListAsync<T>(IQueryable<T> q, CancellationToken ct) => Task.FromResult(q.ToList());
         public Task<int> CountAsync<T>(IQueryable<T> q, CancellationToken ct) => Task.FromResult(q.Count());
         public Task<T?> FirstAsync<T>(IQueryable<T> q, CancellationToken ct) => Task.FromResult(q.FirstOrDefault());

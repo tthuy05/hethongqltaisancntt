@@ -1,6 +1,10 @@
 import { ASSET_STATUSES, copy } from '../models/contracts.js';
-import { validateAsset, validateLogin, validateMaster, validateUser, validateUserStatus, validateUserRoles } from '../utils/validation.js';
+import { validateActivation, validateAsset, validateLogin, validateMaster, validateUser, validateUserStatus, validateUserRoles } from '../utils/validation.js';
 import { ServiceError } from './service-error.js';
+import { createAssignmentService } from './assignment-service.js';
+import { createLicenseReadService } from './license-service.js';
+import { createAssetHistoryReader } from './asset-history-service.js';
+import { createDashboardV2Reader } from './dashboard-v2-service.js';
 
 /** Same-origin client for M1 backend APIs; no automatic mock fallback. */
 export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThis), baseUrl = '/api/v1' } = {}) {
@@ -10,6 +14,19 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
   let sessionRevision = 0;
   let expiryTimer = null;
   const invalidationListeners = new Set();
+
+  function readSession(user) {
+    const strings = values => Array.isArray(values) && values.every(value => typeof value === 'string' && value.trim().length > 0);
+    if (!user || !Number.isSafeInteger(user.id) || user.id <= 0 || !strings(user.roles) || !strings(user.permissions) ||
+        (user.departmentId != null && (!Number.isSafeInteger(user.departmentId) || user.departmentId <= 0)) ||
+        (user.displayName != null && typeof user.displayName !== 'string') || (user.email != null && typeof user.email !== 'string')) {
+      throw new ServiceError(502, 'INVALID_API_RESPONSE', 'Thông tin phiên không khớp contract API.');
+    }
+    // Store only CurrentUser fields. An accidental secret in a response must not
+    // become persistent session state; dynamic group codes remain supported.
+    return { id: user.id, displayName: user.displayName, email: user.email, departmentId: user.departmentId,
+      roles: [...user.roles], permissions: [...user.permissions] };
+  }
 
   function clearSession(reason = null) {
     const hadSession = Boolean(token || session);
@@ -75,17 +92,25 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
     let payload;
     try { payload = await response.json(); } catch {
       if (revision !== sessionRevision) throw new ServiceError(401, 'SESSION_CHANGED', 'Phiên đã thay đổi.');
-      if (response.status === 401) clearSession('unauthorized');
+      if (response.status === 401 && !publicRequest) clearSession('unauthorized');
       throw new ServiceError(response.ok ? 502 : response.status, 'API_UNAVAILABLE', 'API chưa sẵn sàng hoặc không trả JSON theo contract.');
     }
     if (revision !== sessionRevision) throw new ServiceError(401, 'SESSION_CHANGED', 'Phiên đã thay đổi. Vui lòng đăng nhập lại.');
     if (!response.ok) {
-      if (response.status === 401) clearSession('unauthorized');
-      throw new ServiceError(response.status, payload.code || 'API_ERROR', payload.detail || payload.title || 'Không thể thực hiện yêu cầu.', payload.errors || {}, { traceId: payload.traceId, retryAfter: response.headers.get('Retry-After') });
+      // Public activation sends no bearer token. Its 401 cannot prove that an
+      // unrelated authenticated session has expired; only private calls revoke it.
+      if (response.status === 401 && !publicRequest) clearSession('unauthorized');
+      const problem = payload && typeof payload === 'object' && !Array.isArray(payload) ? payload : {};
+      const nonempty = value => typeof value === 'string' && value.trim().length > 0;
+      const errors = problem.errors && typeof problem.errors === 'object' && !Array.isArray(problem.errors) ? problem.errors : {};
+      throw new ServiceError(response.status, nonempty(problem.code) ? problem.code : 'API_ERROR',
+        nonempty(problem.detail) ? problem.detail : nonempty(problem.title) ? problem.title : 'Không thể thực hiện yêu cầu.', errors,
+        { traceId: typeof problem.traceId === 'string' ? problem.traceId : null, retryAfter: response.headers.get('Retry-After') });
     }
     return payload;
   }
   const auth = {
+    async activate(dto) { validate(validateActivation(dto)); return request('/auth/activate', { method: 'POST', body: { token: dto.token, password: dto.password, confirmPassword: dto.confirmPassword }, publicRequest: true }); },
     get session() { return copy(currentSession()); },
     onSessionInvalidated(listener) {
       if (typeof listener !== 'function') throw new TypeError('Session listener must be a function.');
@@ -96,26 +121,49 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
       validate(validateLogin({ email, password }));
       clearSession();
       const response = await request('/auth/login', { method: 'POST', body: { email: email.trim(), password }, publicRequest: true });
-      if (!response?.accessToken || response.tokenType !== 'Bearer' || !Number.isFinite(Date.parse(response.expiresAt)) || !response.user?.permissions || !response.user?.roles) {
+      if (typeof response?.accessToken !== 'string' || !response.accessToken.trim() || response.tokenType !== 'Bearer' ||
+          typeof response.expiresAt !== 'string' || !Number.isFinite(Date.parse(response.expiresAt))) {
         throw new ServiceError(502, 'INVALID_API_RESPONSE', 'Login response không khớp contract đã thiết kế.');
       }
+      const user = readSession(response.user);
       token = response.accessToken;
       expiresAt = response.expiresAt;
-      session = response.user;
+      session = user;
       scheduleExpiry(sessionRevision);
       return copy(response);
     },
-    async me() { const revision = sessionRevision; const user = await request('/auth/me'); if (revision !== sessionRevision) throw new ServiceError(401, 'SESSION_CHANGED', 'Phiên đã thay đổi.'); session = user; return copy(session); },
+    async me() {
+      const revision = sessionRevision; const user = await request('/auth/me');
+      if (revision !== sessionRevision) throw new ServiceError(401, 'SESSION_CHANGED', 'Phiên đã thay đổi.');
+      try { session = readSession(user); }
+      catch (error) { clearSession('invalid-response'); throw error; }
+      return copy(session);
+    },
     async logout() { clearSession(); },
   };
   const assets = {
+    history: createAssetHistoryReader({ request, idPath }),
+    async retire(id, dto) {
+      if (!Number.isSafeInteger(id) || id <= 0 || !dto || typeof dto !== 'object' || Array.isArray(dto) ||
+          Object.keys(dto).some(key => !['reason', 'rowVersion'].includes(key))) {
+        throw new ServiceError(400, 'VALIDATION_ERROR', 'Yêu cầu ngừng sử dụng không hợp lệ.');
+      }
+      const reason = typeof dto.reason === 'string' ? dto.reason.trim() : '';
+      if (!reason || reason.length > 1000) throw new ServiceError(400, 'VALIDATION_ERROR', 'Vui lòng nhập lý do, tối đa 1000 ký tự.', { reason: ['Lý do là bắt buộc, tối đa 1000 ký tự.'] });
+      let validVersion = false;
+      try { validVersion = typeof dto.rowVersion === 'string' && atob(dto.rowVersion).length === 16 && btoa(atob(dto.rowVersion)) === dto.rowVersion; } catch { /* Invalid Base64 is a validation error. */ }
+      if (!validVersion) throw new ServiceError(400, 'VALIDATION_ERROR', 'Tải lại tài sản để lấy phiên bản hợp lệ.', { rowVersion: ['Thiếu hoặc sai phiên bản tài sản.'] });
+      return request(`/assets/${idPath(id)}/status`, { method: 'PATCH', body: { status: 'Retired', reason, rowVersion: dto.rowVersion } });
+    },
     list(query = {}) { return request(`/assets${queryString(query)}`); },
     get(id) { return request(`/assets/${idPath(id)}`); },
     async create(dto) { validate(validateAsset(dto)); return request('/assets', { method: 'POST', body: { ...dto, ...(dto.purchasePrice == null ? {} : { purchasePrice: Number(dto.purchasePrice) }) } }); },
     async update(id, dto) { validate(validateAsset(dto, { isUpdate: true })); return request(`/assets/${idPath(id)}`, { method: 'PUT', body: { ...dto, ...(dto.purchasePrice == null ? {} : { purchasePrice: Number(dto.purchasePrice) }) } }); },
     archive(id, rowVersion) {
       if (!rowVersion) return Promise.reject(new ServiceError(428, 'PRECONDITION_REQUIRED', 'Tải lại tài sản trước khi archive.'));
-      if (typeof rowVersion !== 'string' || !/^[A-Za-z0-9+/]{22}==$/.test(rowVersion)) return Promise.reject(new ServiceError(400, 'VALIDATION_ERROR', 'Phiên bản archive không hợp lệ.'));
+      let validVersion = false;
+      try { validVersion = typeof rowVersion === 'string' && atob(rowVersion).length === 16 && btoa(atob(rowVersion)) === rowVersion; } catch { /* Malformed Base64 must not reach DELETE. */ }
+      if (!validVersion) return Promise.reject(new ServiceError(400, 'VALIDATION_ERROR', 'Phiên bản archive không hợp lệ.'));
       return request(`/assets/${idPath(id)}`, { method: 'DELETE', headers: { 'If-Match': `"${rowVersion}"` } });
     },
   };
@@ -139,6 +187,8 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
     return result;
   }
   const users = {
+    lookup(query = {}) { return request(`/users/lookup${queryString(query)}`); },
+    resendInvitation(id) { return request(`/users/${idPath(id)}/invitation`, { method: 'POST' }); },
     list(query = {}) { return request(`/users${queryString(query)}`); },
     get(id) { return request(`/users/${idPath(id)}`); },
     account(id) { return request(`/users/${idPath(id)}/account`); },
@@ -148,6 +198,11 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
     async replaceRoles(id, dto) { validate(validateUserRoles(dto)); return changeUser(id, `/users/${idPath(id)}/roles`, 'PUT', dto); },
   };
   const roles = {
+    matrix() { return request('/roles/matrix'); },
+    create(dto) { return request('/roles', { method: 'POST', body: dto }); },
+    update(id, dto) { return request(`/roles/${idPath(id)}`, { method: 'PUT', body: dto }); },
+    replacePermissions(id, dto) { return request(`/roles/${idPath(id)}/permissions`, { method: 'PUT', body: dto }); },
+    setStatus(id, dto) { return request(`/roles/${idPath(id)}/status`, { method: 'PATCH', body: dto }); },
     list(query = {}) { return request(`/roles${queryString(query)}`); },
     get(id) { return request(`/roles/${idPath(id)}`); },
     permissions(query = {}) { return request(`/roles/permissions${queryString(query)}`); },
@@ -167,5 +222,8 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
       return { totalAssets: recent.totalItems, inUse: byStatus.find((item) => item.status === 'InUse').count, maintenance: byStatus.find((item) => item.status === 'Maintenance').count, replacementNeeded: null, replacementStatus: 'PLANNED', byStatus, recentAssets: recent.items, dataMode: 'api' };
     },
   };
-  return { mode: 'api', auth, assets, departments: masterService('department'), assetTypes: masterService('assetType'), users, roles, auditLogs, dashboard };
+  const assignments = createAssignmentService({ request, idPath });
+  const licenses = createLicenseReadService({ request, idPath });
+  const dashboardV2 = createDashboardV2Reader({ request, queryString, getSession: currentSession });
+  return { mode: 'api', auth, assets, departments: masterService('department'), assetTypes: masterService('assetType'), users, roles, auditLogs, dashboard, dashboardV2, assignments, licenses };
 }

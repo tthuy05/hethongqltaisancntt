@@ -18,6 +18,7 @@ public sealed class RoleSummaryDto
     public string Name { get; set; } = "";
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Code { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? IsActive { get; set; }
+    public bool IsSystem { get; set; }
 }
 public sealed class PermissionDto
 {
@@ -27,9 +28,14 @@ public sealed class PermissionDto
     public string Module { get; set; } = "";
     public bool IsActive { get; set; }
 }
-public sealed record RoleDetailDto(long Id, string Code, string Name, bool IsActive, string? Description, IReadOnlyList<PermissionDto> Permissions);
+public sealed record RoleDetailDto(long Id, string Code, string Name, bool IsActive, string? Description, IReadOnlyList<PermissionDto> Permissions)
+{
+    public bool IsSystem { get; init; }
+    public string RowVersion { get; init; } = "";
+    public int MemberCount { get; init; }
+}
 
-// Fixed definitions are read-only; users/roles writes stay behind their existing policies.
+// Read catalog for default/custom groups; mutations use RoleManagementService.
 public sealed class RoleCatalogService(IRepository repo, IActor actor)
 {
     private void Require(string permission)
@@ -50,7 +56,7 @@ public sealed class RoleCatalogService(IRepository repo, IActor actor)
     {
         Require(Permissions.RoleRead); Validate(query);
         var detailed = actor.Has(Permissions.RolePermissionsRead);
-        var roles = repo.Query<Role>().Where(x => Permissions.Roles.Contains(x.Code));
+        var roles = repo.Query<Role>();
         // Limited readers can search only the label they can see, never hidden code/description.
         if (query.Keyword != null)
         {
@@ -66,7 +72,7 @@ public sealed class RoleCatalogService(IRepository repo, IActor actor)
         };
         var items = await repo.ListAsync(order.ThenBy(x => x.Id).Skip((query.Page - 1) * query.PageSize).Take(query.PageSize)
             .Select(x => new RoleSummaryDto { Id = x.Id, Name = x.Name, Code = detailed ? x.Code : null,
-                IsActive = detailed ? x.IsActive : null }), ct);
+                IsActive = detailed ? x.IsActive : null, IsSystem = x.IsSystem }), ct);
         return new(items, query.Page, query.PageSize, count, (int)Math.Ceiling(count / (double)query.PageSize));
     }
     private IQueryable<PermissionDto> PermissionQuery() => repo.Query<Permission>()
@@ -89,10 +95,11 @@ public sealed class RoleCatalogService(IRepository repo, IActor actor)
     {
         Require(Permissions.RolePermissionsRead);
         if (id <= 0) throw Validation.Invalid("roleId", "ID phải > 0.");
-        var role = await repo.FirstAsync(repo.Query<Role>().Where(x => x.Id == id && Permissions.Roles.Contains(x.Code)), ct)
-            ?? throw new BusinessException(404, "ROLE_NOT_FOUND", "Không tìm thấy vai trò cố định.");
+        var role = await repo.FirstAsync(repo.Query<Role>().Where(x => x.Id == id), ct)
+            ?? throw new BusinessException(404, "ROLE_NOT_FOUND", "Không tìm thấy nhóm quyền.");
         var links = repo.Query<RolePermission>().Where(x => x.RoleId == id).Select(x => x.PermissionId);
         var permissions = await repo.ListAsync(PermissionQuery().Where(x => links.Contains(x.Id)).OrderBy(x => x.Code).ThenBy(x => x.Id), ct);
-        return new(role.Id, role.Code, role.Name, role.IsActive, role.Description, permissions);
+        return new(role.Id, role.Code, role.Name, role.IsActive, role.Description, permissions)
+        { IsSystem = role.IsSystem, RowVersion = Convert.ToBase64String(role.RowVersion), MemberCount = await repo.CountAsync(repo.Query<UserRole>().Where(x => x.RoleId == id), ct) };
     }
 }

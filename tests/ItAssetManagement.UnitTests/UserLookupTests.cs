@@ -70,7 +70,7 @@ public sealed class UserLookupTests
         Assert.Equal([2L, 1L], second.Items.Select(x => x.Id));
         var past = await service.ListAsync(new() { Page = 99 }, default);
         Assert.Empty(past.Items); Assert.Equal(5, past.TotalItems);
-        Assert.Equal(["DepartmentId", "DisplayName", "Id"], typeof(UserLookupDto).GetProperties().Select(x => x.Name).Order());
+        Assert.Equal(["DepartmentId", "DepartmentName", "DisplayName", "Id"], typeof(UserLookupDto).GetProperties().Select(x => x.Name).Order());
     }
 
     private sealed class Actor(bool allowed) : IActor
@@ -85,7 +85,7 @@ public sealed class UserLookupTests
     private sealed class Repository(List<User>? users = null) : IRepository
     {
         public IQueryable<T> Query<T>(bool tracking = false) where T : class =>
-            users?.Cast<T>().AsQueryable() ?? throw new InvalidOperationException("Query was not expected.");
+            typeof(T) == typeof(Department) ? new[] { new Department { Id=2,Name="Kỹ thuật" } }.Cast<T>().AsQueryable() : users?.Cast<T>().AsQueryable() ?? throw new InvalidOperationException("Query was not expected.");
         public Task<List<T>> ListAsync<T>(IQueryable<T> q, CancellationToken ct) => Task.FromResult(q.ToList());
         public Task<int> CountAsync<T>(IQueryable<T> q, CancellationToken ct) => Task.FromResult(q.Count());
         public Task<T?> FirstAsync<T>(IQueryable<T> q, CancellationToken ct) => throw new NotSupportedException();

@@ -18,7 +18,7 @@ namespace ItAssetManagement.IntegrationTests;
 [Collection("isolated-neon")]
 public sealed class AssignmentIntegrationTests(MvpFixture fixture)
 {
-    private const string IsolatedDatabase = "it_asset_management_m1_verify_20261002";
+    private static string IsolatedDatabase => Environment.GetEnvironmentVariable("ITAM_TEST_DATABASE") ?? "it_asset_management_m1_verify_20261002";
     private static readonly CancellationToken Ct = CancellationToken.None;
 
     private static void VerifyTarget(IServiceProvider provider) =>

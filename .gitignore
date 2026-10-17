@@ -3,6 +3,7 @@ node_modules/
 artifacts/frontend/
 artifacts/frontend-production/
 artifacts/production-publish/
+artifacts/maintenance-publish/
 artifacts/swagger/
 artifacts/ui-evidence/
 
