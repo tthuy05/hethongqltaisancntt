@@ -34,10 +34,11 @@ test('actual asset detail lazily reads status history; other two tabs stay PLANN
 });
 test('missing read/history grant, demo mode and absent adapter never query or invent empty history', async () => {
   const dom = installDom(); try {
-    for (const permission of ['assets.read', 'assets.history.read']) {
-      const services = source(); services.auth.session.permissions = [permission]; const root = await mount(dom, services);
-      tab(root, 'status').fire('click'); assert.match(panel(root).textContent, /không có quyền/); assert.equal(services.calls.length, 0); root.remove();
-    }
+    const noHistory = source(); noHistory.auth.session.permissions = ['assets.read']; const readable = await mount(dom, noHistory);
+    tab(readable, 'status').fire('click'); assert.match(panel(readable).textContent, /không có quyền/);
+    assert.equal(noHistory.calls.length, 0); readable.remove();
+    const noAssetRead = source(); noAssetRead.auth.session.permissions = ['assets.history.read'];
+    await assert.rejects(mount(dom, noAssetRead), { status: 403 }); assert.equal(noAssetRead.calls.length, 0);
     for (const mode of ['mock', 'missing']) {
       const services = source(); if (mode === 'mock') services.mode = 'mock'; else delete services.assets.history;
       const root = await mount(dom, services); tab(root, 'status').fire('click');

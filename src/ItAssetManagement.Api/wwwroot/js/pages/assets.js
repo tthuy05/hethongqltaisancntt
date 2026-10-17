@@ -89,7 +89,20 @@ export async function assetListPage(services) {
 }
 
 export async function assetDetailPage(services, id) {
+  const actorId = services.auth?.session?.id;
+  const pageHash = window.location.hash;
+  const requireReader = () => {
+    const session = services.auth?.session;
+    if (!Number.isSafeInteger(actorId) || actorId <= 0 || session?.id !== actorId || window.location.hash !== pageHash)
+      throw Object.assign(new Error('Phiên hoặc trang đã thay đổi.'), { status: 401, code: 'SESSION_CHANGED' });
+    if (!hasPermission(session, 'assets.read'))
+      throw Object.assign(new Error('Bạn không có quyền xem tài sản.'), { status: 403, code: 'FORBIDDEN' });
+  };
+  requireReader();
   const asset = await services.assets.get(id);
+  requireReader();
+  if (!Number.isSafeInteger(asset?.id) || asset.id !== id)
+    throw Object.assign(new Error('Chi tiết tài sản không khớp ID đã yêu cầu.'), { status: 502, code: 'INVALID_API_RESPONSE' });
   const tabs = h('div', { className: 'tab-list', role: 'tablist', 'aria-label': 'Lịch sử tài sản' });
   const panel = h('div', { className: 'card-body', role: 'tabpanel', id: 'history-panel', tabindex: 0, 'aria-live': 'polite' });
   const history = [{ key: 'assignment', label: 'Phân bổ', note: 'Assignment History — PLANNED. Chưa kết nối API lịch sử phân bổ.' }, { key: 'maintenance', label: 'Bảo trì', note: 'Maintenance History — PLANNED. Chưa kết nối API bảo trì.' }, { key: 'status', label: 'Trạng thái' }];
