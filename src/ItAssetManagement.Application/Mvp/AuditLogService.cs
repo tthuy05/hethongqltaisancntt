@@ -79,13 +79,14 @@ public sealed class AuditLogDetailDto : AuditLogSummaryDto
 // Revalidate historic JSON at the read boundary; never return the stored snapshot directly.
 public static class AuditSnapshot
 {
-    private static readonly string[] PositiveIds = ["assetTypeId", "owningDepartmentId", "userId", "roleId", "permissionId", "auditLogId", "assetId", "assignedByUserId", "maintenanceTicketId", "licenseId"];
-    private static readonly string[] NullableIds = ["parentDepartmentId", "departmentId", "assignedUserId", "assignedDepartmentId", "returnedByUserId", "technicianId"];
+    private static readonly string[] PositiveIds = ["assetTypeId", "owningDepartmentId", "userId", "roleId", "permissionId", "auditLogId", "assetId", "assignedByUserId", "maintenanceTicketId", "licenseId", "softwareId", "softwareLicenseId", "replacementRuleId", "recommendationId"];
+    private static readonly string[] NullableIds = ["parentDepartmentId", "departmentId", "assignedUserId", "assignedDepartmentId", "returnedByUserId", "technicianId", "assignedAssetId"];
     private static readonly string[] UtcTimes = ["assignedAtUtc", "returnedAtUtc", "performedAtUtc"];
     private static readonly string[] Flags = ["isActive", "isArchived", "isAdminLocked", "emailChanged", "usernameChanged", "displayNameChanged",
-        "employeeCodeChanged", "phoneChanged", "adminRoleAssigned", "reasonProvided", "estimatedCostChanged", "actualCostChanged", "commentProvided", "keyRevealed", "isEmailConfirmed"];
+        "employeeCodeChanged", "phoneChanged", "adminRoleAssigned", "reasonProvided", "estimatedCostChanged", "actualCostChanged", "commentProvided", "keyRevealed", "isEmailConfirmed", "isCurrent"];
     private static readonly string[] Other = ["defaultUsefulLifeMonths", "roleCount", "currentStatus", "purchaseCost", "page", "pageSize", "returnedCount",
-        "maintenanceStatus", "maintenancePriority", "eventType", "keyVersion", "permissionCount", "emailStatus"];
+        "maintenanceStatus", "maintenancePriority", "eventType", "keyVersion", "permissionCount", "emailStatus",
+        "licenseType", "totalQuantity", "disposition", "priority", "rulePriority", "ruleVersion", "score", "plannedReplacementYear"];
     private static readonly Dictionary<string, string> Names = PositiveIds.Concat(NullableIds).Concat(UtcTimes).Concat(Flags).Concat(Other)
         .ToDictionary(x => x, x => x, StringComparer.OrdinalIgnoreCase);
 
@@ -133,6 +134,14 @@ public static class AuditSnapshot
             "page" => value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var page) && page > 0,
             "pageSize" => value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var size) && size is >= 1 and <= 100,
             "returnedCount" => value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var returned) && returned is >= 0 and <= 100,
+            "licenseType" => value.ValueKind == JsonValueKind.String && value.GetString() is "PER_USER" or "PER_DEVICE" or "VOLUME" or "SUBSCRIPTION" or "OTHER",
+            "totalQuantity" => value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var qty) && qty > 0,
+            "disposition" => value.ValueKind == JsonValueKind.String && value.GetString() is "ACTIVE" or "PLANNED" or "DISMISSED" or "SUPERSEDED",
+            "priority" => value.ValueKind == JsonValueKind.String && value.GetString() is "LOW" or "MEDIUM" or "HIGH" or "CRITICAL",
+            "rulePriority" => value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var prio) && prio >= 0,
+            "ruleVersion" => value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var ver) && ver > 0,
+            "plannedReplacementYear" => isNull || (value.ValueKind == JsonValueKind.Number && value.TryGetInt16(out var yr) && yr is >= 2000 and <= 2100),
+            "score" => isNull || (value.ValueKind == JsonValueKind.Number && value.TryGetDecimal(out var score) && score is >= 0 and <= 99999.9999m),
             _ => false
         };
     }

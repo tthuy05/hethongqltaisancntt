@@ -29,15 +29,21 @@ public sealed record AssetLifecycleMetrics(AssetLifecycleFacts Facts, DateOnly A
 
 public sealed class AssetLifecycleMetricsReader(IRepository repo, IActor actor)
 {
-    public IQueryable<AssetLifecycleFacts> Query(long assetId)
+    public IQueryable<AssetLifecycleFacts> QueryCandidates(long? assetTypeId = null)
     {
         if (actor.UserId is not > 0 || !actor.Has(Permissions.ReplacementEvaluate) || !actor.Has(Permissions.AssetCost))
             throw new BusinessException(403, "FORBIDDEN", "Không có quyền đọc metrics đánh giá tài sản.");
-        if (assetId <= 0) throw Validation.Invalid("assetId", "ID phải > 0.");
+        if (assetTypeId is <= 0)
+            throw Validation.Invalid("assetTypeId", "ID loại tài sản phải > 0.");
+
         var tickets = repo.Query<MaintenanceTicket>();
+        var query = repo.Query<Asset>().Where(a => !a.IsArchived);
+        if (assetTypeId.HasValue)
+            query = query.Where(a => a.AssetTypeId == assetTypeId.Value);
+
         // One SELECT gives every correlated aggregate the same PostgreSQL statement
         // snapshot. Never join history rows or exclude archived financial evidence.
-        return repo.Query<Asset>().Where(a => a.Id == assetId && !a.IsArchived).Select(a => new AssetLifecycleFacts
+        return query.Select(a => new AssetLifecycleFacts
         {
             AssetId = a.Id, AssetTypeId = a.AssetTypeId, CurrentStatus = a.CurrentStatus,
             PurchaseDate = a.PurchaseDate, WarrantyEndDate = a.WarrantyEndDate, PurchaseCost = a.PurchaseCost,
@@ -53,11 +59,24 @@ public sealed class AssetLifecycleMetricsReader(IRepository repo, IActor actor)
         });
     }
 
+    public IQueryable<AssetLifecycleFacts> Query(long assetId)
+    {
+        if (assetId <= 0) throw Validation.Invalid("assetId", "ID phải > 0.");
+        return QueryCandidates(null).Where(a => a.AssetId == assetId);
+    }
+
     public async Task<AssetLifecycleMetrics> ReadAsync(long assetId, DateOnly assessmentDate, CancellationToken ct)
     {
         var facts = await repo.FirstAsync(Query(assetId), ct) ??
             throw new BusinessException(404, "ASSET_NOT_FOUND", "Không tìm thấy tài sản.");
         return Calculate(facts, assessmentDate);
+    }
+
+    public async Task<IReadOnlyList<AssetLifecycleMetrics>> EvaluateCandidatesAsync(
+        DateOnly assessmentDate, long? assetTypeId = null, CancellationToken ct = default)
+    {
+        var factsList = await repo.ListAsync(QueryCandidates(assetTypeId), ct);
+        return factsList.Select(facts => Calculate(facts, assessmentDate)).ToList();
     }
 
     // The date affects age/warranty only. Counts/cost are CURRENT facts, not a

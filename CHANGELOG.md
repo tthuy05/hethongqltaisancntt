@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — 17/10/2026 — License/lifecycle preparation review
+
+- Added: License capacity/alert helpers, batch lifecycle metrics, Replacement policy and typed audit metadata with unit tests; owner module integration remains PENDING.
+- Fixed: foreign-license/future-effective transfer guards, negative seat counts, schema bounds, ACTIVE self-transition and tracked-object mutation before note validation.
+- Verified: selected source in a separate checkout:643 unit/158 offline integration/283 frontend PASS;141 cloud SKIP;Release0 warning/error;32/36 published HTTP smoke PASS. Linux container and exact pushed revision await CI.
+- Documented: [review scope and deferred WIP](docs/thuy-review-2026-10-17.md). Reporting/import/export and final-acceptance drafts are excluded; no config, migration, shared database or deployment changes.
+
 ## Unreleased — 16/10/2026 — User write lifecycle
 
 - Fixed: User create/profile/status/membership dialogs lock captured inputs, validate response identity and block uncertain replay while preserving self-change Login and known field validation.

@@ -248,6 +248,45 @@ public sealed class AuditLogTests
         Assert.True(result.Redacted); Assert.Equal(new[] { "reasonProvided" },result.Values!.Keys);
     }
 
+    [Fact]
+    public void License_and_replacement_snapshots_preserve_typed_metadata_and_mask_cost_by_permission()
+    {
+        const string json = "{\"softwareId\":10,\"softwareLicenseId\":20,\"assignedAssetId\":30,\"licenseType\":\"VOLUME\",\"totalQuantity\":50," +
+            "\"replacementRuleId\":100,\"ruleVersion\":2,\"rulePriority\":10,\"recommendationId\":500,\"disposition\":\"ACTIVE\",\"isCurrent\":true," +
+            "\"priority\":\"HIGH\",\"score\":98.5000,\"purchaseCost\":12500000.00,\"plannedReplacementYear\":2027}";
+
+        var allowed = AuditSnapshot.Read(json, true);
+        Assert.False(allowed.Redacted);
+        Assert.Equal(15, allowed.Values!.Count);
+        Assert.Equal(10, allowed.Values["softwareId"].GetInt64());
+        Assert.Equal(20, allowed.Values["softwareLicenseId"].GetInt64());
+        Assert.Equal(30, allowed.Values["assignedAssetId"].GetInt64());
+        Assert.Equal("VOLUME", allowed.Values["licenseType"].GetString());
+        Assert.Equal(50, allowed.Values["totalQuantity"].GetInt32());
+        Assert.Equal(100, allowed.Values["replacementRuleId"].GetInt64());
+        Assert.Equal(2, allowed.Values["ruleVersion"].GetInt32());
+        Assert.Equal(10, allowed.Values["rulePriority"].GetInt32());
+        Assert.Equal(500, allowed.Values["recommendationId"].GetInt64());
+        Assert.Equal("ACTIVE", allowed.Values["disposition"].GetString());
+        Assert.True(allowed.Values["isCurrent"].GetBoolean());
+        Assert.Equal("HIGH", allowed.Values["priority"].GetString());
+        Assert.Equal(98.5m, allowed.Values["score"].GetDecimal());
+        Assert.Equal(12500000.00m, allowed.Values["purchaseCost"].GetDecimal());
+        Assert.Equal(2027, allowed.Values["plannedReplacementYear"].GetInt16());
+
+        // Least privilege: cost is redacted when caller lacks cost permission
+        var noCost = AuditSnapshot.Read(json, false);
+        Assert.True(noCost.Redacted);
+        Assert.DoesNotContain("purchaseCost", noCost.Values!.Keys);
+        Assert.Equal(14, noCost.Values.Count);
+
+        // Sensitive keys and raw JSON snapshots are never admitted
+        var unsafeJson = json.TrimEnd('}') + ",\"licenseKey\":\"SECRET-KEY-123\",\"password\":\"hidden\",\"token\":\"hidden\",\"evaluationSnapshotJson\":\"{}\"}";
+        var redacted = AuditSnapshot.Read(unsafeJson, true);
+        Assert.True(redacted.Redacted);
+        Assert.Equal(allowed.Values.Keys.Order(), redacted.Values!.Keys.Order());
+    }
+
     private static AuditLogListQuery Window() => new() { From = "2026-10-04T00:00:00Z", To = "2026-10-05T00:00:00Z" };
     private static AuditLogService Service(Repository repo, Writer writer) => new(repo, new Actor(Permissions.AuditRead), new UnitOfWork(), writer);
     private static Repository Data()

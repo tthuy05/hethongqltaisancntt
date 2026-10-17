@@ -65,4 +65,25 @@ public sealed class AssetLifecycleMetricsTests
         Assert.DoesNotContain("maintenance_histories", sql); Assert.DoesNotContain("license_key", sql);
         Assert.DoesNotContain(Permissions.ReplacementEvaluate, Permissions.All);
     }
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void QueryCandidates_rejects_non_positive_asset_type_id(long assetTypeId)
+    {
+        var reader = new AssetLifecycleMetricsReader(null!, new Actor(Permissions.ReplacementEvaluate, Permissions.AssetCost));
+        Assert.Equal(400, Assert.Throws<BusinessException>(() => reader.QueryCandidates(assetTypeId)).Status);
+    }
+    [Fact]
+    public void QueryCandidates_translates_single_statement_with_optional_type_filter()
+    {
+        using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql("Host=localhost;Database=offline_metrics").Options);
+        var reader = new AssetLifecycleMetricsReader(new EfRepository(db), new Actor(Permissions.ReplacementEvaluate, Permissions.AssetCost));
+        var sqlAll = reader.QueryCandidates(null).ToQueryString();
+        Assert.Contains("assets", sqlAll);
+        Assert.Contains("maintenance_tickets", sqlAll);
+        Assert.DoesNotContain("asset_type_id =", sqlAll);
+
+        var sqlType = reader.QueryCandidates(5).ToQueryString();
+        Assert.Contains("asset_type_id", sqlType);
+    }
 }

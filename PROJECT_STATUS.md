@@ -1,5 +1,13 @@
 # Project Status
 
+## 17/10/2026 — Rà soát và publication helper Tuần 5 của Thủy
+
+Phạm vi đã chọn: License capacity/alerts, batch lifecycle metrics, Replacement policy và typed audit metadata; helper **PREPARED / UNIT-VERIFIED**, owner service integration/transaction race/production acceptance **PENDING**. Sửa 5 nhóm regression về transfer, count âm, schema bounds, self-transition và object mutation khi note không hợp lệ.
+
+Checkout riêng của source publication: Release 0 warning/error;643 unit PASS;158 offline integration PASS/141 cloud SKIP;283 frontend PASS;44 syntax/48 boundary PASS;69 published files/39 assets;32/36 Production HTTP smoke PASS. Linux container/CI cần kết quả đúng commit sau push. [Phạm vi và evidence](docs/thuy-review-2026-10-17.md), [handoff](docs/week-05-capacity-alert-query-handoff.md).
+
+Dashboard/Reports/Import/Export và báo cáo nghiệm thu Tuần 6–8 còn là **WIP / NOT ACCEPTED**; các bản nháp hoàn thành 100%, p95/EXPLAIN/PITR/live rehearsal chưa đủ bằng chứng. Không đưa chúng vào publication này. Không đổi config/migration/shared Neon/Render, không bật Assignment API và không đóng 30-task evidence Tuần 2 hoặc task phụ thuộc Thiện.
+
 ## 16/10/2026 — User write lifecycle
 
 Thủy khóa captured User fields khi pending, kiểm response identity và giữ draft/khóa replay sau conflict/unknown; self-change→Login giữ nguyên.270frontend PASS/43syntax/47source checks; [addendum](docs/user-dialog-access-handoff.md). Không email thật/backend/config/shared/Render changes.
