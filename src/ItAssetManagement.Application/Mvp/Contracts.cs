@@ -72,6 +72,26 @@ public static class Permissions
         UserRead, UserCreate, UserUpdate, UserStatus, RoleAssign, RolePermissionsRead, AuditRead];
     public static readonly string[] All = [.. Read, .. Operate, .. Admin];
     public static readonly string[] Roles = ["ADMIN_IT", "SYSTEM_MANAGER", "TECHNICAL_SUPPORT"];
+    public const string MaintenanceRead = "maintenance.read";
+    public const string MaintenanceCreate = "maintenance.create";
+    public const string MaintenanceComplete = "maintenance.complete";
+}
+
+public sealed record CreateMaintenanceRequest(long AssetId, string Description, decimal? EstimatedCost);
+public sealed record CompleteMaintenanceRequest(string Resolution, decimal? ActualCost, string? RowVersion);
+
+public sealed class MaintenanceDto
+{
+    public long Id { get; set; }
+    public long AssetId { get; set; }
+    public string Description { get; set; } = "";
+    public DateTime StartedAtUtc { get; set; }
+    public DateTime? CompletedAtUtc { get; set; }
+    public string? Resolution { get; set; }
+    public decimal? EstimatedCost { get; set; }
+    public decimal? ActualCost { get; set; }
+    public string Status { get; set; } = "";
+    public string RowVersion { get; set; } = "";
 }
 public sealed record LoginRequest(string Email, string Password);
 public sealed record CurrentUser(long Id, string DisplayName, string Email, long? DepartmentId, string[] Roles, string[] Permissions);
