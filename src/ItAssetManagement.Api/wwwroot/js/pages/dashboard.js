@@ -36,7 +36,7 @@ export async function dashboardPage(services) {
 
   const counts = summary.byStatus || [];
   const canReadCost = can(services, 'dashboard.cost.read') && costs != null;
-  const canReadReports = services.reportingEnabled === true && (can(services, 'reports.assets.read') || can(services, 'reports.cost.read') || can(services, 'reports.assignments.read') || can(services, 'reports.maintenance.read') || can(services, 'reports.licenses.read'));
+  const canReadReports = services.reportingEnabled === true && (can(services, 'reports.assets.read') || can(services, 'reports.cost.read') || can(services, 'reports.assignments.read') || can(services, 'reports.maintenance.read') || can(services, 'reports.licenses.read') || can(services, 'reports.replacement.read'));
 
   const actions = [
     button('Xem tài sản', { kind: 'secondary', onClick: () => route('/assets'), iconName: 'laptop' }),

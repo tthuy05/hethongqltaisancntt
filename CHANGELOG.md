@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — 21/10/2026 — Reports UI của Thủy
+
+- Added: independent warranty/license filter/paging, UTC/year validation, budget-year/group controls and read-only replacement report tab with cost/access guards.
+- Fixed: stable recommendation report paging for identical timestamps; stale report controls no longer navigate after detach/session/grant changes.
+- Verified locally:709 unit/192 offline integration/334 frontend PASS;146 cloud SKIP;synthetic desktop/mobile browser QA. No owner-module business/config/migration/shared database or deployment changes. [Handoff](docs/reports-ui-handoff-2026-10-21.md).
+
 ## Unreleased — 17/10/2026 — License/lifecycle preparation review
 
 - Added: License capacity/alert helpers, batch lifecycle metrics, Replacement policy and typed audit metadata with unit tests; owner module integration remains PENDING.

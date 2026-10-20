@@ -565,6 +565,7 @@ public sealed class ReportQueryService(IRepository repo, IActor actor, TimeProvi
 
         var recs = await repo.ListAsync(
             q.OrderByDescending(r => r.RecommendedAtUtc)
+             .ThenByDescending(r => r.Id)
              .Skip((query.Page - 1) * query.PageSize)
              .Take(query.PageSize), ct);
 

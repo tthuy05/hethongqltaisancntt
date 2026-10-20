@@ -1,5 +1,7 @@
 # Week 06 — Dashboard, Reports & Budget
 
+**21/10 — Thủy UI checkpoint:** filter/paging expiry độc lập, year/group budget và tab replacement report chỉ đọc có local tests/browser synthetic QA; [handoff](../reports-ui-handoff-2026-10-21.md). W6-THUY-D3-03/D4-03 vẫn UNDER REVIEW đến khi real API/grants và owner/browser acceptance được xác nhận. Không đóng performance/integration/production gates hoặc task Thiện.
+
 > **IN PROGRESS / UNDER REVIEW — 20/10/2026.** Local preparation và focused PostgreSQL tests có evidence ở [review](../import-reporting-review-2026-10-20.md). Owner integration, production rollout, broad performance/browser acceptance và independent review chưa hoàn tất.
 
 **Database boundary — PLANNED:** development/manual integration/demo dùng shared Neon PostgreSQL; clean migration/automated integration/performance fixture dùng PostgreSQL target isolated theo [testing strategy](../testing-strategy.md), fail-closed nếu trỏ shared dev. Không drop/reset schema/database hoặc truncate toàn bộ tables trên shared DB. Thủy review/test rồi điều phối apply migration qua direct endpoint; Thiện sync trước mọi EF migration command. Performance evidence ghi PostgreSQL/Neon target/load thực tế và không gây tải cạnh tranh ngoài thỏa thuận trên shared dev.

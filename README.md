@@ -1,5 +1,7 @@
 # Hệ thống Quản lý & Tối ưu Hạ tầng CNTT Doanh nghiệp
 
+**Reports UI — 21/10/2026:** bổ sung bộ lọc/phân trang bảo hành–License, chọn năm dự toán và tab báo cáo đề xuất thay thế chỉ đọc. Có automated tests và QA trình duyệt bằng dữ liệu giả; chưa mở trên demo production. Đây là phần báo cáo của Thủy, không triển khai engine nghiệp vụ của Thiện. [Bàn giao](docs/reports-ui-handoff-2026-10-21.md).
+
 **Chuẩn bị trước tiến độ — 20/10/2026:** đang hoàn thiện và kiểm thử Import/Export Excel, Dashboard và Reports trên nhánh review. Các API mới mặc định đóng, chưa cấp quyền hay deploy; Dashboard M1 vẫn dùng API tài sản hiện có. Đây không phải nghiệm thu hoàn tất Tuần 6–8. [Phạm vi, kết quả và việc còn lại](docs/import-reporting-review-2026-10-20.md).
 
 **Source cập nhật 15/10/2026:** tab lịch sử **Trạng thái** tài sản đã nối endpoint đọc hiện có, có phân trang, người thực hiện và thời điểm UTC. Phân bổ/Bảo trì vẫn PLANNED; chưa mở module mới hoặc deploy bản này. [Phạm vi và bằng chứng kiểm thử](docs/week-04-asset-status-history-handoff.md).

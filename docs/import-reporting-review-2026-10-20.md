@@ -1,5 +1,7 @@
 # Thủy — Import/Export và Reporting: checkpoint review 20/10/2026
 
+**Follow-up21/10:** phần UI expiry paging/filters, budget-year và replacement report tab trong gate3 đã bổ sung và kiểm synthetic browser; [handoff](reports-ui-handoff-2026-10-21.md). Gate3 vẫn cần actual JWT/API/owner acceptance, không tự coi production hoàn tất. Lượt334frontend/709unit mới ghi riêng, không thay số kiểm thử checkpoint bên dưới.
+
 ## Addendum — Financial completeness sau publication b8f241f
 
 Checkpoint b8f241f đã push nhánh review; [CI39404589440](https://github.com/tthuy05/hethongqltaisancntt/actions/runs/39404589440) SUCCESS gồm actual Linux container build/smoke. Chưa merge main/deploy. Bảng704/190/304 bên dưới giữ evidence của checkpoint đó, không dùng cho source addendum mới.

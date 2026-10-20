@@ -7,6 +7,16 @@ namespace ItAssetManagement.UnitTests;
 public sealed class DashboardAndReportingTests
 {
     [Fact]
+    public async Task Replacement_report_paging_has_id_tie_breaker_when_timestamps_match()
+    {
+        var now = DateTime.UtcNow;
+        var recs = new[] { new ReplacementRecommendation { Id = 1, RecommendedAtUtc = now }, new ReplacementRecommendation { Id = 2, RecommendedAtUtc = now } };
+        var reader = new ReportQueryService(new InMemoryRepo(recs), new TestActor(1, Permissions.ReportReplacement));
+        var first = await reader.GetReplacementReportAsync(new() { Page = 1, PageSize = 1 });
+        var second = await reader.GetReplacementReportAsync(new() { Page = 2, PageSize = 1 });
+        Assert.Equal(2, Assert.Single(first.Items).Id); Assert.Equal(1, Assert.Single(second.Items).Id);
+    }
+    [Fact]
     public async Task Dashboard_cost_completeness_distinguishes_unknown_from_known_zero_and_respects_ytd_scope()
     {
         var now = new FixedClock().GetUtcNow().UtcDateTime;

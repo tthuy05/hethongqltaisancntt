@@ -1,5 +1,9 @@
 # Project Status
 
+## 21/10/2026 — Thủy hoàn thiện Reports UI đọc dữ liệu
+
+Local/under review: filter/paging độc lập bảo hành–License, chọn năm budget/group, tab replacement report chỉ đọc, query validation và stale callback guards. Chỉ thêm tie-break ID vào truy vấn report của Thủy; không sửa nghiệp vụ Thiện.709 unit/192 offline integration/334 frontend PASS,146 cloud SKIP;browser QA synthetic desktop/mobile. [Phạm vi và evidence](docs/reports-ui-handoff-2026-10-21.md). Flags/grants/config/shared Neon/Render giữ nguyên; performance, real JWT E2E, owner review/rollout còn pending.
+
 ## 17/10/2026 — Rà soát và publication helper Tuần 5 của Thủy
 
 Phạm vi đã chọn: License capacity/alerts, batch lifecycle metrics, Replacement policy và typed audit metadata; helper **PREPARED / UNIT-VERIFIED**, owner service integration/transaction race/production acceptance **PENDING**. Sửa 5 nhóm regression về transfer, count âm, schema bounds, self-transition và object mutation khi note không hợp lệ.

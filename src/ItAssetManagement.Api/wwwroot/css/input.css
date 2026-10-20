@@ -435,6 +435,14 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--primary); widt
 .data-table .actions .button { padding: 6px 9px; min-height: 34px; }
 .filters-card { margin-bottom: 20px; }
 .filters-card .filters { border: 0; }
+.reports-page .report-sections { display: flex; flex-direction: column; gap: 24px; }
+.reports-page .tab-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+.reports-page .grid-kpis { grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
+.reports-page .data-table td:first-child { white-space: nowrap; }
+.reports-page .report-filters { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.reports-page .report-filter-actions, .reports-page .report-filter-error { grid-column: 1 / -1; }
+.reports-page .report-filter-error:empty { display: none; }
+.reports-page .report-note { padding: 0 22px 18px; }
 .status-distribution { display: flex; flex-direction: column; gap: 18px; }
 .status-distribution .distribution-row { flex-direction: column; align-items: stretch; gap: 8px; }
 .distribution-row .toolbar { justify-content: space-between; }
