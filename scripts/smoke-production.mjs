@@ -13,6 +13,7 @@ const fixture = {
   ConnectionStrings__DefaultConnection: 'Host=offline-fixture.neon.tech;Database=deployment_fixture;Username=fixture;Password=synthetic-not-a-live-password',
   Jwt__SigningKey: 'synthetic-deployment-smoke-key-never-used-for-real-tokens-2026',
   AllowedHosts: 'localhost;127.0.0.1', Frontend__Enabled: 'true', Swagger__Enabled: 'false',
+  Features__AssignmentApi__Enabled: 'false',
   RENDER: 'true', RENDER_EXTERNAL_HOSTNAME: 'itam-offline-fixture.onrender.com',
 };
 
@@ -24,7 +25,7 @@ async function freePort() {
   return port;
 }
 
-async function check(origin) {
+async function check(origin, expectedRevision) {
   const request = (target, options = {}) => fetch(`${origin}${target}`, { signal: AbortSignal.timeout(5000), ...options });
   // Node fetch intentionally ignores caller Host overrides. Raw HTTP is needed
   // to verify the real ASP.NET HostFiltering middleware, not a helper string.
@@ -46,6 +47,24 @@ async function check(origin) {
   }
   assert(ready, 'Production liveness did not become ready.');
   let checks = 1;
+  const versionResponse = await request('/health/version');
+  assert.equal(versionResponse.status, 200);
+  assert.equal(versionResponse.headers.get('cache-control'), 'no-store');
+  const version = await versionResponse.json();
+  assert.equal(version.workflowCompatibility, 'asset-workflow-per-asset-v1');
+  assert.equal(version.assignmentApiEnabled, false, 'Stage A must report Assignment rollout disabled.');
+  assert(version.artifactRevision === null || /^[0-9a-f]{40}$/u.test(version.artifactRevision));
+  if (expectedRevision) assert.equal(version.artifactRevision, expectedRevision, 'Published artifact revision does not match the expected commit.');
+  checks++;
+  // Stage A must not instantiate a business Controller/service against missing
+  // workflow tables. Synthetic DB credentials make accidental access fail.
+  for (const [target, method] of [
+    ['/api/v1/asset-assignments', 'GET'], ['/api/v1/asset-assignments/1', 'GET'],
+    ['/api/v1/asset-assignments', 'POST'], ['/api/v1/asset-assignments/1/return', 'POST'],
+  ]) {
+    assert.equal((await request(target, { method })).status, 404, `Assignment rollout must remain closed: ${method} ${target}`);
+    checks++;
+  }
   for (const target of ['/', '/?demo=1', '/index.html', '/css/app.css', '/js/app.js', '/js/services/index.js', '/assets/fonts/inter-vietnamese-400-normal.woff2']) {
     const response = await request(target);
     assert.equal(response.status, 200, `Production asset failed: ${target}`);
@@ -74,7 +93,10 @@ async function check(origin) {
 
 async function main() {
   const [mode, target, ...rest] = process.argv.slice(2);
-  assert(['--publish', '--image'].includes(mode) && target && rest.length === 0, 'Usage: node scripts/smoke-production.mjs (--publish <directory> | --image <docker-image>)');
+  assert(['--publish', '--image'].includes(mode) && target && (rest.length === 0 ||
+    rest.length === 2 && rest[0] === '--expected-revision' && /^[0-9a-fA-F]{40}$/u.test(rest[1])),
+  'Usage: node scripts/smoke-production.mjs (--publish <directory> | --image <docker-image>) [--expected-revision <full-commit-sha>]');
+  const expectedRevision = rest.length === 2 ? rest[1].toLowerCase() : null;
   const port = await freePort();
   const origin = `http://127.0.0.1:${port}`;
   let child;
@@ -98,7 +120,7 @@ async function main() {
       const result = spawnSync('docker', arguments_, { encoding: 'utf8', windowsHide: true, timeout: 30000 });
       assert.equal(result.status, 0, 'Could not start the synthetic Production smoke container.');
     }
-    const checks = await check(origin);
+    const checks = await check(origin, expectedRevision);
     console.log(`PASS: ${checks} Production HTTP smoke checks (${mode === '--image' ? 'Linux Docker container' : 'published .NET application'}). No database query, seed or migration; live Neon login/data verification remains a separate manual gate.`);
   } catch (error) {
     if (mode === '--image') output = spawnSync('docker', ['logs', container], { encoding: 'utf8', windowsHide: true, timeout: 10000 }).stdout || '';

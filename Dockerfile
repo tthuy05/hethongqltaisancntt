@@ -12,13 +12,17 @@ RUN pnpm run build:production
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS backend
 WORKDIR /build
+ARG BUILD_REVISION
+ARG RENDER_GIT_COMMIT
 COPY Directory.Build.props Directory.Packages.props ./
 COPY src/ ./src/
 RUN dotnet restore src/ItAssetManagement.Api/ItAssetManagement.Api.csproj --locked-mode
 COPY --from=frontend /build/artifacts/frontend-production/ ./artifacts/frontend-production/
-RUN dotnet publish src/ItAssetManagement.Api/ItAssetManagement.Api.csproj \
+RUN deployRevision="${BUILD_REVISION:-$RENDER_GIT_COMMIT}" \
+    && dotnet publish src/ItAssetManagement.Api/ItAssetManagement.Api.csproj \
     --configuration Release --no-restore --output /publish \
     -p:FrontendPublishDirectory=/build/artifacts/frontend-production \
+    -p:BuildRevision="$deployRevision" -p:RequireBuildRevision=true \
     -p:UseAppHost=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime

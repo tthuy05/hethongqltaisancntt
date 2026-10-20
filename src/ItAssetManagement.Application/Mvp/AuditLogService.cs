@@ -79,12 +79,13 @@ public sealed class AuditLogDetailDto : AuditLogSummaryDto
 // Revalidate historic JSON at the read boundary; never return the stored snapshot directly.
 public static class AuditSnapshot
 {
-    private static readonly string[] PositiveIds = ["assetTypeId", "owningDepartmentId", "userId", "roleId", "auditLogId"];
-    private static readonly string[] NullableIds = ["parentDepartmentId", "departmentId"];
+    private static readonly string[] PositiveIds = ["assetTypeId", "owningDepartmentId", "userId", "roleId", "auditLogId", "assetId", "assignedByUserId"];
+    private static readonly string[] NullableIds = ["parentDepartmentId", "departmentId", "assignedUserId", "assignedDepartmentId", "returnedByUserId"];
+    private static readonly string[] UtcTimes = ["assignedAtUtc", "returnedAtUtc"];
     private static readonly string[] Flags = ["isActive", "isArchived", "isAdminLocked", "emailChanged", "usernameChanged", "displayNameChanged",
         "employeeCodeChanged", "phoneChanged", "adminRoleAssigned", "reasonProvided"];
     private static readonly string[] Other = ["defaultUsefulLifeMonths", "roleCount", "currentStatus", "purchaseCost", "page", "pageSize", "returnedCount"];
-    private static readonly Dictionary<string, string> Names = PositiveIds.Concat(NullableIds).Concat(Flags).Concat(Other)
+    private static readonly Dictionary<string, string> Names = PositiveIds.Concat(NullableIds).Concat(UtcTimes).Concat(Flags).Concat(Other)
         .ToDictionary(x => x, x => x, StringComparer.OrdinalIgnoreCase);
 
     public static (Dictionary<string, JsonElement>? Values, bool Redacted) Read(string? json, bool canReadCost)
@@ -113,6 +114,7 @@ public static class AuditSnapshot
         if (PositiveIds.Contains(name)) return value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out var id) && id > 0;
         if (NullableIds.Contains(name)) return isNull || value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out var optionalId) && optionalId > 0;
         if (Flags.Contains(name)) return value.ValueKind is JsonValueKind.True or JsonValueKind.False;
+        if (UtcTimes.Contains(name)) return isNull || value.ValueKind == JsonValueKind.String && value.TryGetDateTime(out var time) && time.Kind == DateTimeKind.Utc;
         return name switch
         {
             "defaultUsefulLifeMonths" => isNull || value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var months) && months > 0,

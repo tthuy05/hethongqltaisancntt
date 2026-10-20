@@ -175,6 +175,119 @@ namespace ItAssetManagement.Infrastructure.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ItAssetManagement.Domain.Entities.AssetAssignment", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("AssetId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("asset_id");
+
+                    b.Property<DateTime>("AssignedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("assigned_at_utc")
+                        .HasDefaultValueSql("clock_timestamp()");
+
+                    b.Property<long>("AssignedByUserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("assigned_by_user_id");
+
+                    b.Property<long?>("AssignedDepartmentId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("assigned_department_id");
+
+                    b.Property<long?>("AssignedUserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("assigned_user_id");
+
+                    b.Property<string>("AssignmentNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("assignment_note");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc")
+                        .HasDefaultValueSql("clock_timestamp()");
+
+                    b.Property<DateTime?>("ExpectedReturnAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expected_return_at_utc");
+
+                    b.Property<bool>("IsArchived")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_archived");
+
+                    b.Property<string>("ReturnNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("return_note");
+
+                    b.Property<DateTime?>("ReturnedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("returned_at_utc");
+
+                    b.Property<long?>("ReturnedByUserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("returned_by_user_id");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("row_version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_asset_assignments");
+
+                    b.HasIndex("AssetId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_asset_assignments_one_active")
+                        .HasFilter("returned_at_utc IS NULL AND NOT is_archived");
+
+                    b.HasIndex("AssignedByUserId")
+                        .HasDatabaseName("ix_asset_assignments_assigned_by_user_id");
+
+                    b.HasIndex("ReturnedByUserId")
+                        .HasDatabaseName("ix_asset_assignments_returned_by_user_id");
+
+                    b.HasIndex("AssetId", "AssignedAtUtc")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_asset_assignments_asset_history");
+
+                    b.HasIndex("AssignedDepartmentId", "ReturnedAtUtc")
+                        .HasDatabaseName("ix_asset_assignments_department_active")
+                        .HasFilter("assigned_department_id IS NOT NULL");
+
+                    b.HasIndex("AssignedUserId", "ReturnedAtUtc")
+                        .HasDatabaseName("ix_asset_assignments_user_active")
+                        .HasFilter("assigned_user_id IS NOT NULL");
+
+                    b.ToTable("asset_assignments", "public", t =>
+                        {
+                            t.HasCheckConstraint("ck_asset_assignments_closed_before_archive", "NOT is_archived OR returned_at_utc IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_asset_assignments_expected_after_assigned", "expected_return_at_utc IS NULL OR expected_return_at_utc >= assigned_at_utc");
+
+                            t.HasCheckConstraint("ck_asset_assignments_returned_actor", "returned_by_user_id IS NULL OR returned_at_utc IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_asset_assignments_returned_after_assigned", "returned_at_utc IS NULL OR returned_at_utc >= assigned_at_utc");
+
+                            t.HasCheckConstraint("ck_asset_assignments_row_version_length", "octet_length(row_version) = 16");
+
+                            t.HasCheckConstraint("ck_asset_assignments_target_xor", "(assigned_user_id IS NOT NULL AND assigned_department_id IS NULL) OR (assigned_user_id IS NULL AND assigned_department_id IS NOT NULL)");
+                        });
+                });
+
             modelBuilder.Entity("ItAssetManagement.Domain.Entities.AssetStatusHistory", b =>
                 {
                     b.Property<long>("Id")
@@ -538,6 +651,362 @@ namespace ItAssetManagement.Infrastructure.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ItAssetManagement.Domain.Entities.LicenseAssignment", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long?>("AssignedAssetId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("assigned_asset_id");
+
+                    b.Property<DateTime>("AssignedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("assigned_at_utc")
+                        .HasDefaultValueSql("clock_timestamp()");
+
+                    b.Property<long>("AssignedByUserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("assigned_by_user_id");
+
+                    b.Property<long?>("AssignedUserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("assigned_user_id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc")
+                        .HasDefaultValueSql("clock_timestamp()");
+
+                    b.Property<bool>("IsArchived")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_archived");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("notes");
+
+                    b.Property<DateTime?>("RevokedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at_utc");
+
+                    b.Property<long?>("RevokedByUserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("revoked_by_user_id");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("row_version");
+
+                    b.Property<long>("SoftwareLicenseId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("software_license_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_license_assignments");
+
+                    b.HasIndex("AssignedByUserId")
+                        .HasDatabaseName("ix_license_assignments_assigned_by_user_id");
+
+                    b.HasIndex("RevokedByUserId")
+                        .HasDatabaseName("ix_license_assignments_revoked_by_user_id");
+
+                    b.HasIndex("SoftwareLicenseId", "AssignedAssetId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_license_assignments_active_asset")
+                        .HasFilter("revoked_at_utc IS NULL AND NOT is_archived AND assigned_asset_id IS NOT NULL");
+
+                    b.HasIndex("SoftwareLicenseId", "AssignedUserId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_license_assignments_active_user")
+                        .HasFilter("revoked_at_utc IS NULL AND NOT is_archived AND assigned_user_id IS NOT NULL");
+
+                    b.HasIndex("SoftwareLicenseId", "RevokedAtUtc")
+                        .HasDatabaseName("ix_license_assignments_license_active");
+
+                    b.HasIndex("AssignedAssetId", "AssignedAtUtc", "Id")
+                        .IsDescending(false, true, true)
+                        .HasDatabaseName("ix_license_assignments_asset_history")
+                        .HasFilter("assigned_asset_id IS NOT NULL");
+
+                    b.HasIndex("AssignedUserId", "AssignedAtUtc", "Id")
+                        .IsDescending(false, true, true)
+                        .HasDatabaseName("ix_license_assignments_user_history")
+                        .HasFilter("assigned_user_id IS NOT NULL");
+
+                    b.ToTable("license_assignments", "public", t =>
+                        {
+                            t.HasCheckConstraint("ck_license_assignments_closed_before_archive", "NOT is_archived OR revoked_at_utc IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_license_assignments_revoked_actor", "revoked_by_user_id IS NULL OR revoked_at_utc IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_license_assignments_revoked_after_assigned", "revoked_at_utc IS NULL OR revoked_at_utc >= assigned_at_utc");
+
+                            t.HasCheckConstraint("ck_license_assignments_row_version_length", "octet_length(row_version) = 16");
+
+                            t.HasCheckConstraint("ck_license_assignments_target_xor", "(assigned_user_id IS NOT NULL AND assigned_asset_id IS NULL) OR (assigned_user_id IS NULL AND assigned_asset_id IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("ItAssetManagement.Domain.Entities.MaintenanceHistory", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("comment");
+
+                    b.Property<Guid>("CorrelationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("correlation_id");
+
+                    b.Property<decimal?>("Cost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("cost");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("event_type");
+
+                    b.Property<long?>("FromAssignedToUserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("from_assigned_to_user_id");
+
+                    b.Property<string>("FromStatus")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("from_status");
+
+                    b.Property<long>("MaintenanceTicketId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("maintenance_ticket_id");
+
+                    b.Property<DateTime>("PerformedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("performed_at_utc")
+                        .HasDefaultValueSql("clock_timestamp()");
+
+                    b.Property<long?>("PerformedByUserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("performed_by_user_id");
+
+                    b.Property<long?>("ToAssignedToUserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("to_assigned_to_user_id");
+
+                    b.Property<string>("ToStatus")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("to_status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_maintenance_histories");
+
+                    b.HasIndex("CorrelationId")
+                        .HasDatabaseName("ix_maintenance_histories_correlation");
+
+                    b.HasIndex("FromAssignedToUserId")
+                        .HasDatabaseName("ix_maintenance_histories_from_assigned_to_user_id");
+
+                    b.HasIndex("PerformedByUserId")
+                        .HasDatabaseName("ix_maintenance_histories_performed_by_user_id");
+
+                    b.HasIndex("ToAssignedToUserId")
+                        .HasDatabaseName("ix_maintenance_histories_to_assigned_to_user_id");
+
+                    b.HasIndex("MaintenanceTicketId", "PerformedAtUtc", "Id")
+                        .HasDatabaseName("ix_maintenance_histories_ticket_time");
+
+                    b.ToTable("maintenance_histories", "public", t =>
+                        {
+                            t.HasCheckConstraint("ck_maintenance_histories_cost_nonnegative", "cost IS NULL OR (cost >= 0 AND cost <> 'NaN'::numeric)");
+
+                            t.HasCheckConstraint("ck_maintenance_histories_event_type", "event_type IN ('CREATED','STATUS_CHANGED','ASSIGNED','COMMENTED','COST_UPDATED','RESOLVED','FAILED','CANCELLED')");
+
+                            t.HasCheckConstraint("ck_maintenance_histories_from_status", "from_status IN ('PENDING','IN_PROGRESS','RESOLVED','FAILED','CANCELLED')");
+
+                            t.HasCheckConstraint("ck_maintenance_histories_to_status", "to_status IN ('PENDING','IN_PROGRESS','RESOLVED','FAILED','CANCELLED')");
+                        });
+                });
+
+            modelBuilder.Entity("ItAssetManagement.Domain.Entities.MaintenanceTicket", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal?>("ActualCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("actual_cost");
+
+                    b.Property<long>("AssetId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("asset_id");
+
+                    b.Property<long?>("AssignedToUserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("assigned_to_user_id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc")
+                        .HasDefaultValueSql("clock_timestamp()");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("description");
+
+                    b.Property<DateTime?>("DueAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("due_at_utc");
+
+                    b.Property<decimal?>("EstimatedCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("estimated_cost");
+
+                    b.Property<bool>("IsArchived")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_archived");
+
+                    b.Property<DateTime>("OpenedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("opened_at_utc")
+                        .HasDefaultValueSql("clock_timestamp()");
+
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("MEDIUM")
+                        .HasColumnName("priority");
+
+                    b.Property<long>("RequestedByUserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("requested_by_user_id");
+
+                    b.Property<string>("Resolution")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("resolution");
+
+                    b.Property<DateTime?>("ResolvedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resolved_at_utc");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("row_version");
+
+                    b.Property<DateTime?>("StartedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at_utc");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("PENDING")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TicketCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("ticket_code");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.HasKey("Id")
+                        .HasName("pk_maintenance_tickets");
+
+                    b.HasIndex("AssetId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_maintenance_one_in_progress")
+                        .HasFilter("status = 'IN_PROGRESS' AND NOT is_archived");
+
+                    b.HasIndex("RequestedByUserId")
+                        .HasDatabaseName("ix_maintenance_tickets_requested_by_user_id");
+
+                    b.HasIndex("AssetId", "Status")
+                        .HasDatabaseName("ix_maintenance_tickets_asset_status");
+
+                    b.HasIndex("Status", "OpenedAtUtc")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_maintenance_tickets_open");
+
+                    b.HasIndex("AssignedToUserId", "Status", "DueAtUtc")
+                        .HasDatabaseName("ix_maintenance_tickets_assignee_status");
+
+                    b.ToTable("maintenance_tickets", "public", t =>
+                        {
+                            t.HasCheckConstraint("ck_maintenance_tickets_actual_cost_nonnegative", "actual_cost IS NULL OR (actual_cost >= 0 AND actual_cost <> 'NaN'::numeric)");
+
+                            t.HasCheckConstraint("ck_maintenance_tickets_archive_terminal", "NOT is_archived OR status IN ('RESOLVED','FAILED','CANCELLED')");
+
+                            t.HasCheckConstraint("ck_maintenance_tickets_due_after_opened", "due_at_utc IS NULL OR due_at_utc >= opened_at_utc");
+
+                            t.HasCheckConstraint("ck_maintenance_tickets_estimated_cost_nonnegative", "estimated_cost IS NULL OR (estimated_cost >= 0 AND estimated_cost <> 'NaN'::numeric)");
+
+                            t.HasCheckConstraint("ck_maintenance_tickets_in_progress_requires_assignee", "status NOT IN ('IN_PROGRESS','RESOLVED','FAILED') OR (assigned_to_user_id IS NOT NULL AND started_at_utc IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_maintenance_tickets_priority", "priority IN ('LOW','MEDIUM','HIGH','CRITICAL')");
+
+                            t.HasCheckConstraint("ck_maintenance_tickets_resolved_after_started", "resolved_at_utc IS NULL OR resolved_at_utc >= COALESCE(started_at_utc, opened_at_utc)");
+
+                            t.HasCheckConstraint("ck_maintenance_tickets_resolved_requires_resolution", "status NOT IN ('RESOLVED','FAILED') OR (resolution IS NOT NULL AND resolved_at_utc IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_maintenance_tickets_row_version_length", "octet_length(row_version) = 16");
+
+                            t.HasCheckConstraint("ck_maintenance_tickets_started_after_opened", "started_at_utc IS NULL OR started_at_utc >= opened_at_utc");
+
+                            t.HasCheckConstraint("ck_maintenance_tickets_status", "status IN ('PENDING','IN_PROGRESS','RESOLVED','FAILED','CANCELLED')");
+                        });
+                });
+
             modelBuilder.Entity("ItAssetManagement.Domain.Entities.Permission", b =>
                 {
                     b.Property<long>("Id")
@@ -601,6 +1070,299 @@ namespace ItAssetManagement.Infrastructure.Data.Migrations
                     b.ToTable("permissions", "public", t =>
                         {
                             t.HasCheckConstraint("ck_permissions_row_version_length", "octet_length(row_version) = 16");
+                        });
+                });
+
+            modelBuilder.Entity("ItAssetManagement.Domain.Entities.ReplacementRecommendation", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("AssetId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("asset_id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc")
+                        .HasDefaultValueSql("clock_timestamp()");
+
+                    b.Property<string>("Disposition")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("ACTIVE")
+                        .HasColumnName("disposition");
+
+                    b.Property<DateTime?>("DispositionAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("disposition_at_utc");
+
+                    b.Property<long?>("DispositionByUserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("disposition_by_user_id");
+
+                    b.Property<string>("DispositionNote")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("disposition_note");
+
+                    b.Property<decimal?>("EstimatedReplacementCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("estimated_replacement_cost");
+
+                    b.Property<string>("EvaluationSnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("evaluation_snapshot_json");
+
+                    b.Property<bool>("IsArchived")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_archived");
+
+                    b.Property<bool>("IsCurrent")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_current");
+
+                    b.Property<short?>("PlannedReplacementYear")
+                        .HasColumnType("smallint")
+                        .HasColumnName("planned_replacement_year");
+
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("priority");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("reason");
+
+                    b.Property<DateTime>("RecommendedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("recommended_at_utc")
+                        .HasDefaultValueSql("clock_timestamp()");
+
+                    b.Property<long>("ReplacementRuleId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("replacement_rule_id");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("row_version");
+
+                    b.Property<decimal?>("Score")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("numeric(9,4)")
+                        .HasColumnName("score");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.HasKey("Id")
+                        .HasName("pk_replacement_recommendations");
+
+                    b.HasIndex("AssetId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_replacement_recommendations_current_asset")
+                        .HasFilter("is_current = true");
+
+                    b.HasIndex("DispositionByUserId")
+                        .HasDatabaseName("ix_replacement_recommendations_disposition_by_user_id");
+
+                    b.HasIndex("ReplacementRuleId")
+                        .HasDatabaseName("ix_replacement_recommendations_replacement_rule_id");
+
+                    b.HasIndex("AssetId", "RecommendedAtUtc")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_replacement_recommendations_asset");
+
+                    b.HasIndex("Disposition", "Priority", "RecommendedAtUtc")
+                        .IsDescending(false, false, true)
+                        .HasDatabaseName("ix_replacement_recommendations_disposition_time");
+
+                    b.HasIndex("PlannedReplacementYear", "IsCurrent", "AssetId")
+                        .HasDatabaseName("ix_replacement_recommendations_budget");
+
+                    NpgsqlIndexBuilderExtensions.IncludeProperties(b.HasIndex("PlannedReplacementYear", "IsCurrent", "AssetId"), new[] { "EstimatedReplacementCost" });
+
+                    b.ToTable("replacement_recommendations", "public", t =>
+                        {
+                            t.HasCheckConstraint("ck_replacement_recommendations_archive_disposition", "NOT is_archived OR disposition <> 'ACTIVE'");
+
+                            t.HasCheckConstraint("ck_replacement_recommendations_current_disposition", "NOT is_current OR (disposition IN ('ACTIVE','PLANNED') AND NOT is_archived)");
+
+                            t.HasCheckConstraint("ck_replacement_recommendations_disposition", "disposition IN ('ACTIVE','PLANNED','DISMISSED','SUPERSEDED')");
+
+                            t.HasCheckConstraint("ck_replacement_recommendations_disposition_actor", "disposition_by_user_id IS NULL OR disposition_at_utc IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_replacement_recommendations_disposition_evidence", "(disposition = 'ACTIVE' AND disposition_at_utc IS NULL) OR (disposition IN ('PLANNED','DISMISSED') AND disposition_at_utc IS NOT NULL AND disposition_by_user_id IS NOT NULL) OR (disposition = 'SUPERSEDED' AND disposition_at_utc IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_replacement_recommendations_disposition_time", "disposition_at_utc IS NULL OR disposition_at_utc >= recommended_at_utc");
+
+                            t.HasCheckConstraint("ck_replacement_recommendations_estimated_replacement_cost_nonnegative", "estimated_replacement_cost IS NULL OR (estimated_replacement_cost >= 0 AND estimated_replacement_cost <> 'NaN'::numeric)");
+
+                            t.HasCheckConstraint("ck_replacement_recommendations_planned_year", "planned_replacement_year IS NULL OR planned_replacement_year BETWEEN 2000 AND 2100");
+
+                            t.HasCheckConstraint("ck_replacement_recommendations_priority", "priority IN ('LOW','MEDIUM','HIGH','CRITICAL')");
+
+                            t.HasCheckConstraint("ck_replacement_recommendations_row_version_length", "octet_length(row_version) = 16");
+
+                            t.HasCheckConstraint("ck_replacement_recommendations_score_nonnegative", "score IS NULL OR (score >= 0 AND score <> 'NaN'::numeric)");
+
+                            t.HasCheckConstraint("ck_replacement_recommendations_snapshot_shape", "jsonb_typeof(evaluation_snapshot_json) IN ('object','array')");
+                        });
+                });
+
+            modelBuilder.Entity("ItAssetManagement.Domain.Entities.ReplacementRule", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long?>("AssetTypeId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("asset_type_id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc")
+                        .HasDefaultValueSql("clock_timestamp()");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
+                    b.Property<DateTime>("EffectiveFromUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("effective_from_utc")
+                        .HasDefaultValueSql("clock_timestamp()");
+
+                    b.Property<DateTime?>("EffectiveToUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("effective_to_utc");
+
+                    b.Property<decimal?>("EstimatedUnitCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("estimated_unit_cost");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<decimal?>("MaximumMaintenanceCostRatio")
+                        .HasPrecision(5, 4)
+                        .HasColumnType("numeric(5,4)")
+                        .HasColumnName("maximum_maintenance_cost_ratio");
+
+                    b.Property<int?>("MinimumAgeMonths")
+                        .HasColumnType("integer")
+                        .HasColumnName("minimum_age_months");
+
+                    b.Property<int?>("MinimumFailureCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("minimum_failure_count");
+
+                    b.Property<int?>("MinimumMaintenanceCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("minimum_maintenance_count");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("Priority")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(100)
+                        .HasColumnName("priority");
+
+                    b.Property<bool>("RequireWarrantyExpired")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("require_warranty_expired");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("row_version");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<int>("Version")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_replacement_rules");
+
+                    b.HasIndex("AssetTypeId")
+                        .HasDatabaseName("ix_replacement_rules_asset_type_id");
+
+                    b.HasIndex("IsActive", "AssetTypeId", "Priority", "EffectiveFromUtc", "EffectiveToUtc")
+                        .HasDatabaseName("ix_replacement_rules_evaluation");
+
+                    b.ToTable("replacement_rules", "public", t =>
+                        {
+                            t.HasCheckConstraint("ck_replacement_rules_at_least_one_condition", "minimum_age_months IS NOT NULL OR maximum_maintenance_cost_ratio IS NOT NULL OR minimum_maintenance_count IS NOT NULL OR require_warranty_expired OR minimum_failure_count IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_replacement_rules_effective_period", "effective_to_utc IS NULL OR effective_to_utc > effective_from_utc");
+
+                            t.HasCheckConstraint("ck_replacement_rules_estimated_unit_cost_nonnegative", "estimated_unit_cost IS NULL OR (estimated_unit_cost >= 0 AND estimated_unit_cost <> 'NaN'::numeric)");
+
+                            t.HasCheckConstraint("ck_replacement_rules_minimum_age_months_positive", "minimum_age_months IS NULL OR minimum_age_months > 0");
+
+                            t.HasCheckConstraint("ck_replacement_rules_minimum_failure_count_positive", "minimum_failure_count IS NULL OR minimum_failure_count > 0");
+
+                            t.HasCheckConstraint("ck_replacement_rules_minimum_maintenance_count_positive", "minimum_maintenance_count IS NULL OR minimum_maintenance_count > 0");
+
+                            t.HasCheckConstraint("ck_replacement_rules_priority_nonnegative", "priority >= 0");
+
+                            t.HasCheckConstraint("ck_replacement_rules_ratio", "maximum_maintenance_cost_ratio IS NULL OR maximum_maintenance_cost_ratio BETWEEN 0 AND 1");
+
+                            t.HasCheckConstraint("ck_replacement_rules_row_version_length", "octet_length(row_version) = 16");
+
+                            t.HasCheckConstraint("ck_replacement_rules_version_positive", "version > 0");
                         });
                 });
 
@@ -711,6 +1473,199 @@ namespace ItAssetManagement.Infrastructure.Data.Migrations
                         .HasDatabaseName("uq_role_permissions_role_permission");
 
                     b.ToTable("role_permissions", "public");
+                });
+
+            modelBuilder.Entity("ItAssetManagement.Domain.Entities.Software", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc")
+                        .HasDefaultValueSql("clock_timestamp()");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Publisher")
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)")
+                        .HasColumnName("publisher");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("row_version");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<string>("Version")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_softwares");
+
+                    b.HasIndex("IsActive", "Name")
+                        .HasDatabaseName("ix_softwares_active");
+
+                    b.HasIndex("Name", "Publisher")
+                        .HasDatabaseName("ix_softwares_name_publisher");
+
+                    b.ToTable("softwares", "public", t =>
+                        {
+                            t.HasCheckConstraint("ck_softwares_row_version_length", "octet_length(row_version) = 16");
+                        });
+                });
+
+            modelBuilder.Entity("ItAssetManagement.Domain.Entities.SoftwareLicense", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc")
+                        .HasDefaultValueSql("clock_timestamp()");
+
+                    b.Property<DateTime?>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at_utc");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("KeyVersion")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("key_version");
+
+                    b.Property<string>("LicenseCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("license_code");
+
+                    b.Property<byte[]>("LicenseKeyCiphertext")
+                        .HasColumnType("bytea")
+                        .HasColumnName("license_key_ciphertext");
+
+                    b.Property<string>("LicenseKeyLast4")
+                        .HasMaxLength(4)
+                        .HasColumnType("character varying(4)")
+                        .HasColumnName("license_key_last4");
+
+                    b.Property<string>("LicenseType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("license_type");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("notes");
+
+                    b.Property<decimal?>("PurchaseCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("purchase_cost");
+
+                    b.Property<DateTime?>("PurchasedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("purchased_at_utc");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("row_version");
+
+                    b.Property<long>("SoftwareId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("software_id");
+
+                    b.Property<DateTime?>("StartsAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("starts_at_utc");
+
+                    b.Property<int>("TotalQuantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("total_quantity");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<string>("Vendor")
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)")
+                        .HasColumnName("vendor");
+
+                    b.HasKey("Id")
+                        .HasName("pk_software_licenses");
+
+                    b.HasIndex("ExpiresAtUtc")
+                        .HasDatabaseName("ix_software_licenses_expiry")
+                        .HasFilter("expires_at_utc IS NOT NULL AND is_active = true");
+
+                    b.HasIndex("SoftwareId", "IsActive")
+                        .HasDatabaseName("ix_software_licenses_software_active");
+
+                    b.ToTable("software_licenses", "public", t =>
+                        {
+                            t.HasCheckConstraint("ck_software_licenses_expiry", "expires_at_utc IS NULL OR starts_at_utc IS NULL OR expires_at_utc > starts_at_utc");
+
+                            t.HasCheckConstraint("ck_software_licenses_key_last4", "license_key_last4 IS NULL OR char_length(license_key_last4) = 4");
+
+                            t.HasCheckConstraint("ck_software_licenses_key_tuple", "(license_key_ciphertext IS NULL AND license_key_last4 IS NULL AND key_version IS NULL) OR (license_key_ciphertext IS NOT NULL AND license_key_last4 IS NOT NULL AND key_version IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_software_licenses_purchase_cost_nonnegative", "purchase_cost IS NULL OR (purchase_cost >= 0 AND purchase_cost <> 'NaN'::numeric)");
+
+                            t.HasCheckConstraint("ck_software_licenses_quantity_positive", "total_quantity > 0");
+
+                            t.HasCheckConstraint("ck_software_licenses_row_version_length", "octet_length(row_version) = 16");
+
+                            t.HasCheckConstraint("ck_software_licenses_type", "license_type IN ('PER_USER','PER_DEVICE','VOLUME','SUBSCRIPTION','OTHER')");
+                        });
                 });
 
             modelBuilder.Entity("ItAssetManagement.Domain.Entities.User", b =>
@@ -936,6 +1891,41 @@ namespace ItAssetManagement.Infrastructure.Data.Migrations
                         .HasConstraintName("fk_assets_updated_by_user_id");
                 });
 
+            modelBuilder.Entity("ItAssetManagement.Domain.Entities.AssetAssignment", b =>
+                {
+                    b.HasOne("ItAssetManagement.Domain.Entities.Asset", null)
+                        .WithMany()
+                        .HasForeignKey("AssetId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_asset_assignments_asset_id");
+
+                    b.HasOne("ItAssetManagement.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("AssignedByUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_asset_assignments_assigned_by_user_id");
+
+                    b.HasOne("ItAssetManagement.Domain.Entities.Department", null)
+                        .WithMany()
+                        .HasForeignKey("AssignedDepartmentId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_asset_assignments_assigned_department_id");
+
+                    b.HasOne("ItAssetManagement.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("AssignedUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_asset_assignments_assigned_user_id");
+
+                    b.HasOne("ItAssetManagement.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("ReturnedByUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_asset_assignments_returned_by_user_id");
+                });
+
             modelBuilder.Entity("ItAssetManagement.Domain.Entities.AssetStatusHistory", b =>
                 {
                     b.HasOne("ItAssetManagement.Domain.Entities.Asset", null)
@@ -982,6 +1972,124 @@ namespace ItAssetManagement.Infrastructure.Data.Migrations
                         .HasConstraintName("fk_departments_updated_by_user_id");
                 });
 
+            modelBuilder.Entity("ItAssetManagement.Domain.Entities.LicenseAssignment", b =>
+                {
+                    b.HasOne("ItAssetManagement.Domain.Entities.Asset", null)
+                        .WithMany()
+                        .HasForeignKey("AssignedAssetId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_license_assignments_assigned_asset_id");
+
+                    b.HasOne("ItAssetManagement.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("AssignedByUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_license_assignments_assigned_by_user_id");
+
+                    b.HasOne("ItAssetManagement.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("AssignedUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_license_assignments_assigned_user_id");
+
+                    b.HasOne("ItAssetManagement.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("RevokedByUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_license_assignments_revoked_by_user_id");
+
+                    b.HasOne("ItAssetManagement.Domain.Entities.SoftwareLicense", null)
+                        .WithMany()
+                        .HasForeignKey("SoftwareLicenseId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_license_assignments_software_license_id");
+                });
+
+            modelBuilder.Entity("ItAssetManagement.Domain.Entities.MaintenanceHistory", b =>
+                {
+                    b.HasOne("ItAssetManagement.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("FromAssignedToUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_maintenance_histories_from_assigned_to_user_id");
+
+                    b.HasOne("ItAssetManagement.Domain.Entities.MaintenanceTicket", null)
+                        .WithMany()
+                        .HasForeignKey("MaintenanceTicketId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_maintenance_histories_maintenance_ticket_id");
+
+                    b.HasOne("ItAssetManagement.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("PerformedByUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_maintenance_histories_performed_by_user_id");
+
+                    b.HasOne("ItAssetManagement.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("ToAssignedToUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_maintenance_histories_to_assigned_to_user_id");
+                });
+
+            modelBuilder.Entity("ItAssetManagement.Domain.Entities.MaintenanceTicket", b =>
+                {
+                    b.HasOne("ItAssetManagement.Domain.Entities.Asset", null)
+                        .WithMany()
+                        .HasForeignKey("AssetId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_maintenance_tickets_asset_id");
+
+                    b.HasOne("ItAssetManagement.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("AssignedToUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_maintenance_tickets_assigned_to_user_id");
+
+                    b.HasOne("ItAssetManagement.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("RequestedByUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_maintenance_tickets_requested_by_user_id");
+                });
+
+            modelBuilder.Entity("ItAssetManagement.Domain.Entities.ReplacementRecommendation", b =>
+                {
+                    b.HasOne("ItAssetManagement.Domain.Entities.Asset", null)
+                        .WithMany()
+                        .HasForeignKey("AssetId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_replacement_recommendations_asset_id");
+
+                    b.HasOne("ItAssetManagement.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("DispositionByUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_replacement_recommendations_disposition_by_user_id");
+
+                    b.HasOne("ItAssetManagement.Domain.Entities.ReplacementRule", null)
+                        .WithMany()
+                        .HasForeignKey("ReplacementRuleId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_replacement_recommendations_replacement_rule_id");
+                });
+
+            modelBuilder.Entity("ItAssetManagement.Domain.Entities.ReplacementRule", b =>
+                {
+                    b.HasOne("ItAssetManagement.Domain.Entities.AssetType", null)
+                        .WithMany()
+                        .HasForeignKey("AssetTypeId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_replacement_rules_asset_type_id");
+                });
+
             modelBuilder.Entity("ItAssetManagement.Domain.Entities.RolePermission", b =>
                 {
                     b.HasOne("ItAssetManagement.Domain.Entities.User", null)
@@ -1003,6 +2111,16 @@ namespace ItAssetManagement.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("fk_role_permissions_role_id");
+                });
+
+            modelBuilder.Entity("ItAssetManagement.Domain.Entities.SoftwareLicense", b =>
+                {
+                    b.HasOne("ItAssetManagement.Domain.Entities.Software", null)
+                        .WithMany()
+                        .HasForeignKey("SoftwareId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_software_licenses_software_id");
                 });
 
             modelBuilder.Entity("ItAssetManagement.Domain.Entities.User", b =>

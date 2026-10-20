@@ -2,9 +2,13 @@
 
 Ứng dụng web giúp doanh nghiệp quản lý tập trung thiết bị và tài sản CNTT: có những thiết bị nào, thuộc phòng ban nào, đang ở trạng thái gì và đã thay đổi ra sao. Dự án hướng tới quản lý toàn bộ vòng đời tài sản, từ ghi nhận thông tin đến cấp phát, bảo trì và đề xuất thay thế.
 
-Hiện đã có giao diện kết nối API và cơ sở dữ liệu PostgreSQL trên Neon cho đăng nhập, danh mục và quản lý tài sản. Các nghiệp vụ cấp phát, bảo trì, bản quyền phần mềm và tối ưu ngân sách vẫn **DỰ KIẾN (PLANNED)**, chưa được triển khai.
+Hiện bản demo public đã có giao diện kết nối API và cơ sở dữ liệu PostgreSQL trên Neon cho đăng nhập, danh mục và quản lý tài sản. Core API cấp phát đang được tích hợp và đã kiểm thử trên DB test riêng, **chưa publish hoặc mở trên shared DB**; các phần cấp phát còn lại, bảo trì, bản quyền phần mềm và tối ưu ngân sách vẫn **DỰ KIẾN (PLANNED)**.
 
 Bản demo: [hethongqltaisancntt.onrender.com](https://hethongqltaisancntt.onrender.com/). Đã kiểm tra Login và luồng xem/tìm kiếm của Manager/Support ngày **08/10/2026**; đây là demo, không phải bản triển khai chính thức với dữ liệu doanh nghiệp. [Kết quả kiểm tra và checklist báo cáo M1 ngày 10/10](docs/m1-rehearsal.md).
+
+**Chuẩn bị triển khai — 09/10:** đã tách bản vá tương thích, thêm revision build và chốt đóng Assignment trước khi schema/quyền sẵn sàng. Render đang chạy `9524a6c`, Auto-Deploy là **On Commit**; patch mới **chưa commit/push/deploy**, shared chưa migrate/seed. [Runbook A → xác minh → migration/seed → C](docs/assignment-safe-rollout.md).
+
+**Tích hợp cấp phát/bảo trì — 08/10:** đã review commit Thiện `5dbef3a`, tích hợp có chọn lọc Assignment Controller với service/mapping/DI/quyền đã sửa, không kích hoạt Maintenance scaffold còn TODO. Migration và cấp phát đã kiểm thử trên **DB test riêng 12 bảng /27 FK**; shared `neondb` vẫn **10 bảng /19 FK**, chưa apply/seed mới vì backend Render phải được cập nhật/verify archive/retire trước. Toàn bộ sửa **chưa commit/push**. [Báo cáo bàn giao và gate đang chặn](docs/assignment-maintenance-integration-handoff.md).
 
 ## 1. Ý tưởng và mục tiêu
 
@@ -47,20 +51,22 @@ Chi tiết: [Vai trò sử dụng](docs/actors.md), [Ma trận phân quyền](do
 - **Bảng tổng quan:** thống kê cơ bản từ dữ liệu thật; báo cáo và phân tích nâng cao chưa có.
 - **Quản lý người dùng (`User management`):** giao diện và API danh sách, tìm kiếm/lọc, tạo, xem, sửa hồ sơ; kích hoạt/vô hiệu hóa, khóa/mở khóa và gán vai trò bằng ID thật. Có bảo vệ quản trị viên cuối cùng, kiểm soát cập nhật đồng thời và thu hồi hiệu lực JWT cũ khi trạng thái/quyền thay đổi.
 - **Danh mục vai trò/quyền:** API đọc các role cố định; Quản lý hệ thống chỉ nhận ID/tên role, còn thông tin quyền chi tiết dành cho Quản trị IT. Không có chức năng tạo/sửa định nghĩa role.
-- **Tra cứu người dùng (`User Lookup`):** API danh sách tối thiểu để chuẩn bị cho chức năng chọn người nhận tài sản; chưa có nghiệp vụ cấp phát.
+- **Tra cứu người dùng (`User Lookup`):** API danh sách tối thiểu để chọn người nhận tài sản; nghiệp vụ cấp phát đang tích hợp như ghi chú dưới đây.
 - **Toàn vẹn dữ liệu:** kiểm tra dữ liệu đầu vào, ràng buộc cơ sở dữ liệu, giao dịch, kiểm soát cập nhật đồng thời và ghi nhật ký thao tác. Admin có API/màn hình tra cứu nhật ký; kết quả kiểm chứng mới ở mục dưới.
 - **Giao diện:** 10 màn hình dùng API thật — Đăng nhập, Tổng quan, Danh sách tài sản, Thêm tài sản, Sửa tài sản, Chi tiết tài sản, Phòng ban, Loại tài sản, Người dùng và Nhật ký thao tác; quản trị tài khoản và xem chi tiết nhật ký trong hộp thoại.
 - **Tài liệu API:** Swagger chạy ở môi trường phát triển, hỗ trợ thử API với JWT.
 
+**Đang tích hợp — chỉ kiểm thử trên DB test:** bốn core API xem danh sách/chi tiết, cấp phát và thu hồi tài sản đã VERIFIED trên isolated DB; **chưa commit/push, chưa publish hoặc apply/seed shared**. Kiểm thử .NET hiện tại464 PASS/0 FAIL/0 SKIP. Đây chưa phải toàn bộ module cấp phát; cần mở gate tương thích Render trước khi sử dụng trên demo public.
+
 ### Chưa triển khai — DỰ KIẾN (PLANNED)
 
-- Cấp phát, thu hồi và điều chuyển tài sản; lịch sử người sử dụng.
+- Giao diện cấp phát/thu hồi, điều chuyển tài sản, API lịch sử và phần contract cấp phát còn thiếu; core API test riêng không đồng nghĩa đã có trên public/shared.
 - Phiếu hỗ trợ, bảo trì và lịch sử sửa chữa/chi phí.
 - Phần mềm, bản quyền, phân bổ bản quyền và cảnh báo hết hạn.
 - Đánh giá vòng đời, đề xuất thay thế thiết bị và dự toán ngân sách.
 - Báo cáo nâng cao, biểu đồ và nhập/xuất Excel.
 - Đặt lại mật khẩu, tạo/sửa định nghĩa vai trò và chỉnh ma trận quyền.
-- Các bảng lịch sử nghiệp vụ của cấp phát/bảo trì chưa hoàn thành; không nhầm API tra cứu nhật ký quản trị với lịch sử workflow chưa triển khai.
+- API lịch sử cấp phát/điều chuyển và bảng `maintenance_histories` chưa hoàn thành; không nhầm API tra cứu nhật ký quản trị với lịch sử workflow chưa triển khai.
 - Triển khai chính thức và đánh giá đầy đủ về bảo mật, hiệu năng, khả năng tiếp cận.
 
 **Publication checkpoint:** API quản lý tài khoản ở `main/845c674`; giao diện Người dùng và danh mục role/quyền đã được đưa lên `main/cba71a6`. Kết quả ngày04/10: **242 kiểm thử PASS, không lỗi hoặc bỏ qua**, cùng **32 kiểm tra tài liệu/thiết kế/mã nguồn liên quan PASS**; đây là snapshot trước phần nhật ký mới.

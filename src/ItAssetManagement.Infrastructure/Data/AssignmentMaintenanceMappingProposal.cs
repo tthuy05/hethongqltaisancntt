@@ -4,8 +4,8 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ItAssetManagement.Infrastructure.Data;
 
-// ĐỀ XUẤT mapping cho module Assignment/Maintenance (Tuần 4) — Thiện soạn, gửi Thủy review
-// trước khi tích hợp vào M1Model.cs chính thức và tạo migration thật. KHÔNG tự merge.
+// Thiện's Week 4 proposal integrated by Thủy. Configure before the shared snake-case pass.
+// Only the two handed-off baseline tables; MaintenanceHistory/workflow remains planned.
 internal static class AssignmentMaintenanceMappingProposal
 {
     private const string TicketStatuses = "'PENDING','IN_PROGRESS','RESOLVED','FAILED','CANCELLED'";
@@ -47,14 +47,18 @@ internal static class AssignmentMaintenanceMappingProposal
                 "returned_by_user_id IS NULL OR returned_at_utc IS NOT NULL");
             t.HasCheckConstraint("ck_asset_assignments_closed_before_archive",
                 "NOT is_archived OR returned_at_utc IS NOT NULL");
+            t.HasCheckConstraint("ck_asset_assignments_expected_after_assigned",
+                "expected_return_at_utc IS NULL OR expected_return_at_utc >= assigned_at_utc");
+            t.HasCheckConstraint("ck_asset_assignments_returned_after_assigned",
+                "returned_at_utc IS NULL OR returned_at_utc >= assigned_at_utc");
         });
 
         aa.HasIndex(x => x.AssetId)
             .HasFilter("returned_at_utc IS NULL AND NOT is_archived")
             .IsUnique()
             .HasDatabaseName("uq_asset_assignments_one_active");
-        aa.HasIndex(x => new { x.AssignedUserId, x.ReturnedAtUtc }).HasDatabaseName("ix_asset_assignments_user_active");
-        aa.HasIndex(x => new { x.AssignedDepartmentId, x.ReturnedAtUtc }).HasDatabaseName("ix_asset_assignments_department_active");
+        aa.HasIndex(x => new { x.AssignedUserId, x.ReturnedAtUtc }).HasFilter("assigned_user_id IS NOT NULL").HasDatabaseName("ix_asset_assignments_user_active");
+        aa.HasIndex(x => new { x.AssignedDepartmentId, x.ReturnedAtUtc }).HasFilter("assigned_department_id IS NOT NULL").HasDatabaseName("ix_asset_assignments_department_active");
         aa.HasIndex(x => new { x.AssetId, x.AssignedAtUtc }).IsDescending(false, true).HasDatabaseName("ix_asset_assignments_asset_history");
 
         // --- maintenance_tickets ---
@@ -93,6 +97,14 @@ internal static class AssignmentMaintenanceMappingProposal
             t.HasCheckConstraint("ck_maintenance_tickets_priority", $"priority IN ({Priorities})");
             t.HasCheckConstraint("ck_maintenance_tickets_started_after_opened",
                 "started_at_utc IS NULL OR started_at_utc >= opened_at_utc");
+            t.HasCheckConstraint("ck_maintenance_tickets_due_after_opened",
+                "due_at_utc IS NULL OR due_at_utc >= opened_at_utc");
+            t.HasCheckConstraint("ck_maintenance_tickets_resolved_after_started",
+                "resolved_at_utc IS NULL OR resolved_at_utc >= COALESCE(started_at_utc, opened_at_utc)");
+            t.HasCheckConstraint("ck_maintenance_tickets_estimated_cost_nonnegative",
+                "estimated_cost IS NULL OR (estimated_cost >= 0 AND estimated_cost <> 'NaN'::numeric)");
+            t.HasCheckConstraint("ck_maintenance_tickets_actual_cost_nonnegative",
+                "actual_cost IS NULL OR (actual_cost >= 0 AND actual_cost <> 'NaN'::numeric)");
             t.HasCheckConstraint("ck_maintenance_tickets_resolved_requires_resolution",
                 "status NOT IN ('RESOLVED','FAILED') OR (resolution IS NOT NULL AND resolved_at_utc IS NOT NULL)");
             t.HasCheckConstraint("ck_maintenance_tickets_in_progress_requires_assignee",
@@ -101,7 +113,7 @@ internal static class AssignmentMaintenanceMappingProposal
                 "NOT is_archived OR status IN ('RESOLVED','FAILED','CANCELLED')");
         });
 
-        mt.HasIndex(x => x.TicketCode).IsUnique().HasDatabaseName("uq_maintenance_tickets_code");
+        // lower(ticket_code) unique index is migration-owned, like the M1 code indexes.
         mt.HasIndex(x => x.AssetId)
             .HasFilter("status = 'IN_PROGRESS' AND NOT is_archived")
             .IsUnique()

@@ -28,15 +28,9 @@ public sealed class EfRepository(AppDbContext db) : IRepository
         await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({resource}, 0))", ct);
     public async Task LockAssetAsync(long id, CancellationToken ct) =>
         await db.Database.ExecuteSqlInterpolatedAsync($"SELECT id FROM public.assets WHERE id = {id} FOR UPDATE", ct);
-    public async Task<bool> HasActiveWorkflowAsync(long assetId, CancellationToken ct)
-    {
-        // M1 contains neither workflow table. Fail closed if a later migration adds one:
-        // its service must supply the documented active-state query before enabling archive.
-        await using var command = db.Database.GetDbConnection().CreateCommand();
-        command.Transaction = db.Database.CurrentTransaction!.GetDbTransaction();
-        command.CommandText = "SELECT to_regclass('public.asset_assignments') IS NOT NULL OR to_regclass('public.maintenance_tickets') IS NOT NULL";
-        return (bool)(await command.ExecuteScalarAsync(ct))!;
-    }
+    public Task<bool> HasActiveWorkflowAsync(long assetId, CancellationToken ct) =>
+        ActiveWorkflowQuery.HasActiveWorkflowAsync(db.Database.GetDbConnection(),
+            db.Database.CurrentTransaction!.GetDbTransaction(), assetId, ct);
     public IQueryable<Asset> SearchAssets(IQueryable<Asset> q, string keyword)
     {
         var pattern = "%" + keyword.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%";
@@ -67,6 +61,7 @@ public sealed class AuditedUnitOfWork(AppDbContext db) : IUnitOfWork
                     "uq_departments_code" => "DEPARTMENT_CODE_CONFLICT", "uq_asset_types_code" => "ASSET_TYPE_CODE_CONFLICT",
                     "uq_users_normalized_email" => "USER_EMAIL_CONFLICT", "uq_users_normalized_username" => "USER_USERNAME_CONFLICT",
                     "uq_users_employee_code" => "USER_EMPLOYEE_CODE_CONFLICT",
+                    "uq_asset_assignments_one_active" => "ASSET_ALREADY_ASSIGNED",
                     _ => "BUSINESS_KEY_CONFLICT"
                 };
                 throw new BusinessException(409, code, "Mã nghiệp vụ đã tồn tại.");
@@ -82,7 +77,8 @@ public sealed class AuditWriter(AppDbContext db, IActor actor) : IAuditWriter
       "code", "isActive", "parentDepartmentId", "defaultUsefulLifeMonths", "departmentId",
       "emailChanged", "usernameChanged", "displayNameChanged", "employeeCodeChanged", "phoneChanged",
       "isAdminLocked", "userId", "roleId", "roleCount", "adminRoleAssigned", "reasonProvided",
-      "auditLogId", "page", "pageSize", "returnedCount" };
+      "auditLogId", "page", "pageSize", "returnedCount", "assetId", "assignedUserId", "assignedDepartmentId",
+      "assignedByUserId", "returnedByUserId", "assignedAtUtc", "returnedAtUtc" };
     public void Record(string action, object? entity, long? actorId, string actorType, string outcome = "SUCCESS",
         object? before = null, object? after = null, string? failureCode = null)
     {

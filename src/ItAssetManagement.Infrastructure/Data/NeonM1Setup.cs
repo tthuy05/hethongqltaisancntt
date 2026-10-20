@@ -1,6 +1,7 @@
 using System.Data.Common;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Npgsql;
 
 namespace ItAssetManagement.Infrastructure.Data;
@@ -33,7 +34,9 @@ public static class NeonM1Setup
             if (!Equals(await lockCommand.ExecuteScalarAsync(), true)) return new("Refused", FailureCode: "DATABASE_CHANGE_LOCK_BUSY");
             checks.Add("DIRECT_TLS_AND_CHANGE_LOCK_PASS");
             await using var targetContext = Context(connection);
-            var migration = targetContext.Database.GetMigrations().Single();
+            // This legacy bootstrap is intentionally pinned to M1. Later additions use
+            // their own reviewed, additive setup and must not be applied by this command.
+            var migration = NeonAssignmentMaintenanceSetup.InitialMigration;
             await CheckTargetAsync(connection, targetContext, migration);
             checks.Add("TARGET_EMPTY_OR_EXACT_MIGRATION_PASS");
 
@@ -51,17 +54,17 @@ public static class NeonM1Setup
             {
                 await isolatedConnection.OpenAsync();
                 await using var isolated = Context(isolatedConnection);
-                await isolated.Database.MigrateAsync();
+                await isolated.GetService<Microsoft.EntityFrameworkCore.Migrations.IMigrator>().MigrateAsync(migration);
                 await VerifyCatalogAsync(isolatedConnection, checks, "ISOLATED");
                 await M1ConstraintVerification.RunAsync(isolatedConnection, checks);
-                await isolated.Database.MigrateAsync();
+                await isolated.GetService<Microsoft.EntityFrameworkCore.Migrations.IMigrator>().MigrateAsync(migration);
                 if ((await isolated.Database.GetAppliedMigrationsAsync()).Single() != migration)
                     throw new InvalidOperationException("MIGRATION_HISTORY_MISMATCH");
                 checks.Add("ISOLATED_MIGRATION_REAPPLY_PASS");
             }
             // Recheck under the same direct session lock after all isolated tests pass.
             await CheckTargetAsync(connection, targetContext, migration);
-            await targetContext.Database.MigrateAsync();
+            await targetContext.GetService<Microsoft.EntityFrameworkCore.Migrations.IMigrator>().MigrateAsync(migration);
             await VerifyCatalogAsync(connection, checks, "SHARED");
             if ((await targetContext.Database.GetAppliedMigrationsAsync()).Single() != migration)
                 throw new InvalidOperationException("MIGRATION_HISTORY_MISMATCH");

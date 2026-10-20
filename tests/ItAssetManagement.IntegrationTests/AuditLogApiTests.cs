@@ -85,7 +85,7 @@ public sealed class AuditLogApiTests(MvpFixture fixture)
     {
         await using var scope = fixture.Factory.Services.CreateAsyncScope(); var services = scope.ServiceProvider;
         var db = services.GetRequiredService<AppDbContext>();
-        Assert.Equal("it_asset_management_m1_verify_20261002", db.Database.GetDbConnection().Database);
+        Assert.Equal(Environment.GetEnvironmentVariable("ITAM_TEST_DATABASE") ?? "it_asset_management_m1_verify_20261002", db.Database.GetDbConnection().Database);
         await services.GetRequiredService<IUnitOfWork>().RunAsync(async () =>
         { db.AddRange(entries); await db.SaveChangesAsync(); return true; });
     }

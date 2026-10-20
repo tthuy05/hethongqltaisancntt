@@ -9,6 +9,44 @@ public sealed record SeedCredentials(string Email, string Password);
 public sealed record SeedResult(int Roles, int Permissions, int RolePermissions, int Departments, int AssetTypes, int Users, int UserRoles, int Added);
 public sealed class DevelopmentSeed(AppDbContext db, IRepository repo, IUnitOfWork uow, IPasswordService passwords, IAuditWriter audit)
 {
+    // Explicit Week 4 catalog/grants only; never reset accounts or restore unrelated grants.
+    public Task<int> RunAssignmentPermissionsAsync(CancellationToken ct = default) => uow.RunAsync(async () =>
+    {
+        await repo.LockAsync("development-seed", ct);
+        var created = new List<object>();
+        var roles = new List<Role>();
+        foreach (var (code, name) in new[] { ("ADMIN_IT", "Admin IT"), ("SYSTEM_MANAGER", "System Manager") })
+        {
+            var role = await db.Set<Role>().SingleOrDefaultAsync(x => x.Code == code, ct);
+            if (role is { IsActive: false }) throw new InvalidOperationException("Inactive fixed role requires review.");
+            if (role == null)
+            {
+                role = new Role { Code = code, Name = name, IsSystem = true };
+                db.Add(role); created.Add(role); await db.SaveChangesAsync(ct);
+            }
+            roles.Add(role);
+        }
+        foreach (var code in new[] { Permissions.AssignmentRead, Permissions.AssignmentAssign, Permissions.AssignmentReturn })
+        {
+            var permission = await db.Set<Permission>().SingleOrDefaultAsync(x => x.Code == code, ct);
+            if (permission is { IsActive: false }) throw new InvalidOperationException("Inactive assignment permission requires review.");
+            if (permission == null)
+            {
+                permission = new Permission { Code = code, Name = code, Module = "assignments" };
+                db.Add(permission); created.Add(permission); await db.SaveChangesAsync(ct);
+            }
+            foreach (var role in roles)
+                if (!await db.Set<RolePermission>().AnyAsync(x => x.RoleId == role.Id && x.PermissionId == permission.Id, ct))
+                {
+                    var grant = new RolePermission { RoleId = role.Id, PermissionId = permission.Id, GrantedAtUtc = DateTime.UtcNow };
+                    db.Add(grant); created.Add(grant);
+                }
+        }
+        await db.SaveChangesAsync(ct);
+        foreach (var entity in created) audit.Record("development.assignment-permissions.seed", entity, null, "SYSTEM");
+        await db.SaveChangesAsync(ct); return created.Count;
+    }, ct);
+
     // Explicit additive audit permission only; preserve existing accounts, roles and grants.
     public Task<int> RunAuditReadAsync(CancellationToken ct = default) => uow.RunAsync(async () =>
     {
