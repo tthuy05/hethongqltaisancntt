@@ -215,12 +215,13 @@ export async function reportsPage(services) {
     const costColumns = [
       { key: 'groupLabel', label: 'Khoảng thời gian / Nhóm' },
       { key: 'ticketCount', label: 'Số lượt sửa chữa' },
+      { key: 'missingCostCount', label: 'Chưa có chi phí', render: row => row.missingCostCount ?? '—' },
       { key: 'totalCost', label: 'Tổng chi phí', render: row => money(row.totalCost) }
     ];
 
     tabContent = h('div', { style: 'display: flex; flex-direction: column; gap: 1.5rem;' },
       h('div', { className: 'grid-kpis' },
-        statCard({ label: 'Tổng chi phí bảo trì', value: money(maintenanceCost?.totalCost), detail: 'Tổng phần chi phí đã biết; chưa đo mức đầy đủ', iconName: 'wrench', tone: 'amber' }),
+        statCard({ label: 'Tổng chi phí bảo trì', value: money(maintenanceCost?.totalCost), detail: `${maintenanceCost?.missingCostCount ?? '—'}/${maintenanceCost?.ticketCount ?? '—'} phiếu chưa có chi phí; tổng phần đã biết`, iconName: 'wrench', tone: 'amber' }),
         statCard({ label: `Dự toán thay thế năm ${currentYear + 1}`, value: money(budget?.totalBudget), detail: `${budget?.totalRecommendations ?? '—'} khuyến nghị; ${budget?.missingEstimateCount ?? '—'} chưa có dự toán`, iconName: 'chart', tone: 'green' })
       ),
       h('section', { className: 'card' },

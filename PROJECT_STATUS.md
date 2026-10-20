@@ -10,6 +10,8 @@ Dashboard/Reports/Import/Export và báo cáo nghiệm thu Tuần 6–8 còn là
 
 ## 20/10/2026 — Import/Reporting security và integration checkpoint
 
+**Addendum sau b8f241f:** bổ sung missing-price/ticket counts tại SQL aggregate, phân biệt null với known0, YTD giới hạn đến now UTC; UI hiển thị missing/total và unknown fallback. Local708 unit/192 offline integration/305 frontend PASS,146 cloud SKIP;focused isolated5 PASS. B8f CI/Linux Docker đã PASS nhưng source addendum cần CI riêng. Flags/grants/Neon/Render/config vẫn giữ nguyên; [evidence](docs/import-reporting-review-2026-10-20.md). Không đóng owner integration/browser/performance acceptance.
+
 **IMPLEMENTED LOCALLY / UNDER REVIEW.** Sửa parser/header/typed cells, dry-run không ghi DB/sequence/audit, Asset rules (mã AST do server tạo), transaction/master-data revalidation, audit coverage và rollback. Chuẩn hóa query allowlists/UTC/offset, aggregate costs/budget tại PostgreSQL, bounded export/filter/order/cost masking, multipart bearer và stale-session protection.
 
 Reporting API và Import/Export API mặc định **DISABLED** qua feature flags; frontend Reporting cũng cần opt-in rõ ràng. Permission constants chỉ là prepared contracts, chưa thêm vào `Permissions.All` hoặc seed/grants. Không thay migration/schema/Neon shared/Render hoặc cấu hình owner.

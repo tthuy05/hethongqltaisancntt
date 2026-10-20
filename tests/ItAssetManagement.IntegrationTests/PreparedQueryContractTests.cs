@@ -74,6 +74,17 @@ public sealed class PreparedQueryContractTests
         form.Add(new ByteArrayContent([1]), "file", "fixture.xlsx");
         Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsync("/api/v1/import/assets", form)).StatusCode);
     }
+    [Theory]
+    [InlineData("dashboard/costs", "assetCount", "missingPurchaseCostCount", "maintenanceTicketCountYtd", "missingMaintenanceCostCountYtd")]
+    [InlineData("reports/maintenance-cost", "ticketCount", "missingCostCount", "ticketCount", "missingCostCount")]
+    public async Task Financial_completeness_fields_are_serialized_on_empty_dataset(string path, string first, string second, string third, string fourth)
+    {
+        await using var factory = Factory(); using var client = factory.CreateClient();
+        using var response = await client.GetAsync("/api/v1/" + path);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var json = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        foreach (var field in new[] { first, second, third, fourth }) Assert.Equal(0, json.RootElement.GetProperty(field).GetInt32());
+    }
     [Fact]
     public async Task Multipart_preview_accepts_dry_run_query_and_has_no_write_side_effect()
     {

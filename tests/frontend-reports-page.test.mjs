@@ -122,6 +122,28 @@ test('reportsPage denies access to unauthenticated user', async () => {
   }
 });
 
+test('prepared financial cards show missing-cost counts and never invent completeness for older responses', async () => {
+  const dom = installDom('/dashboard');
+  try {
+    const services = fakeServices();
+    services.dashboardV2.costs = async () => ({ currency: 'VND', totalAssetValue: 0, maintenanceCostYtd: 0,
+      totalBudgetForecast: 0, missingEstimateCount: 0, assetCount: 5, missingPurchaseCostCount: 2,
+      maintenanceTicketCountYtd: 4, missingMaintenanceCostCountYtd: 1 });
+    const dashboard = await dashboardPage(services);
+    assert.match(dashboard.textContent, /2\/5 tài sản chưa có giá/);
+    assert.match(dashboard.textContent, /1\/4 phiếu chưa có chi phí/);
+    window.location.hash = '#/reports?tab=cost';
+    services.reports.maintenanceCost = async () => ({ currency: 'VND', totalCost: 0, ticketCount: 3, missingCostCount: 2,
+      groups: [{ groupLabel: 'Tháng 2026-10', ticketCount: 3, missingCostCount: 2, totalCost: 0 }] });
+    const report = await reportsPage(services);
+    assert.match(report.textContent, /2\/3 phiếu chưa có chi phí/);
+    assert.match(report.textContent, /Chưa có chi phí/);
+    services.reports.maintenanceCost = async () => ({ currency: 'VND', totalCost: 0, groups: [] });
+    const legacy = await reportsPage(services);
+    assert.match(legacy.textContent, /—\/— phiếu chưa có chi phí/);
+  } finally { dom.restore(); }
+});
+
 test('reportsPage denies access to user without any report permissions', async () => {
   const dom = installDom();
   try {

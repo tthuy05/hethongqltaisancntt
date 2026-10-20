@@ -27,7 +27,7 @@ Tài liệu thực hiện **W6-THUY-D1-01**, **W6-THUY-D1-03**, **W6-THUY-D1-05*
      - `reports.cost.read`: Xem báo cáo tài chính bảo trì và dự toán thay thế.
    - **Nguyên tắc không hiển thị Zero giả (No Fake Zeroes):**
      - Nếu người dùng không có quyền xem chi phí -> Trả về `null`, không trả về `0`.
-     - Tổng giá/chi phí hiện là tổng phần đã biết (`SUM(cost ?? 0)`), không chứng minh dữ liệu đầy đủ; DTO chưa có `missingCostCount` và không tính trung bình. Chỉ forecast/budget có `missingEstimateCount`. Bổ sung missing-price/ticket counts là việc cần chốt trước nghiệm thu tài chính, không tuyên bố đã implement.
+     - Tổng giá/chi phí là tổng phần đã biết (`SUM(cost ?? 0)`), không tự chứng minh dữ liệu đầy đủ. Dashboard costs trả `assetCount`, `missingPurchaseCostCount`, `maintenanceTicketCountYtd`, `missingMaintenanceCostCountYtd`; monthly costs có `ticketCount`/`missingCostCount`. Maintenance cost report có tổng/group `ticketCount`/`missingCostCount`. Giá0 là đã biết, chỉ null là thiếu; không có row thì cả tổng/count bằng0. Forecast/budget tiếp tục dùng `missingEstimateCount`. Không tính trung bình hoặc suy diễn missing cost bằng0.
 
 4. **Đơn vị tiền tệ & Múi giờ:**
    - Tiền tệ: Đồng Việt Nam (`VND`), số thập phân làm tròn 2 chữ số (`decimal.Round(v, 2)`).
@@ -67,6 +67,8 @@ Tài liệu thực hiện **W6-THUY-D1-01**, **W6-THUY-D1-03**, **W6-THUY-D1-05*
 ---
 
 ## 3. Tiêu chí kiểm định độc lập (Thiện Review Checklist)
+
+**Bổ sung contract 20/10:** YTD chỉ gồm resolvedAtUtc từ00:00 UTC ngày01/01 đến thời điểm truy vấn (inclusive), giao với fromUtc/toUtc caller nếu có; không tính ngày tương lai hoặc phiếu chưa hoàn thành. Report maintenance không phải YTD mặc định: count mọi phiếu nonarchived khớp filter, gồm phiếu chưa có actual_cost; nhóm month thiếu resolvedAtUtc là `0000-00`/“Chưa có ngày hoàn thành”. Date filter trên resolvedAtUtc loại phiếu chưa có ngày. Counts và known subtotal aggregate cùng SQL; tổng/group missing và ticket counts phải khớp. UI hiển thị missing/total, dùng “—” nếu response cũ không có count; không dựng0 giả. Tất cả đây vẫn là prepared source/default disabled, chưa cấp grant hoặc nghiệm thu production.
 
 1. **Không N+1 Query:** Aggregate chạy SQL GROUP BY/SUM/COUNT; batch lookup labels có query riêng, không khẳng định toàn endpoint chỉ 1 SQL. Cần đo query count trên workload thống nhất.
 2. **Không rò rỉ chi phí (Financial Redaction):** Đăng nhập bằng tài khoản `TECHNICAL_SUPPORT`, gọi `EP-072`, `EP-073`, `EP-074` phải thành công nhưng không thấy số tiền; gọi `EP-075`, `EP-082`, `EP-086` phải nhận `403 FORBIDDEN`.

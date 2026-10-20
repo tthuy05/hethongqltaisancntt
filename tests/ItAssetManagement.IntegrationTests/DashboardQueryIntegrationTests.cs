@@ -79,6 +79,12 @@ public sealed class DashboardQueryIntegrationTests(MvpFixture fixture, ITestOutp
         using var created = await client.PostAsJsonAsync("/api/v1/assets", fixture.Asset());
         Assert.Equal(HttpStatusCode.Created, created.StatusCode);
         var asset = (await created.Content.ReadFromJsonAsync<AssetDto>())!;
+        foreach (var price in new decimal?[] { null, 0m })
+        {
+            var request = fixture.Asset(); request.PurchasePrice = price;
+            using var added = await client.PostAsJsonAsync("/api/v1/assets", request);
+            Assert.Equal(HttpStatusCode.Created, added.StatusCode);
+        }
         var writer = new AuditWriter(db, actor);
         await scope.ServiceProvider.GetRequiredService<IUnitOfWork>().RunAsync(async () => {
             var now = DateTime.UtcNow;
@@ -93,12 +99,27 @@ public sealed class DashboardQueryIntegrationTests(MvpFixture fixture, ITestOutp
                 Description = "Fixture", Status = "RESOLVED", RequestedByUserId = me.Id, AssignedToUserId = me.Id,
                 OpenedAtUtc = now.AddHours(-1), StartedAtUtc = now.AddMinutes(-30), ResolvedAtUtc = now, ActualCost = 25.50m, Resolution = "Fixture" };
             repo.Add(ticket); await repo.SaveAsync(default); writer.Record("fixture.reporting", ticket, me.Id, "USER");
+            foreach (var amount in new decimal?[] { null, 0m })
+            {
+                var additional = new MaintenanceTicket { AssetId = asset.Id, TicketCode = "FIX" + Guid.NewGuid().ToString("N"), Title = "Synthetic completeness fixture",
+                    Description = "Fixture", Status = "RESOLVED", RequestedByUserId = me.Id, AssignedToUserId = me.Id,
+                    OpenedAtUtc = now.AddHours(-1), StartedAtUtc = now.AddMinutes(-30), ResolvedAtUtc = now, ActualCost = amount, Resolution = "Fixture" };
+                repo.Add(additional); await repo.SaveAsync(default); writer.Record("fixture.reporting", additional, me.Id, "USER");
+            }
             await repo.SaveAsync(default); return true;
         });
         var dashboard = new DashboardQueryService(repo, actor); var reports = new ReportQueryService(repo, actor);
         var cost = await dashboard.GetCostsAsync(new() { DepartmentId = fixture.DepartmentId });
         var assets = db.Set<Asset>().Where(a => !a.IsArchived && a.OwningDepartmentId == fixture.DepartmentId);
         Assert.Equal(await assets.SumAsync(a => a.PurchaseCost ?? 0m), cost.TotalAssetValue);
+        Assert.Equal(await assets.CountAsync(), cost.AssetCount);
+        Assert.Equal(await assets.CountAsync(a => a.PurchaseCost == null), cost.MissingPurchaseCostCount);
+        Assert.True(cost.MissingPurchaseCostCount > 0);
+        var startOfYear = new DateTime(DateTime.UtcNow.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var ytdTickets = db.Set<MaintenanceTicket>().Where(t => !t.IsArchived && t.ResolvedAtUtc >= startOfYear && t.ResolvedAtUtc <= DateTime.UtcNow && assets.Select(a => a.Id).Contains(t.AssetId));
+        Assert.Equal(await ytdTickets.CountAsync(), cost.MaintenanceTicketCountYtd);
+        Assert.Equal(await ytdTickets.CountAsync(t => t.ActualCost == null), cost.MissingMaintenanceCostCountYtd);
+        Assert.True(cost.MissingMaintenanceCostCountYtd > 0);
         var budget = await reports.GetReplacementBudgetReportAsync(new() { Year = 2027, DepartmentId = fixture.DepartmentId });
         var recs = db.Set<ReplacementRecommendation>().Where(r => !r.IsArchived && r.IsCurrent && (r.Disposition == "ACTIVE" || r.Disposition == "PLANNED") && r.PlannedReplacementYear == 2027 && assets.Select(a => a.Id).Contains(r.AssetId));
         Assert.Equal(await recs.CountAsync(), budget.TotalRecommendations);
@@ -108,8 +129,12 @@ public sealed class DashboardQueryIntegrationTests(MvpFixture fixture, ITestOutp
         foreach (var group in new[] { "month", "department", "type" })
         {
             var report = await reports.GetMaintenanceCostReportAsync(new() { GroupBy = group, DepartmentId = fixture.DepartmentId });
-            var tickets = db.Set<MaintenanceTicket>().Where(t => !t.IsArchived && t.ActualCost != null && assets.Select(a => a.Id).Contains(t.AssetId));
+            var tickets = db.Set<MaintenanceTicket>().Where(t => !t.IsArchived && assets.Select(a => a.Id).Contains(t.AssetId));
             Assert.Equal(await tickets.SumAsync(t => t.ActualCost ?? 0m), report.TotalCost);
+            Assert.Equal(await tickets.CountAsync(), report.TicketCount);
+            Assert.Equal(await tickets.CountAsync(t => t.ActualCost == null), report.MissingCostCount);
+            Assert.Equal(report.TicketCount, report.Groups.Sum(g => g.TicketCount));
+            Assert.Equal(report.MissingCostCount, report.Groups.Sum(g => g.MissingCostCount));
             Assert.Equal(report.TotalCost, report.Groups.Sum(g => g.TotalCost));
         }
         output.WriteLine($"diagnostic-only|target=isolated|assets={await assets.CountAsync()}|tickets={await db.Set<MaintenanceTicket>().CountAsync()}|recommendations={await db.Set<ReplacementRecommendation>().CountAsync()}|concurrency=1|warmup=1|samples=10");

@@ -68,8 +68,8 @@ export async function dashboardPage(services) {
   let financialSection = null;
   if (canReadCost && costs) {
     financialSection = h('div', { className: 'grid-kpis financial-kpis', style: 'margin-top: 1rem;' },
-      statCard({ label: 'Tổng giá trị tài sản', value: money(costs.totalAssetValue), detail: 'Giá trị mua tích lũy', iconName: 'chart', tone: 'blue' }),
-      statCard({ label: 'Chi phí bảo trì (YTD)', value: money(costs.maintenanceCostYtd), detail: 'Năm hiện tại', iconName: 'wrench', tone: 'amber' }),
+      statCard({ label: 'Tổng giá trị tài sản', value: money(costs.totalAssetValue), detail: `${costs.missingPurchaseCostCount ?? '—'}/${costs.assetCount ?? '—'} tài sản chưa có giá; tổng phần đã biết`, iconName: 'chart', tone: 'blue' }),
+      statCard({ label: 'Chi phí bảo trì (YTD)', value: money(costs.maintenanceCostYtd), detail: `${costs.missingMaintenanceCostCountYtd ?? '—'}/${costs.maintenanceTicketCountYtd ?? '—'} phiếu chưa có chi phí; từ đầu năm đến hiện tại`, iconName: 'wrench', tone: 'amber' }),
       statCard({ label: 'Dự toán thay thế', value: money(costs.totalBudgetForecast), detail: `${costs.missingEstimateCount ?? 0} tài sản chưa có ước tính`, iconName: 'devices', tone: 'green' })
     );
   }

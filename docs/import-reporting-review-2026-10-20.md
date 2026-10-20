@@ -1,5 +1,15 @@
 # Thủy — Import/Export và Reporting: checkpoint review 20/10/2026
 
+## Addendum — Financial completeness sau publication b8f241f
+
+Checkpoint b8f241f đã push nhánh review; [CI39404589440](https://github.com/tthuy05/hethongqltaisancntt/actions/runs/39404589440) SUCCESS gồm actual Linux container build/smoke. Chưa merge main/deploy. Bảng704/190/304 bên dưới giữ evidence của checkpoint đó, không dùng cho source addendum mới.
+
+Đã hoàn thiện một phần gate4: Dashboard costs có AssetCount/MissingPurchaseCostCount và MaintenanceTicketCountYtd/MissingMaintenanceCostCountYtd; monthly costs và maintenance cost report có TicketCount/MissingCostCount ở tổng/group. SUM known values và COUNT/COUNT-null cùng SQL. Known zero khác null; tập rỗng0 count; YTD có upper bound now UTC. Report không mặc định YTD: phiếu chưa resolved vẫn được count ở nhóm “Chưa có ngày hoàn thành” nếu không có date filter. UI hiển thị missing/total và không dựng missing=0 khi response thiếu field.
+
+4 test mới RED trước implementation → GREEN; final local **708 unit PASS/192 offline integration PASS/146 cloud SKIP/305 frontend PASS**; **5 focused isolated PostgreSQL PASS**; Release0 warning/error,47 syntax/51 boundary và production frontend42 assets PASS. Isolated query assertions so sánh null/zero counts với DB, gồm explicit unknown/zero Asset và tickets, subtotal/group counts khớp. Hai synthetic HTTP cases kiểm tên JSON counts0 ở empty dataset; một Node DOM case kiểm missing counters/response cũ. Không coi các case đó là production JWT/grant hoặc browser acceptance.
+
+Raw evidence Git-ignored: `artifacts/verification/financial-completeness-20261020.trx`, `completeness-dotnet.log`, `completeness-frontend.log`. Target isolated/guards giống mục3. Không thêm query detail materialization, schema/migration/config/permission/rollout flag changes; không ghi shared Neon hoặc deploy Render. Gate snapshot consistency, browser/load/EXPLAIN, owner review và rollout vẫn mở. CI cho source addendum phải kiểm riêng sau publication, không tái dùng CI b8f241f.
+
 **SOURCE PREPARED / UNDER REVIEW — NOT PRODUCTION ACCEPTED.** Tiếp tục WIP sau checkpoint `24fe193`, không làm lại thiết kế hoặc phần Thiện. Tài liệu này thay các kết luận hoàn thành/hiệu năng thiếu bằng chứng trong bản nháp Week 6–8; evidence Week 2 và các handoff đã publish vẫn giữ đúng thời điểm của chúng.
 
 ## 1. Phần đã xử lý
@@ -70,7 +80,7 @@ Bao gồm network/service overhead, không phải HTTP end-to-end/p95 production
 1. Thiện review owner integration, master/reference/rollback behavior và export/report filter parity; chưa có xác nhận review độc lập.
 2. Broad PostgreSQL known fixtures, real JWT/grant HTTP matrix, status/date/currency boundaries và workbook interoperability với Excel/LibreOffice.
 3. UI filter/paging cho expiry, lựa chọn năm ngân sách, upload/download trên owner page và responsive/browser acceptance. Report replacement reader có contract nhưng chưa có tab riêng. Không coi shell/helper là UI hoàn thiện.
-4. Financial completeness: total purchase/ticket cost hiện tổng phần đã biết; chưa có missing-price/ticket count. Forecast/budget có missingEstimateCount. Nhiều query read-committed không phải cùng transaction snapshot; asOfUtc không khóa trạng thái xuyên request. Chốt UX/policy này trước nghiệm thu.
+4. Financial completeness tại b8f241f chỉ có known subtotals; missing-price/ticket counts được bổ sung ở addendum đầu tài liệu, không phải production acceptance. Forecast/budget có missingEstimateCount. Nhiều query read-committed không phải cùng transaction snapshot; asOfUtc không khóa trạng thái xuyên request. Chốt UX/policy này trước nghiệm thu.
 5. EXPLAIN/load/query-count measurement với workload thống nhất; chưa chứng minh SLA/performance production.
 6. Lecturer-feedback migration/permission rollout/backup-writer coordination trên shared và production revision/smoke phải phê duyệt riêng. Giữ BLOCK MERGE/DEPLOY của PR, không tự mở modules hoặc gửi email thật. Connection string giữ nguyên theo owner; không tuyên bố security finding đã sạch.
 7. Week8 final demo, PITR verification, email inbox E2E, Mentor acceptance/sign-off còn PLANNED/UNVERIFIED, không được ghi100%.

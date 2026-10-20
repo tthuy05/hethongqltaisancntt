@@ -161,10 +161,14 @@ public sealed record DashboardCostSummaryDto(
     decimal? TotalBudgetForecast,
     int MissingEstimateCount,
     IReadOnlyList<MonthlyCostDto> MonthlyMaintenanceCosts,
-    IReadOnlyList<PriorityBudgetDto> BudgetByPriority
+    IReadOnlyList<PriorityBudgetDto> BudgetByPriority,
+    int AssetCount,
+    int MissingPurchaseCostCount,
+    int MaintenanceTicketCountYtd,
+    int MissingMaintenanceCostCountYtd
 );
 
-public sealed record MonthlyCostDto(int Year, int Month, decimal Cost);
+public sealed record MonthlyCostDto(int Year, int Month, decimal Cost, int TicketCount, int MissingCostCount);
 public sealed record PriorityBudgetDto(string Priority, int Count, decimal TotalCost);
 
 // ---------------------------------------------------------
@@ -315,14 +319,17 @@ public sealed class MaintenanceCostReportQuery
 public sealed record CostReportDto(
     string Currency,
     decimal TotalCost,
-    IReadOnlyList<CostGroupItemDto> Groups
+    IReadOnlyList<CostGroupItemDto> Groups,
+    int TicketCount,
+    int MissingCostCount
 );
 
 public sealed record CostGroupItemDto(
     string GroupKey,
     string GroupLabel,
     int TicketCount,
-    decimal TotalCost
+    decimal TotalCost,
+    int MissingCostCount
 );
 
 public sealed class WarrantyExpiryReportQuery

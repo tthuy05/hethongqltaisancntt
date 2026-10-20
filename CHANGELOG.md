@@ -9,6 +9,8 @@
 
 ## Unreleased — 20/10/2026 — Prepared Import/Reporting fixes
 
+- Added after b8f241f: financial completeness counters for unknown purchase/maintenance costs, grouped SQL count/sum and YTD upper bound; prepared UI shows missing/total instead of treating unknown as known zero. Focused tests/evidence in the review addendum; flags/grants/deployment remain closed.
+
 - Fixed: typed workbook/header validation, read-only preview, server-generated asset codes, transaction reference/duplicate validation, per-Asset audit coverage and rollback.
 - Fixed: Controller query allowlists, pagination overflow/UTC/sort validation, database cost/budget aggregates, bounded/filter-aware export, bearer transport and stale-session response handling.
 - Added: default-closed Reporting/ImportExport Controller gates; prepared frontend Reporting requires explicit opt-in. No module permission seed, migration, shared Neon or Render changes.

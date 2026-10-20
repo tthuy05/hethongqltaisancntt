@@ -6,6 +6,62 @@ namespace ItAssetManagement.UnitTests;
 
 public sealed class DashboardAndReportingTests
 {
+    [Fact]
+    public async Task Dashboard_cost_completeness_distinguishes_unknown_from_known_zero_and_respects_ytd_scope()
+    {
+        var now = new FixedClock().GetUtcNow().UtcDateTime;
+        var assets = new[] {
+            new Asset { Id = 1, OwningDepartmentId = 1, PurchaseCost = null },
+            new Asset { Id = 2, OwningDepartmentId = 1, PurchaseCost = 0m },
+            new Asset { Id = 3, OwningDepartmentId = 2, PurchaseCost = null },
+            new Asset { Id = 4, OwningDepartmentId = 1, PurchaseCost = null, IsArchived = true }
+        };
+        var tickets = new[] {
+            new MaintenanceTicket { Id = 1, AssetId = 1, ResolvedAtUtc = now.AddDays(-1), ActualCost = null },
+            new MaintenanceTicket { Id = 2, AssetId = 2, ResolvedAtUtc = now.AddDays(-1), ActualCost = 0m },
+            new MaintenanceTicket { Id = 3, AssetId = 1, ResolvedAtUtc = now.AddDays(1), ActualCost = 999m },
+            new MaintenanceTicket { Id = 4, AssetId = 1, ResolvedAtUtc = now.AddYears(-1), ActualCost = null },
+            new MaintenanceTicket { Id = 5, AssetId = 3, ResolvedAtUtc = now.AddDays(-1), ActualCost = null },
+            new MaintenanceTicket { Id = 6, AssetId = 1, ResolvedAtUtc = now.AddDays(-1), ActualCost = null, IsArchived = true }
+        };
+        var repo = new InMemoryRepo(assets, tickets);
+        var reader = new DashboardQueryService(repo, new TestActor(1, Permissions.DashboardCost), new FixedClock());
+        var result = await reader.GetCostsAsync(new() { DepartmentId = 1 });
+        Assert.Equal(0m, result.TotalAssetValue); Assert.Equal(2, result.AssetCount); Assert.Equal(1, result.MissingPurchaseCostCount);
+        Assert.Equal(0m, result.MaintenanceCostYtd); Assert.Equal(2, result.MaintenanceTicketCountYtd); Assert.Equal(1, result.MissingMaintenanceCostCountYtd);
+        Assert.Equal(2, Assert.Single(result.MonthlyMaintenanceCosts).TicketCount);
+        Assert.Equal(1, Assert.Single(result.MonthlyMaintenanceCosts).MissingCostCount);
+        var empty = await reader.GetCostsAsync(new() { DepartmentId = 99 });
+        Assert.Equal(0, empty.AssetCount); Assert.Equal(0, empty.MissingPurchaseCostCount); Assert.Equal(0, empty.MaintenanceTicketCountYtd); Assert.Empty(empty.MonthlyMaintenanceCosts);
+    }
+
+    [Theory]
+    [InlineData("month")]
+    [InlineData("department")]
+    [InlineData("type")]
+    public async Task Maintenance_cost_report_counts_missing_costs_and_preserves_group_totals(string group)
+    {
+        var assets = new[] { new Asset { Id = 1, OwningDepartmentId = 1, AssetTypeId = 1 } };
+        var now = new FixedClock().GetUtcNow().UtcDateTime;
+        var tickets = new[] {
+            new MaintenanceTicket { Id = 1, AssetId = 1, ActualCost = 0m, ResolvedAtUtc = now },
+            new MaintenanceTicket { Id = 2, AssetId = 1, ActualCost = null, ResolvedAtUtc = now },
+            new MaintenanceTicket { Id = 3, AssetId = 1, ActualCost = null },
+            new MaintenanceTicket { Id = 4, AssetId = 1, ActualCost = 25.5m, ResolvedAtUtc = now },
+            new MaintenanceTicket { Id = 5, AssetId = 1, ActualCost = null, IsArchived = true }
+        };
+        var repo = new InMemoryRepo(assets, tickets, new[] { new Department { Id = 1, Name = "IT" } }, new[] { new AssetType { Id = 1, Name = "Laptop" } });
+        var reader = new ReportQueryService(repo, new TestActor(1, Permissions.ReportCost));
+        var report = await reader.GetMaintenanceCostReportAsync(new() { GroupBy = group });
+        Assert.Equal(25.5m, report.TotalCost); Assert.Equal(4, report.TicketCount); Assert.Equal(2, report.MissingCostCount);
+        Assert.Equal(report.TicketCount, report.Groups.Sum(g => g.TicketCount));
+        Assert.Equal(report.MissingCostCount, report.Groups.Sum(g => g.MissingCostCount));
+        var dated = await reader.GetMaintenanceCostReportAsync(new() { GroupBy = group, FromUtc = now, ToUtc = now });
+        Assert.Equal(3, dated.TicketCount); Assert.Equal(1, dated.MissingCostCount); Assert.Equal(25.5m, dated.TotalCost);
+        var empty = await reader.GetMaintenanceCostReportAsync(new() { GroupBy = group, DepartmentId = 99 });
+        Assert.Empty(empty.Groups); Assert.Equal(0, empty.TicketCount); Assert.Equal(0, empty.MissingCostCount);
+    }
+
     [Theory]
     [InlineData("department")]
     [InlineData("type")]

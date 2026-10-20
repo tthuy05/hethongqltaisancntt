@@ -25,6 +25,7 @@ public sealed class ReportQueryService(IRepository repo, IActor actor, TimeProvi
         public string Label { get; init; } = "";
         public int Count { get; init; }
         public decimal TotalCost { get; init; }
+        public int MissingCostCount { get; init; }
     }
 
     // ---------------------------------------------------------
@@ -358,7 +359,7 @@ public sealed class ReportQueryService(IRepository repo, IActor actor, TimeProvi
         RequirePermission(Permissions.ReportCost, "Yêu cầu quyền xem báo cáo chi phí (reports.cost.read).");
         query.Validate();
 
-        var q = repo.Query<MaintenanceTicket>().Where(t => !t.IsArchived && t.ActualCost != null);
+        var q = repo.Query<MaintenanceTicket>().Where(t => !t.IsArchived);
 
         if (query.FromUtc.HasValue)
             q = q.Where(t => t.ResolvedAtUtc >= query.FromUtc.Value);
@@ -381,11 +382,11 @@ public sealed class ReportQueryService(IRepository repo, IActor actor, TimeProvi
             var groups = await repo.ListAsync(q.GroupBy(t => new {
                     Year = t.ResolvedAtUtc.HasValue ? t.ResolvedAtUtc.Value.Year : 0,
                     Month = t.ResolvedAtUtc.HasValue ? t.ResolvedAtUtc.Value.Month : 0
-                }).Select(g => new { g.Key.Year, g.Key.Month, Count = g.Count(), Total = g.Sum(t => t.ActualCost ?? 0m) }), ct);
+                }).Select(g => new { g.Key.Year, g.Key.Month, Count = g.Count(), Total = g.Sum(t => t.ActualCost ?? 0m), Missing = g.Count(t => t.ActualCost == null) }), ct);
             var items = groups.OrderBy(g => g.Year).ThenBy(g => g.Month).Select(g => new CostGroupItemDto(
                 $"{g.Year:D4}-{g.Month:D2}", g.Year == 0 ? "Chưa có ngày hoàn thành" : $"Tháng {g.Year:D4}-{g.Month:D2}",
-                g.Count, decimal.Round(g.Total, 2))).ToList();
-            return new("VND", decimal.Round(groups.Sum(g => g.Total), 2), items);
+                g.Count, decimal.Round(g.Total, 2), g.Missing)).ToList();
+            return new("VND", decimal.Round(groups.Sum(g => g.Total), 2), items, groups.Sum(g => g.Count), groups.Sum(g => g.Missing));
         }
 
         IQueryable<GroupCountRow> queryGroups;
@@ -395,7 +396,7 @@ public sealed class ReportQueryService(IRepository repo, IActor actor, TimeProvi
                           join asset in repo.Query<Asset>() on ticket.AssetId equals asset.Id
                           join dept in repo.Query<Department>() on asset.OwningDepartmentId equals dept.Id
                           group ticket by new { dept.Id, dept.Name } into g
-                          select new GroupCountRow { Id = g.Key.Id, Label = g.Key.Name, Count = g.Count(), TotalCost = g.Sum(t => t.ActualCost ?? 0m) };
+                          select new GroupCountRow { Id = g.Key.Id, Label = g.Key.Name, Count = g.Count(), TotalCost = g.Sum(t => t.ActualCost ?? 0m), MissingCostCount = g.Count(t => t.ActualCost == null) };
         }
         else
         {
@@ -403,12 +404,12 @@ public sealed class ReportQueryService(IRepository repo, IActor actor, TimeProvi
                           join asset in repo.Query<Asset>() on ticket.AssetId equals asset.Id
                           join type in repo.Query<AssetType>() on asset.AssetTypeId equals type.Id
                           group ticket by new { type.Id, type.Name } into g
-                          select new GroupCountRow { Id = g.Key.Id, Label = g.Key.Name, Count = g.Count(), TotalCost = g.Sum(t => t.ActualCost ?? 0m) };
+                          select new GroupCountRow { Id = g.Key.Id, Label = g.Key.Name, Count = g.Count(), TotalCost = g.Sum(t => t.ActualCost ?? 0m), MissingCostCount = g.Count(t => t.ActualCost == null) };
         }
         var rows = await repo.ListAsync(queryGroups, ct);
         var result = rows.OrderByDescending(g => g.TotalCost).ThenBy(g => g.Id).Select(g =>
-            new CostGroupItemDto(g.Id.ToString(), g.Label, g.Count, decimal.Round(g.TotalCost, 2))).ToList();
-        return new("VND", decimal.Round(rows.Sum(g => g.TotalCost), 2), result);
+            new CostGroupItemDto(g.Id.ToString(), g.Label, g.Count, decimal.Round(g.TotalCost, 2), g.MissingCostCount)).ToList();
+        return new("VND", decimal.Round(rows.Sum(g => g.TotalCost), 2), result, rows.Sum(g => g.Count), rows.Sum(g => g.MissingCostCount));
     }
 
     // ---------------------------------------------------------

@@ -389,6 +389,8 @@ public sealed class DashboardQueryService(IRepository repo, IActor actor, TimePr
         public int Year { get; init; }
         public int Month { get; init; }
         public decimal TotalCost { get; init; }
+        public int TicketCount { get; init; }
+        public int MissingCostCount { get; init; }
     }
 
     private sealed record PriorityCostRow
@@ -410,11 +412,13 @@ public sealed class DashboardQueryService(IRepository repo, IActor actor, TimePr
         if (query.DepartmentId.HasValue)
             assets = assets.Where(a => a.OwningDepartmentId == query.DepartmentId.Value);
 
-        var assetTotal = await repo.FirstAsync(assets.GroupBy(a => 1).Select(g => new { Total = g.Sum(a => a.PurchaseCost ?? 0m) }), ct);
+        var assetTotal = await repo.FirstAsync(assets.GroupBy(a => 1).Select(g => new {
+            Total = g.Sum(a => a.PurchaseCost ?? 0m), Count = g.Count(), Missing = g.Count(a => a.PurchaseCost == null)
+        }), ct);
         var totalAssetValue = assetTotal?.Total ?? 0m;
 
         // Maintenance costs YTD
-        var tickets = repo.Query<MaintenanceTicket>().Where(t => !t.IsArchived && t.ResolvedAtUtc != null && t.ResolvedAtUtc.Value >= startOfYear);
+        var tickets = repo.Query<MaintenanceTicket>().Where(t => !t.IsArchived && t.ResolvedAtUtc != null && t.ResolvedAtUtc.Value >= startOfYear && t.ResolvedAtUtc.Value <= now);
         if (query.DepartmentId.HasValue)
         {
             var deptAssetIds = repo.Query<Asset>().Where(a => !a.IsArchived && a.OwningDepartmentId == query.DepartmentId.Value).Select(a => a.Id);
@@ -425,11 +429,12 @@ public sealed class DashboardQueryService(IRepository repo, IActor actor, TimePr
         if (query.ToUtc.HasValue)
             tickets = tickets.Where(t => t.ResolvedAtUtc <= query.ToUtc.Value);
 
-        var monthlyRows = await repo.ListAsync(tickets.Where(t => t.ActualCost.HasValue)
+        var monthlyRows = await repo.ListAsync(tickets
             .GroupBy(t => new { t.ResolvedAtUtc!.Value.Year, t.ResolvedAtUtc.Value.Month })
-            .Select(g => new MonthCostRow { Year = g.Key.Year, Month = g.Key.Month, TotalCost = g.Sum(t => t.ActualCost ?? 0m) }), ct);
+            .Select(g => new MonthCostRow { Year = g.Key.Year, Month = g.Key.Month, TotalCost = g.Sum(t => t.ActualCost ?? 0m),
+                TicketCount = g.Count(), MissingCostCount = g.Count(t => t.ActualCost == null) }), ct);
         var maintenanceCostYtd = monthlyRows.Sum(t => t.TotalCost);
-        var monthlyMaintenance = monthlyRows.Select(g => new MonthlyCostDto(g.Year, g.Month, g.TotalCost))
+        var monthlyMaintenance = monthlyRows.Select(g => new MonthlyCostDto(g.Year, g.Month, g.TotalCost, g.TicketCount, g.MissingCostCount))
             .OrderBy(m => m.Year).ThenBy(m => m.Month)
             .ToList();
 
@@ -458,7 +463,11 @@ public sealed class DashboardQueryService(IRepository repo, IActor actor, TimePr
             decimal.Round(totalBudgetForecast, 2),
             missingEstimateCount,
             monthlyMaintenance,
-            budgetByPriority
+            budgetByPriority,
+            assetTotal?.Count ?? 0,
+            assetTotal?.Missing ?? 0,
+            monthlyRows.Sum(g => g.TicketCount),
+            monthlyRows.Sum(g => g.MissingCostCount)
         );
     }
 
