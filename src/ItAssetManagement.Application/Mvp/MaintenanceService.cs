@@ -118,9 +118,22 @@ public sealed class MaintenanceService(IRepository repo, IUnitOfWork uow, IActor
 
             repo.Add(ticket);
 
-            // 4. Chuyển trạng thái tài sản sang MAINTENANCE
+            // 4. Chuyển trạng thái tài sản sang MAINTENANCE & ghi lịch sử
+            var oldStatus = asset.CurrentStatus;
             asset.CurrentStatus = "MAINTENANCE";
             asset.UpdatedAtUtc = now;
+
+            repo.Add(new AssetStatusHistory
+            {
+                AssetId = asset.Id,
+                FromStatus = oldStatus,
+                ToStatus = "MAINTENANCE",
+                Source = "MAINTENANCE",
+                ChangedAtUtc = now,
+                ChangedByUserId = actor.UserId,
+                CorrelationId = actor.CorrelationId,
+                Reason = request.Description.Trim()
+            });
 
             await repo.SaveAsync(ct);
 
@@ -174,9 +187,22 @@ public sealed class MaintenanceService(IRepository repo, IUnitOfWork uow, IActor
             ticket.ResolvedAtUtc = now;
             ticket.UpdatedAtUtc = now;
 
-            // 2. Đưa tài sản quay về trạng thái sẵn sàng trong kho
+            // 2. Đưa tài sản quay về trạng thái sẵn sàng trong kho & ghi lịch sử
+            var oldStatus = asset.CurrentStatus;
             asset.CurrentStatus = "IN_STOCK";
             asset.UpdatedAtUtc = now;
+
+            repo.Add(new AssetStatusHistory
+            {
+                AssetId = asset.Id,
+                FromStatus = oldStatus,
+                ToStatus = "IN_STOCK",
+                Source = "MAINTENANCE",
+                ChangedAtUtc = now,
+                ChangedByUserId = actor.UserId,
+                CorrelationId = actor.CorrelationId,
+                Reason = request.Resolution.Trim()
+            });
 
             await repo.SaveAsync(ct);
 
