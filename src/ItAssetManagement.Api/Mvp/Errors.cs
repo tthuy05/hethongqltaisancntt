@@ -38,8 +38,11 @@ public sealed class BusinessExceptionHandler : IExceptionHandler
     {
         if (exception is BusinessException business)
             await Errors.WriteAsync(context, business.Status, business.Code, business.Message, business.Errors);
-        else if (exception is BadHttpRequestException)
-            await Errors.WriteAsync(context, 400, "VALIDATION_ERROR", "Request không hợp lệ.");
+        else if (exception is BadHttpRequestException badRequest)
+        {
+            var code = badRequest.StatusCode == 413 ? "FILE_TOO_LARGE" : "VALIDATION_ERROR";
+            await Errors.WriteAsync(context, badRequest.StatusCode, code, badRequest.StatusCode == 413 ? "Dung lượng tệp vượt quá giới hạn cho phép." : "Request không hợp lệ.");
+        }
         else
             await Errors.WriteAsync(context, 500, "INTERNAL_ERROR", "Không thể xử lý yêu cầu.");
         return true;

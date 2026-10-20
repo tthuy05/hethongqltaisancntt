@@ -82,7 +82,8 @@ public sealed class AuditWriter(AppDbContext db, IActor actor) : IAuditWriter
       "maintenanceTicketId", "maintenanceStatus", "maintenancePriority", "technicianId", "eventType", "performedAtUtc",
       "estimatedCostChanged", "actualCostChanged", "commentProvided", "licenseId", "keyVersion", "keyRevealed",
       "softwareId", "softwareLicenseId", "assignedAssetId", "licenseType", "totalQuantity",
-      "replacementRuleId", "ruleVersion", "rulePriority", "recommendationId", "disposition", "isCurrent", "priority", "score", "plannedReplacementYear" };
+      "replacementRuleId", "ruleVersion", "rulePriority", "recommendationId", "disposition", "isCurrent", "priority", "score", "plannedReplacementYear",
+      "totalRows", "validRows", "dryRun", "errorCount" };
     public void Record(string action, object? entity, long? actorId, string actorType, string outcome = "SUCCESS",
         object? before = null, object? after = null, string? failureCode = null)
     {

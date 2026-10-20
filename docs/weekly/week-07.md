@@ -1,6 +1,6 @@
 # Week 07 — Import/Export, Hardening & Finalization
 
-> **PLANNED — NOT IMPLEMENTED.** Entry: M4 report query/schema/permissions stable. Thiện owns Excel import/export + UI/test; Thủy owns security/full integration/performance/final demo. Daily capacity: Thủy 3M+2S, Thiện 2M+1S (7h/4,5h đại diện); M=1–3h, S<1h. Không mở scope mới; Week 8 là review/report/demo/final fixes nếu cần.
+> **IN PROGRESS / UNDER REVIEW — 20/10/2026.** Local preparation và focused PostgreSQL tests có evidence ở [review](../import-reporting-review-2026-10-20.md). Owner integration, production rollout, broad performance/browser acceptance và independent review chưa hoàn tất.
 
 **Database boundary — PLANNED:** development/manual integration/demo dùng shared Neon PostgreSQL; clean setup/migration, automated integration/rollback/regression fixture dùng PostgreSQL target isolated theo [testing strategy](../testing-strategy.md), fail-closed nếu trỏ shared dev. Không drop/reset schema/database hoặc truncate toàn bộ tables trên shared DB. Thủy review/test rồi điều phối apply migration qua direct endpoint; Thiện sync trước mọi EF migration command. Demo dùng synthetic records đã thống nhất, không reset dữ liệu/lịch sử của thành viên khác.
 
@@ -11,11 +11,11 @@
 ### THỦY
 **Objective:** giới hạn upload và contract security.
 **Task List (theo thứ tự):**
-- W7-THUY-D1-01 [SECURITY] [M] [PLANNED] Review Excel package/license/dependency, file size/row/signature/MIME constraints và parser resource limits.
-- W7-THUY-D1-02 [API] [M] [PLANNED] Freeze EP-087 dryRun/row-error DTO/413/415 và permission `import.assets.execute`.
-- W7-THUY-D1-03 [TEST] [M] [PLANNED] Tạo malicious/malformed/oversize workbook and formula-injection fixtures, xác nhận không log file content.
-- W7-THUY-D1-04 [FRONTEND] [S] [PLANNED] Thêm upload helper vào API client chung với 401/403/413/415.
-- W7-THUY-D1-05 [DOC] [S] [PLANNED] Ghi OQ import limit/template quyết định trước execution.
+- W7-THUY-D1-01 [SECURITY] [M] [IN PROGRESS] Review Excel package/license/dependency, file size/row/signature/MIME constraints và parser resource limits.
+- W7-THUY-D1-02 [API] [M] [IN PROGRESS] Freeze EP-087 dryRun/row-error DTO/413/415 và permission `import.assets.execute`.
+- W7-THUY-D1-03 [TEST] [M] [IN PROGRESS] Tạo malicious/malformed/oversize workbook and formula-injection fixtures, xác nhận không log file content.
+- W7-THUY-D1-04 [FRONTEND] [S] [IN PROGRESS] Thêm upload helper vào API client chung với 401/403/413/415.
+- W7-THUY-D1-05 [DOC] [S] [IN PROGRESS] Ghi OQ import limit/template quyết định trước execution.
 **Files / Modules:** upload security/config, API client, security/API docs, test fixtures.
 **End-of-Day Outcome:** import contract/limits rõ trước persistence.
 **Verification Plan:** package/version/license, negative file tests, no secret/file-body logs.
@@ -41,11 +41,11 @@
 ### THỦY
 **Objective:** kiểm authorization/transaction boundary.
 **Task List (theo thứ tự):**
-- W7-THUY-D2-01 [SECURITY] [M] [PLANNED] Review import authorization/BOLA/master scope/anti-mass-assignment và file path outside webroot.
-- W7-THUY-D2-02 [TEST] [M] [PLANNED] Integration invalid row/duplicate race/persistence failure rollback trên isolated PostgreSQL test target, không shared Neon development.
-- W7-THUY-D2-03 [AUDIT] [M] [PLANNED] Nối import summary audit với actor/count/correlation, không chứa workbook plaintext.
-- W7-THUY-D2-04 [REVIEW] [S] [PLANNED] Review import service gọi Asset command đúng BR và không bỏ status history.
-- W7-THUY-D2-05 [DOC] [S] [PLANNED] Đồng bộ import API/BR/testing theo behavior actual.
+- W7-THUY-D2-01 [SECURITY] [M] [IN PROGRESS] Review import authorization/BOLA/master scope/anti-mass-assignment và file path outside webroot.
+- W7-THUY-D2-02 [TEST] [M] [IN PROGRESS] Integration invalid row/duplicate race/persistence failure rollback trên isolated PostgreSQL test target, không shared Neon development.
+- W7-THUY-D2-03 [AUDIT] [M] [IN PROGRESS] Nối import summary audit với actor/count/correlation, không chứa workbook plaintext.
+- W7-THUY-D2-04 [REVIEW] [S] [IN PROGRESS] Review import service gọi Asset command đúng BR và không bỏ status history.
+- W7-THUY-D2-05 [DOC] [S] [IN PROGRESS] Đồng bộ import API/BR/testing theo behavior actual.
 **Files / Modules:** import integration tests, audit hook, API/security/docs.
 **End-of-Day Outcome:** rollback và authorization có evidence.
 **Verification Plan:** DB count before/after, no partial records/history/audit, 403, 409 race.
@@ -72,11 +72,11 @@
 ### THỦY
 **Objective:** export không bypass scope hoặc lộ dữ liệu.
 **Task List (theo thứ tự):**
-- W7-THUY-D3-01 [API] [M] [PLANNED] Review EP-088–092 export filter/sort/row limit và reuse report projection/permission.
-- W7-THUY-D3-02 [SECURITY] [M] [PLANNED] Test masked key/cost field scope, formula injection neutralization và safe filename/content type.
-- W7-THUY-D3-03 [FRONTEND] [M] [PLANNED] Nối shared download/upload helper/error handling vào Reports shell, no token in URL.
-- W7-THUY-D3-04 [TEST] [S] [PLANNED] Chạy role/empty/large export tests cùng fixture report.
-- W7-THUY-D3-05 [DOC] [S] [PLANNED] Ghi export contract/UI evidence requirements.
+- W7-THUY-D3-01 [API] [M] [IN PROGRESS] Review EP-088–092 export filter/sort/row limit và reuse report projection/permission.
+- W7-THUY-D3-02 [SECURITY] [M] [IN PROGRESS] Test masked key/cost field scope, formula injection neutralization và safe filename/content type.
+- W7-THUY-D3-03 [FRONTEND] [M] [IN PROGRESS] Nối shared download/upload helper/error handling vào Reports shell, no token in URL.
+- W7-THUY-D3-04 [TEST] [S] [IN PROGRESS] Chạy role/empty/large export tests cùng fixture report.
+- W7-THUY-D3-05 [DOC] [S] [IN PROGRESS] Ghi export contract/UI evidence requirements.
 **Files / Modules:** export security/tests, `wwwroot/js/api-client.js`, Reports integration, docs.
 **End-of-Day Outcome:** export contract giữ đúng authorization report.
 **Verification Plan:** workbook header/rows=report query, 403/masking, formula text inert.
@@ -104,11 +104,11 @@
 ### THỦY
 **Objective:** quét và sửa lỗ hổng ưu tiên.
 **Task List (theo thứ tự):**
-- W7-THUY-D4-01 [SECURITY] [M] [PLANNED] Audit endpoint 401/403/BOLA/cost/key, XSS/CSP/CORS/HTTPS/secret/log và upload limits.
-- W7-THUY-D4-02 [BACKEND] [M] [PLANNED] Chuẩn hóa ProblemDetails 400/401/403/404/409/500, correlation và safe error mapping.
-- W7-THUY-D4-03 [TEST] [M] [PLANNED] Chạy security regression/secret/dependency scan, sửa Critical/High trong scope hoặc ghi blocker.
-- W7-THUY-D4-04 [DOC] [S] [PLANNED] Ghi finding severity/owner/mitigation, cập nhật security/audit/deployment.
-- W7-THUY-D4-05 [REVIEW] [S] [PLANNED] Review Import/Export PR quyền/validation/rollback.
+- W7-THUY-D4-01 [SECURITY] [M] [IN PROGRESS] Audit endpoint 401/403/BOLA/cost/key, XSS/CSP/CORS/HTTPS/secret/log và upload limits.
+- W7-THUY-D4-02 [BACKEND] [M] [IN PROGRESS] Chuẩn hóa ProblemDetails 400/401/403/404/409/500, correlation và safe error mapping.
+- W7-THUY-D4-03 [TEST] [M] [IN PROGRESS] Chạy security regression/secret/dependency scan, sửa Critical/High trong scope hoặc ghi blocker.
+- W7-THUY-D4-04 [DOC] [S] [IN PROGRESS] Ghi finding severity/owner/mitigation, cập nhật security/audit/deployment.
+- W7-THUY-D4-05 [REVIEW] [S] [PLANNED] Review Import/Export PR quyền/validation/rollback với Thiện.
 **Files / Modules:** middleware/security/UI client/tests, security/audit/deployment docs.
 **End-of-Day Outcome:** finding list và fixes có test, không leak known Critical.
 **Verification Plan:** negative auth matrix, safe error/log, scan output thật, browser no XSS.
@@ -136,11 +136,11 @@
 ### THỦY
 **Objective:** chứng minh end-to-end và chuẩn bị final demo.
 **Task List (theo thứ tự):**
-- W7-THUY-D5-01 [INTEGRATION] [M] [PLANNED] Restore dependencies/Release build, clean isolated PostgreSQL migration/seed và full unit/integration/security suite; verify shared Neon demo schema riêng, không reset.
+- W7-THUY-D5-01 [INTEGRATION] [M] [IN PROGRESS] Restore dependencies/Release build, clean isolated PostgreSQL migration/seed và full unit/integration/security suite; verify shared Neon demo schema riêng, không reset.
 - W7-THUY-D5-02 [TEST] [M] [PLANNED] Browser + Swagger/Postman smoke Login→Asset→Assignment→Maintenance→License→Report→Import/Export.
 - W7-THUY-D5-03 [PERF] [M] [PLANNED] Đo critical report/import workload trên dataset/load ghi rõ, fix regression và rehearsal final demo.
-- W7-THUY-D5-04 [EVIDENCE] [S] [PLANNED] Lưu raw commands/results/screenshot đã che secret; ghi failed/skipped thật.
-- W7-THUY-D5-05 [DOC] [S] [PLANNED] Cập nhật status/known issues với owner và next action.
+- W7-THUY-D5-04 [EVIDENCE] [S] [IN PROGRESS] Lưu raw commands/results/screenshot đã che secret; ghi failed/skipped thật.
+- W7-THUY-D5-05 [DOC] [S] [IN PROGRESS] Cập nhật status/known issues với owner và next action.
 **Files / Modules:** all solution/DB/UI/tests, perf/evidence/status.
 **End-of-Day Outcome:** full-system result/rehearsal thật, blocker list rõ.
 **Verification Plan:** clean migration/build/full suite, browser full flow, performance dataset, no Critical leak.
@@ -169,10 +169,10 @@
 **Objective:** giao dự án/báo cáo với trạng thái xác minh trung thực.
 **Task List (theo thứ tự):**
 - W7-THUY-D6-01 [INTEGRATION] [M] [PLANNED] Merge reviewed fixes, Release build + clean isolated PostgreSQL migration + full suite + Swagger/Postman/UI/shared Neon DB smoke lần cuối, không reset shared DB.
-- W7-THUY-D6-02 [FIX] [M] [PLANNED] Sửa blocker còn trong timebox, rerun affected tests; phân loại known issues/debt còn lại.
+- W7-THUY-D6-02 [FIX] [M] [IN PROGRESS] Sửa blocker còn trong timebox, rerun affected tests; phân loại known issues/debt còn lại.
 - W7-THUY-D6-03 [DEMO] [M] [PLANNED] Final demo rehearsal + evidence index/screenshot/mentor handoff, không tuyên bố production-ready thiếu kiểm chứng.
-- W7-THUY-D6-04 [DOC] [S] [PLANNED] Đồng bộ README/PROJECT_STATUS/CHANGELOG/ADR/API/ERD/security/testing/deployment.
-- W7-THUY-D6-05 [AUDIT] [S] [PLANNED] Kiểm Git status/history/diff/secret và chốt báo cáo Week 7.
+- W7-THUY-D6-04 [DOC] [S] [IN PROGRESS] Đồng bộ README/PROJECT_STATUS/CHANGELOG/ADR/API/ERD/security/testing/deployment.
+- W7-THUY-D6-05 [AUDIT] [S] [IN PROGRESS] Kiểm Git status/history/diff/secret và chốt báo cáo Week 7.
 **Files / Modules:** all solution/DB/UI/tests/docs/tracking/evidence.
 **End-of-Day Outcome:** M5 pass hoặc unmet criteria/owner/next step rõ; Week 8 review, không tự mở scope.
 **Verification Plan:** clean setup/build/full tests, UI/API/DB evidence, no secret/conflict/Critical hidden.

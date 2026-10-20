@@ -8,6 +8,18 @@ Checkout riêng của source publication: Release 0 warning/error;643 unit PASS;
 
 Dashboard/Reports/Import/Export và báo cáo nghiệm thu Tuần 6–8 còn là **WIP / NOT ACCEPTED**; các bản nháp hoàn thành 100%, p95/EXPLAIN/PITR/live rehearsal chưa đủ bằng chứng. Không đưa chúng vào publication này. Không đổi config/migration/shared Neon/Render, không bật Assignment API và không đóng 30-task evidence Tuần 2 hoặc task phụ thuộc Thiện.
 
+## 20/10/2026 — Import/Reporting security và integration checkpoint
+
+**IMPLEMENTED LOCALLY / UNDER REVIEW.** Sửa parser/header/typed cells, dry-run không ghi DB/sequence/audit, Asset rules (mã AST do server tạo), transaction/master-data revalidation, audit coverage và rollback. Chuẩn hóa query allowlists/UTC/offset, aggregate costs/budget tại PostgreSQL, bounded export/filter/order/cost masking, multipart bearer và stale-session protection.
+
+Reporting API và Import/Export API mặc định **DISABLED** qua feature flags; frontend Reporting cũng cần opt-in rõ ràng. Permission constants chỉ là prepared contracts, chưa thêm vào `Permissions.All` hoặc seed/grants. Không thay migration/schema/Neon shared/Render hoặc cấu hình owner.
+
+Các tuyên bố Week 6–8 “100% hoàn thành”, p95 8–18ms, EXPLAIN/index-only, PITR, production rehearsal/sign-off trong bản nháp 17/10 được **rút lại do chưa đủ evidence**. Week 8 là kế hoạch nghiệm thu, chưa hoàn thành. Evidence 30 task Tuần 2 và checkpoint cũ phía dưới giữ nguyên. [Báo cáo kiểm thử và giới hạn](docs/import-reporting-review-2026-10-20.md).
+
+## 16/10/2026 — License capacity, alert queries, batch lifecycle candidates & replacement policy
+
+Thủy hoàn thiện LicenseCapacityPolicy (target XOR, capacity check, quantity decrease floor, archive blocker, transfer invariance), LicenseAlertsReader (expiring licenses, capacity utilization alerts, dashboard summary, cost field masking), AssetLifecycleMetricsReader candidate queries cho batch evaluation, ReplacementRecommendationPolicy (validation, snapshot JSON, disposition transitions, actor tracking, single-current invariant), và đồng bộ Audit allowlist cho Week 5 (Persistence/AuditLogService an toàn, che chắn purchaseCost theo quyền). 638 unit PASS (+55 new cases), 158 offline integration PASS, 270 frontend PASS, 43 syntax / 47 boundary checks; [handoff](docs/week-05-capacity-alert-query-handoff.md). Không đổi backend endpoints của Thiện, config, shared Neon hay Render.
+
 ## 16/10/2026 — User write lifecycle
 
 Thủy khóa captured User fields khi pending, kiểm response identity và giữ draft/khóa replay sau conflict/unknown; self-change→Login giữ nguyên.270frontend PASS/43syntax/47source checks; [addendum](docs/user-dialog-access-handoff.md). Không email thật/backend/config/shared/Render changes.

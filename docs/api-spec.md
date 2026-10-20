@@ -1,5 +1,11 @@
 # API Specification
 
+## Prepared contracts 20/10/2026 — default disabled, chưa deploy
+
+EP-072–086 Dashboard/Reports cần `Features:ReportingApi:Enabled=true`; EP-087–092 Import/Export cần `Features:ImportExportApi:Enabled=true`. Khi chưa opt-in, Controller không có trong endpoint discovery (404), không truy cập DB từ các route này. Startup không migrate/seed và Assignment flag không đổi. Constants permission mới chưa nằm trong catalog/grants runtime.
+
+Query fields runtime được allowlist tại từng Controller; unknown/duplicate field trả 400. Paging 1..100, offset không tràn int; system date filters dùng ISO UTC `Z`; business date dùng yyyy-MM-dd. Reports dùng status database (`IN_STOCK`...), Asset export dùng status API (`InStock`...). Preview import là multipart `file`, query `dryRun=true`, không ghi business/audit/sequence; mã tài sản do server tạo, không nhập mã thủ công. Export vượt 5000 dòng trả 413 thay vì cắt mất dòng. [Contract Excel](week-07-import-export-spec.md), [metric/report limitations](week-06-reporting-dashboard-spec.md), [tests](import-reporting-review-2026-10-20.md).
+
 ## Contract update 11/10/2026 — source local / chưa deploy
 
 Base /api/v1. LF contracts supersede fixed-role/initial-password/manual-code của thiết kế lịch sử. Assignment flag đóng, Maintenance không đăng ký runtime.

@@ -1,5 +1,15 @@
 # Architecture Decision Records
 
+## ADR-034 — Prepared Reporting/Excel, read-only preview và rollout riêng
+
+**Date:** 2026-10-20. **Status:** IMPLEMENTED LOCALLY / UNDER REVIEW; production rollout chưa phê duyệt.
+
+**Context:** Nháp Reporting/Import/Export chưa có owner integration và module grants. Import thủ công AssetCode, preview ghi audit, truncate export và claims hoàn thành/hiệu năng không đủ evidence trái với contract hiện hành.
+
+**Decision:** Giữ mã Asset do sequence cấp, preview thuần đọc, commit import một audited transaction có master-data lock/revalidation/history/per-Asset audit. Reject workbook không hợp lệ/typed-cell lỗi và export quá 5000 dòng thay vì bỏ dữ liệu. Aggregate SQL trước materialization. Reporting/ImportExport Controller mặc định đóng bằng hai feature flags riêng; frontend Reporting opt-in riêng. Không seed prepared permissions hoặc mở Assignment theo publication source. Dashboard M1 tiếp tục chỉ cần assets.read và không gọi endpoint Reporting.
+
+**Consequences:** Cần owner review Thiện, workload/EXPLAIN và browser/permission rollout acceptance trước khi mở module. Totals chi phí hiện chỉ là tổng phần đã biết; chưa có missing-price/ticket completeness metric. Fixture nhỏ/HTTP synthetic không thay production JWT/grant/performance bằng chứng. Không thay schema/migration/config hoặc Neon shared/Render. [Evidence và việc còn lại](docs/import-reporting-review-2026-10-20.md).
+
 ## ADR-033 — Explicit financial field presence for Asset writes
 
 **Date:** 2026-10-15. **Status:** source implemented/tested, under review; production rollout chưa phê duyệt.

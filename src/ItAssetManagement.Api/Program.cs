@@ -12,6 +12,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.FileProviders;
 using ItAssetManagement.Api.Hosting;
 using Microsoft.AspNetCore.HttpOverrides;
+using ItAssetManagement.Application.Reporting;
+using ItAssetManagement.Application.Import;
+using ItAssetManagement.Application.Export;
 
 var probeOnly = args.Contains("--verify-neon", StringComparer.Ordinal);
 var setupOnly = args.Contains("--setup-neon-m1", StringComparer.Ordinal);
@@ -37,7 +40,10 @@ builder.Services.AddMvpOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<BusinessExceptionHandler>();
 builder.Services.AddControllers().ConfigureApplicationPartManager(parts =>
-    parts.FeatureProviders.Add(new AssignmentControllerFeatureProvider(builder.Configuration)))
+{
+    parts.FeatureProviders.Add(new AssignmentControllerFeatureProvider(builder.Configuration));
+    parts.FeatureProviders.Add(new PreparedModuleControllerFeatureProvider(builder.Configuration));
+})
     .AddJsonOptions(options =>
 {
     options.JsonSerializerOptions.UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow;
@@ -74,6 +80,10 @@ builder.Services.AddScoped<IAssetCodeGenerator, AssetCodeGenerator>();
 builder.Services.AddScoped<AuditLogService>();
 builder.Services.AddScoped<AssignmentService>();
 builder.Services.AddScoped<IAssignmentSchemaReadiness, AssignmentSchemaReadiness>();
+builder.Services.AddScoped<DashboardQueryService>();
+builder.Services.AddScoped<ReportQueryService>();
+builder.Services.AddScoped<AssetImportService>();
+builder.Services.AddScoped<AssetExportService>();
 builder.Services.AddScoped<DevelopmentSeed>();
 builder.Services.AddScoped<DevelopmentDemoSeed>();
 builder.Services.AddRateLimiter(options =>

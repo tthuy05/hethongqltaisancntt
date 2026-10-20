@@ -77,6 +77,20 @@ public static class Permissions
     public const string ReplacementEvaluate = "replacement-recommendations.evaluate";
     public const string ReplacementRuleRead = "replacement-rules.read", ReplacementRuleCreate = "replacement-rules.create",
         ReplacementRuleUpdate = "replacement-rules.update";
+    // Week 6 reporting & dashboard contracts
+    public const string DashboardCost = "dashboard.cost.read";
+    public const string ReportAssets = "reports.assets.read",
+        ReportAssignments = "reports.assignments.read",
+        ReportMaintenance = "reports.maintenance.read",
+        ReportLicenses = "reports.licenses.read",
+        ReportReplacement = "reports.replacement.read",
+        ReportCost = "reports.cost.read";
+    // Week 7 import & export contracts
+    public const string ImportAssets = "import.assets.execute";
+    public const string ExportAssets = "export.assets.execute",
+        ExportMaintenance = "export.maintenance.execute",
+        ExportAssignments = "export.assignments.execute",
+        ExportReplacement = "export.replacement.execute";
     public static readonly string[] Read = [AssetRead, AssetHistory, DepartmentRead, TypeRead, DashboardRead, UserLookup];
     // Support assignment reads require a scoped support contract, not this unrestricted service.
     public static readonly string[] Operate = [AssetCreate, AssetUpdate, AssetArchive, AssetStatus, AssetCost, RoleRead,

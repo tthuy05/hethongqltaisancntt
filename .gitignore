@@ -6,6 +6,7 @@ artifacts/production-publish/
 artifacts/maintenance-publish/
 artifacts/swagger/
 artifacts/ui-evidence/
+artifacts/verification/
 
 # Future local configuration must never enter version control.
 .env

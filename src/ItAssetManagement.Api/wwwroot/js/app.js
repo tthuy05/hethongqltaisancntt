@@ -11,6 +11,7 @@ import { userPage } from './pages/users.js';
 import { auditLogPage } from './pages/audit-logs.js';
 import { permissionPage } from './pages/permissions.js';
 import { activationPage } from './pages/activate.js';
+import { reportsPage } from './pages/reports.js';
 import { can, route, formAlert } from './pages/shared.js';
 
 const app = document.getElementById('app');
@@ -21,6 +22,7 @@ document.querySelector('.skip-link')?.addEventListener('click', event => {
 });
 const menuItems = [
   ['/dashboard', 'Tổng quan', 'dashboard'], ['/assets', 'Tài sản', 'laptop'], ['/departments', 'Phòng ban', 'building'], ['/asset-types', 'Loại tài sản', 'tag'],
+  ['/reports', 'Báo cáo', 'chart'],
   ['/users', 'Người dùng', 'user'], ['/permissions', 'Phân quyền', 'key'], ['/audit-logs', 'Nhật ký thao tác', 'assignment']
 ];
 let generation = 0;
@@ -32,7 +34,7 @@ function parsedRoute() {
 function shell(path) {
   const user = services.auth.session;
   const roleNames = { ADMIN_IT: 'Admin IT', SYSTEM_MANAGER: 'System Manager', TECHNICAL_SUPPORT: 'Technical Support' };
-  const nav = h('nav', { 'aria-label': 'Điều hướng chính' }, menuItems.filter(([target]) => (target !== '/users' || can(services, 'users.read')) && (target !== '/permissions' || (user?.roles?.includes('ADMIN_IT') && can(services, 'roles.assign') && can(services, 'roles.permissions.read'))) && (target !== '/audit-logs' || (can(services, 'audit-logs.read') && user?.roles?.includes('ADMIN_IT')))).map(([target, label, iconName]) => h('a', { className: 'nav-link' + (path === target || (target === '/assets' && path.startsWith('/assets/')) ? ' active' : ''), href: '#' + target, ...(path === target || (target === '/assets' && path.startsWith('/assets/')) ? { 'aria-current': 'page' } : {}) }, icon(iconName), h('span', {}, label))));
+const nav = h('nav', { 'aria-label': 'Điều hướng chính' }, menuItems.filter(([target]) => (target !== '/users' || can(services, 'users.read')) && (target !== '/permissions' || (user?.roles?.includes('ADMIN_IT') && can(services, 'roles.assign') && can(services, 'roles.permissions.read'))) && (target !== '/audit-logs' || (can(services, 'audit-logs.read') && user?.roles?.includes('ADMIN_IT'))) && (target !== '/reports' || (services.reportingEnabled === true && (can(services, 'reports.assets.read') || can(services, 'reports.cost.read') || can(services, 'reports.assignments.read') || can(services, 'reports.maintenance.read') || can(services, 'reports.licenses.read'))))).map(([target, label, iconName]) => h('a', { className: 'nav-link' + (path === target || (target === '/assets' && path.startsWith('/assets/')) ? ' active' : ''), href: '#' + target, ...(path === target || (target === '/assets' && path.startsWith('/assets/')) ? { 'aria-current': 'page' } : {}) }, icon(iconName), h('span', {}, label))));
   const sidebar = h('aside', { className: 'sidebar', id: 'main-sidebar' }, h('a', { className: 'brand', href: '#/dashboard' }, h('img', { src: './assets/logo.svg', alt: '', width: 40, height: 40 }), h('div', {}, h('span', { className: 'brand-title' }, 'Quản lý tài sản CNTT'), h('span', { className: 'brand-subtitle' }, 'Danh mục & hạ tầng'))), nav,
     h('div', { className: 'sidebar-footer' }, h('div', { className: 'avatar' }, icon('user')), h('div', {}, h('div', { className: 'profile-name' }, user?.displayName || 'Người dùng'), h('div', { className: 'profile-role' }, roleNames[user?.roles?.[0]] || ''))));
   const content = h('main', { className: 'main-content', id: 'main-content', tabIndex: -1 }, loadingState());
@@ -84,6 +86,7 @@ async function render() {
     } else if (/^\/assets\/\d+$/.test(path)) page = await assetDetailPage(services, Number(path.split('/')[2]));
     else if (path === '/departments') page = await masterPage(services, 'departments');
     else if (path === '/asset-types') page = await masterPage(services, 'assetTypes');
+    else if (path === '/reports') page = await reportsPage(services);
     else if (path === '/users') page = await userPage(services);
     else if (path === '/audit-logs') page = await auditLogPage(services);
     else if (path === '/permissions') page = await permissionPage(services);

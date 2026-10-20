@@ -7,6 +7,22 @@
 - Verified: selected source in a separate checkout:643 unit/158 offline integration/283 frontend PASS;141 cloud SKIP;Release0 warning/error;32/36 published HTTP smoke PASS. Linux container and exact pushed revision await CI.
 - Documented: [review scope and deferred WIP](docs/thuy-review-2026-10-17.md). Reporting/import/export and final-acceptance drafts are excluded; no config, migration, shared database or deployment changes.
 
+## Unreleased — 20/10/2026 — Prepared Import/Reporting fixes
+
+- Fixed: typed workbook/header validation, read-only preview, server-generated asset codes, transaction reference/duplicate validation, per-Asset audit coverage and rollback.
+- Fixed: Controller query allowlists, pagination overflow/UTC/sort validation, database cost/budget aggregates, bounded/filter-aware export, bearer transport and stale-session response handling.
+- Added: default-closed Reporting/ImportExport Controller gates; prepared frontend Reporting requires explicit opt-in. No module permission seed, migration, shared Neon or Render changes.
+- Corrected: withdrawn unsupported Week 6–8 completion/performance/PITR/production acceptance claims. Actual evidence and remaining owner integration: [review](docs/import-reporting-review-2026-10-20.md).
+
+## Unreleased — 16/10/2026 — License capacity, alert queries, batch lifecycle candidates & replacement policy
+
+- Added: LicenseCapacityPolicy enforcing target XOR, seat capacity, quantity reduction floors, archive blockers, and transfer rules.
+- Added: LicenseAlertsReader with expiring licenses query, utilization/capacity alerts, dashboard summary metrics, and least-privilege cost masking.
+- Added: AssetLifecycleMetricsReader candidate queries for efficient batch lifecycle evaluation.
+- Added: ReplacementRecommendationPolicy with recommendation field validation, evaluation snapshot JSON parsing, disposition state machine transitions, actor timestamps, and single-current invariant per asset.
+- Fixed: Synchronized Audit snapshot sanitization in Persistence.cs and AuditLogService.cs for Week 5 domain entities, masking purchaseCost and preserving maintenance cost secrecy.
+- Verified: 638 unit PASS (+55 cases), 158 offline integration PASS, 270 frontend PASS, 43 syntax / 47 boundary checks PASS; [handoff](docs/week-05-capacity-alert-query-handoff.md).
+
 ## Unreleased — 16/10/2026 — User write lifecycle
 
 - Fixed: User create/profile/status/membership dialogs lock captured inputs, validate response identity and block uncertain replay while preserving self-change Login and known field validation.
