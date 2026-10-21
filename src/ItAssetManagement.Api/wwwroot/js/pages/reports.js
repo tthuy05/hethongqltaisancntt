@@ -26,11 +26,11 @@ export async function reportsPage(services) {
   }
 
   const query = readReportQuery();
-  const allowedTabs = [['inventory', canAssets], ['assignments', canAssignments], ['maintenance', canMaintenance], ['expiry', canAssets || canLicenses], ['cost', canCost], ['replacement', canReplacement]]
+  const allowedTabs = [['inventory', canAssets], ['groups', canAssets], ['assignments', canAssignments], ['maintenance', canMaintenance], ['expiry', canAssets || canLicenses], ['cost', canCost], ['replacement', canReplacement]]
     .filter(([, allowed]) => allowed).map(([tab]) => tab);
   const currentTab = allowedTabs.includes(query.tab) ? query.tab : allowedTabs[0];
   let viewRoot;
-  const required = { inventory: ['reports.assets.read'], assignments: ['reports.assignments.read'], maintenance: ['reports.maintenance.read'],
+  const required = { inventory: ['reports.assets.read'], groups: ['reports.assets.read'], assignments: ['reports.assignments.read'], maintenance: ['reports.maintenance.read'],
     expiry: [...(canAssets ? ['reports.assets.read'] : []), ...(canLicenses ? ['reports.licenses.read'] : [])], cost: ['reports.cost.read'], replacement: ['reports.replacement.read'] }[currentTab];
   const validView = () => services.reportingEnabled === true && services.auth?.session?.id === actorId && window.location.hash === pageHash &&
     required.every(p => can(services, p)) && (!canCost || can(services, 'reports.cost.read'));
@@ -45,6 +45,7 @@ export async function reportsPage(services) {
       const input = spec.options ? h('select', { id, name: spec.name, className: 'select', value: state[spec.name] || '' },
         spec.options.map(([value, text]) => h('option', { value }, text)))
         : h('input', { id, name: spec.name, className: 'input', type: spec.type || 'number', value: state[spec.name] || '',
+          maxLength: spec.type === 'search' ? 200 : undefined, placeholder: spec.placeholder,
           min: spec.type ? undefined : (spec.name === 'year' || spec.name === 'plannedYear' ? 2000 : 1),
           max: spec.name === 'year' || spec.name === 'plannedYear' ? 2100 : spec.name === 'pageSize' ? 100 : undefined,
           step: spec.type === 'datetime-local' ? '0.001' : 1, required: spec.required || false });
@@ -57,7 +58,7 @@ export async function reportsPage(services) {
         const values = { ...state, ...reset };
         for (const { spec, input } of controls) {
           if (spec.required && input.value === '') throw new ServiceError(400, 'VALIDATION_ERROR', 'Vui lòng nhập năm ngân sách.');
-          values[spec.name] = input.value;
+          values[spec.name] = spec.type === 'search' ? input.value.trim() : input.value;
         }
         navigate(values);
       } catch (failure) { error.textContent = failure.message || 'Bộ lọc không hợp lệ.'; }
@@ -69,6 +70,9 @@ export async function reportsPage(services) {
   const pageSizeFilter = { name: 'pageSize', label: 'Số dòng mỗi trang' };
   const departmentFilter = { name: 'departmentId', label: 'ID phòng ban (tùy chọn)' };
   const typeFilter = { name: 'assetTypeId', label: 'ID loại tài sản (tùy chọn)' };
+  const assetFilter = { name: 'assetId', label: 'ID tài sản (tùy chọn)' };
+  const assetStatuses = [['', 'Tất cả trạng thái'], ['IN_STOCK', 'Trong kho'], ['IN_USE', 'Đang sử dụng'],
+    ['MAINTENANCE', 'Đang bảo trì'], ['BROKEN', 'Hỏng'], ['RETIRED', 'Ngừng sử dụng']];
 
   const tabButtons = [];
   if (canAssets) {
@@ -77,6 +81,8 @@ export async function reportsPage(services) {
       iconName: 'laptop',
       onClick: () => navigate({ tab: 'inventory', page: 1 })
     }));
+    tabButtons.push(button('Tổng hợp tài sản', { kind: currentTab === 'groups' ? 'primary' : 'secondary',
+      iconName: 'chart', onClick: () => navigate({ tab: 'groups' }) }));
   }
   if (canAssignments) {
     tabButtons.push(button('Lịch sử phân bổ', {
@@ -119,36 +125,25 @@ export async function reportsPage(services) {
   if (currentTab === 'inventory') {
     const keyword = query.keyword || '';
     const status = query.status || '';
+    const sortBy = query.sortBy || 'createdAt', sortDirection = query.sortDirection || 'desc';
+    if (sortBy === 'purchaseCost' && !canCost)
+      throw new ServiceError(403, 'FORBIDDEN', 'Yêu cầu quyền xem chi phí để sắp xếp theo giá mua.');
     const res = await services.reports.assetInventory({
       page, pageSize,
       keyword: keyword || undefined,
       status: status || undefined,
-      sortBy: query.sortBy || 'createdAt',
-      sortDirection: query.sortDirection || 'desc'
+      departmentId: reportNumber(query.departmentId), assetTypeId: reportNumber(query.assetTypeId),
+      purchasedFrom: query.purchasedFrom, purchasedTo: query.purchasedTo, sortBy, sortDirection
     });
-
-    const searchInput = h('input', { className: 'input', type: 'search', value: keyword, placeholder: 'Tìm mã hoặc tên tài sản…', 'aria-label': 'Tìm tài sản' });
-    const statusSelect = h('select', { className: 'select', 'aria-label': 'Lọc trạng thái' },
-      h('option', { value: '' }, 'Tất cả trạng thái'),
-      h('option', { value: 'IN_STOCK', selected: status === 'IN_STOCK' }, 'Trong kho'),
-      h('option', { value: 'IN_USE', selected: status === 'IN_USE' }, 'Đang sử dụng'),
-      h('option', { value: 'MAINTENANCE', selected: status === 'MAINTENANCE' }, 'Đang bảo trì'),
-      h('option', { value: 'BROKEN', selected: status === 'BROKEN' }, 'Hỏng'),
-      h('option', { value: 'RETIRED', selected: status === 'RETIRED' }, 'Ngừng sử dụng')
-    );
-
-    const filterForm = h('form', {
-      className: 'filters',
-      onSubmit: e => {
-        e.preventDefault();
-        navigate({ tab: 'inventory', page: 1, keyword: searchInput.value.trim() || undefined, status: statusSelect.value || undefined });
-      }
-    },
-    searchInput,
-    statusSelect,
-    button('Lọc', { type: 'submit', iconName: 'search' }),
-    button('Đặt lại', { kind: 'secondary', onClick: () => navigate({ tab: 'inventory', page: 1 }) })
-    );
+    const state = { ...query, tab: 'inventory', keyword, status, pageSize, sortBy, sortDirection };
+    const filterForm = filters('Lọc kiểm kê tài sản', [
+      { name: 'keyword', label: 'Mã hoặc tên tài sản', type: 'search', placeholder: 'Tìm mã hoặc tên tài sản…' },
+      { name: 'status', label: 'Trạng thái tài sản', options: assetStatuses }, departmentFilter, typeFilter,
+      { name: 'purchasedFrom', label: 'Ngày mua từ', type: 'date' }, { name: 'purchasedTo', label: 'Ngày mua đến', type: 'date' },
+      { name: 'sortBy', label: 'Sắp xếp theo', options: [['createdAt', 'Ngày tạo'], ['assetCode', 'Mã tài sản'], ['name', 'Tên tài sản'],
+        ['purchaseDate', 'Ngày mua'], ...(canCost ? [['purchaseCost', 'Giá mua']] : [])] },
+      { name: 'sortDirection', label: 'Chiều sắp xếp', options: [['desc', 'Giảm dần'], ['asc', 'Tăng dần']] }, pageSizeFilter
+    ], state, { page: 1 });
 
     const columns = [
       { key: 'assetCode', label: 'Mã tài sản', render: row => assetCell(row.assetCode, row.id) },
@@ -165,14 +160,33 @@ export async function reportsPage(services) {
       h('section', { className: 'card filters-card' }, filterForm),
       h('section', { className: 'card' },
         dataTable({ columns, rows: res.items, label: 'Kiểm kê tài sản' }),
-        pagination(res, p => navigate({ ...query, tab: 'inventory', page: p }))
+        pagination(res, p => navigate({ ...state, page: p }))
       )
     );
   }
 
+  // Existing EP-077/078/079 aggregates: counts only, not a financial valuation.
+  else if (currentTab === 'groups') {
+    const groupQuery = { departmentId: reportNumber(query.departmentId), assetTypeId: reportNumber(query.assetTypeId), status: query.status };
+    const [departments, types, statuses] = await Promise.all([
+      services.reports.assetsByDepartment(groupQuery), services.reports.assetsByType(groupQuery), services.reports.assetStatus(groupQuery)
+    ]);
+    const groupTable = (title, rows) => h('section', { className: 'card' },
+      h('div', { className: 'card-header' }, h('h2', {}, title)),
+      dataTable({ columns: [{ key: 'label', label: 'Nhóm' }, { key: 'count', label: 'Số tài sản' }], rows, label: title }));
+    tabContent = h('div', { className: 'report-sections' },
+      h('section', { className: 'card filters-card' }, filters('Lọc tổng hợp tài sản', [departmentFilter, typeFilter,
+        { name: 'status', label: 'Trạng thái tài sản', options: assetStatuses }], { ...query, tab: 'groups' })),
+      h('p', { className: 'meta' }, 'Đếm tài sản chưa lưu trữ theo phòng ban, loại và trạng thái. Không phải định giá; không áp dụng bộ lọc từ khóa/ngày mua của tab Kiểm kê. Các bảng là những truy vấn đọc độc lập.'),
+      groupTable('Tài sản theo phòng ban', departments), groupTable('Tài sản theo loại', types), groupTable('Tài sản theo trạng thái', statuses));
+  }
+
   // Tab 2: Lịch sử phân bổ (EP-080)
   else if (currentTab === 'assignments') {
-    const res = await services.reports.assignmentHistory({ page, pageSize });
+    const state = { ...query, tab: 'assignments', pageSize };
+    const res = await services.reports.assignmentHistory({ page, pageSize, assetId: reportNumber(query.assetId),
+      userId: reportNumber(query.userId), departmentId: reportNumber(query.departmentId),
+      fromUtc: reportUtc(query.assignmentFrom), toUtc: reportUtc(query.assignmentTo) });
     const columns = [
       { key: 'assetCode', label: 'Mã tài sản', render: row => assetCell(row.assetCode, row.assetId) },
       { key: 'assetName', label: 'Tên thiết bị' },
@@ -184,14 +198,21 @@ export async function reportsPage(services) {
     ];
 
     tabContent = h('section', { className: 'card' },
+      filters('Lọc lịch sử cấp phát', [assetFilter, { name: 'userId', label: 'ID người nhận (tùy chọn)' }, departmentFilter,
+        { name: 'assignmentFrom', label: 'Cấp phát từ (UTC)', type: 'datetime-local' },
+        { name: 'assignmentTo', label: 'Cấp phát đến (UTC)', type: 'datetime-local' }, pageSizeFilter], state, { page: 1 }),
+      h('p', { className: 'meta report-note' }, 'Khoảng thời gian lọc theo lúc cấp phát (UTC), không phải ngày thu hồi. Phòng ban là bên nhận; không phải phòng ban sở hữu tài sản. Chỉ đọc lịch sử, không thực hiện cấp phát/thu hồi.'),
       dataTable({ columns, rows: res.items, label: 'Báo cáo phân bổ' }),
-      pagination(res, p => navigate({ ...query, tab: 'assignments', page: p }))
+      pagination(res, p => navigate({ ...state, page: p }))
     );
   }
 
   // Tab 3: Lịch sử bảo trì (EP-081)
   else if (currentTab === 'maintenance') {
-    const res = await services.reports.maintenanceHistory({ page, pageSize });
+    const state = { ...query, tab: 'maintenance', pageSize };
+    const res = await services.reports.maintenanceHistory({ page, pageSize, assetId: reportNumber(query.assetId),
+      technicianId: reportNumber(query.technicianId), status: query.maintenanceStatus,
+      fromUtc: reportUtc(query.maintenanceFrom), toUtc: reportUtc(query.maintenanceTo) });
     const columns = [
       { key: 'ticketCode', label: 'Mã phiếu' },
       { key: 'assetCode', label: 'Mã tài sản' },
@@ -205,8 +226,14 @@ export async function reportsPage(services) {
     ];
 
     tabContent = h('section', { className: 'card' },
+      filters('Lọc báo cáo bảo trì', [assetFilter, { name: 'technicianId', label: 'ID kỹ thuật viên (tùy chọn)' },
+        { name: 'maintenanceStatus', label: 'Trạng thái phiếu', options: [['', 'Tất cả trạng thái'], ['PENDING', 'Chờ xử lý'],
+          ['IN_PROGRESS', 'Đang xử lý'], ['RESOLVED', 'Đã xử lý'], ['FAILED', 'Không khắc phục được'], ['CANCELLED', 'Đã hủy']] },
+        { name: 'maintenanceFrom', label: 'Mở phiếu từ (UTC)', type: 'datetime-local' },
+        { name: 'maintenanceTo', label: 'Mở phiếu đến (UTC)', type: 'datetime-local' }, pageSizeFilter], state, { page: 1 }),
+      h('p', { className: 'meta report-note' }, 'Bộ lọc thời gian dùng lúc mở phiếu (UTC). Mỗi dòng là trạng thái hiện tại của một phiếu, không phải mọi sự kiện trong nhật ký bảo trì.'),
       dataTable({ columns, rows: res.items, label: 'Lịch sử bảo trì' }),
-      pagination(res, p => navigate({ ...query, tab: 'maintenance', page: p }))
+      pagination(res, p => navigate({ ...state, page: p }))
     );
   }
 
@@ -269,7 +296,8 @@ export async function reportsPage(services) {
     const groupBy = query.groupBy || 'month';
     const departmentId = reportNumber(query.departmentId), assetTypeId = reportNumber(query.assetTypeId);
     const [maintenanceCost, budget] = await Promise.all([
-      services.reports.maintenanceCost({ groupBy, departmentId, assetTypeId }),
+      services.reports.maintenanceCost({ groupBy, departmentId, assetTypeId,
+        ...(query.costFrom ? { fromUtc: reportUtc(query.costFrom) } : {}), ...(query.costTo ? { toUtc: reportUtc(query.costTo) } : {}) }),
       services.reports.replacementBudget({ year, departmentId, priority: query.priority })
     ]);
 
@@ -284,9 +312,11 @@ export async function reportsPage(services) {
       h('section', { className: 'card filters-card' }, filters('Lọc chi phí và ngân sách', [
         { name: 'year', label: 'Năm dự toán thay thế', required: true }, departmentFilter,
         { name: 'priority', label: 'Ưu tiên dự toán', options: priorities },
-        { name: 'groupBy', label: 'Nhóm chi phí bảo trì', options: [['month', 'Theo tháng'], ['department', 'Theo phòng ban'], ['type', 'Theo loại tài sản']] }, typeFilter
+        { name: 'groupBy', label: 'Nhóm chi phí bảo trì', options: [['month', 'Theo tháng'], ['department', 'Theo phòng ban'], ['type', 'Theo loại tài sản']] }, typeFilter,
+        { name: 'costFrom', label: 'Hoàn tất bảo trì từ (UTC)', type: 'datetime-local' },
+        { name: 'costTo', label: 'Hoàn tất bảo trì đến (UTC)', type: 'datetime-local' }
       ], { ...query, tab: 'cost', year, groupBy })),
-      h('p', { className: 'meta' }, 'Năm và mức ưu tiên chỉ lọc dự toán thay thế. Chi phí bảo trì tổng hợp tất cả thời gian; loại tài sản chỉ lọc chi phí bảo trì. Phòng ban áp dụng cho cả hai.'),
+      h('p', { className: 'meta' }, 'Năm và mức ưu tiên chỉ lọc dự toán thay thế. Khoảng hoàn tất (UTC) và loại tài sản chỉ lọc chi phí bảo trì; bỏ trống thời gian sẽ tổng hợp tất cả. Phòng ban áp dụng cho cả hai. Nhóm “Chưa có ngày hoàn thành” chỉ có khi không lọc thời gian.'),
       h('div', { className: 'grid-kpis' },
         statCard({ label: 'Tổng chi phí bảo trì', value: money(maintenanceCost?.totalCost), detail: `${maintenanceCost?.missingCostCount ?? '—'}/${maintenanceCost?.ticketCount ?? '—'} phiếu chưa có chi phí; tổng phần đã biết`, iconName: 'wrench', tone: 'amber' }),
         statCard({ label: `Dự toán thay thế năm ${year}`, value: money(budget?.totalBudget), detail: `${budget?.totalRecommendations ?? '—'} khuyến nghị; ${budget?.missingEstimateCount ?? '—'} chưa có dự toán`, iconName: 'chart', tone: 'green' })

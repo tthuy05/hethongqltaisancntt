@@ -2,13 +2,17 @@ import { ServiceError } from '../services/service-error.js';
 
 const numeric = { page: [1, 2147483647], warrantyPage: [1, 2147483647], licensePage: [1, 2147483647], pageSize: [1, 100],
   departmentId: [1, Number.MAX_SAFE_INTEGER], assetTypeId: [1, Number.MAX_SAFE_INTEGER], softwareId: [1, Number.MAX_SAFE_INTEGER],
+  assetId: [1, Number.MAX_SAFE_INTEGER], userId: [1, Number.MAX_SAFE_INTEGER], technicianId: [1, Number.MAX_SAFE_INTEGER],
   year: [2000, 2100], plannedYear: [2000, 2100] };
 const choices = { licenseStatus: ['Expired', 'Expiring', 'Valid'], priority: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'],
+  tab: ['inventory', 'groups', 'assignments', 'maintenance', 'expiry', 'cost', 'replacement'],
+  maintenanceStatus: ['PENDING', 'IN_PROGRESS', 'RESOLVED', 'FAILED', 'CANCELLED'],
   disposition: ['ACTIVE', 'PLANNED', 'DISMISSED', 'SUPERSEDED'], groupBy: ['month', 'department', 'type'],
   status: ['IN_STOCK', 'IN_USE', 'MAINTENANCE', 'BROKEN', 'RETIRED'],
   sortBy: ['assetCode', 'name', 'purchaseDate', 'purchaseCost', 'createdAt'], sortDirection: ['asc', 'desc'] };
-const dates = ['warrantyFrom', 'warrantyTo'];
-const times = ['licenseFrom', 'licenseTo', 'generatedFrom', 'generatedTo'];
+const dates = ['warrantyFrom', 'warrantyTo', 'purchasedFrom', 'purchasedTo'];
+const times = ['licenseFrom', 'licenseTo', 'generatedFrom', 'generatedTo', 'assignmentFrom', 'assignmentTo',
+  'maintenanceFrom', 'maintenanceTo', 'costFrom', 'costTo'];
 const allowed = new Set(['tab', 'keyword', ...Object.keys(numeric), ...Object.keys(choices), ...dates, ...times]);
 const invalid = message => new ServiceError(400, 'VALIDATION_ERROR', message);
 
@@ -44,7 +48,9 @@ export function validateReportQuery(values) {
     if (times.includes(name)) reportUtc(text);
     query[name] = text;
   }
-  for (const [from, to, utc] of [['warrantyFrom', 'warrantyTo', false], ['licenseFrom', 'licenseTo', true], ['generatedFrom', 'generatedTo', true]]) {
+  for (const [from, to, utc] of [['warrantyFrom', 'warrantyTo', false], ['purchasedFrom', 'purchasedTo', false],
+    ['licenseFrom', 'licenseTo', true], ['generatedFrom', 'generatedTo', true], ['assignmentFrom', 'assignmentTo', true],
+    ['maintenanceFrom', 'maintenanceTo', true], ['costFrom', 'costTo', true]]) {
     if (query[from] && query[to] && (utc ? reportUtc(query[from]) > reportUtc(query[to]) : query[from] > query[to]))
       throw invalid('Thời điểm bắt đầu không được sau thời điểm kết thúc.');
   }

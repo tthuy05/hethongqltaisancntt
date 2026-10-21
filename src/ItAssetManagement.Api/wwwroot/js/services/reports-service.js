@@ -36,8 +36,8 @@ export function createReportsReader({ request, queryString, getSession }) {
     const match = typeof value === 'string' && /^(\d{4})-(\d{2})-(\d{2})$/u.exec(value);
     if (!match) throw new ServiceError(400, 'VALIDATION_ERROR', 'Định dạng ngày không hợp lệ.', { [name]: ['Dùng định dạng YYYY-MM-DD.'] });
     const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
-    const parsed = new Date(Date.UTC(year, month - 1, day));
-    if (parsed.getUTCFullYear() !== year || parsed.getUTCMonth() + 1 !== month || parsed.getUTCDate() !== day)
+    const parsed = new Date(value + 'T00:00:00.000Z');
+    if (year < 1 || !Number.isFinite(parsed.getTime()) || parsed.getUTCFullYear() !== year || parsed.getUTCMonth() + 1 !== month || parsed.getUTCDate() !== day)
       throw new ServiceError(400, 'VALIDATION_ERROR', 'Ngày không tồn tại.', { [name]: ['Ngày không hợp lệ.'] });
     return value;
   };
@@ -47,7 +47,7 @@ export function createReportsReader({ request, queryString, getSession }) {
     const match = typeof value === 'string' && /^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(?:\.(\d{1,3}))?Z$/u.exec(value);
     const parsed = match ? new Date(value) : null;
     const canonical = match ? `${match[1]}.${(match[2] || '').padEnd(3, '0')}Z` : null;
-    if (!parsed || !Number.isFinite(parsed.getTime()) || parsed.toISOString() !== canonical)
+    if (!parsed || Number(value.slice(0, 4)) < 1 || !Number.isFinite(parsed.getTime()) || parsed.toISOString() !== canonical)
       throw new ServiceError(400, 'VALIDATION_ERROR', 'Khoảng thời gian UTC không hợp lệ.', { [name]: ['Dùng thời gian ISO UTC.'] });
     return value;
   };
