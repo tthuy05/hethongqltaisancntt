@@ -1,5 +1,9 @@
 # Project Status
 
+## 21/10/2026 — Sửa lỗi tích hợp source Maintenance của Thiện
+
+Integration checkpoint `27b0dd8` + `7dec774`, người dùng duyệt publication **chỉ nhánh codex/lecturer-feedback**, không main/deploy. Sửa duplicate permissions, nối DI/policy/scope/cost/audit/history, PENDING→RESOLVED guards theo schema hiện có; Maintenance đóng mặc định, không mở Assignment hoặc đổi config/migration/shared Neon. Release 0 warning/error;742 unit/197 offline integration/334 frontend PASS,150 cloud SKIP;12 focused isolated PostgreSQL PASS. CI phải đối chiếu đúng SHA sau push. Module Maintenance chưa hoàn tất, assign/start/fail/cancel/UI/owner review và production rollout còn PLANNED. [Bàn giao Thiện và giới hạn](docs/maintenance-integration-fix-2026-10-21.md).
+
 ## 21/10/2026 — Thủy hoàn thiện Reports UI đọc dữ liệu
 
 Local/under review: filter/paging độc lập bảo hành–License, chọn năm budget/group, tab replacement report chỉ đọc, query validation và stale callback guards. Chỉ thêm tie-break ID vào truy vấn report của Thủy; không sửa nghiệp vụ Thiện.709 unit/192 offline integration/334 frontend PASS,146 cloud SKIP;browser QA synthetic desktop/mobile. [Phạm vi và evidence](docs/reports-ui-handoff-2026-10-21.md). Flags/grants/config/shared Neon/Render giữ nguyên; performance, real JWT E2E, owner review/rollout còn pending.

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — 21/10/2026 — Maintenance integration fix
+
+- Fixed: duplicate Maintenance permission declarations after local merge; shared DI/policies, scoped reads/cost presence, schema-compatible pending/resolved states and transactional history/audit.
+- Added: default-closed Maintenance discovery/middleware and real PostgreSQL rollback/concurrent-resolve regression coverage. Existing owner Controller unchanged; remaining workflows/UI await Thiện.
+- Verified:742 unit/197 offline integration/334 frontend PASS;150 cloud SKIP;12 focused isolated PostgreSQL PASS;Release0 warning/error. Publication scoped to review branch; no config/migration/shared database/main/deployment changes. CI requires the new checkpoint SHA. [Handoff](docs/maintenance-integration-fix-2026-10-21.md).
+
 ## Unreleased — 21/10/2026 — Reports UI của Thủy
 
 - Added: independent warranty/license filter/paging, UTC/year validation, budget-year/group controls and read-only replacement report tab with cost/access guards.

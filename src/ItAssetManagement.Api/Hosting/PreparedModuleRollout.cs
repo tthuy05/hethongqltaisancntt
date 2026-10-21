@@ -10,6 +10,8 @@ public sealed class PreparedModuleControllerFeatureProvider(IConfiguration confi
     {
         foreach (var controller in feature.Controllers.ToArray())
         {
+            if (controller.Name == "AssetMaintenanceController" && !MaintenanceRollout.IsEnabled(configuration))
+            { feature.Controllers.Remove(controller); continue; }
             var key = controller.Name switch {
                 "DashboardController" or "ReportsController" => "Features:ReportingApi:Enabled",
                 "ImportController" or "ExportController" => "Features:ImportExportApi:Enabled",

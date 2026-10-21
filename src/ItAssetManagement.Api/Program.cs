@@ -78,6 +78,10 @@ builder.Services.AddScoped<UserInvitationService>();
 builder.Services.AddHttpClient<IInvitationEmailSender, InvitationEmailSender>(http=>http.Timeout=TimeSpan.FromSeconds(10));
 builder.Services.AddScoped<IAssetCodeGenerator, AssetCodeGenerator>();
 builder.Services.AddScoped<AuditLogService>();
+builder.Services.AddScoped<MaintenanceService>();
+builder.Services.AddScoped(sp => new MaintenanceAccessPolicy(
+    sp.GetRequiredService<IHttpContextAccessor>().HttpContext?.Items[typeof(CurrentUser)] as CurrentUser
+    ?? throw new BusinessException(403, "FORBIDDEN", "Yêu cầu tài khoản đã xác thực.")));
 builder.Services.AddScoped<AssignmentService>();
 builder.Services.AddScoped<IAssignmentSchemaReadiness, AssignmentSchemaReadiness>();
 builder.Services.AddScoped<DashboardQueryService>();
@@ -280,6 +284,7 @@ if (app.Environment.IsDevelopment() && app.Configuration.GetValue("Swagger:Enabl
 }
 app.UseRouting(); // Static middleware must run before endpoint selection (including fallback).
 app.UseMiddleware<AssignmentRolloutMiddleware>(); // Closed before auth/Controller/DB-dependent business code.
+app.UseMiddleware<MaintenanceRolloutMiddleware>(); // Prepared owner module stays absent by default.
 app.UseAuthentication(); app.UseAuthorization(); app.UseRateLimiter();
 app.MapControllers();
 app.MapMethods("/health/live", [HttpMethods.Get, HttpMethods.Head], () => Results.Ok(new { status = "Alive" })).AllowAnonymous();

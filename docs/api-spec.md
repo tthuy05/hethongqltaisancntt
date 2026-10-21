@@ -1,5 +1,9 @@
 # API Specification
 
+## Prepared Maintenance integration 21/10/2026 — disabled, chưa deploy
+
+Local merge source Thiện có GET/POST `/api/v1/asset-maintenance`, GET `/{id}`, POST `/{id}/complete`; Controller giữ nguyên để owner review khác biệt với EP-036–045 bên dưới. Missing/false/invalid `Features:MaintenanceApi:Enabled` đóng discovery/OpenAPI và middleware trước auth/DB. Không thêm setting opt-in hoặc grants. `MaintenanceComplete` alias `maintenance.resolve`; không có permission `maintenance.complete` mới. Create mở PENDING không đổi asset; complete yêu cầu IN_PROGRESS/assignee/start/version và ghi RESOLVED theo existing constraints. StartedAtUtc nullable, OpenedAtUtc tách riêng; cost scoped/masked, explicit null vẫn là field supplied. Full assign/start/fail/cancel/history/UI/schema-readiness/real-JWT rollout vẫn PLANNED và do Thiện sở hữu. [Runtime giới hạn, tests và handoff](maintenance-integration-fix-2026-10-21.md).
+
 ## Prepared contracts 20/10/2026 — default disabled, chưa deploy
 
 Financial completeness addendum: Dashboard `/dashboard/costs` có `assetCount`, `missingPurchaseCostCount`, `maintenanceTicketCountYtd`, `missingMaintenanceCostCountYtd`; phần tử `monthlyMaintenanceCosts` thêm `ticketCount`, `missingCostCount`. `/reports/maintenance-cost` thêm `ticketCount`/`missingCostCount` ở response và `missingCostCount` ở mỗi group. Counts chỉ có trên cost-authorized endpoints, không thêm vào summary public. Null cost được count là thiếu; known0 không thiếu; totalCost vẫn known subtotal. YTD chặn resolvedAtUtc tương lai; report default không phải YTD. [Semantics](week-06-reporting-dashboard-spec.md), [tests/addendum](import-reporting-review-2026-10-20.md).

@@ -38,7 +38,13 @@ public sealed class MvpFixture : IAsyncLifetime
         var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
         var configPath = Environment.GetEnvironmentVariable("ITAM_TEST_CONFIG_PATH") ?? Path.Combine(root, "src/ItAssetManagement.Api/appsettings.Development.json");
         var config = JsonSerializer.Deserialize<JsonElement>(await File.ReadAllTextAsync(configPath));
-        if (!NeonConnectionPolicy.TryCreate(config.GetProperty("ConnectionStrings").GetProperty("DefaultConnection").GetString(), out var settings))
+        // An explicitly supplied existing User Secrets file avoids copying secrets
+        // into testsettings/source/logs. Still rewrite Database only after the same
+        // isolated-target guard below; never use its original database for tests.
+        var testConnection = config.TryGetProperty("ConnectionStrings", out var connections)
+            ? connections.GetProperty("DefaultConnection").GetString()
+            : config.GetProperty("ConnectionStrings:NeonSetupConnection").GetString();
+        if (!NeonConnectionPolicy.TryCreate(testConnection, out var settings))
             throw new InvalidOperationException("Development connection unavailable.");
         var testDatabase = Environment.GetEnvironmentVariable("ITAM_TEST_DATABASE") ?? "it_asset_management_m1_verify_20261002";
         if (!System.Text.RegularExpressions.Regex.IsMatch(testDatabase, "\\Ait_asset_management_(m1|full_schema)_verify_[a-z0-9_]{1,24}\\z") || settings!.Database == testDatabase)

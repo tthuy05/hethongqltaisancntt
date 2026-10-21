@@ -15,6 +15,7 @@ public sealed class MaintenanceAccessPolicy
     private readonly long userId;
     private readonly HashSet<string> permissions;
     private readonly bool globalScope;
+    public long UserId => userId;
 
     public MaintenanceAccessPolicy(CurrentUser user)
     {
@@ -78,10 +79,15 @@ public sealed class MaintenanceAccessPolicy
             throw Validation.Invalid("body", "Request phải là JSON object.");
         // Check presence, not decimal.HasValue: null, zero, duplicate and case variants
         // must not let a scoped technician smuggle financial fields through binding.
-        if (requestBody.EnumerateObject().Any(field => IsCostField(field.Name)) && !CanReadCost)
-            throw Forbidden();
+        RequireCostWrite(requestBody.EnumerateObject().Any(field => IsCostField(field.Name)));
         // DTO binding must still reject unknown fields/invalid numbers and validate
         // nonnegative precision/scale. This helper is authorization, not a JSON validator.
+    }
+
+    public void RequireCostWrite(bool fieldSupplied)
+    {
+        RequirePermission(Permissions.MaintenanceRead);
+        if (fieldSupplied && !CanReadCost) throw Forbidden();
     }
 
     public MaintenanceCostView? ReadCosts(MaintenanceTicket ticket)

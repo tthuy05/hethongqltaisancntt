@@ -99,6 +99,46 @@ public static class Permissions
         UserRead, UserCreate, UserUpdate, UserStatus, RoleAssign, RolePermissionsRead, AuditRead];
     public static readonly string[] All = [.. Read, .. Operate, .. Admin];
     public static readonly string[] Roles = ["ADMIN_IT", "SYSTEM_MANAGER", "TECHNICAL_SUPPORT"];
+    // Compatibility name for Thien's prepared service, not a new permission/grant.
+    public const string MaintenanceComplete = MaintenanceResolve;
+}
+
+public sealed class CreateMaintenanceRequest
+{
+    private decimal? estimatedCost;
+    public CreateMaintenanceRequest() { }
+    public CreateMaintenanceRequest(long assetId, string description, decimal? estimatedCost)
+    { AssetId = assetId; Description = description; if (estimatedCost.HasValue) EstimatedCost = estimatedCost; }
+    public long AssetId { get; set; }
+    public string Description { get; set; } = "";
+    public decimal? EstimatedCost { get => estimatedCost; set { estimatedCost = value; HasEstimatedCost = true; } }
+    [JsonIgnore] public bool HasEstimatedCost { get; private set; }
+}
+public sealed class CompleteMaintenanceRequest
+{
+    private decimal? actualCost;
+    public CompleteMaintenanceRequest() { }
+    public CompleteMaintenanceRequest(string resolution, decimal? actualCost, string? rowVersion)
+    { Resolution = resolution; RowVersion = rowVersion; if (actualCost.HasValue) ActualCost = actualCost; }
+    public string Resolution { get; set; } = "";
+    public string? RowVersion { get; set; }
+    public decimal? ActualCost { get => actualCost; set { actualCost = value; HasActualCost = true; } }
+    [JsonIgnore] public bool HasActualCost { get; private set; }
+}
+
+public sealed class MaintenanceDto
+{
+    public long Id { get; set; }
+    public long AssetId { get; set; }
+    public string Description { get; set; } = "";
+    public DateTime OpenedAtUtc { get; set; }
+    public DateTime? StartedAtUtc { get; set; }
+    public DateTime? CompletedAtUtc { get; set; }
+    public string? Resolution { get; set; }
+    public decimal? EstimatedCost { get; set; }
+    public decimal? ActualCost { get; set; }
+    public string Status { get; set; } = "";
+    public string RowVersion { get; set; } = "";
 }
 public sealed record LoginRequest(string Email, string Password);
 public sealed record CurrentUser(long Id, string DisplayName, string Email, long? DepartmentId, string[] Roles, string[] Permissions);

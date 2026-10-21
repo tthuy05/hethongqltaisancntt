@@ -82,6 +82,10 @@ public static class AuthenticationSetup
         {
             options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
             foreach (var permission in Permissions.All) options.AddPolicy(permission, p => p.RequireAuthenticatedUser().RequireClaim("permission", permission));
+            // Prepared endpoint policies do not make permissions available for grants
+            // or seed. Maintenance remains disabled until its owner rollout is reviewed.
+            foreach (var permission in new[] { Permissions.MaintenanceRead, Permissions.MaintenanceCreate, Permissions.MaintenanceResolve })
+                options.AddPolicy(permission, p => p.RequireAuthenticatedUser().RequireClaim("permission", permission));
         });
     }
 }
