@@ -8,6 +8,7 @@ import { assetListPage, assetDetailPage } from './pages/assets.js';
 import { assetFormPage } from './pages/asset-form.js';
 import { masterPage } from './pages/masters.js';
 import { userPage } from './pages/users.js';
+import { activationPage } from './pages/activate.js';
 import { auditLogPage } from './pages/audit-logs.js';
 import { can, route, formAlert } from './pages/shared.js';
 
@@ -61,6 +62,7 @@ async function render() {
   for (const dialog of document.querySelectorAll('dialog.dialog')) { dialog.close(); dialog.remove(); }
   const ownGeneration = ++generation;
   const path = parsedRoute();
+  if (path === '/activate') { app.replaceChildren(activationPage(services)); return; }
   if (!services.auth.session || path === '/login') {
     if (path !== '/login') pendingPath = window.location.hash.slice(1) || '/dashboard';
     app.replaceChildren(loginPage(services, pendingPath));

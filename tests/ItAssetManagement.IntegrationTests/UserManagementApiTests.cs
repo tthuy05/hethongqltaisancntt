@@ -50,11 +50,11 @@ public sealed class UserManagementHostTests
         Assert.Equal(["departmentId", "keyword", "page", "pageSize", "roleId", "sortBy", "sortDirection", "status"],
             paths.GetProperty("/api/v1/users").GetProperty("get").GetProperty("parameters").EnumerateArray().Select(x => x.GetProperty("name").GetString()).Order());
         var schemas = document.GetProperty("components").GetProperty("schemas");
-        Assert.Equal(["departmentId", "displayName", "email", "employeeCode", "password", "phone", "username"],
+        Assert.Equal(["departmentId", "displayName", "email", "employeeCode", "password", "phone", "roleIds", "username"],
             schemas.GetProperty("CreateUserRequest").GetProperty("properties").EnumerateObject().Select(x => x.Name).Order());
         Assert.Equal(["departmentId", "displayName", "email", "employeeCode", "phone", "rowVersion", "username"],
             schemas.GetProperty("UpdateUserRequest").GetProperty("properties").EnumerateObject().Select(x => x.Name).Order());
-        Assert.Equal(["createdAt", "departmentId", "displayName", "email", "employeeCode", "id", "isActive", "phone", "rowVersion", "updatedAt", "username"],
+        Assert.Equal(["activationExpiresAt", "createdAt", "departmentId", "departmentName", "displayName", "email", "employeeCode", "id", "invitationEmailStatus", "isActive", "isEmailConfirmed", "phone", "rowVersion", "updatedAt", "username"],
             schemas.GetProperty("UserDto").GetProperty("properties").EnumerateObject().Select(x => x.Name).Order());
         Assert.True(paths.TryGetProperty("/api/v1/users/{userId}/roles", out _));
         Assert.True(paths.TryGetProperty("/api/v1/users/{userId}/status", out _));
@@ -70,7 +70,7 @@ public sealed class UserManagementApiTests(MvpFixture fixture)
         Username = fixture.Prefix + Guid.NewGuid().ToString("N")[..8],
         Email = fixture.Prefix + Guid.NewGuid().ToString("N")[..8] + "@fixture.test",
         DisplayName = fixture.Prefix + " user admin", EmployeeCode = fixture.Prefix + Guid.NewGuid().ToString("N")[..8],
-        Phone = "0123456789", DepartmentId = fixture.DepartmentId, Password = MvpFixture.Password
+        Phone = "0123456789", DepartmentId = fixture.DepartmentId, RoleIds = [fixture.SupportRoleId]
     };
     private static UpdateUserRequest Update(UserDto user) => new()
     {
@@ -83,7 +83,7 @@ public sealed class UserManagementApiTests(MvpFixture fixture)
         var result = (await response.Content.ReadFromJsonAsync<UserDto>())!;
         var location = response.Headers.Location!;
         Assert.Equal(Path + "/" + result.Id, location.IsAbsoluteUri ? location.AbsolutePath : location.OriginalString);
-        return result;
+        return await fixture.ActivateUserAsync(result);
     }
     private static async Task Error(HttpResponseMessage response, HttpStatusCode status, string code)
     {
@@ -92,10 +92,10 @@ public sealed class UserManagementApiTests(MvpFixture fixture)
     }
 
     [NeonFact]
-    public async Task Create_hashes_password_preserves_whitespace_and_creates_no_roles()
+    public async Task Invited_user_activates_with_own_password_and_selected_group()
     {
         using var client = await fixture.ClientAsync(); var request = Request(); request.Username = " " + request.Username + " ";
-        request.Email = " " + request.Email + " "; request.Password = " " + MvpFixture.Password + " ";
+        request.Email = " " + request.Email + " ";
         var user = await Create(client, request); Assert.True(user.IsActive); Assert.Equal(request.Username.Trim(), user.Username);
         Assert.Equal(16, Convert.FromBase64String(user.RowVersion).Length);
         var response = await client.GetAsync(Path + "/" + user.Id); Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -104,12 +104,12 @@ public sealed class UserManagementApiTests(MvpFixture fixture)
         Assert.False(json.TryGetProperty("tokenVersion", out _)); Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
         await using var scope = fixture.Factory.Services.CreateAsyncScope(); var sp = scope.ServiceProvider; var db = sp.GetRequiredService<AppDbContext>();
         var stored = await db.Set<User>().SingleAsync(x => x.Id == user.Id);
-        Assert.NotEqual(request.Password, stored.PasswordHash); Assert.True(sp.GetRequiredService<IPasswordService>().Verify(stored, request.Password));
-        Assert.False(sp.GetRequiredService<IPasswordService>().Verify(stored, request.Password.Trim()));
+        Assert.NotEqual(MvpFixture.Password, stored.PasswordHash); Assert.True(sp.GetRequiredService<IPasswordService>().Verify(stored, MvpFixture.Password));
+        Assert.True(stored.IsEmailConfirmed);
         Assert.Equal(user.Email.ToUpperInvariant(), stored.NormalizedEmail); Assert.Equal(user.Username.ToUpperInvariant(), stored.NormalizedUsername);
-        Assert.False(await db.Set<UserRole>().AnyAsync(x => x.UserId == user.Id));
+        Assert.True(await db.Set<UserRole>().AnyAsync(x => x.UserId == user.Id));
         using var anonymous = fixture.Factory.CreateClient();
-        await Error(await anonymous.PostAsJsonAsync("/api/v1/auth/login", new { user.Email, request.Password }), HttpStatusCode.Unauthorized, "INVALID_CREDENTIALS");
+        Assert.Equal(HttpStatusCode.OK, (await anonymous.PostAsJsonAsync("/api/v1/auth/login", new { user.Email, password = MvpFixture.Password })).StatusCode);
     }
 
     [NeonFact]
@@ -134,7 +134,7 @@ public sealed class UserManagementApiTests(MvpFixture fixture)
     {
         using var client = await fixture.ClientAsync(); var first = await Create(client);
         await using var scope = fixture.Factory.Services.CreateAsyncScope(); var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var audits = await db.Set<AuditLog>().CountAsync(x => x.Action == "users.create");
+        var audits = await db.Set<AuditLog>().CountAsync(x => x.Action == "users.invite");
         foreach (var field in new[] { "Email", "Username", "EmployeeCode" })
         {
             var request = Request(); typeof(CreateUserRequest).GetProperty(field)!.SetValue(request,
@@ -142,7 +142,7 @@ public sealed class UserManagementApiTests(MvpFixture fixture)
             var code = field == "EmployeeCode" ? "USER_EMPLOYEE_CODE_CONFLICT" : "USER_" + field.ToUpperInvariant() + "_CONFLICT";
             await Error(await client.PostAsJsonAsync(Path, request), HttpStatusCode.Conflict, code);
         }
-        Assert.Equal(audits, await db.Set<AuditLog>().CountAsync(x => x.Action == "users.create"));
+        Assert.Equal(audits, await db.Set<AuditLog>().CountAsync(x => x.Action == "users.invite"));
         var nullable = Request(); nullable.EmployeeCode = " "; nullable.DepartmentId = null; nullable.Phone = " ";
         var created = await Create(client, nullable); Assert.Null(created.EmployeeCode); Assert.Null(created.DepartmentId); Assert.Null(created.Phone);
         nullable = Request(); nullable.EmployeeCode = null; await Create(client, nullable);
@@ -184,7 +184,7 @@ public sealed class UserManagementApiTests(MvpFixture fixture)
         var after = await db.Set<User>().AsNoTracking().SingleAsync(x => x.Id == user.Id);
         Assert.Equal(before.PasswordHash, after.PasswordHash); Assert.Equal(before.IsActive, after.IsActive);
         Assert.Equal(before.IsAdminLocked, after.IsAdminLocked); Assert.Equal(before.TokenVersion, after.TokenVersion);
-        Assert.False(await db.Set<UserRole>().AnyAsync(x => x.UserId == user.Id));
+        Assert.True(await db.Set<UserRole>().AnyAsync(x => x.UserId == user.Id));
         var audit = await db.Set<AuditLog>().SingleAsync(x => x.EntityId == user.Id.ToString() && x.Action == "users.update");
         Assert.Equal(after.UpdatedByUserId, audit.ActorUserId); Assert.Equal("USER", audit.ActorType); Assert.NotEqual(Guid.Empty, audit.CorrelationId);
         var old = JsonSerializer.Deserialize<JsonElement>(audit.OldValuesJson!); Assert.Equal(fixture.DepartmentId, old.GetProperty("DepartmentId").GetInt64());

@@ -6,10 +6,13 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace ItAssetManagement.Api.Mvp;
 
 [ApiController, Route("api/v1/auth")]
-public sealed class AuthController(AuthService service) : ControllerBase
+public sealed class AuthController(AuthService service, UserInvitationService invitations) : ControllerBase
 {
     [HttpPost("login"), AllowAnonymous, EnableRateLimiting("login")]
     public Task<LoginResponse> Login(LoginRequest request, CancellationToken ct) => service.LoginAsync(request, ct);
+    [HttpPost("activate"), AllowAnonymous, EnableRateLimiting("login")]
+    public async Task<IActionResult> Activate(ActivateAccountRequest request,CancellationToken ct)
+    {await invitations.ActivateAsync(request,ct);return Ok(new{message="Tài khoản đã kích hoạt. Bạn có thể đăng nhập."});}
     [HttpGet("me"), Authorize]
     public CurrentUser Me() => (CurrentUser)HttpContext.Items[typeof(CurrentUser)]!;
 }

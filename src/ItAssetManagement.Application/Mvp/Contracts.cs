@@ -51,6 +51,7 @@ public interface IPasswordService
     void DummyVerify(string password);
 }
 public interface ITokenIssuer { LoginResponse Issue(CurrentUser user, int tokenVersion); }
+public interface IAssetCodeGenerator { Task<string> NextAsync(CancellationToken ct); }
 
 public static class Permissions
 {
@@ -90,7 +91,7 @@ public sealed class ListQuery
 }
 public sealed class AssetRequest
 {
-    public string AssetCode { get; set; } = "";
+    public string? AssetCode { get; set; }
     public string Name { get; set; } = "";
     public long AssetTypeId { get; set; }
     public long OwningDepartmentId { get; set; }

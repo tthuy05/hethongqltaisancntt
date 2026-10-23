@@ -3,7 +3,7 @@ export const ASSET_STATUSES = Object.freeze(['InStock', 'InUse', 'Maintenance', 
 export const ROLE_CODES = Object.freeze(['ADMIN_IT', 'SYSTEM_MANAGER', 'TECHNICAL_SUPPORT']);
 export const ASSET_SORT_FIELDS = Object.freeze(['assetCode', 'name', 'status', 'createdAt', 'updatedAt']);
 export const ASSET_METADATA_FIELDS = Object.freeze([
-  'assetCode', 'name', 'assetTypeId', 'owningDepartmentId', 'serialNumber', 'brand', 'model',
+  'name', 'assetTypeId', 'owningDepartmentId', 'serialNumber', 'brand', 'model',
   'specification', 'operatingSystem', 'purchaseDate', 'purchasePrice', 'warrantyExpirationDate', 'location', 'note',
 ]);
 
@@ -13,7 +13,7 @@ export const ASSET_METADATA_FIELDS = Object.freeze([
 /** @typedef {{accessToken:string, tokenType:'Bearer', expiresAt:string, user:CurrentUser}} LoginResponse */
 /** @typedef {{id:number, code:string, name:string, parentDepartmentId:number|null, description:string|null, isActive:boolean, rowVersion:string}} Department */
 /** @typedef {{id:number, code:string, name:string, description:string|null, defaultUsefulLifeMonths:number|null, isActive:boolean, rowVersion:string}} AssetType */
-/** @typedef {{assetCode:string, name:string, assetTypeId:number, owningDepartmentId:number, serialNumber?:string|null, brand?:string|null, model?:string|null, specification?:string|null, operatingSystem?:string|null, purchaseDate?:string|null, purchasePrice?:number|null, warrantyExpirationDate?:string|null, location?:string|null, note?:string|null}} CreateAssetRequest */
+/** @typedef {{name:string, assetTypeId:number, owningDepartmentId:number, serialNumber?:string|null, brand?:string|null, model?:string|null, specification?:string|null, operatingSystem?:string|null, purchaseDate?:string|null, purchasePrice?:number|null, warrantyExpirationDate?:string|null, location?:string|null, note?:string|null}} CreateAssetRequest */
 /** @typedef {CreateAssetRequest & {rowVersion:string}} UpdateAssetRequest */
 /** @typedef {{id:number, assetCode:string, name:string, serialNumber:string|null, assetType:ReferenceSummary, owningDepartment:ReferenceSummary, status:string, location:string|null, createdAt:string, updatedAt:string|null, purchasePrice?:number|null}} AssetSummary */
 /** @typedef {AssetSummary & CreateAssetRequest & {rowVersion:string, isArchived:boolean, currentAssignment:object|null}} AssetDetail */

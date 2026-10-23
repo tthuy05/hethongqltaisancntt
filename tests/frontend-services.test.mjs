@@ -4,7 +4,7 @@ import { createServices, services as defaultServices, ServiceError } from '../sr
 import { ASSET_METADATA_FIELDS, ASSET_STATUSES } from '../src/ItAssetManagement.Api/wwwroot/js/models/contracts.js';
 import { validateAsset, validateMaster } from '../src/ItAssetManagement.Api/wwwroot/js/utils/validation.js';
 
-const fixture = { assetCode: 'TEST-01', name: 'Tài sản demo kiểm thử', assetTypeId: 1, owningDepartmentId: 1 };
+const fixture = { name: 'Tài sản demo kiểm thử', assetTypeId: 1, owningDepartmentId: 1 };
 const dtoFrom = (asset) => Object.fromEntries([...ASSET_METADATA_FIELDS, 'rowVersion'].map((field) => [field, asset[field]]));
 const errorWith = (status, code) => (error) => error instanceof ServiceError && error.status === status && (!code || error.code === code);
 async function mock(role = 'ADMIN_IT') {
@@ -96,8 +96,8 @@ test('asset required, length, money, date and immutable state validation', async
 });
 test('new asset forces InStock, preserves null money and has valid opaque version', async () => {
   const services = await mock();
-  const created = await services.assets.create({ ...fixture, assetCode: ' test-01 ', purchasePrice: null });
-  assert.equal(created.assetCode, 'TEST-01');
+  const created = await services.assets.create({ ...fixture, purchasePrice: null });
+  assert.match(created.assetCode, /^AST-\d{6,}$/);
   assert.equal(created.status, 'InStock');
   assert.equal(created.purchasePrice, null);
   assert.equal(created.currentAssignment, null);
@@ -106,7 +106,7 @@ test('new asset forces InStock, preserves null money and has valid opaque versio
 });
 test('case-insensitive asset code and serial duplicates yield specific 409', async () => {
   const services = await mock();
-  await assert.rejects(services.assets.create({ ...fixture, assetCode: 'ts-0001' }), errorWith(409, 'ASSET_CODE_CONFLICT'));
+  await assert.rejects(services.assets.create({ ...fixture, assetCode: 'ts-0001' }), errorWith(400, 'VALIDATION_ERROR'));
   await assert.rejects(services.assets.create({ ...fixture, serialNumber: 'demo-sn-00001' }), errorWith(409, 'ASSET_SERIAL_CONFLICT'));
 });
 test('create rejects unknown/inactive references with 400 field errors', async () => {
@@ -143,7 +143,7 @@ test('archive requires version, rejects active fixture workflows, hides archived
   await services.assets.archive(1, asset.rowVersion);
   assert.equal((await services.assets.list()).totalItems, 23);
   await assert.rejects(services.assets.get(1), errorWith(404, 'ASSET_NOT_FOUND'));
-  await assert.rejects(services.assets.create({ ...fixture, assetCode: asset.assetCode }), errorWith(409, 'ASSET_CODE_CONFLICT'));
+  await assert.rejects(services.assets.create({ ...fixture, assetCode: asset.assetCode }), errorWith(400, 'VALIDATION_ERROR'));
 });
 test('isolated factory resets synthetic state; response mutations do not mutate service records', async () => {
   const services = await mock();

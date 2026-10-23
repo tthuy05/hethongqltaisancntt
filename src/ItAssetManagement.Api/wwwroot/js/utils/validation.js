@@ -34,7 +34,6 @@ function sameDecimalAfterNumberConversion(value) {
 /** Return RFC7807-style field errors, without retaining any field values. */
 export function validateAsset(dto = {}, { isUpdate = false } = {}) {
   const errors = {};
-  text(errors, dto, 'assetCode', 50, true);
   text(errors, dto, 'name', 200, true);
   for (const field of ['assetTypeId', 'owningDepartmentId']) {
     if (!present(dto[field]) || !isPositiveId(dto[field])) error(errors, field, 'Vui lòng chọn danh mục hợp lệ.');
@@ -85,7 +84,19 @@ export function validateMaster(dto = {}, options = {}) {
 export function validateLogin({ email, password } = {}) {
   const errors = {};
   if (typeof email !== 'string' || email.trim().length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) error(errors, 'email', 'Vui lòng nhập email hợp lệ.');
-  if (typeof password !== 'string' || !password.length) error(errors, 'password', 'Vui lòng nhập mật khẩu (chỉ luồng demo).');
+  if (typeof password !== 'string' || !password.length || password.length > 256) error(errors, 'password', 'Mật khẩu là bắt buộc, tối đa 256 ký tự.');
+  return errors;
+}
+
+// Matches ActivationTokens.Hash: canonical unpadded Base64URL for32 random bytes.
+export const isActivationToken = value => typeof value === 'string' && /^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/.test(value);
+export function validateActivation(dto) {
+  const errors = {};
+  if (!dto || typeof dto !== 'object' || Array.isArray(dto)) return { body: ['Yêu cầu kích hoạt không hợp lệ.'] };
+  for (const key of Object.keys(dto)) if (!['token', 'password', 'confirmPassword'].includes(key)) error(errors, key, 'Trường không thuộc yêu cầu kích hoạt.');
+  if (!isActivationToken(dto.token)) error(errors, 'token', 'Liên kết kích hoạt không hợp lệ.');
+  if (typeof dto.password !== 'string' || dto.password.length < 12 || dto.password.length > 256 || !dto.password.trim()) error(errors, 'password', 'Mật khẩu cần 12–256 ký tự.');
+  if (typeof dto.confirmPassword !== 'string' || dto.password !== dto.confirmPassword) error(errors, 'confirmPassword', 'Mật khẩu nhập lại chưa khớp.');
   return errors;
 }
 
@@ -97,8 +108,8 @@ export function validateUser(dto = {}, { isUpdate = false } = {}) {
   if (present(dto.departmentId) && !isPositiveId(dto.departmentId)) error(errors, 'departmentId', 'Phòng ban phải là ID hợp lệ hoặc để trống.');
   if (isUpdate) {
     if (typeof dto.rowVersion !== 'string' || !/^[A-Za-z0-9+/]{22}==$/.test(dto.rowVersion)) error(errors, 'rowVersion', 'Tải lại hồ sơ trước khi lưu.');
-  } else if (typeof dto.password !== 'string' || !dto.password.trim() || dto.password.length < 12 || dto.password.length > 256) error(errors, 'password', 'Mật khẩu phải có 12–256 ký tự, không chỉ gồm khoảng trắng.');
-  const allowed = ['username', 'email', 'displayName', 'employeeCode', 'departmentId', 'phone', isUpdate ? 'rowVersion' : 'password'];
+  } else if (!Array.isArray(dto.roleIds) || !dto.roleIds.length || dto.roleIds.length > 50 || dto.roleIds.some(id => !Number.isSafeInteger(id) || id <= 0) || new Set(dto.roleIds).size !== dto.roleIds.length) error(errors, 'roleIds', 'Chọn ít nhất một nhóm quyền hợp lệ.');
+  const allowed = ['username', 'email', 'displayName', 'employeeCode', 'departmentId', 'phone', ...(isUpdate ? ['rowVersion'] : ['roleIds'])];
   for (const key of Object.keys(dto)) if (!allowed.includes(key)) error(errors, key, 'Trường này không thuộc hồ sơ người dùng.');
   return errors;
 }
@@ -112,7 +123,7 @@ export function validateUserStatus(dto = {}) {
 }
 export function validateUserRoles(dto = {}) {
   const errors = {};
-  if (!Array.isArray(dto.roleIds) || dto.roleIds.length > 3 || dto.roleIds.some(id => !Number.isSafeInteger(id) || id <= 0) || new Set(dto.roleIds).size !== dto.roleIds.length) error(errors, 'roleIds', 'Chọn tối đa 3 ID vai trò hợp lệ; không trùng.');
+  if (!Array.isArray(dto.roleIds) || dto.roleIds.length > 50 || dto.roleIds.some(id => !Number.isSafeInteger(id) || id <= 0) || new Set(dto.roleIds).size !== dto.roleIds.length) error(errors, 'roleIds', 'Chọn tối đa 50 nhóm hợp lệ; không trùng.');
   if (typeof dto.rowVersion !== 'string' || !/^[A-Za-z0-9+/]{22}==$/.test(dto.rowVersion)) error(errors, 'rowVersion', 'Tải lại quyền của tài khoản.');
   for (const key of Object.keys(dto)) if (!['roleIds', 'rowVersion'].includes(key)) error(errors, key, 'Trường không thuộc lệnh gán vai trò.');
   return errors;

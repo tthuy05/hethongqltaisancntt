@@ -4,16 +4,16 @@ namespace ItAssetManagement.UnitTests;
 
 public sealed class UserManagementTests
 {
-    private static CreateUserRequest Valid() => new() { Username = " thuy ", Email = " Thuy@example.test ", DisplayName = " Thủy ", Password = " twelve characters " };
+    private static CreateUserRequest Valid() => new() { Username = " thuy ", Email = " Thuy@example.test ", DisplayName = " Thủy ", RoleIds = [1] };
 
     [Fact]
-    public void Profile_trims_identity_and_contact_but_preserves_password()
+    public void Invitation_profile_trims_identity_and_does_not_accept_an_admin_password()
     {
         var request = Valid(); request.EmployeeCode = " E01 "; request.Phone = " 0123456789 ";
         UserValidation.Create(request);
         Assert.Equal("thuy", request.Username); Assert.Equal("Thuy@example.test", request.Email);
         Assert.Equal("Thủy", request.DisplayName); Assert.Equal("E01", request.EmployeeCode); Assert.Equal("0123456789", request.Phone);
-        Assert.Equal(" twelve characters ", request.Password);
+        Assert.Null(request.Password); Assert.Equal([1L], request.RoleIds);
         request.EmployeeCode = "  "; request.Phone = " "; UserValidation.Profile(request);
         Assert.Null(request.EmployeeCode); Assert.Null(request.Phone); Assert.Null(request.DepartmentId);
     }
@@ -68,7 +68,7 @@ public sealed class UserManagementTests
     [Fact]
     public async Task Services_deny_before_touching_the_repository_or_password_service()
     {
-        var service = new UserService(null!, null!, null!, null!, new DeniedActor());
+        var service = new UserService(null!, null!, null!, new DeniedActor());
         Assert.Equal(403, (await Assert.ThrowsAsync<BusinessException>(() => service.ListAsync(new(), default))).Status);
         Assert.Equal(403, (await Assert.ThrowsAsync<BusinessException>(() => service.GetAsync(1, default))).Status);
         Assert.Equal(403, (await Assert.ThrowsAsync<BusinessException>(() => service.CreateAsync(Valid(), default))).Status);

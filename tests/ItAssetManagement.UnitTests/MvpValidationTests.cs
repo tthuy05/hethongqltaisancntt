@@ -6,9 +6,12 @@ namespace ItAssetManagement.UnitTests;
 
 public sealed class MvpValidationTests
 {
-    private static AssetRequest Valid() => new() { AssetCode = " A-01 ", Name = " Laptop ", AssetTypeId = 1, OwningDepartmentId = 1 };
+    private static AssetRequest Valid() => new() { Name = " Laptop ", AssetTypeId = 1, OwningDepartmentId = 1 };
     [Fact] public void Asset_normalization_preserves_null_cost_and_empty_serial_becomes_null()
-    { var x = Valid(); x.SerialNumber = "  "; Validation.Asset(x, false); Assert.Equal("A-01", x.AssetCode); Assert.Null(x.SerialNumber); Assert.Null(x.PurchasePrice); }
+    { var x = Valid(); x.SerialNumber = "  "; Validation.Asset(x, false); Assert.Null(x.AssetCode); Assert.Null(x.SerialNumber); Assert.Null(x.PurchasePrice); }
+    [Theory] [InlineData(false)] [InlineData(true)]
+    public void Client_asset_code_is_rejected_on_create_and_update(bool update)
+    { var x = Valid(); x.AssetCode = "AST-000001"; x.RowVersion = Convert.ToBase64String(new byte[16]); Assert.Equal(400, Assert.Throws<BusinessException>(() => Validation.Asset(x, update)).Status); }
     [Theory]
     [InlineData("-1")]
     [InlineData("0.001")]

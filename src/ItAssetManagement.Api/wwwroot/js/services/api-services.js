@@ -1,5 +1,5 @@
 import { ASSET_STATUSES, copy } from '../models/contracts.js';
-import { validateAsset, validateLogin, validateMaster, validateUser, validateUserStatus, validateUserRoles } from '../utils/validation.js';
+import { validateAsset, validateLogin, validateMaster, validateUser, validateUserStatus, validateUserRoles, validateActivation } from '../utils/validation.js';
 import { ServiceError } from './service-error.js';
 
 /** Same-origin client for M1 backend APIs; no automatic mock fallback. */
@@ -86,6 +86,7 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
     return payload;
   }
   const auth = {
+    async activate(dto) { validate(validateActivation(dto)); return request('/auth/activate', { method: 'POST', body: { token: dto.token, password: dto.password, confirmPassword: dto.confirmPassword }, publicRequest: true }); },
     get session() { return copy(currentSession()); },
     onSessionInvalidated(listener) {
       if (typeof listener !== 'function') throw new TypeError('Session listener must be a function.');
@@ -139,6 +140,7 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
     return result;
   }
   const users = {
+    resendInvitation(id) { return request(`/users/${idPath(id)}/invitation`, { method: 'POST' }); },
     list(query = {}) { return request(`/users${queryString(query)}`); },
     get(id) { return request(`/users/${idPath(id)}`); },
     account(id) { return request(`/users/${idPath(id)}/account`); },

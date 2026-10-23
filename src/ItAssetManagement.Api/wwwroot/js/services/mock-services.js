@@ -124,15 +124,11 @@ export function createMockServices({ hostname, latency = 150 } = {}) {
     else if (!department.isActive && department.id !== previous?.owningDepartmentId) referenceErrors.owningDepartmentId = ['Phòng ban được chọn mới phải active.'];
     validate(referenceErrors);
     const next = Object.fromEntries(ASSET_METADATA_FIELDS.map((field) => [field, nullable(dto[field])]));
-    next.assetCode = normalized(dto.assetCode).toUpperCase();
     next.name = normalized(dto.name);
     next.assetTypeId = assetType.id;
     next.owningDepartmentId = department.id;
     next.serialNumber = next.serialNumber ? normalized(next.serialNumber).toUpperCase() : null;
     next.purchasePrice = next.purchasePrice === null ? null : Number(next.purchasePrice);
-    if (state.assets.some((asset) => asset.id !== previous?.id && sameCode(asset.assetCode, next.assetCode))) {
-      throw new ServiceError(409, 'ASSET_CODE_CONFLICT', 'Mã tài sản đã tồn tại.', { assetCode: ['Mã tài sản đã tồn tại, kể cả bản ghi archive.'] });
-    }
     if (next.serialNumber && state.assets.some((asset) => asset.id !== previous?.id && asset.serialNumber && sameCode(asset.serialNumber, next.serialNumber))) {
       throw new ServiceError(409, 'ASSET_SERIAL_CONFLICT', 'Serial Number đã tồn tại.', { serialNumber: ['Serial Number đã tồn tại.'] });
     }
@@ -157,6 +153,7 @@ export function createMockServices({ hostname, latency = 150 } = {}) {
     async logout() { sessionRevision++; session = null; expiresAt = null; },
   };
 
+  let demoAssetCode = 1000;
   const assets = {
     list(query = {}) {
       return run('assets.read', () => {
@@ -179,7 +176,8 @@ export function createMockServices({ hostname, latency = 150 } = {}) {
     get(id) { return run('assets.read', () => assetResponse(activeAsset(id), true)); },
     create(dto) {
       return run('assets.create', () => {
-        const record = { ...prepareAsset(dto), id: Math.max(0, ...state.assets.map((asset) => asset.id)) + 1, status: 'InStock', createdAt: new Date().toISOString(), updatedAt: null, rowVersion: version(), isArchived: false, currentAssignment: null };
+        let code; do { code = 'AST-' + String(++demoAssetCode).padStart(6, '0'); } while (state.assets.some(asset => sameCode(asset.assetCode, code)));
+        const record = { ...prepareAsset(dto), assetCode: code, id: Math.max(0, ...state.assets.map((asset) => asset.id)) + 1, status: 'InStock', createdAt: new Date().toISOString(), updatedAt: null, rowVersion: version(), isArchived: false, currentAssignment: null };
         state.assets.push(record);
         return assetResponse(record, true);
       });

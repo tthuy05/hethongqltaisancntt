@@ -109,9 +109,9 @@ test('M1 app returns to Login on session invalidation even when pages consume er
         await start(mode === 'create' ? '/assets/new' : '/assets/1/edit', (_url, options) => options.method === 'GET'
           ? Response.json(asset) : Response.json({ code: 'UNAUTHENTICATED', detail: 'Session expired' }, { status: 401 }));
         await until(() => app.querySelector('h1')?.textContent === (mode === 'create' ? 'Thêm tài sản' : 'Chỉnh sửa tài sản'));
-        for (const [name, value] of Object.entries({ assetCode: asset.assetCode, name: asset.name, assetTypeId: '1', owningDepartmentId: '1' }))
+        for (const [name, value] of Object.entries({ name: asset.name, assetTypeId: '1', owningDepartmentId: '1' }))
           document.getElementById('field-' + name).value = value;
-        const form = descendants(app).find(node => node.tagName === 'FORM' && node.querySelectorAll('input').some(input => input.getAttribute('name') === 'assetCode'));
+        const form = descendants(app).find(node => node.tagName === 'FORM' && node.querySelectorAll('input').some(input => input.getAttribute('name') === 'name'));
         assert.ok(form); form.fire('submit');
         await until(() => isLogin() && services.auth.session === null);
         assert.equal(app.textContent.includes('Đăng xuất'), false);

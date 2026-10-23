@@ -24,7 +24,7 @@ public sealed class UserAccountTests
     [Fact]
     public void Roles_require_unique_positive_bounded_ids_and_allow_explicit_empty_replacement()
     {
-        foreach (var ids in new long[][] { null!, [0], [-1], [1, 1], [1, 2, 3, 4] })
+        foreach (var ids in new long[][] { null!, [0], [-1], [1, 1], Enumerable.Range(1,51).Select(x=>(long)x).ToArray() })
             Assert.Throws<BusinessException>(() => UserAccountValidation.Roles(new() { RoleIds = ids, RowVersion = Version }));
         var request = new ReplaceUserRolesRequest { RoleIds = [3, 1], RowVersion = Version };
         UserAccountValidation.Roles(request); Assert.Equal([1L, 3L], request.RoleIds);

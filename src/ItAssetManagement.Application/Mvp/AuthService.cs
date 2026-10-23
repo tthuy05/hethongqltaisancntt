@@ -26,9 +26,9 @@ public sealed class AuthService(IRepository repo, IUnitOfWork uow, IPasswordServ
             }
             var validPassword = passwords.Verify(user, request.Password);
             var current = await CurrentAsync(user, ct);
-            if (!validPassword || !user.IsActive || user.IsAdminLocked || user.LockoutEndUtc > now || current.Roles.Length == 0)
+            if (!validPassword || !user.IsEmailConfirmed || !user.IsActive || user.IsAdminLocked || user.LockoutEndUtc > now || current.Roles.Length == 0)
             {
-                if (user.IsActive && !user.IsAdminLocked && !(user.LockoutEndUtc > now) && !validPassword)
+                if (user.IsEmailConfirmed && user.IsActive && !user.IsAdminLocked && !(user.LockoutEndUtc > now) && !validPassword)
                 {
                     if (user.LockoutEndUtc != null) user.FailedLoginCount = 0;
                     user.FailedLoginCount++;
@@ -49,14 +49,14 @@ public sealed class AuthService(IRepository repo, IUnitOfWork uow, IPasswordServ
     public async Task<CurrentUser?> ValidateAsync(long id, int version, CancellationToken ct)
     {
         var user = await repo.FirstAsync(repo.Query<User>().Where(x => x.Id == id), ct);
-        if (user == null || !user.IsActive || user.IsAdminLocked || user.LockoutEndUtc > DateTime.UtcNow || user.TokenVersion != version) return null;
+        if (user == null || !user.IsEmailConfirmed || !user.IsActive || user.IsAdminLocked || user.LockoutEndUtc > DateTime.UtcNow || user.TokenVersion != version) return null;
         var current = await CurrentAsync(user, ct);
         return current.Roles.Length == 0 ? null : current;
     }
     private async Task<CurrentUser> CurrentAsync(User user, CancellationToken ct)
     {
         var roleQuery = from ur in repo.Query<UserRole>() join role in repo.Query<Role>() on ur.RoleId equals role.Id
-                        where ur.UserId == user.Id && role.IsActive && Permissions.Roles.Contains(role.Code) select role;
+                        where ur.UserId == user.Id && role.IsActive select role;
         var roles = await repo.ListAsync(roleQuery.Select(x => x.Code).Distinct().OrderBy(x => x), ct);
         var permissionQuery = from role in roleQuery join rp in repo.Query<RolePermission>() on role.Id equals rp.RoleId
                               join p in repo.Query<Permission>() on rp.PermissionId equals p.Id

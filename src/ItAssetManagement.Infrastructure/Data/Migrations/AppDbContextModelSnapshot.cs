@@ -22,6 +22,8 @@ namespace ItAssetManagement.Infrastructure.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.HasSequence("asset_code_sequence", "public");
+
             modelBuilder.Entity("ItAssetManagement.Domain.Entities.Asset", b =>
                 {
                     b.Property<long>("Id")
@@ -1677,6 +1679,14 @@ namespace ItAssetManagement.Infrastructure.Data.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<DateTime?>("ActivationExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("activation_expires_at_utc");
+
+                    b.Property<byte[]>("ActivationTokenHash")
+                        .HasColumnType("bytea")
+                        .HasColumnName("activation_token_hash");
+
                     b.Property<DateTime?>("AdminLockedAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("admin_locked_at_utc");
@@ -1718,6 +1728,14 @@ namespace ItAssetManagement.Infrastructure.Data.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("full_name");
 
+                    b.Property<string>("InvitationEmailStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("NotRequired")
+                        .HasColumnName("invitation_email_status");
+
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -1729,6 +1747,12 @@ namespace ItAssetManagement.Infrastructure.Data.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false)
                         .HasColumnName("is_admin_locked");
+
+                    b.Property<bool>("IsEmailConfirmed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_email_confirmed");
 
                     b.Property<DateTime?>("LastLoginAtUtc")
                         .HasColumnType("timestamp with time zone")
@@ -1809,9 +1833,13 @@ namespace ItAssetManagement.Infrastructure.Data.Migrations
 
                     b.ToTable("users", "public", t =>
                         {
+                            t.HasCheckConstraint("ck_users_activation_token", "(activation_token_hash IS NULL AND activation_expires_at_utc IS NULL) OR (NOT is_email_confirmed AND activation_token_hash IS NOT NULL AND octet_length(activation_token_hash) = 32 AND activation_expires_at_utc IS NOT NULL)");
+
                             t.HasCheckConstraint("ck_users_admin_lock_time", "(NOT is_admin_locked AND admin_locked_at_utc IS NULL) OR (is_admin_locked AND admin_locked_at_utc IS NOT NULL)");
 
                             t.HasCheckConstraint("ck_users_failed_login_nonnegative", "failed_login_count >= 0");
+
+                            t.HasCheckConstraint("ck_users_invitation_status", "invitation_email_status IN ('NotRequired','Pending','Sent','Sandboxed','Failed','NotConfigured','Activated')");
 
                             t.HasCheckConstraint("ck_users_row_version_length", "octet_length(row_version) = 16");
 

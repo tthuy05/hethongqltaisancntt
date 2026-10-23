@@ -24,6 +24,11 @@ public sealed class User
     public string Email { get; set; } = null!;
     public string NormalizedEmail { get; set; } = null!;
     public string PasswordHash { get; set; } = null!;
+    // Existing accounts are confirmed by the additive migration; new invitations opt out.
+    public bool IsEmailConfirmed { get; set; } = true;
+    public byte[]? ActivationTokenHash { get; set; }
+    public DateTime? ActivationExpiresAtUtc { get; set; }
+    public string InvitationEmailStatus { get; set; } = "NotRequired";
     public string FullName { get; set; } = null!;
     public string? EmployeeCode { get; set; }
     public long? DepartmentId { get; set; }

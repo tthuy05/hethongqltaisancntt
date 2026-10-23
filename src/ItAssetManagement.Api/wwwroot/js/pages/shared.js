@@ -4,7 +4,8 @@ import { button, showToast } from '../components.js';
 export const statusLabels = { InStock: 'Trong kho', InUse: 'Đang sử dụng', Maintenance: 'Đang bảo trì', Broken: 'Hỏng', Retired: 'Ngừng sử dụng' };
 export const date = value => value ? new Intl.DateTimeFormat('vi-VN', { timeZone: 'UTC' }).format(new Date(value)) : 'Chưa có thông tin';
 export const money = value => value == null ? 'Chưa có thông tin' : new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 2 }).format(value);
-export const can = (services, permission) => services.auth.session?.permissions?.includes(permission) ?? false;
+export const hasPermission = (session, permission) => Array.isArray(session?.permissions) && session.permissions.every(grant => typeof grant === 'string') && session.permissions.includes(permission);
+export const can = (services, permission) => hasPermission(services.auth?.session, permission);
 export const route = path => {
   if (window.location.hash.slice(1) === path) window.dispatchEvent(new Event('frontend-refresh'));
   else window.location.hash = path;
