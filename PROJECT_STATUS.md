@@ -1,6 +1,12 @@
 # Project Status
 
-## 21/10/2026 — Sửa lỗi tích hợp source Maintenance của Thiện
+## 24/10/2026 — Tiếp quản và hoàn thành tích hợp Git: main và codex/lecturer-feedback
+
+Hợp nhất an toàn nhánh `origin/main` (commit `11e8c4b`, email activation production) và `codex/lecturer-feedback` (commit `0cc6176`, chứa đầy đủ tính năng Reports, Assignment, Maintenance của Thiện và các đóng góp của Thủy).
+Giải quyết 9 conflict cấu trúc và logic: `Program.cs`, `shared.js`, `users.js`, `api-services.js`, `AssetService.cs`, `Contracts.cs`, `Persistence.cs`, `MvpFixture.cs`, `test-dom.mjs`. Xóa import thừa trong `app.js` và trùng lặp class `AssetCodeGenerator` trong `LecturerPersistence.cs`.
+Bảo toàn 100% chức năng: Email invitation/activation, Role/Permission matrix, Asset cost permissions, Reports UI/filter/paging, Assignment & Maintenance scaffolding/services.
+Kết quả kiểm thử thực tế: Release Build PASS (0 warnings, 0 errors); 760 Unit Tests PASS; 197 Offline Integration Tests PASS (157 cloud tests SKIP theo đúng guard); 369 Frontend Tests PASS; 48 Syntax + 52 CSP/boundary checks PASS; 4 EF Migrations khớp hoàn toàn với Neon production.
+
 
 Integration checkpoint `27b0dd8` + `7dec774`, người dùng duyệt publication **chỉ nhánh codex/lecturer-feedback**, không main/deploy. Sửa duplicate permissions, nối DI/policy/scope/cost/audit/history, PENDING→RESOLVED guards theo schema hiện có; Maintenance đóng mặc định, không mở Assignment hoặc đổi config/migration/shared Neon. Release 0 warning/error;742 unit/197 offline integration/334 frontend PASS,150 cloud SKIP;12 focused isolated PostgreSQL PASS. CI phải đối chiếu đúng SHA sau push. Module Maintenance chưa hoàn tất, assign/start/fail/cancel/UI/owner review và production rollout còn PLANNED. [Bàn giao Thiện và giới hạn](docs/maintenance-integration-fix-2026-10-21.md).
 
