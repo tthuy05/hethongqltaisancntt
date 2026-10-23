@@ -34,7 +34,7 @@ public sealed class AssetExportService(
         Require(Permissions.ExportAssets);
 
         query.Validate();
-        bool canReadCost = actor.Has(Permissions.ReportCost) || actor.Has(Permissions.DashboardCost) || actor.Has(Permissions.AssetCost);
+        bool canReadCost = actor.Has(Permissions.ReportCost) || actor.Has(Permissions.AssetCost);
 
         var q = repo.Query<Asset>().Where(a => !a.IsArchived);
         if (query.FromUtc.HasValue) q = q.Where(a => a.CreatedAtUtc >= query.FromUtc.Value);
@@ -107,7 +107,7 @@ public sealed class AssetExportService(
         Require(Permissions.ExportMaintenance);
 
         query.Validate();
-        bool canReadCost = actor.Has(Permissions.ReportCost) || actor.Has(Permissions.DashboardCost);
+        bool canReadCost = actor.Has(Permissions.ReportCost);
 
         var q = repo.Query<MaintenanceTicket>().Where(t => !t.IsArchived);
         if (query.Status != null) q = q.Where(t => t.Status == query.Status);
@@ -258,7 +258,7 @@ public sealed class AssetExportService(
         Require(Permissions.ExportReplacement);
 
         query.Validate();
-        bool canReadCost = actor.Has(Permissions.ReportCost) || actor.Has(Permissions.DashboardCost);
+        bool canReadCost = actor.Has(Permissions.ReportCost);
 
         var q = repo.Query<ReplacementRecommendation>().Where(r => r.IsCurrent && !r.IsArchived);
         if (query.DepartmentId.HasValue) {

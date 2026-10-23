@@ -9,7 +9,7 @@ import { createReportsReader } from './reports-service.js';
 import { createImportExportService } from './import-export-service.js';
 
 /** Same-origin client for M1 backend APIs; no automatic mock fallback. */
-export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThis), baseUrl = '/api/v1', reportingEnabled = false } = {}) {
+export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThis), baseUrl = '/api/v1', reportingEnabled = false, importExportEnabled = false } = {}) {
   let token = null;
   let session = null;
   let expiresAt = null;
@@ -230,5 +230,5 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
   const reports = createReportsReader({ request, queryString, getSession: currentSession });
   const importExport = createImportExportService({ fetchImpl, baseUrl, getSession: currentSession, getToken: () => token,
     getRevision: () => sessionRevision, onUnauthorized: () => clearSession('unauthorized') });
-  return { mode: 'api', reportingEnabled: reportingEnabled === true, auth, assets, departments: masterService('department'), assetTypes: masterService('assetType'), users, roles, auditLogs, dashboard, dashboardV2, reports, assignments, licenses, importExport };
+  return { mode: 'api', reportingEnabled: reportingEnabled === true, importExportEnabled: importExportEnabled === true, auth, assets, departments: masterService('department'), assetTypes: masterService('assetType'), users, roles, auditLogs, dashboard, dashboardV2, reports, assignments, licenses, importExport };
 }

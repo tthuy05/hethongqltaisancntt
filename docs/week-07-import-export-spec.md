@@ -1,6 +1,53 @@
 # Prepared Import/Export — contract sau security review
 
-Ngày cập nhật: 20/10/2026. **LOCAL IMPLEMENTATION / OWNER REVIEW & ROLLOUT PENDING.** Theo plan Tuần 7, Thiện vẫn là owner module, Thủy xử lý security/integration; đây là bản sửa trên WIP đã tồn tại.
+Ngày cập nhật: 24/10/2026. **LOCAL IMPLEMENTATION / PRODUCTION ROLLOUT PENDING.** Theo yêu cầu tiếp quản, Thủy bổ sung UI Excel trên Backend/adapter hiện có; không mở rộng workflow Assignment/Maintenance của Thiện. Evidence 20/10 được giữ ở tài liệu review, không dùng làm kết quả của source mới.
+
+## Giao diện và luồng xử lý 24/10
+
+`assets.js` → `components/asset-excel.js` → `import-export-service.js` → Import/Export Controller → Application services → repository/UoW → PostgreSQL. Tái sử dụng parser/writer và sequence generator, không thêm migration hoặc bảng.
+
+- Danh sách tài sản có Nhập Excel / Xuất Excel theo từng quyền, chỉ API mode và opt-in `createApiServices({ importExportEnabled: true })`. Default entry vẫn false. Không có fallback mock, query URL hoặc localStorage để tự bật production. Backend gate độc lập `Features:ImportExportApi:Enabled` vẫn mặc định false; chưa seed grants trên shared.
+- Nhập: tải mẫu Backend → chọn XLSX → Kiểm tra/Xem trước → tổng dòng/hợp lệ/lỗi, bảng dòng Excel/trường/mã lỗi/nội dung (100 lỗi đầu) → Xác nhận nhập. Preview là kết quả kiểm tra, không trình bày các mã AST chưa được cấp. Đổi tệp hủy preview. Chỉ xác nhận đúng File đã kiểm tra, không lỗi và có dữ liệu. Server revalidate khi commit, không tin preview của client.
+- Không gửi lặp khi bấm nhanh. `200 committed=false` không coi là thành công. Lỗi/mất response lúc commit khóa gửi lại trong hộp thoại; người dùng phải tải danh sách, đối chiếu serial/audit trước khi quyết định nhập lại. Đóng hộp thoại không hủy request đã gửi. Thành công đóng dialog và refresh danh sách.
+- Xuất danh sách: toàn bộ kết quả (không chỉ trang hiện tại), giữ keyword/status/type/department/sort. Export chỉ hỗ trợ sort mã/tên/ngày tạo; kiểu status/updatedAt bị vô hiệu hóa với lời giải thích, không bỏ sort thầm.
+- Reports UI nối đúng 5 API hiện hữu: inventory, assignment history, maintenance history, warranty expiry, replacement. Đây là xuất dữ liệu đọc, không triển khai các workflow mới. Ngày bảo hành đổi sang UTC midnight/inclusive date. Replacement ghi rõ chỉ hiện hành, không lịch sử. Không giả tạo export License/cost aggregate/groups; không xuất nếu đang dùng filter ngày mua/ngày đánh giá hoặc sort chưa được API hỗ trợ.
+
+## API mẫu mới và DTO
+
+`GET /api/v1/import/assets/template`: authenticated + `import.assets.execute` (service guard), không query; unknown query trả400. Trả XLSX `asset-import-template.xlsx`, trống dữ liệu, header parser-compatible:
+`Name, AssetTypeId, DepartmentId, SerialNumber, Brand, Model, Specification, OperatingSystem, Location, PurchaseDate, WarrantyExpirationDate`; chỉ thêm `PurchasePrice` nếu có `assets.cost.read`. Không có cột AssetCode, dữ liệu thật, sequence/audit/write side effect. Người dùng điền ID danh mục đang active; không đổi tên header. Import/Export gate đóng thì route404.
+
+Các endpoint upload/export và DTO hiện hữu giữ nguyên. Result thực tế là `totalRows, validRows, errorCount, committed, dryRun, errors[]`; từng lỗi có `rowNumber, field, errorCode, errorMessage`. Adapter kiểm shape, row fields và dryRun phải khớp request; dynamic text được render bằng DOM text, không HTML.
+
+## Phân quyền, phụ thuộc và tác động chéo
+
+- UI kiểm quyền trước/sau async và actor/hash; adapter giữ JWT trong closure, kiểm session revision cả sau khi đọc body. Thu hồi quyền chi phí trong lúc download hủy kết quả trước khi save. Blob URL chỉ tồn tại cho thao tác download và được revoke sau click.
+- Template/preview/commit cần `import.assets.execute`; giá nhập còn cần `assets.cost.read`. Export cần quyền riêng của từng endpoint. Có grant export không đồng nghĩa được xem giá.
+- Export Asset chỉ đưa giá khi có `assets.cost.read` hoặc `reports.cost.read`; export Maintenance/Replacement chỉ khi có `reports.cost.read`. `dashboard.cost.read` đơn lẻ không mở chi phí file XLSX. Không thay permission catalog/grants hoặc policy của workflow khác.
+- Tái sử dụng AssetImportService, AssetExportService, SafeExcelWorkbookParser/Writer, IAssetCodeGenerator, EfRepository, AuditedUnitOfWork, AuditWriter, các bảng assets/master/history/audit. Mã AST bất biến và create-only, all-or-nothing; formula injection defenses giữ nguyên.
+
+## Kiểm thử và phát triển tiếp
+
+`frontend-asset-excel.test.mjs` kiểm preview/confirm, đổi tệp, lỗi dòng/XSS, unknown outcome, session/hash/grant change, single-flight, filtered export và report mapping. `ImportExportSecurityTests` kiểm template/cost masking/formula; `PreparedQueryContractTests` kiểm route/gate/template/unknown query.
+`LocalExcelIntegrationTests` opt-in dùng PostgreSQL local SCRAM, pooling=false, database guarded prefix `itam_local_verify_`: XLSX parse/preview/commit/generated codes/history/export, audit rollback và HTTP multipart/template/export. Authentication HTTP là synthetic fixture, không phải production JWT/E2E browser. Không cấu hình local target thì SKIP; không chạy các test này trên neondb.
+
+Trước rollout thật cần owner acceptance UI/Excel desktop, rehearsal permissions catalog/grants và cấu hình gate có phê duyệt; production hiện **NOT DEPLOYED**. Không chỉ bật UI rồi suy Backend đã sẵn sàng. Chưa có export API License/financial aggregate; không thêm nút giả. Docker Linux daemon local chưa chạy, không gọi Docker PASS. Lệnh regression và kết quả source mới ghi tại PROJECT_STATUS.md.
+
+### Lệnh và evidence bản bàn giao 24/10
+
+- `dotnet build ItAssetManagement.slnx --configuration Release --no-restore`: 0 warning/error.
+- `dotnet test tests/ItAssetManagement.UnitTests -c Release`: 786 PASS, 0 FAIL/SKIP.
+- `dotnet test tests/ItAssetManagement.IntegrationTests -c Release --no-build` với opt-in local secret: 203 PASS = 200 offline + 2 sequence authentication + 1 Excel integration, 161 cloud SKIP, 0 FAIL. Excel integration gồm service + HTTP thật/SQL thật, không phải browser acceptance.
+- `npm.cmd test`: 380 PASS, 0 FAIL/SKIP; `node scripts/frontend-check.mjs`: 50 JS/54 CSP checks PASS.
+- `npm.cmd run build:production`: PASS, 45 assets, không mock/Swagger; cảnh báo caniuse-lite cũ không ngăn build.
+- Log/TRX local nằm trong `test-results/excel-ui` (Git ignored). Test PostgreSQL tạo và migrate database local riêng, không khởi động migration/seed trên Neon. Không publish test artifacts/secret.
+
+### Manifest thay đổi nhánh Excel (so với bản vá connection)
+
+- Backend: `src/ItAssetManagement.Api/Mvp/ImportController.cs`, `src/ItAssetManagement.Application/Import/AssetImportService.cs`, `src/ItAssetManagement.Application/Export/AssetExportService.cs`.
+- UI: `src/ItAssetManagement.Api/wwwroot/js/components/asset-excel.js`, `components/report-excel.js` (cùng thư mục js), `pages/assets.js`, `pages/reports.js`, `services/api-services.js`, `services/import-export-service.js`.
+- Tests: `tests/frontend-asset-excel.test.mjs`, `tests/frontend-import-export-service.test.mjs`, `tests/ItAssetManagement.UnitTests/ImportExportSecurityTests.cs`, `tests/ItAssetManagement.IntegrationTests/LocalExcelIntegrationTests.cs`, `LocalSequenceAuthenticationTests.cs` (chỉ mở helper internal), `PreparedQueryContractTests.cs` (hai file sau cùng thư mục IntegrationTests).
+- Docs: `PROJECT_STATUS.md`, `CHANGELOG.md`, `docs/api-spec.md`, `docs/business-rules.md`, `docs/permission-matrix.md`, `docs/week-07-import-export-spec.md`.
 
 ## Import EP-087
 

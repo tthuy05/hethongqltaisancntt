@@ -192,6 +192,8 @@ Union quyền active của các role active refresh mỗi request. Quyền thao 
 
 ### 10.7 Import
 
+- UI Excel 24/10: template/preview/commit dùng `import.assets.execute`; template có cột PurchasePrice chỉ với `assets.cost.read`. Export Asset cần `export.assets.execute`, giá chỉ với `assets.cost.read` hoặc `reports.cost.read`; chi phí file Maintenance/Replacement chỉ với `reports.cost.read`, không dùng `dashboard.cost.read` như quyền xuất giá. Grants/catalog production chưa thay đổi. Chi tiết: [Excel](week-07-import-export-spec.md).
+
 - Import có blast radius lớn nên chỉ Admin IT/System Manager; all-or-nothing, validation trước commit và lỗi theo dòng.
 - Support không có master/admin/import action.
 

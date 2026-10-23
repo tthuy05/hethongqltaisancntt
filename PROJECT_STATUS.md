@@ -1,5 +1,14 @@
 # Project Status
 
+## 24/10/2026 — Import/Export Excel UI trên nhánh riêng
+
+- Hoàn thiện luồng nhập XLSX từ Asset List: tải template Backend, DryRun, lỗi dòng/trường, xác nhận cùng tệp, all-or-nothing, AST do Backend cấp, refresh sau thành công; không retry ghi khi outcome chưa rõ.
+- Nối export theo bộ lọc danh sách và 5 endpoint xuất thực có API trên Reports; từ chối filter/sort chưa hỗ trợ thay vì bỏ thầm. Formula protection giữ nguyên; thu hẹp cost masking về đúng assets.cost.read/reports.cost.read.
+- Không thay migrations, connection string, Neon production, Render hoặc workflow của Thiện. Default Backend/UI flags và catalog/grants production vẫn đóng/chưa rollout.
+- Handoff chuyên đề được cập nhật tại [Import/Export Excel](docs/week-07-import-export-spec.md), API spec, business rules và permission matrix; không tạo kế hoạch trùng.
+- Regression cuối: Release 0 warning/error; 786 unit PASS; integration 203 PASS (200 offline + 3 PostgreSQL local), 161 cloud SKIP; 380 frontend PASS; 50 JS/54 CSP checks PASS; production frontend 45 assets PASS.
+- PostgreSQL local import/rollback + HTTP multipart/template/export đã PASS. Authentication HTTP là synthetic, chưa browser E2E/Excel desktop hoặc production rollout. Docker Linux NOT RUN (daemon chưa chạy); không quy SKIP thành PASS. Có cảnh báo caniuse-lite cũ từ frontend build, không phải lỗi build.
+
 ## 24/10/2026 — tiếp quản kết nối sequence PostgreSQL
 
 - Sửa clone connection độc lập giữ credential Npgsql sau Open, không bật Persist Security Info, không đổi cấu hình/DI/migrations.

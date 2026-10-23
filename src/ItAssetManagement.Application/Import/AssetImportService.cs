@@ -10,6 +10,17 @@ public sealed class AssetImportService(
 {
     private sealed record ValidRow(AssetImportRowData Row, AssetRequest Request);
 
+    public byte[] CreateTemplate()
+    {
+        if (actor.UserId is not > 0 || !actor.Has(Permissions.ImportAssets))
+            throw new BusinessException(403, "FORBIDDEN", "Không có quyền import.assets.execute.");
+        List<string> headers = ["Name", "AssetTypeId", "DepartmentId", "SerialNumber", "Brand", "Model",
+            "Specification", "OperatingSystem", "Location", "PurchaseDate", "WarrantyExpirationDate"];
+        if (actor.Has(Permissions.AssetCost)) headers.Add("PurchasePrice");
+        // Blank, parser-compatible template; no real data or client-supplied AssetCode.
+        return Export.SafeExcelWorkbookWriter.CreateWorkbook(headers, [], "Assets");
+    }
+
     public async Task<AssetImportResult> ImportAssetsAsync(Stream stream, string fileName, string? contentType, long length,
         ImportOptions? options = null, CancellationToken ct = default)
     {

@@ -61,6 +61,7 @@ public sealed class PreparedQueryContractTests
     [InlineData("/api/v1/dashboard/summary")]
     [InlineData("/api/v1/reports/asset-inventory")]
     [InlineData("/api/v1/export/assets")]
+    [InlineData("/api/v1/import/assets/template")]
     public async Task Prepared_endpoints_are_absent_until_explicit_rollout(string path)
     {
         await using var factory = Factory(false); using var client = factory.CreateClient();
@@ -73,6 +74,16 @@ public sealed class PreparedQueryContractTests
         using var form = new MultipartFormDataContent();
         form.Add(new ByteArrayContent([1]), "file", "fixture.xlsx");
         Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsync("/api/v1/import/assets", form)).StatusCode);
+    }
+    [Fact]
+    public async Task Import_template_download_is_authorized_xlsx_and_rejects_unknown_query()
+    {
+        await using var factory = Factory(); using var client = factory.CreateClient();
+        using var response = await client.GetAsync("/api/v1/import/assets/template");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(ImportSecurityLimits.AllowedMimeType, response.Content.Headers.ContentType!.MediaType);
+        Assert.Empty(SafeExcelWorkbookParser.ParseAssetWorkbook(new MemoryStream(await response.Content.ReadAsByteArrayAsync())));
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync("/api/v1/import/assets/template?unknown=1")).StatusCode);
     }
     [Theory]
     [InlineData("dashboard/costs", "assetCount", "missingPurchaseCostCount", "maintenanceTicketCountYtd", "missingMaintenanceCostCountYtd")]

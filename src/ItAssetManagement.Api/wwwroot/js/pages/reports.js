@@ -3,6 +3,7 @@ import { button, pageHeader, dataTable, pagination, statCard, badge } from '../c
 import { can, date, money, route, setQuery } from './shared.js';
 import { ServiceError } from '../services/service-error.js';
 import { readReportQuery, validateReportQuery, reportNumber, reportUtc } from './reports-query.js';
+import { reportExcelActions } from '../components/report-excel.js';
 
 export async function reportsPage(services) {
   if (services.reportingEnabled !== true) throw new ServiceError(404, 'MODULE_UNAVAILABLE', 'Báo cáo chưa được mở.');
@@ -361,6 +362,7 @@ export async function reportsPage(services) {
   viewRoot = h('div', { className: 'reports-page' },
     pageHeader('Báo cáo hệ thống', 'Tra cứu số liệu kiểm kê, phân bổ, bảo trì, hạn bản quyền và ngân sách.', { eyebrow: 'Báo cáo & Thống kê' }),
     tabBar,
+    reportExcelActions(services, currentTab, query, () => viewRoot?.isConnected && validView()),
     tabContent
   );
   return viewRoot;

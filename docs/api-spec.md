@@ -272,6 +272,7 @@ EP-072–075 aggregate dashboard đầy đủ được lên kế hoạch Week 6.
 
 | ID | Method & endpoint | Purpose | Required permission | Query | Request body | Response | Success | Errors | Business rules |
 |---|---|---|---|---|---|---|---|---|---|
+| EP-087-template | `GET /import/assets/template` | Blank parser-compatible XLSX; no client AssetCode; cost header requires assets.cost.read | `import.assets.execute` | Không query | — | XLSX asset-import-template.xlsx; no DB writes | 200 | 400, 401, 403, 404 (gate closed) | BR-028, BR-032 |
 | EP-087 | `POST /import/assets` | Validate rồi import assets all-or-nothing | `import.assets.execute` | `dryRun=false` | Multipart `file` + `ImportOptions` | `AssetImportResult` with row errors; no commit on any error | 200 | 400, 401, 403, 409, 413, 415 | BR-008, BR-028, BR-029, BR-030, BR-031, BR-035 |
 | EP-088 | `GET /export/assets` | Export filtered assets | `export.assets.execute` | asset filters/date range/sort | — | Excel stream + safe filename | 200 | 400, 401, 403, 413 | BR-032, BR-034, BR-052, BR-053 |
 | EP-089 | `GET /export/maintenance` | Export maintenance | `export.maintenance.execute` | `from,to,assetId?,technicianId?,status?` | — | Excel stream | 200 | 400, 401, 403, 413 | BR-014, BR-032, BR-047, BR-052, BR-053 |
@@ -339,7 +340,7 @@ Validation: non-negative money, warranty không trước purchase date, max leng
 
 - Allowed file type/signature, size, worksheet/header and row count are configurable and validated before processing.
 - `dryRun=true` performs every validation without commit.
-- `AssetImportResult`: file summary, total/valid/invalid/imported counts and `{ row, field, code, message }[]`.
+- `AssetImportResult`: `{ totalRows, validRows, errorCount, committed, dryRun, errors: [{ rowNumber, field, errorCode, errorMessage }] }`; rowNumber là dòng Excel bắt đầu từ2. HTTP200 không có nghĩa đã ghi nếu committed=false. Xem [contract Excel](week-07-import-export-spec.md) cho template và filter parity UI/export.
 - Any invalid row means `imported=0`; successful non-dry-run commits all rows once.
 
 ## 4. Authorization and data exposure

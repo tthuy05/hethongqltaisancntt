@@ -18,10 +18,11 @@ export function createImportExportService({ fetchImpl = globalThis.fetch?.bind(g
     if (!Array.isArray(session.permissions) || !session.permissions.includes(permission))
       throw new ServiceError(403, 'FORBIDDEN', 'Không đủ quyền nhập/xuất dữ liệu.');
     const revision = getRevision?.();
+    const costGrants = ['assets.cost.read', 'reports.cost.read'].filter(p => session.permissions.includes(p));
     return () => {
       const current = getSession?.();
       if (current?.id !== session.id || (getRevision && getRevision() !== revision) ||
-          !current?.permissions?.includes(permission)) throw changed();
+          !current?.permissions?.includes(permission) || costGrants.some(p => !current?.permissions?.includes(p))) throw changed();
     };
   }
   function queryString(query, allowed) {
@@ -84,6 +85,9 @@ export function createImportExportService({ fetchImpl = globalThis.fetch?.bind(g
         typeof result.dryRun !== 'boolean' || !Array.isArray(result.errors) || result.errorCount !== result.errors.length ||
         (result.dryRun && result.committed) || (result.committed && (result.errorCount > 0 || result.validRows !== result.totalRows)))
       throw new ServiceError(502, 'INVALID_API_RESPONSE', 'Kết quả nhập dữ liệu không khớp hợp đồng API.');
+    if (result.errors.some(error => !error || !Number.isSafeInteger(error.rowNumber) || error.rowNumber < 2 ||
+        !['field', 'errorCode', 'errorMessage'].every(k => typeof error[k] === 'string' && error[k].length <= 2000)))
+      throw new ServiceError(502, 'INVALID_API_RESPONSE', 'Chi tiết lỗi nhập dữ liệu không hợp lệ.');
     return result;
   }
   function download(path, permission, query, allowed) {
@@ -91,6 +95,7 @@ export function createImportExportService({ fetchImpl = globalThis.fetch?.bind(g
     return exchange(path + queryString(query, allowed), { download: true }, verify);
   }
   return Object.freeze({
+    template() { return download('/import/assets/template', 'import.assets.execute', {}, []); },
     async importAssets(file, { dryRun = false } = {}) {
       const verify = capture('import.assets.execute');
       if (!file || file.size <= 0) throw new ServiceError(400, 'EMPTY_FILE', 'Chọn tệp Excel có dữ liệu.');
@@ -100,7 +105,9 @@ export function createImportExportService({ fetchImpl = globalThis.fetch?.bind(g
         throw new ServiceError(415, 'UNSUPPORTED_MEDIA_TYPE', 'Chỉ nhận tệp XLSX.');
       if (typeof dryRun !== 'boolean') throw invalid();
       const body = new FormData(); body.append('file', file, file.name);
-      return exchange('/import/assets?dryRun=' + dryRun, { method: 'POST', body }, verify);
+      const result = await exchange('/import/assets?dryRun=' + dryRun, { method: 'POST', body }, verify);
+      if (result.dryRun !== dryRun) throw new ServiceError(502, 'INVALID_API_RESPONSE', 'Chế độ nhập dữ liệu trả về không khớp yêu cầu.');
+      return result;
     },
     exportAssets(query = {}) { return download('/export/assets', 'export.assets.execute', query, ['keyword', 'status', 'assetTypeId', 'departmentId', 'fromUtc', 'toUtc', 'sortBy', 'sortDirection']); },
     exportMaintenance(query = {}) { return download('/export/maintenance', 'export.maintenance.execute', query, ['fromUtc', 'toUtc', 'assetId', 'technicianId', 'status']); },

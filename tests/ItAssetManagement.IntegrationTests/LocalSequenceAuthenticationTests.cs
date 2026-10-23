@@ -8,7 +8,7 @@ namespace ItAssetManagement.IntegrationTests;
 [Collection("isolated-neon")]
 public sealed class LocalSequenceAuthenticationTests
 {
-    private static AppDbContext Database()
+    internal static AppDbContext Database()
     {
         var settings = new NpgsqlConnectionStringBuilder(Environment.GetEnvironmentVariable("ITAM_LOCAL_POSTGRES_TEST_CONNECTION"));
         if (settings.Host != "127.0.0.1" || !settings.Database!.StartsWith("itam_local_verify_", StringComparison.Ordinal) ||

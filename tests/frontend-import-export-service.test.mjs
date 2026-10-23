@@ -5,6 +5,19 @@ import { createApiServices } from '../src/ItAssetManagement.Api/wwwroot/js/servi
 
 const importResult = { totalRows: 1, validRows: 1, errorCount: 0, committed: false, dryRun: true, errors: [] };
 const mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+test('import template uses authenticated safe workbook transport and separate import grant', async () => {
+  let path;
+  const services = await authenticated(async url => { path = url; return new Response(new Blob(['xlsx'], { type: mime }), { headers: { 'Content-Type': mime } }); });
+  const file = await services.importExport.template(); assert.equal(path, '/api/v1/import/assets/template'); assert.equal(file.filename, 'export.xlsx');
+  assert.equal(services.importExportEnabled, false);
+});
+
+test('import transport rejects wrong dry-run mode and malformed row errors', async () => {
+  for (const result of [{ ...importResult, dryRun: false }, { ...importResult, errorCount: 1, errors: [{ field: 'name' }] }]) {
+    const services = await authenticated(async () => Response.json(result));
+    await assert.rejects(services.importExport.importAssets(new File(['fixture'], 'fixture.xlsx'), { dryRun: true }), e => e.code === 'INVALID_API_RESPONSE');
+  }
+});
 async function authenticated(fetchBody, grants = ['import.assets.execute', 'export.assets.execute']) {
   const services = createApiServices({ fetchImpl: async (url, options) => url.endsWith('/auth/login')
     ? Response.json({ accessToken: 'synthetic-bearer', tokenType: 'Bearer', expiresAt: new Date(Date.now() + 3600000).toISOString(), user: { id: 1, displayName: 'Fixture', email: 'fixture@example.test', roles: ['ADMIN_IT'], permissions: grants } })

@@ -10,6 +10,59 @@ namespace ItAssetManagement.UnitTests;
 
 public sealed class ImportExportSecurityTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Template_is_blank_parser_compatible_and_cost_column_requires_asset_cost(bool cost)
+    {
+        var actor = new FakeActor(); actor.Grants.Add(Permissions.ImportAssets);
+        if (cost) actor.Grants.Add(Permissions.AssetCost);
+        var repo = new FakeRepository(); var audit = new FakeAuditWriter();
+        var bytes = new AssetImportService(repo, new FakeUnitOfWork(), actor, audit).CreateTemplate();
+        Assert.Empty(SafeExcelWorkbookParser.ParseAssetWorkbook(new MemoryStream(bytes)));
+        using var zip = new ZipArchive(new MemoryStream(bytes));
+        using var reader = new StreamReader(zip.GetEntry("xl/worksheets/sheet1.xml")!.Open());
+        var xml = reader.ReadToEnd();
+        Assert.Contains("AssetTypeId", xml); Assert.Contains("DepartmentId", xml); Assert.DoesNotContain("AssetCode", xml);
+        Assert.Equal(cost, xml.Contains("PurchasePrice", StringComparison.Ordinal));
+        Assert.Equal(0, repo.Saves); Assert.Empty(audit.Records);
+        actor.Grants.Clear();
+        Assert.Equal(403, Assert.Throws<BusinessException>(() => new AssetImportService(repo, new FakeUnitOfWork(), actor, audit).CreateTemplate()).Status);
+    }
+
+    [Theory]
+    [InlineData(null, false)]
+    [InlineData(Permissions.DashboardCost, false)]
+    [InlineData(Permissions.AssetCost, true)]
+    [InlineData(Permissions.ReportCost, true)]
+    public async Task Asset_export_cost_requires_asset_or_report_cost_not_dashboard_grant(string? costPermission, bool included)
+    {
+        var actor = new FakeActor(); actor.Grants.Add(Permissions.ExportAssets);
+        if (costPermission != null) actor.Grants.Add(costPermission);
+        var repo = new FakeRepository(); repo.Seed(new Asset { Id = 1, AssetCode = "AST-000001", Name = "=SUM(1,2)", PurchaseCost = 98765432m });
+        var (bytes, _) = await new AssetExportService(repo, actor).ExportAssetsAsync(new());
+        using var zip = new ZipArchive(new MemoryStream(bytes));
+        using var reader = new StreamReader(zip.GetEntry("xl/worksheets/sheet1.xml")!.Open());
+        var xml = reader.ReadToEnd();
+        Assert.Equal(included, xml.Contains("98765432", StringComparison.Ordinal));
+        Assert.DoesNotContain("<f>", xml); Assert.Contains("SUM(1,2)", xml);
+    }
+
+    [Theory]
+    [InlineData(Permissions.DashboardCost, false)]
+    [InlineData(Permissions.ReportCost, true)]
+    public async Task Workflow_report_export_cost_requires_report_cost(string costPermission, bool included)
+    {
+        var actor = new FakeActor(); actor.Grants.UnionWith([Permissions.ExportMaintenance, Permissions.ExportReplacement, costPermission]);
+        var service = new AssetExportService(new FakeRepository(), actor);
+        foreach (var file in new[] { await service.ExportMaintenanceAsync(new()), await service.ExportReplacementAsync(new()) })
+        {
+            using var zip = new ZipArchive(new MemoryStream(file.Bytes));
+            using var reader = new StreamReader(zip.GetEntry("xl/worksheets/sheet1.xml")!.Open());
+            Assert.Equal(included, reader.ReadToEnd().Contains("Chi phí", StringComparison.Ordinal));
+        }
+    }
+
     [Fact]
     public void Workbook_writer_rejects_overflow_instead_of_silently_truncating()
     {

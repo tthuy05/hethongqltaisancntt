@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — 24/10/2026 — Asset Excel UI
+
+- Added: permission/opt-in guarded import preview/confirmation UI, blank XLSX template endpoint and filtered downloads using existing export APIs.
+- Fixed: no blind import retry on unknown outcome; stale financial grants discard downloads; dashboard-only cost grant no longer exposes XLSX financial columns.
+- Verified locally: 786 unit / 200 offline integration / 3 password-authenticated PostgreSQL / 380 frontend PASS; 161 cloud SKIP; Release 0 warnings/errors; 50 JS/54 CSP checks and production frontend build PASS. No production flags, migrations, shared database or Render changes. [Contract/handoff](docs/week-07-import-export-spec.md).
+
 ## Unreleased — 21/10/2026 — Maintenance integration fix
 
 - Fixed: duplicate Maintenance permission declarations after local merge; shared DI/policies, scoped reads/cost presence, schema-compatible pending/resolved states and transactional history/audit.

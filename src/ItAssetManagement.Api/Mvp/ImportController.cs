@@ -8,6 +8,13 @@ namespace ItAssetManagement.Api.Mvp;
 [ApiController, Route("api/v1/import")]
 public sealed class ImportController(AssetImportService importService) : ControllerBase
 {
+    [HttpGet("assets/template"), Authorize]
+    public IActionResult Template()
+    {
+        Errors.Query(Request);
+        return File(importService.CreateTemplate(), ImportSecurityLimits.AllowedMimeType, "asset-import-template.xlsx");
+    }
+
     // EP-087: POST /api/v1/import/assets
     [HttpPost("assets"), Authorize]
     [RequestSizeLimit(ImportSecurityLimits.MaxFileSizeBytes + 64 * 1024)]

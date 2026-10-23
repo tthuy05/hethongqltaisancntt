@@ -74,6 +74,8 @@
 
 ## 7. Import
 
+Cập nhật UI Excel 24/10/2026: tải mẫu Backend không có AssetCode; chọn tệp → DryRun → xem kết quả → xác nhận cùng tệp. Đổi tệp hủy preview; commit revalidate all-or-nothing. Khi kết quả ghi chưa rõ, không retry mù; đối chiếu danh sách/serial/audit. Xuất áp dụng bộ lọc API hỗ trợ, không âm thầm bỏ filter/sort; không phải template re-import. [Hướng dẫn và giới hạn](week-07-import-export-spec.md).
+
 | ID | Rule **PLANNED** | Lý do | Enforcement dự kiến | Trace |
 |---|---|---|---|---|
 | BR-028 | Import chỉ nhận định dạng Excel allow-list và phải kiểm tra content signature, size/row limit, header/schema, required fields và reference value trước khi ghi. | Chống file độc hại/quá tải/dữ liệu sai. | Upload validator + parser giới hạn; 400/413. | FR-034; UC-011 |
