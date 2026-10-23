@@ -96,24 +96,34 @@ export async function userPage(services) {
         if (!alive(...required)) { save.disabled = true; feedback.replaceChildren(formAlert('Phiên hoặc quyền đã thay đổi. Vui lòng mở lại trang.')); return; }
         const dto = Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, value.input.value.trim() || null]));
         dto.departmentId = dto.departmentId ? Number(dto.departmentId) : null;
-        if (!item) dto.roleIds = choices.filter(choice => choice.input.checked).map(choice => choice.role.id);
+        if (!item) {
+          dto.employeeCode = null;
+          dto.roleIds = choices.filter(choice => choice.input.checked).map(choice => choice.role.id);
+        } else {
+          dto.employeeCode = item.employeeCode ?? null;
+        }
         if (item) dto.rowVersion = item.rowVersion;
         const errors = validateUser(dto, { isUpdate: Boolean(item) }); displayErrors(fields, errors); feedback.replaceChildren();
         if (Object.keys(errors).length) { if (errors.roleIds) feedback.append(formAlert(errors.roleIds.join(' '))); return; }
         return runWrite(writeState, { control: save, modal, feedback, fields, required,
           inputs: [...Object.values(fields).map(field => field.input), ...choices.map(choice => choice.input)], expectedId: item?.id,
           write: () => item ? services.users.update(item.id, dto) : services.users.create(dto), getUser: response => response,
-          onSuccess: response => saved(modal, item ? 'Đã cập nhật hồ sơ.' : 'Đã tạo tài khoản chờ kích hoạt. ' + emailStatus(response.invitationEmailStatus))
+          onSuccess: response => saved(modal, item ? 'Đã cập nhật hồ sơ.' : ('Đã tạo tài khoản chờ kích hoạt' + (response?.employeeCode ? ' [' + response.employeeCode + ']. ' : '. ') + emailStatus(response.invitationEmailStatus)))
         });
       } }, h('div', { className: 'dialog-body form-grid' },
         add({ name: 'displayName', label: 'Họ và tên', required: true, maxLength: 200 }),
         add({ name: 'username', label: 'Tên đăng nhập', required: true, maxLength: 100 }),
         add({ name: 'email', label: 'Email', type: 'email', required: true, maxLength: 320 }),
-        add({ name: 'employeeCode', label: 'Mã nhân viên', maxLength: 50 }),
+        add({ name: 'employeeCode', label: 'Mã nhân viên', maxLength: 50, placeholder: item ? '' : 'Mã sẽ được hệ thống tự động tạo khi lưu (NVxxxxxx)', hint: item ? 'Mã nhân viên không thể thay đổi sau khi tạo.' : 'Mã sẽ được hệ thống tự động tạo khi lưu (NVxxxxxx).' }),
         add({ name: 'departmentId', label: 'Phòng ban', options: departmentOptions }),
         add({ name: 'phone', label: 'Số điện thoại', type: 'tel', maxLength: 30 }),
         !item ? h('fieldset', { className: 'role-choices' }, h('legend', {}, 'Nhóm quyền (chọn ít nhất một)'), choices.map(({ role, input }) => h('label', {}, input, h('span', {}, role.name))), h('p', { className: 'field-hint' }, 'Người dùng tự đặt mật khẩu qua liên kết email có hiệu lực 30 phút. Không tự cấp quyền theo phòng ban.')) : null,
         feedback), h('div', { className: 'dialog-footer' }, button('Hủy', { kind: 'secondary', onClick: () => modal.close() }), save));
+      if (fields.employeeCode) {
+        fields.employeeCode.input.addEventListener('keydown', e => {
+          if (!['Tab', 'Escape', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) e.preventDefault();
+        });
+      }
       modal = openDialog({ title: item ? 'Sửa hồ sơ người dùng' : 'Thêm người dùng', body: form });
     } catch (error) { report(error); }
   }

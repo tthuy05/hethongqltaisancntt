@@ -35,7 +35,7 @@ public static class ActivationTokens
     public static BusinessException Invalid()=>new(400,"ACTIVATION_INVALID_OR_EXPIRED","Liên kết không hợp lệ hoặc đã hết hạn. Hãy yêu cầu Admin gửi lại lời mời.");
 }
 public sealed class UserInvitationService(IRepository repo, IUnitOfWork uow, IPasswordService passwords,
-    IAuditWriter audit, IActor actor, IInvitationEmailSender email, TimeProvider clock)
+    IAuditWriter audit, IActor actor, IInvitationEmailSender email, TimeProvider clock, IEmployeeCodeGenerator? employeeCodes = null)
 {
     private DateTime Now=>clock.GetUtcNow().UtcDateTime;
     private async Task AuthorizeAsync(string permission,CancellationToken ct)
@@ -71,8 +71,9 @@ public sealed class UserInvitationService(IRepository repo, IUnitOfWork uow, IPa
                 var currentCodes=await repo.ListAsync(EffectivePermissionQuery.ForUser(repo,actor.UserId!.Value),ct);
                 if(roles.Any(x=>x.Code=="ADMIN_IT")||(await repo.ListAsync(codes,ct)).Any(code=>!currentCodes.Contains(code)))throw new BusinessException(403,"PRIVILEGE_ESCALATION","Không được cấp nhóm có quyền vượt quyền hiện tại.");
             }
+            var employeeCode = employeeCodes != null ? await employeeCodes.NextAsync(ct) : request.EmployeeCode;
             var user=new User {Username=request.Username,NormalizedUsername=normalizedUsername,Email=request.Email,NormalizedEmail=normalizedEmail,
-                FullName=request.DisplayName,EmployeeCode=request.EmployeeCode,DepartmentId=request.DepartmentId,Phone=request.Phone,CreatedByUserId=actor.UserId,
+                FullName=request.DisplayName,EmployeeCode=employeeCode,DepartmentId=request.DepartmentId,Phone=request.Phone,CreatedByUserId=actor.UserId,
                 IsEmailConfirmed=false,ActivationTokenHash=hash,ActivationExpiresAtUtc=Now.AddMinutes(30),InvitationEmailStatus="Pending"};
             user.PasswordHash=passwords.Hash(user,ActivationTokens.Create()); // Unusable random secret, never sent or retained.
             repo.Add(user);await repo.SaveAsync(ct);

@@ -1,5 +1,29 @@
 # Project Status
 
+## 24/10/2026 — Hoàn thành hệ thống mã tự sinh và chuẩn hóa quy tắc tài liệu kỹ thuật
+
+Thực hiện thành công hai nhiệm vụ cốt lõi trên nhánh phát triển `feature/auto-code-generation`:
+
+1. **Nhiệm vụ A: Tự động sinh mã quản lý nghiệp vụ nội bộ:**
+   - Hoàn thiện và chuẩn hóa 5 bộ sinh mã: `AssetCodeGenerator` (`AST-000001`), `EmployeeCodeGenerator` (`NV000001`), `DepartmentCodeGenerator` (`PB000001`), `MaintenanceTicketCodeGenerator` (`BT000001`), `SoftwareCodeGenerator` (`PM000001`), `LicenseCodeGenerator` (`BQ000001`).
+   - Sử dụng PostgreSQL Sequence trực tiếp (`nextval`) đảm bảo không trùng lặp, an toàn concurrency và zero lock contention.
+   - Cơ chế tự khởi tạo (self-healing) sequence đồng bộ theo số lớn nhất của dữ liệu cũ (`DO $$ ... setval(...) $$;`), bảo tồn 100% dữ liệu lịch sử và không làm phát sinh migration bắt buộc trên Neon shared/production.
+   - Triển khai fallback in-memory counter nguyên tử (`Interlocked.Increment`) giúp kiểm thử offline chạy độc lập.
+   - Đảm bảo tính bất biến (immutability): Mã không thể bị sửa qua API; `UserService` và `MasterService` từ chối các request cố tình thay đổi mã (`400 Bad Request`).
+   - Cập nhật giao diện Frontend (`users.js`, `masters.js`, `validation.js`, `mock-services.js`): bỏ khả năng nhập tay mã khi tạo mới, hiển thị placeholder/hint thông báo sinh tự động, hiển thị mã ở chế độ chỉ đọc khi chỉnh sửa, và thông báo mã vừa sinh sau khi tạo thành công.
+
+2. **Nhiệm vụ B: Thiết lập quy tắc đồng bộ tài liệu kỹ thuật:**
+   - Xây dựng file [AGENTS.md](AGENTS.md) tại thư mục gốc với các nguyên tắc bất biến: Đồng bộ tài liệu song hành cùng code, quy trình trước/sau khi sửa module, tiêu chuẩn tài liệu trung thực dựa trên bằng chứng (evidence-based), bảo mật thông tin và cơ chế phối hợp giữa các thành viên (Thủy, Thiện, Codex, Antigravity).
+   - Xuất bản tài liệu kỹ thuật chi tiết [docs/business-code-generation.md](docs/business-code-generation.md) mô tả đầy đủ bảng mã, định dạng, cách thức sinh, chống trùng, API, DTO, Entity, xử lý import/cũ/mới và lưu ý cho các thành viên.
+
+3. **Kết quả kiểm thử thực tế:**
+   - `.NET Build -c Release`: 0 Warning, 0 Error.
+   - **771 Unit Tests PASS** (bổ sung 11 unit tests mới trong `BusinessCodeGeneratorTests.cs`).
+   - **197 Offline Integration Tests PASS** (157 cloud tests SKIP theo đúng guard).
+   - **369 Frontend Tests PASS**, 0 fail.
+   - **48 JavaScript Syntax Checks PASS**, **52 CSP Checks PASS**.
+   - Git: Đảm bảo không đè WIP của thành viên khác, không merge main trực tiếp.
+
 ## 24/10/2026 — Tiếp quản và hoàn thành tích hợp Git: main và codex/lecturer-feedback
 
 Hợp nhất an toàn nhánh `origin/main` (commit `11e8c4b`, email activation production) và `codex/lecturer-feedback` (commit `0cc6176`, chứa đầy đủ tính năng Reports, Assignment, Maintenance của Thiện và các đóng góp của Thủy).

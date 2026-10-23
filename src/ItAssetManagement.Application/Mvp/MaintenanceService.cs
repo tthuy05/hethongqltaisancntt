@@ -3,7 +3,7 @@ using ItAssetManagement.Domain.Entities;
 namespace ItAssetManagement.Application.Mvp;
 
 public sealed class MaintenanceService(IRepository repo, IUnitOfWork uow, IActor actor, IAuditWriter audit,
-    MaintenanceAccessPolicy access)
+    MaintenanceAccessPolicy access, IMaintenanceTicketCodeGenerator? ticketCodes = null)
 {
     private void Require(string permission)
     {
@@ -30,6 +30,7 @@ public sealed class MaintenanceService(IRepository repo, IUnitOfWork uow, IActor
         return tickets.Select(x => new MaintenanceDto
         {
             Id = x.Id,
+            TicketCode = x.TicketCode,
             AssetId = x.AssetId,
             Description = x.Description,
             OpenedAtUtc = x.OpenedAtUtc,
@@ -108,7 +109,7 @@ public sealed class MaintenanceService(IRepository repo, IUnitOfWork uow, IActor
                 throw new BusinessException(409, "ASSET_ACTIVE_WORKFLOW", "Tài sản đang có quy trình chưa kết thúc.");
 
             var now = DateTime.UtcNow;
-            var ticketCode = $"MT-{Guid.NewGuid():N}";
+            var ticketCode = ticketCodes != null ? await ticketCodes.NextAsync(ct) : $"BT-{Guid.NewGuid():N}";
             var title = request.Description.Length > 50 ? request.Description[..50] : request.Description;
 
             // 3. Khởi tạo phiếu bảo trì mới

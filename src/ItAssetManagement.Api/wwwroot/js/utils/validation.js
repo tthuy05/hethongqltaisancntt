@@ -66,7 +66,8 @@ export function validateMaster(dto = {}, options = {}) {
   const isUpdate = settings.isUpdate ?? Boolean(dto.rowVersion);
   const kind = ['department', 'departments'].includes(settings.kind ?? 'department') ? 'department' : 'assetType';
   const errors = {};
-  text(errors, dto, 'code', 50, true);
+  const codeRequired = kind !== 'department' || isUpdate || present(dto.code);
+  text(errors, dto, 'code', 50, codeRequired);
   text(errors, dto, 'name', 200, true);
   text(errors, dto, 'description', 1000);
   if (kind === 'department' && present(dto.parentDepartmentId) && !isPositiveId(dto.parentDepartmentId)) {

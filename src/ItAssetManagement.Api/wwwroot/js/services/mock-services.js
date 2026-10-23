@@ -210,7 +210,12 @@ export function createMockServices({ hostname, latency = 150 } = {}) {
     const notFound = isDepartment ? 'DEPARTMENT_NOT_FOUND' : 'ASSET_TYPE_NOT_FOUND';
     function prepare(dto, previous = null) {
       validate(validateMaster(dto, { kind, isUpdate: Boolean(previous) }));
-      const code = normalized(dto.code).toUpperCase();
+      let code = dto.code ? normalized(dto.code).toUpperCase() : '';
+      if (!code && isDepartment && !previous) {
+        let num = 1;
+        while (collection.some((item) => item.code === `PB${String(num).padStart(6, '0')}`)) num++;
+        code = `PB${String(num).padStart(6, '0')}`;
+      }
       if (previous && isDepartment && code !== previous.code) throw new ServiceError(400, 'VALIDATION_ERROR', 'Mã phòng ban không được thay đổi.', { code: ['Mã phòng ban bất biến theo thiết kế hiện tại.'] });
       if (collection.some((item) => item.id !== previous?.id && sameCode(item.code, code))) throw new ServiceError(409, 'MASTER_CODE_CONFLICT', 'Mã danh mục đã tồn tại.', { code: ['Mã danh mục đã tồn tại.'] });
       const next = { code, name: normalized(dto.name), description: nullable(dto.description) };

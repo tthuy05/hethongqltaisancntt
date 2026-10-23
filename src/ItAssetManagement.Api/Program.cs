@@ -77,6 +77,11 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<UserInvitationService>();
 builder.Services.AddHttpClient<IInvitationEmailSender, InvitationEmailSender>(http => http.Timeout = TimeSpan.FromSeconds(10));
 builder.Services.AddScoped<IAssetCodeGenerator, AssetCodeGenerator>();
+builder.Services.AddScoped<IEmployeeCodeGenerator, EmployeeCodeGenerator>();
+builder.Services.AddScoped<IDepartmentCodeGenerator, DepartmentCodeGenerator>();
+builder.Services.AddScoped<IMaintenanceTicketCodeGenerator, MaintenanceTicketCodeGenerator>();
+builder.Services.AddScoped<ISoftwareCodeGenerator, SoftwareCodeGenerator>();
+builder.Services.AddScoped<ILicenseCodeGenerator, LicenseCodeGenerator>();
 builder.Services.AddScoped<AuditLogService>();
 builder.Services.AddScoped<MaintenanceService>();
 builder.Services.AddScoped(sp => new MaintenanceAccessPolicy(

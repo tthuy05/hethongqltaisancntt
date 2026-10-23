@@ -52,6 +52,11 @@ public interface IPasswordService
 }
 public interface ITokenIssuer { LoginResponse Issue(CurrentUser user, int tokenVersion); }
 public interface IAssetCodeGenerator { Task<string> NextAsync(CancellationToken ct); }
+public interface IEmployeeCodeGenerator { Task<string> NextAsync(CancellationToken ct); }
+public interface IDepartmentCodeGenerator { Task<string> NextAsync(CancellationToken ct); }
+public interface IMaintenanceTicketCodeGenerator { Task<string> NextAsync(CancellationToken ct); }
+public interface ISoftwareCodeGenerator { Task<string> NextAsync(CancellationToken ct); }
+public interface ILicenseCodeGenerator { Task<string> NextAsync(CancellationToken ct); }
 
 public static class Permissions
 {
@@ -129,6 +134,7 @@ public sealed class CompleteMaintenanceRequest
 public sealed class MaintenanceDto
 {
     public long Id { get; set; }
+    public string TicketCode { get; set; } = "";
     public long AssetId { get; set; }
     public string Description { get; set; } = "";
     public DateTime OpenedAtUtc { get; set; }
@@ -179,7 +185,7 @@ public sealed class AssetRequest
 }
 public sealed class MasterRequest
 {
-    public string Code { get; set; } = "";
+    public string? Code { get; set; }
     public string Name { get; set; } = "";
     public string? Description { get; set; }
     public long? ParentDepartmentId { get; set; }

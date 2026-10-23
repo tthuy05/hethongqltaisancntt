@@ -2,7 +2,7 @@ using ItAssetManagement.Domain.Entities;
 
 namespace ItAssetManagement.Application.Mvp;
 
-public sealed class MasterService(IRepository repo, IUnitOfWork uow, IAuditWriter audit, IActor actor)
+public sealed class MasterService(IRepository repo, IUnitOfWork uow, IAuditWriter audit, IActor actor, IDepartmentCodeGenerator? departmentCodes = null)
 {
     private IQueryable<MasterDto> Query(bool department)
     {
@@ -30,7 +30,20 @@ public sealed class MasterService(IRepository repo, IUnitOfWork uow, IAuditWrite
         await repo.FirstAsync(Query(department).Where(x => x.Id == id), ct) ?? throw NotFound(department);
     public async Task<MasterDto> WriteAsync(bool department, long? id, MasterRequest x, CancellationToken ct)
     {
-        x.Code = Validation.Required(x.Code, 50, "code"); x.Name = Validation.Required(x.Name, 200, "name");
+        if (department && id == null && departmentCodes != null)
+        {
+            x.Code = await departmentCodes.NextAsync(ct);
+        }
+        else if (department && id != null && string.IsNullOrWhiteSpace(x.Code))
+        {
+            var existingDept = await repo.FirstAsync(repo.Query<Department>().Where(d => d.Id == id), ct) ?? throw NotFound(true);
+            x.Code = existingDept.Code;
+        }
+        else
+        {
+            x.Code = Validation.Required(x.Code, 50, "code");
+        }
+        x.Name = Validation.Required(x.Name, 200, "name");
         x.Description = Validation.Optional(x.Description, 1000, "description");
         if (x.DefaultUsefulLifeMonths <= 0) throw Validation.Invalid("defaultUsefulLifeMonths", "Phải > 0.");
         if (department && x.DefaultUsefulLifeMonths != null || !department && x.ParentDepartmentId != null)

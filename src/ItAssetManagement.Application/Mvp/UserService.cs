@@ -166,11 +166,18 @@ public sealed class UserService(IRepository repo, IUnitOfWork uow, IAuditWriter 
                 throw Conflict("USER_EMAIL_CONFLICT");
             if (await repo.AnyAsync(repo.Query<User>().Where(x => x.Id != id && x.NormalizedUsername == username), ct))
                 throw Conflict("USER_USERNAME_CONFLICT");
-            if (request.EmployeeCode != null)
+            if (!string.IsNullOrEmpty(user.EmployeeCode) &&
+                !string.IsNullOrEmpty(request.EmployeeCode) &&
+                !string.Equals(request.EmployeeCode, user.EmployeeCode, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new BusinessException(400, "EMPLOYEE_CODE_IMMUTABLE", "Mã nhân viên không thể thay đổi sau khi tạo.");
+            }
+            if (request.EmployeeCode != null && user.EmployeeCode == null)
             {
                 var employee = request.EmployeeCode.ToLowerInvariant();
                 if (await repo.AnyAsync(repo.Query<User>().Where(x => x.Id != id && x.EmployeeCode != null && x.EmployeeCode.ToLower() == employee), ct))
                     throw Conflict("USER_EMPLOYEE_CODE_CONFLICT");
+                user.EmployeeCode = request.EmployeeCode;
             }
             if (request.DepartmentId != null && request.DepartmentId != user.DepartmentId)
             {
@@ -180,7 +187,7 @@ public sealed class UserService(IRepository repo, IUnitOfWork uow, IAuditWriter 
             var emailChanged = user.NormalizedEmail != email;
             var usernameChanged = user.NormalizedUsername != username;
             var displayNameChanged = user.FullName != request.DisplayName;
-            var employeeCodeChanged = user.EmployeeCode != request.EmployeeCode;
+            var employeeCodeChanged = false;
             var phoneChanged = user.Phone != request.Phone;
             if (emailChanged || usernameChanged)
             {
@@ -190,7 +197,7 @@ public sealed class UserService(IRepository repo, IUnitOfWork uow, IAuditWriter 
             if(emailChanged && !user.IsEmailConfirmed)
             { user.ActivationTokenHash=null;user.ActivationExpiresAtUtc=null;user.InvitationEmailStatus="NotConfigured"; }
             user.Username = request.Username; user.NormalizedUsername = username; user.Email = request.Email; user.NormalizedEmail = email;
-            user.FullName = request.DisplayName; user.EmployeeCode = request.EmployeeCode; user.Phone = request.Phone; user.DepartmentId = request.DepartmentId;
+            user.FullName = request.DisplayName; user.Phone = request.Phone; user.DepartmentId = request.DepartmentId;
             user.UpdatedByUserId = actor.UserId;
             await repo.SaveAsync(ct);
             audit.Record("users.update", user, actor.UserId, "USER", before: before,
