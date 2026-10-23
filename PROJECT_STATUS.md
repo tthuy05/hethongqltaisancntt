@@ -1,5 +1,14 @@
 # Project Status
 
+## 24/10/2026 — tiếp quản kết nối sequence PostgreSQL
+
+- Sửa clone connection độc lập giữ credential Npgsql sau Open, không bật Persist Security Info, không đổi cấu hình/DI/migrations.
+- Giữ DDL ngoài transaction nghiệp vụ và fail-fast khi transaction PostgreSQL abort.
+- Đã chạy hai regression PostgreSQL local SCRAM, pooling=false: PASS; không truy cập Neon shared.
+- Regression bản vá: Release 0 warning/error; unit 778 PASS; integration 200 PASS (198 offline + 2 PostgreSQL local), 161 cloud SKIP; frontend 369 PASS; 48 JS/52 CSP checks PASS.
+- Chi tiết và giới hạn: [business-code-generation](docs/business-code-generation.md#5-kết-quả-kiểm-thử-verification-evidence).
+- Import/Export Excel UI là bước tiếp theo trên nhánh riêng; chưa bật production.
+
 ## 24/10/2026 — Kiểm định, gia cố an toàn Transaction và sẵn sàng bàn giao Import/Export Excel
 
 Hoàn tất kiểm chứng chuyên sâu trên nhánh `feature/auto-code-generation` trước khi bàn giao sang module Import/Export Excel:

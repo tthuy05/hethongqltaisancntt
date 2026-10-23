@@ -140,6 +140,26 @@ builder.Services.AddScoped<ILicenseCodeGenerator, LicenseCodeGenerator>();
 
 ## 5. Kết Quả Kiểm Thử (Verification Evidence)
 
+### Bổ sung 24/10/2026 — kết nối độc lập yêu cầu mật khẩu
+
+Rủi ro đã xác minh: `ConnectionString` của Npgsql sau `Open` không còn password khi
+`Persist Security Info=false`. Không tạo connection mới bằng reflection rồi copy chuỗi này.
+Engine dùng `NpgsqlConnection.CloneWith` từ connection EF Core hiện có: API của driver
+giữ thông tin xác thực riêng và SSL callbacks, không cần đổi DI hoặc bật Persist Security Info.
+`Enlist=false` trên clone ngăn tự enlist vào TransactionScope. Không in chuỗi kết nối/secret.
+[Npgsql API](https://www.npgsql.org/doc/api/Npgsql.NpgsqlConnection.html#Npgsql_NpgsqlConnection_CloneWith_System_String_).
+
+Giữ nguyên DDL ngoài transaction nghiệp vụ, advisory lock, cache chỉ sau DDL thành công;
+lỗi `nextval` được rethrow, không retry trên transaction đã abort. Không thay schema/migration/API.
+Kiểm thử local opt-in `LocalSequenceAuthenticationTests` dùng PostgreSQL 18/SCRAM,
+pooling tắt, database mới có prefix `itam_local_verify_` trên loopback: mở bằng chuỗi đã
+ẩn password thất bại, clone khởi tạo thành công trong transaction, rollback không mất sequence,
+missing cached sequence trả lỗi gốc 42P01 rồi phục hồi ở lần gọi sau rollback.
+Đây là bằng chứng PostgreSQL local, không phải kiểm chứng Neon production; cloud suite vẫn opt-in.
+Chạy với `ITAM_LOCAL_POSTGRES_TEST_CONNECTION` từ secret local (không ghi vào Git/log),
+`dotnet test tests/ItAssetManagement.IntegrationTests -c Release --filter FullyQualifiedName~LocalSequenceAuthenticationTests`.
+Không có cấu hình này thì hai test SKIP. Target guard chặn host ngoài loopback và database không đúng prefix.
+
 1. **Unit Tests Backend:**
    - **778 tests PASS**, 0 fail, 0 skipped ([BusinessCodeGeneratorTests.cs](../tests/ItAssetManagement.UnitTests/BusinessCodeGeneratorTests.cs), [ImportExportSecurityTests.cs](../tests/ItAssetManagement.UnitTests/ImportExportSecurityTests.cs), [MasterServiceTests.cs](../tests/ItAssetManagement.UnitTests/MasterServiceTests.cs)).
    - Kiểm tra định dạng chuẩn: `NV000001`, `PB000001`, `BT000001`, `PM000001`, `BQ000001`, `AST-000001`.

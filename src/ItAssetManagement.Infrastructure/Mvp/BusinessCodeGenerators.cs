@@ -140,8 +140,11 @@ END $$;";
                     }
                     else
                     {
-                        await using var isolatedConn = (DbConnection)Activator.CreateInstance(conn.GetType())!;
-                        isolatedConn.ConnectionString = conn.ConnectionString;
+                        // CloneWith retains the driver's private password/SSL callbacks even
+                        // after Open strips credentials from the public ConnectionString.
+                        // Enlist=false also keeps DDL outside a caller's TransactionScope.
+                        var settings = new NpgsqlConnectionStringBuilder(conn.ConnectionString) { Enlist = false };
+                        await using var isolatedConn = ((NpgsqlConnection)conn).CloneWith(settings.ConnectionString);
                         await isolatedConn.OpenAsync(ct);
                         await EnsureSequenceAsync(isolatedConn, null, sequenceName, prefix, tableName, columnName, ct);
                         EnsuredSequences.TryAdd(sequenceName, true);
