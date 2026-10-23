@@ -2,7 +2,7 @@ name: deployment checks
 
 on:
   push:
-    branches: [main]
+    branches: [main, codex/email-maintenance, codex/email-production]
   pull_request:
     branches: [main]
   workflow_dispatch:

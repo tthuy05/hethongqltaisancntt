@@ -75,7 +75,7 @@ builder.Services.AddScoped<IRoleGrantPersistence, RoleGrantPersistence>();
 builder.Services.AddScoped<IPermissionAvailability, PermissionAvailability>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<UserInvitationService>();
-builder.Services.AddHttpClient<IInvitationEmailSender, InvitationEmailSender>(http=>http.Timeout=TimeSpan.FromSeconds(10));
+builder.Services.AddHttpClient<IInvitationEmailSender, InvitationEmailSender>(http => http.Timeout = TimeSpan.FromSeconds(10));
 builder.Services.AddScoped<IAssetCodeGenerator, AssetCodeGenerator>();
 builder.Services.AddScoped<AuditLogService>();
 builder.Services.AddScoped<MaintenanceService>();
