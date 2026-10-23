@@ -88,7 +88,7 @@ public static class UserValidation
     }
 }
 
-public sealed class UserService(IRepository repo, IUnitOfWork uow, IAuditWriter audit, IActor actor, UserInvitationService? invitations = null)
+public sealed class UserService(IRepository repo, IUnitOfWork uow, IAuditWriter audit, IActor actor, UserInvitationService? invitations = null, IEmployeeCodeGenerator? employeeCodes = null)
 {
     private void Require(string permission)
     {
@@ -166,18 +166,16 @@ public sealed class UserService(IRepository repo, IUnitOfWork uow, IAuditWriter 
                 throw Conflict("USER_EMAIL_CONFLICT");
             if (await repo.AnyAsync(repo.Query<User>().Where(x => x.Id != id && x.NormalizedUsername == username), ct))
                 throw Conflict("USER_USERNAME_CONFLICT");
-            if (!string.IsNullOrEmpty(user.EmployeeCode) &&
-                !string.IsNullOrEmpty(request.EmployeeCode) &&
+            if (!string.IsNullOrEmpty(request.EmployeeCode) &&
                 !string.Equals(request.EmployeeCode, user.EmployeeCode, StringComparison.OrdinalIgnoreCase))
             {
                 throw new BusinessException(400, "EMPLOYEE_CODE_IMMUTABLE", "Mã nhân viên không thể thay đổi sau khi tạo.");
             }
-            if (request.EmployeeCode != null && user.EmployeeCode == null)
+            var employeeCodeChanged = false;
+            if (string.IsNullOrEmpty(user.EmployeeCode) && employeeCodes != null)
             {
-                var employee = request.EmployeeCode.ToLowerInvariant();
-                if (await repo.AnyAsync(repo.Query<User>().Where(x => x.Id != id && x.EmployeeCode != null && x.EmployeeCode.ToLower() == employee), ct))
-                    throw Conflict("USER_EMPLOYEE_CODE_CONFLICT");
-                user.EmployeeCode = request.EmployeeCode;
+                user.EmployeeCode = await employeeCodes.NextAsync(ct);
+                employeeCodeChanged = true;
             }
             if (request.DepartmentId != null && request.DepartmentId != user.DepartmentId)
             {
@@ -187,7 +185,6 @@ public sealed class UserService(IRepository repo, IUnitOfWork uow, IAuditWriter 
             var emailChanged = user.NormalizedEmail != email;
             var usernameChanged = user.NormalizedUsername != username;
             var displayNameChanged = user.FullName != request.DisplayName;
-            var employeeCodeChanged = false;
             var phoneChanged = user.Phone != request.Phone;
             if (emailChanged || usernameChanged)
             {

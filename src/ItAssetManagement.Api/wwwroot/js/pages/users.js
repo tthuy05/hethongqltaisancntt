@@ -114,16 +114,11 @@ export async function userPage(services) {
         add({ name: 'displayName', label: 'Họ và tên', required: true, maxLength: 200 }),
         add({ name: 'username', label: 'Tên đăng nhập', required: true, maxLength: 100 }),
         add({ name: 'email', label: 'Email', type: 'email', required: true, maxLength: 320 }),
-        add({ name: 'employeeCode', label: 'Mã nhân viên', maxLength: 50, placeholder: item ? '' : 'Mã sẽ được hệ thống tự động tạo khi lưu (NVxxxxxx)', hint: item ? 'Mã nhân viên không thể thay đổi sau khi tạo.' : 'Mã sẽ được hệ thống tự động tạo khi lưu (NVxxxxxx).' }),
+        add({ name: 'employeeCode', label: 'Mã nhân viên', maxLength: 50, readOnly: true, placeholder: item ? '' : 'Mã sẽ được hệ thống tự động tạo khi lưu (NVxxxxxx)', hint: item ? 'Mã nhân viên không thể thay đổi sau khi tạo.' : 'Mã sẽ được hệ thống tự động tạo khi lưu (NVxxxxxx).' }),
         add({ name: 'departmentId', label: 'Phòng ban', options: departmentOptions }),
         add({ name: 'phone', label: 'Số điện thoại', type: 'tel', maxLength: 30 }),
         !item ? h('fieldset', { className: 'role-choices' }, h('legend', {}, 'Nhóm quyền (chọn ít nhất một)'), choices.map(({ role, input }) => h('label', {}, input, h('span', {}, role.name))), h('p', { className: 'field-hint' }, 'Người dùng tự đặt mật khẩu qua liên kết email có hiệu lực 30 phút. Không tự cấp quyền theo phòng ban.')) : null,
         feedback), h('div', { className: 'dialog-footer' }, button('Hủy', { kind: 'secondary', onClick: () => modal.close() }), save));
-      if (fields.employeeCode) {
-        fields.employeeCode.input.addEventListener('keydown', e => {
-          if (!['Tab', 'Escape', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) e.preventDefault();
-        });
-      }
       modal = openDialog({ title: item ? 'Sửa hồ sơ người dùng' : 'Thêm người dùng', body: form });
     } catch (error) { report(error); }
   }

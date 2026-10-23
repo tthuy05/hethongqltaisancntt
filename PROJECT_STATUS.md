@@ -1,28 +1,42 @@
 # Project Status
 
-## 24/10/2026 — Hoàn thành hệ thống mã tự sinh và chuẩn hóa quy tắc tài liệu kỹ thuật
+## 24/10/2026 — Kiểm định, gia cố và hoàn thiện nhánh feature/auto-code-generation
 
-Thực hiện thành công hai nhiệm vụ cốt lõi trên nhánh phát triển `feature/auto-code-generation`:
+Thực hiện rà soát chuyên sâu, gia cố an toàn hạ tầng và hoàn thiện toàn diện nhánh `feature/auto-code-generation`:
 
-1. **Nhiệm vụ A: Tự động sinh mã quản lý nghiệp vụ nội bộ:**
-   - Hoàn thiện và chuẩn hóa 5 bộ sinh mã: `AssetCodeGenerator` (`AST-000001`), `EmployeeCodeGenerator` (`NV000001`), `DepartmentCodeGenerator` (`PB000001`), `MaintenanceTicketCodeGenerator` (`BT000001`), `SoftwareCodeGenerator` (`PM000001`), `LicenseCodeGenerator` (`BQ000001`).
-   - Sử dụng PostgreSQL Sequence trực tiếp (`nextval`) đảm bảo không trùng lặp, an toàn concurrency và zero lock contention.
-   - Cơ chế tự khởi tạo (self-healing) sequence đồng bộ theo số lớn nhất của dữ liệu cũ (`DO $$ ... setval(...) $$;`), bảo tồn 100% dữ liệu lịch sử và không làm phát sinh migration bắt buộc trên Neon shared/production.
-   - Triển khai fallback in-memory counter nguyên tử (`Interlocked.Increment`) giúp kiểm thử offline chạy độc lập.
-   - Đảm bảo tính bất biến (immutability): Mã không thể bị sửa qua API; `UserService` và `MasterService` từ chối các request cố tình thay đổi mã (`400 Bad Request`).
-   - Cập nhật giao diện Frontend (`users.js`, `masters.js`, `validation.js`, `mock-services.js`): bỏ khả năng nhập tay mã khi tạo mới, hiển thị placeholder/hint thông báo sinh tự động, hiển thị mã ở chế độ chỉ đọc khi chỉnh sửa, và thông báo mã vừa sinh sau khi tạo thành công.
+1. **Gia cố cơ chế tự khởi tạo PostgreSQL Sequence (`BusinessCodeGenerators.cs` & `AssetCodeGenerator.cs`):**
+   - **Chống race condition đa instance:** Tích hợp PostgreSQL transaction-level advisory lock (`PERFORM pg_advisory_xact_lock(837112, hashtext('{sequenceName}'));`) bên trong khối DO khởi tạo, triệt tiêu nguy cơ xung đột danh mục khi nhiều instance cùng khởi tạo sequence đồng thời.
+   - **Xử lý rủi ro rollback transaction:** Không lưu trạng thái vào cache `EnsuredSequences` khi đang nằm trong ambient transaction (`currentTx != null`), ngăn chặn triệt để tình trạng đầu độc cache in-memory nếu transaction chứa lệnh DDL bị rollback.
+   - **Tự phục hồi lỗi quan hệ chưa tồn tại (Self-healing on 42P01):** Bắt ngoại lệ `PostgresException` mã `42P01` (undefined table/relation) khi gọi `SELECT nextval(...)`: tự động xóa cache, kích hoạt lại `EnsureSequenceAsync` và thử lại lệnh `nextval`.
+   - **Tái cấu trúc `AssetCodeGenerator`:** Chuyển sang dùng chung engine hạ tầng `BusinessCodeGeneratorEngine`, chia sẻ 100% cơ chế advisory lock, quét dữ liệu cũ và tự phục hồi lỗi.
 
-2. **Nhiệm vụ B: Thiết lập quy tắc đồng bộ tài liệu kỹ thuật:**
-   - Xây dựng file [AGENTS.md](AGENTS.md) tại thư mục gốc với các nguyên tắc bất biến: Đồng bộ tài liệu song hành cùng code, quy trình trước/sau khi sửa module, tiêu chuẩn tài liệu trung thực dựa trên bằng chứng (evidence-based), bảo mật thông tin và cơ chế phối hợp giữa các thành viên (Thủy, Thiện, Codex, Antigravity).
-   - Xuất bản tài liệu kỹ thuật chi tiết [docs/business-code-generation.md](docs/business-code-generation.md) mô tả đầy đủ bảng mã, định dạng, cách thức sinh, chống trùng, API, DTO, Entity, xử lý import/cũ/mới và lưu ý cho các thành viên.
+2. **Bổ sung bài kiểm thử tích hợp PostgreSQL Cô Lập (`BusinessCodeGeneratorIntegrationTests.cs`):**
+   - Bổ sung 4 ca kiểm thử chuyên sâu chạy trên PostgreSQL thực tế sử dụng thuộc tính `[NeonFact]`:
+     - Khởi tạo sequence trực tiếp trên hệ thống catalog `pg_class` (`relkind = 'S'`).
+     - Bảo tồn dữ liệu cũ: quét mã lớn nhất (`PB000xxx`) và sinh mã tiếp theo lớn hơn bản ghi lịch sử.
+     - Kiểm tra an toàn trước transaction rollback: rollback giao dịch không làm hỏng trình tạo mã và ca cấp phát sau vẫn thành công.
+     - Chống trùng lặp đa luồng: 15 request song song sinh 15 mã phân biệt đơn điệu.
+   - **Quy định kiểm thử trung thực:** Bổ sung ca kiểm thử khẳng định rõ ràng bộ test offline (`FallbackCodeCounter`) chỉ kiểm tra định dạng và luồng nghiệp vụ, không được xem là bằng chứng PostgreSQL live đã PASS.
 
-3. **Kết quả kiểm thử thực tế:**
-   - `.NET Build -c Release`: 0 Warning, 0 Error.
-   - **771 Unit Tests PASS** (bổ sung 11 unit tests mới trong `BusinessCodeGeneratorTests.cs`).
-   - **197 Offline Integration Tests PASS** (157 cloud tests SKIP theo đúng guard).
-   - **369 Frontend Tests PASS**, 0 fail.
-   - **48 JavaScript Syntax Checks PASS**, **52 CSP Checks PASS**.
-   - Git: Đảm bảo không đè WIP của thành viên khác, không merge main trực tiếp.
+3. **Gia cố bảo mật UserService và Frontend Read-Only (`UserService.cs` & `users.js`):**
+   - **Chặn hoàn toàn việc tự chỉ định `EmployeeCode`:** Loại bỏ khối mã cho phép gán `request.EmployeeCode` khi `user.EmployeeCode == null`.
+   - **Bất biến và tự sinh cho tài khoản cũ:** Bất kỳ request cập nhật nào truyền `EmployeeCode` khác với mã hiện có đều bị từ chối `400 EMPLOYEE_CODE_IMMUTABLE`. Với tài khoản cũ chưa có mã, hệ thống tự động sinh mã chuẩn `NVxxxxxx` khi cập nhật hồ sơ.
+   - **Chế độ chỉ đọc thực sự ở Frontend:** Gán `readOnly: true` trực tiếp trên phần tử input HTML trong `users.js`, loại bỏ cơ chế chặn phím tạm thời; cập nhật ca kiểm thử tương ứng trong `frontend-user-dialog-access.test.mjs`.
+
+4. **Rà soát `AssetType.Code`:**
+   - Xác định `AssetType.Code` là **mã phân loại danh mục ngữ nghĩa cấu hình thủ công** (semantic category code như `LAPTOP`, `DESKTOP`, `SERVER`), phục vụ phân loại thiết bị, nhập khẩu Excel và tính khấu hao.
+   - Giữ nguyên cơ chế cấu hình thủ công có chủ đích; bổ sung kiểm tra bất biến `Immutable(t.Code, x.Code)` trong `MasterService.cs` và `readOnly: Boolean(item)` trên giao diện `masters.js` để ngăn chặn việc sửa đổi mã loại tài sản sau khi tạo.
+
+5. **Chuẩn hóa liên kết tài liệu:**
+   - Chuyển đổi 100% liên kết máy cá nhân `file:///` trong `docs/business-code-generation.md` thành đường dẫn tương đối dùng được trên GitHub.
+
+6. **Kết quả kiểm thử thực tế (Evidence-Based):**
+   - `.NET Build -c Release`: **0 Warning, 0 Error**.
+   - **Backend Unit Tests:** **775 tests PASS**, 0 fail, 0 skipped.
+   - **Backend Integration Tests (Offline):** **198 tests PASS**, 161 cloud tests SKIP theo đúng guard `ITAM_RUN_NEON_TESTS=1`.
+   - **Frontend Tests (`npm.cmd test`):** **369 tests PASS**, 0 fail.
+   - **Frontend CSP & Code Syntax Checks:** **48 Syntax PASS**, **52 CSP Checks PASS**.
+   - **Quy tắc an toàn:** Không tự merge `main`, không deploy Render, không chỉnh sửa database Neon production.
 
 ## 24/10/2026 — Tiếp quản và hoàn thành tích hợp Git: main và codex/lecturer-feedback
 

@@ -210,7 +210,81 @@ public sealed class BusinessCodeGeneratorTests
         Assert.Equal("Nguyễn Văn A Đã Sửa", result.DisplayName);
     }
 
+    [Fact]
+    public async Task UserService_rejects_manual_EmployeeCode_for_legacy_user_without_code()
+    {
+        var repo = new StubUserRepo();
+        repo.Users.Add(new User
+        {
+            Id = 99,
+            Username = "legacy_user",
+            NormalizedUsername = "LEGACY_USER",
+            Email = "legacy@test.local",
+            NormalizedEmail = "LEGACY@TEST.LOCAL",
+            FullName = "Legacy User",
+            EmployeeCode = null, // Legacy account without code
+            RowVersion = new byte[16],
+            IsActive = true,
+            IsEmailConfirmed = true
+        });
+
+        var service = new UserService(repo, new DirectUnitOfWork(), new NoOpAudit(), new AdminActor());
+
+        var updateReq = new UpdateUserRequest
+        {
+            Username = "legacy_user",
+            Email = "legacy@test.local",
+            DisplayName = "Legacy User Renamed",
+            EmployeeCode = "NV999999", // Attempting to manually assign code to legacy account
+            RowVersion = Convert.ToBase64String(new byte[16])
+        };
+
+        var ex = await Assert.ThrowsAsync<BusinessException>(() => service.UpdateAsync(99, updateReq, default));
+        Assert.Equal(400, ex.Status);
+        Assert.Equal("EMPLOYEE_CODE_IMMUTABLE", ex.Code);
+    }
+
+    [Fact]
+    public async Task UserService_auto_generates_EmployeeCode_for_legacy_user_on_update()
+    {
+        var repo = new StubUserRepo();
+        repo.Users.Add(new User
+        {
+            Id = 99,
+            Username = "legacy_user",
+            NormalizedUsername = "LEGACY_USER",
+            Email = "legacy@test.local",
+            NormalizedEmail = "LEGACY@TEST.LOCAL",
+            FullName = "Legacy User",
+            EmployeeCode = null, // Legacy account without code
+            RowVersion = new byte[16],
+            IsActive = true,
+            IsEmailConfirmed = true
+        });
+
+        var generator = new StubEmployeeCodeGenerator("NV000099");
+        var service = new UserService(repo, new DirectUnitOfWork(), new NoOpAudit(), new AdminActor(), employeeCodes: generator);
+
+        var updateReq = new UpdateUserRequest
+        {
+            Username = "legacy_user",
+            Email = "legacy@test.local",
+            DisplayName = "Legacy User Renamed",
+            EmployeeCode = null, // No code provided
+            RowVersion = Convert.ToBase64String(new byte[16])
+        };
+
+        var result = await service.UpdateAsync(99, updateReq, default);
+        Assert.Equal("NV000099", result.EmployeeCode);
+        Assert.Equal("Legacy User Renamed", result.DisplayName);
+    }
+
     // Helper stubs
+    private sealed class StubEmployeeCodeGenerator(string code) : IEmployeeCodeGenerator
+    {
+        public Task<string> NextAsync(CancellationToken ct) => Task.FromResult(code);
+    }
+
     private sealed class StubDepartmentCodeGenerator(string code) : IDepartmentCodeGenerator
     {
         public Task<string> NextAsync(CancellationToken ct) => Task.FromResult(code);

@@ -71,7 +71,7 @@ public sealed class UserInvitationService(IRepository repo, IUnitOfWork uow, IPa
                 var currentCodes=await repo.ListAsync(EffectivePermissionQuery.ForUser(repo,actor.UserId!.Value),ct);
                 if(roles.Any(x=>x.Code=="ADMIN_IT")||(await repo.ListAsync(codes,ct)).Any(code=>!currentCodes.Contains(code)))throw new BusinessException(403,"PRIVILEGE_ESCALATION","Không được cấp nhóm có quyền vượt quyền hiện tại.");
             }
-            var employeeCode = employeeCodes != null ? await employeeCodes.NextAsync(ct) : request.EmployeeCode;
+            var employeeCode = employeeCodes != null ? await employeeCodes.NextAsync(ct) : null;
             var user=new User {Username=request.Username,NormalizedUsername=normalizedUsername,Email=request.Email,NormalizedEmail=normalizedEmail,
                 FullName=request.DisplayName,EmployeeCode=employeeCode,DepartmentId=request.DepartmentId,Phone=request.Phone,CreatedByUserId=actor.UserId,
                 IsEmailConfirmed=false,ActivationTokenHash=hash,ActivationExpiresAtUtc=Now.AddMinutes(30),InvitationEmailStatus="Pending"};

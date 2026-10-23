@@ -1,5 +1,21 @@
 # API Specification
 
+## Contract update 24/10/2026 — Chuẩn hóa mã tự sinh và bất biến
+
+- **Người dùng (Users):**
+  - `POST /api/v1/users`: Không nhận `employeeCode` từ client; mã nhân viên luôn do hệ thống tự động sinh theo định dạng chuẩn `NVxxxxxx`.
+  - `PUT /api/v1/users/{id}`: `employeeCode` là trường bất biến (`EMPLOYEE_CODE_IMMUTABLE` - 400 khi thay đổi). Đối với tài khoản cũ chưa có mã nhân viên, hệ thống tự động cấp phát mã chuẩn khi cập nhật, từ chối mọi trường hợp client tự chỉ định mã.
+- **Phòng ban (Departments):**
+  - `POST /api/v1/masters/departments`: Client không cần gửi mã phòng ban; hệ thống tự động sinh mã chuẩn theo định dạng `PBxxxxxx`.
+  - `PUT /api/v1/masters/departments/{id}`: Mã phòng ban là bất biến (400 khi thay đổi); có thể bỏ trống trong request cập nhật để giữ nguyên mã hiện tại.
+- **Loại tài sản (Asset Types):**
+  - `POST /api/v1/masters/asset-types`: Mã loại tài sản (`Code`, ví dụ: `LAPTOP`, `DESKTOP`) là mã phân loại danh mục ngữ nghĩa cấu hình thủ công bắt buộc.
+  - `PUT /api/v1/masters/asset-types/{id}`: Mã loại tài sản là bất biến (400 khi thay đổi); có thể bỏ trống trong request cập nhật để giữ nguyên mã hiện tại.
+- **Phiếu bảo trì (Maintenance):**
+  - `POST /api/v1/asset-maintenance`: Mã phiếu được tự sinh chuẩn hóa theo định dạng `BTxxxxxx` (thay thế tiền tố `MT-<guid>`).
+- **Tài sản (Assets):**
+  - `POST /api/v1/assets`: Duy trì mã tự sinh `AST-xxxxxx` qua sequence hạ tầng chuẩn hóa chung.
+
 ## Prepared Maintenance integration 21/10/2026 — disabled, chưa deploy
 
 Local merge source Thiện có GET/POST `/api/v1/asset-maintenance`, GET `/{id}`, POST `/{id}/complete`; Controller giữ nguyên để owner review khác biệt với EP-036–045 bên dưới. Missing/false/invalid `Features:MaintenanceApi:Enabled` đóng discovery/OpenAPI và middleware trước auth/DB. Không thêm setting opt-in hoặc grants. `MaintenanceComplete` alias `maintenance.resolve`; không có permission `maintenance.complete` mới. Create mở PENDING không đổi asset; complete yêu cầu IN_PROGRESS/assignee/start/version và ghi RESOLVED theo existing constraints. StartedAtUtc nullable, OpenedAtUtc tách riêng; cost scoped/masked, explicit null vẫn là field supplied. Full assign/start/fail/cancel/history/UI/schema-readiness/real-JWT rollout vẫn PLANNED và do Thiện sở hữu. [Runtime giới hạn, tests và handoff](maintenance-integration-fix-2026-10-21.md).

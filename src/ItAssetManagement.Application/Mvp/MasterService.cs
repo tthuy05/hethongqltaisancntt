@@ -34,10 +34,18 @@ public sealed class MasterService(IRepository repo, IUnitOfWork uow, IAuditWrite
         {
             x.Code = await departmentCodes.NextAsync(ct);
         }
-        else if (department && id != null && string.IsNullOrWhiteSpace(x.Code))
+        else if (id != null && string.IsNullOrWhiteSpace(x.Code))
         {
-            var existingDept = await repo.FirstAsync(repo.Query<Department>().Where(d => d.Id == id), ct) ?? throw NotFound(true);
-            x.Code = existingDept.Code;
+            if (department)
+            {
+                var existingDept = await repo.FirstAsync(repo.Query<Department>().Where(d => d.Id == id), ct) ?? throw NotFound(true);
+                x.Code = existingDept.Code;
+            }
+            else
+            {
+                var existingType = await repo.FirstAsync(repo.Query<AssetType>().Where(t => t.Id == id), ct) ?? throw NotFound(false);
+                x.Code = existingType.Code;
+            }
         }
         else
         {
@@ -76,7 +84,7 @@ public sealed class MasterService(IRepository repo, IUnitOfWork uow, IAuditWrite
                 var t = id == null ? new AssetType() :
                     await repo.FirstAsync(repo.Query<AssetType>(true).Where(t => t.Id == id), ct) ?? throw NotFound(false);
                 before = id == null ? null : Safe(t);
-                if (id != null) { repo.ExpectVersion(t, Validation.Version(x.RowVersion)); }
+                if (id != null) { Immutable(t.Code, x.Code); repo.ExpectVersion(t, Validation.Version(x.RowVersion)); }
                 else { t.Code = x.Code; repo.Add(t); }
                 t.Code = x.Code; t.Name = x.Name; t.Description = x.Description; t.DefaultUsefulLifeMonths = x.DefaultUsefulLifeMonths;
                 entity = t;

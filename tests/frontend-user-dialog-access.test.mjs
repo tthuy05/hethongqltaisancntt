@@ -96,7 +96,7 @@ test('user commands lock captured inputs, single-flight, and release detached co
         sendCommand(dom, action, label);
         assert.equal(calls.length, 1); assert.equal(calls[0][0], 21); assert.equal(calls[0][1].rowVersion, version);
       } finally { modal.remove(); finish(method === 'update' ? user : { user, warnings: [] }); await until(() => confirm.getAttribute('aria-busy') === null); }
-      for (const input of inputs) assert.equal(input.tagName === 'SELECT' || input.getAttribute('type') === 'checkbox' ? input.disabled : input.readOnly, false);
+      for (const input of inputs) assert.equal(input.tagName === 'SELECT' || input.getAttribute('type') === 'checkbox' ? input.disabled : input.readOnly, input.getAttribute('name') === 'employeeCode');
       assert.doesNotMatch(dom.body.textContent, /Đã cập nhật/); root.remove();
     }
   } finally { dom.restore(); }

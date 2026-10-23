@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Data;
+using System.Data.Common;
 using System.Globalization;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
@@ -8,6 +9,7 @@ using ItAssetManagement.Domain.Entities;
 using ItAssetManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Npgsql;
 
 namespace ItAssetManagement.Infrastructure.Mvp;
 
@@ -31,6 +33,41 @@ public static class BusinessCodeGeneratorEngine
 {
     private static readonly ConcurrentDictionary<string, bool> EnsuredSequences = new();
 
+    public static void ResetEnsuredSequences()
+    {
+        EnsuredSequences.Clear();
+    }
+
+    public static async Task EnsureSequenceAsync(
+        DbConnection conn,
+        DbTransaction? transaction,
+        string sequenceName,
+        string prefix,
+        string tableName,
+        string columnName,
+        CancellationToken ct)
+    {
+        await using var ensureCmd = conn.CreateCommand();
+        ensureCmd.Transaction = transaction;
+        ensureCmd.CommandText = $@"
+DO $$
+DECLARE
+    highest bigint;
+BEGIN
+    PERFORM pg_advisory_xact_lock(837112, hashtext('{sequenceName}'));
+    IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relkind = 'S' AND relname = '{sequenceName}') THEN
+        CREATE SEQUENCE public.{sequenceName} START WITH 1;
+        SELECT COALESCE(MAX(SUBSTRING({columnName} FROM '[0-9]+')::bigint), 0) INTO highest
+        FROM public.{tableName}
+        WHERE {columnName} ~ '^{prefix}[0-9]+$';
+        IF highest > 0 THEN
+            PERFORM setval('public.{sequenceName}', highest, true);
+        END IF;
+    END IF;
+END $$;";
+        await ensureCmd.ExecuteNonQueryAsync(ct);
+    }
+
     public static async Task<string> NextCodeAsync<TEntity>(
         AppDbContext db,
         string sequenceName,
@@ -38,7 +75,8 @@ public static class BusinessCodeGeneratorEngine
         string tableName,
         string columnName,
         Func<string, Expression<Func<TEntity, bool>>> predicateFactory,
-        CancellationToken ct) where TEntity : class
+        CancellationToken ct,
+        string? conflictErrorCode = null) where TEntity : class
     {
         bool isNpgsql = false;
         try
@@ -60,29 +98,17 @@ public static class BusinessCodeGeneratorEngine
                     await db.Database.OpenConnectionAsync(ct);
                 }
 
+                var currentTx = db.Database.CurrentTransaction?.GetDbTransaction();
+
                 if (!EnsuredSequences.ContainsKey(sequenceName))
                 {
                     try
                     {
-                        await using var ensureCmd = conn.CreateCommand();
-                        ensureCmd.Transaction = db.Database.CurrentTransaction?.GetDbTransaction();
-                        ensureCmd.CommandText = $@"
-DO $$
-DECLARE
-    highest bigint;
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relkind = 'S' AND relname = '{sequenceName}') THEN
-        CREATE SEQUENCE public.{sequenceName} START WITH 1;
-        SELECT COALESCE(MAX(SUBSTRING({columnName} FROM '[0-9]+')::bigint), 0) INTO highest
-        FROM public.{tableName}
-        WHERE {columnName} ~ '^{prefix}[0-9]+$';
-        IF highest > 0 THEN
-            PERFORM setval('public.{sequenceName}', highest, true);
-        END IF;
-    END IF;
-END $$;";
-                        await ensureCmd.ExecuteNonQueryAsync(ct);
-                        EnsuredSequences.TryAdd(sequenceName, true);
+                        await EnsureSequenceAsync(conn, currentTx, sequenceName, prefix, tableName, columnName, ct);
+                        if (currentTx == null)
+                        {
+                            EnsuredSequences.TryAdd(sequenceName, true);
+                        }
                     }
                     catch
                     {
@@ -90,10 +116,30 @@ END $$;";
                     }
                 }
 
-                await using var command = conn.CreateCommand();
-                command.Transaction = db.Database.CurrentTransaction?.GetDbTransaction();
-                command.CommandText = $"SELECT nextval('public.{sequenceName}')";
-                var value = Convert.ToInt64(await command.ExecuteScalarAsync(ct));
+                long value;
+                try
+                {
+                    await using var command = conn.CreateCommand();
+                    command.Transaction = currentTx;
+                    command.CommandText = $"SELECT nextval('public.{sequenceName}')";
+                    value = Convert.ToInt64(await command.ExecuteScalarAsync(ct));
+                }
+                catch (Exception ex) when (IsRelationMissing(ex))
+                {
+                    // Sequence does not exist (e.g. from rolled-back DDL or missing relation).
+                    // Evict from cache, re-ensure sequence, and retry.
+                    EnsuredSequences.TryRemove(sequenceName, out _);
+                    await EnsureSequenceAsync(conn, currentTx, sequenceName, prefix, tableName, columnName, ct);
+                    if (currentTx == null)
+                    {
+                        EnsuredSequences.TryAdd(sequenceName, true);
+                    }
+
+                    await using var retryCmd = conn.CreateCommand();
+                    retryCmd.Transaction = currentTx;
+                    retryCmd.CommandText = $"SELECT nextval('public.{sequenceName}')";
+                    value = Convert.ToInt64(await retryCmd.ExecuteScalarAsync(ct));
+                }
 
                 var code = prefix + value.ToString("D6", CultureInfo.InvariantCulture);
                 if (!await db.Set<TEntity>().AnyAsync(predicateFactory(code), ct))
@@ -102,7 +148,8 @@ END $$;";
                 }
             }
 
-            throw new BusinessException(409, $"{prefix}_CODE_ALLOCATION_CONFLICT", $"Chưa cấp được mã {prefix}, hãy thử lại sau.");
+            var errCode = conflictErrorCode ?? $"{prefix.TrimEnd('-')}_CODE_ALLOCATION_CONFLICT";
+            throw new BusinessException(409, errCode, $"Chưa cấp được mã {prefix}, hãy thử lại sau.");
         }
         else
         {
@@ -110,6 +157,14 @@ END $$;";
             var value = FallbackCodeCounter.Next(sequenceName);
             return prefix + value.ToString("D6", CultureInfo.InvariantCulture);
         }
+    }
+
+    private static bool IsRelationMissing(Exception ex)
+    {
+        if (ex is PostgresException pg && pg.SqlState == "42P01") return true;
+        if (ex.InnerException is PostgresException pgInner && pgInner.SqlState == "42P01") return true;
+        var msg = ex.Message;
+        return msg.Contains("42P01") || (msg.Contains("does not exist", StringComparison.OrdinalIgnoreCase) && msg.Contains("relation", StringComparison.OrdinalIgnoreCase));
     }
 }
 

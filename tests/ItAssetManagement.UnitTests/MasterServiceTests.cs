@@ -145,4 +145,26 @@ public sealed class MasterServiceTests
         Assert.False(repo.Departments[0].IsActive);
         Assert.Contains("departments.status.change", audit.Actions);
     }
+
+    [Fact]
+    public async Task AssetType_code_cannot_be_changed_on_update()
+    {
+        var repo = new Repository();
+        repo.Types.Add(new() { Id = 1, Code = "LAPTOP", Name = "Laptop", RowVersion = new byte[16] });
+        var e = await Assert.ThrowsAsync<BusinessException>(() => Service(repo).WriteAsync(false, 1,
+            new() { Code = "LAPTOP_NEW", Name = "Laptop Renamed", RowVersion = Convert.ToBase64String(new byte[16]) }, default));
+        Assert.Equal(400, e.Status);
+        Assert.True(e.Errors!.ContainsKey("code"));
+    }
+
+    [Fact]
+    public async Task AssetType_code_can_be_omitted_on_update_and_preserves_existing_code()
+    {
+        var repo = new Repository();
+        repo.Types.Add(new() { Id = 1, Code = "LAPTOP", Name = "Laptop", RowVersion = new byte[16] });
+        var result = await Service(repo).WriteAsync(false, 1,
+            new() { Code = "", Name = "Laptop Updated", RowVersion = Convert.ToBase64String(new byte[16]) }, default);
+        Assert.Equal("LAPTOP", result.Code);
+        Assert.Equal("Laptop Updated", result.Name);
+    }
 }
