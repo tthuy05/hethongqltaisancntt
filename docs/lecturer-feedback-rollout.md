@@ -1,5 +1,9 @@
 # Tiền triển khai 6 nhận xét giảng viên — backup, restore và migration rehearsal
 
+> **Production email-only rollout23/10 hoàn tất:** [báo cáo thực tế](email-production-deployment-2026-10-23.md), main/Render11e8c4b; LF migration đã apply,18/41/85/96/history4; gửi email thật, kích hoạt và login PASS. Không merge toàn bộ PR#1/không rollout các chức năng còn lại. Giữ các checkpoints NO-GO bên dưới làm evidence lịch sử.
+
+> **Cập nhật kiểm tra 23/10/2026:** xem [Email rollout readiness](email-rollout-readiness-2026-10-23.md) cho trạng thái mới nhất. Candidate0cc6176/CI39550524919 PASS; PR#1 hiện OPEN không draft, auto-merge=false, khác main261files. Render vẫn1bc2767; shared vẫn18/41/83/96/history3, chưa có4invitationcolumns. Dashboard thực tế: Free/main/After CI Checks Pass/PR Previews Off, Health Check Path rỗng; Environment chỉ có database/JWT, chưa liệt kê Brevo key/linked group. Dump cũ hash khớp nhưng hết freshness. Chưa migration/deploy/đổi settings/email thật. Các checkpoint, draft status và timestamp bên dưới là **evidence lịch sử**, không phải phê duyệt triển khai hiện tại.
+
 Evidence backup ngày 11/10/2026 UTC; addendum gate ngày **12/10/2026 GMT+7**. **BACKUP PASS / ACTUAL RESTORE PASS / ISOLATED MIGRATION PASS / LOCAL MAINTENANCE GATE PASS / SHARED DEPLOYMENT NO-GO.** Tiếp nối [báo cáo implementation](lecturer-feedback-remediation-report.md); không làm lại chức năng hoặc migration đã hoàn tất.
 
 Đợt backup/gate local không apply migration/seed lên shared `neondb`, merge main, push thêm, deploy/Suspend Render, gửi email thật hoặc bật Assignment. Đợt backup chỉ đọc shared, tạo một database phục hồi mới riêng biệt và thử migration trên bản sao. Addendum gate chỉ thêm/kiểm thử local theo phê duyệt; không truy cập database thật trong các test gate. Publication tiếp nối được chuẩn bị riêng ở mục11, chỉ trên nhánh PR để chạy CI, không thay đổi production.
