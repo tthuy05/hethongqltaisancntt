@@ -38,6 +38,31 @@ public static class BusinessCodeGeneratorEngine
         EnsuredSequences.Clear();
     }
 
+    public sealed record ControlledSequence(
+        string SequenceName,
+        string Prefix,
+        string TableName,
+        string ColumnName);
+
+    public static readonly IReadOnlyList<ControlledSequence> ControlledSequences = new ControlledSequence[]
+    {
+        new("asset_code_sequence", "AST-", "assets", "asset_code"),
+        new("employee_code_sequence", "NV", "users", "employee_code"),
+        new("department_code_sequence", "PB", "departments", "code"),
+        new("maintenance_ticket_code_sequence", "BT", "maintenance_tickets", "ticket_code"),
+        new("software_code_sequence", "PM", "softwares", "code"),
+        new("license_code_sequence", "BQ", "software_licenses", "license_code")
+    };
+
+    public static async Task EnsureControlledSequencesAsync(DbConnection conn, CancellationToken ct = default)
+    {
+        foreach (var seq in ControlledSequences)
+        {
+            await EnsureSequenceAsync(conn, null, seq.SequenceName, seq.Prefix, seq.TableName, seq.ColumnName, ct);
+            EnsuredSequences.TryAdd(seq.SequenceName, true);
+        }
+    }
+
     public static async Task EnsureSequenceAsync(
         DbConnection conn,
         DbTransaction? transaction,
@@ -100,19 +125,26 @@ END $$;";
 
                 var currentTx = db.Database.CurrentTransaction?.GetDbTransaction();
 
+                // Controlled sequence initialization:
+                // If sequence has not been ensured, initialize it outside any ambient transaction.
+                // In PostgreSQL:
+                // 1. Running DDL inside currentTx is vulnerable to transaction rollback (sequence destroyed).
+                // 2. Any DDL error would poison/abort currentTx (SQLSTATE 25P02).
+                // Initializing outside currentTx ensures sequence existence is durable and currentTx remains clean.
                 if (!EnsuredSequences.ContainsKey(sequenceName))
                 {
-                    try
+                    if (currentTx == null)
                     {
-                        await EnsureSequenceAsync(conn, currentTx, sequenceName, prefix, tableName, columnName, ct);
-                        if (currentTx == null)
-                        {
-                            EnsuredSequences.TryAdd(sequenceName, true);
-                        }
+                        await EnsureSequenceAsync(conn, null, sequenceName, prefix, tableName, columnName, ct);
+                        EnsuredSequences.TryAdd(sequenceName, true);
                     }
-                    catch
+                    else
                     {
-                        // Proceed even if schema check cannot run; nextval will execute if sequence exists.
+                        await using var isolatedConn = (DbConnection)Activator.CreateInstance(conn.GetType())!;
+                        isolatedConn.ConnectionString = conn.ConnectionString;
+                        await isolatedConn.OpenAsync(ct);
+                        await EnsureSequenceAsync(isolatedConn, null, sequenceName, prefix, tableName, columnName, ct);
+                        EnsuredSequences.TryAdd(sequenceName, true);
                     }
                 }
 
@@ -124,21 +156,19 @@ END $$;";
                     command.CommandText = $"SELECT nextval('public.{sequenceName}')";
                     value = Convert.ToInt64(await command.ExecuteScalarAsync(ct));
                 }
-                catch (Exception ex) when (IsRelationMissing(ex))
+                catch (Exception ex)
                 {
-                    // Sequence does not exist (e.g. from rolled-back DDL or missing relation).
-                    // Evict from cache, re-ensure sequence, and retry.
-                    EnsuredSequences.TryRemove(sequenceName, out _);
-                    await EnsureSequenceAsync(conn, currentTx, sequenceName, prefix, tableName, columnName, ct);
-                    if (currentTx == null)
+                    if (IsRelationMissing(ex))
                     {
-                        EnsuredSequences.TryAdd(sequenceName, true);
+                        EnsuredSequences.TryRemove(sequenceName, out _);
                     }
 
-                    await using var retryCmd = conn.CreateCommand();
-                    retryCmd.Transaction = currentTx;
-                    retryCmd.CommandText = $"SELECT nextval('public.{sequenceName}')";
-                    value = Convert.ToInt64(await retryCmd.ExecuteScalarAsync(ct));
+                    // CRITICAL: In PostgreSQL, if an error occurred inside an active transaction (currentTx != null),
+                    // PostgreSQL marks the transaction as aborted (25P02: current transaction is aborted,
+                    // commands ignored until end of transaction block).
+                    // We must NEVER execute any recovery queries or retries on an aborted transaction.
+                    // Propagate the exception immediately to let the caller safely roll back.
+                    throw;
                 }
 
                 var code = prefix + value.ToString("D6", CultureInfo.InvariantCulture);

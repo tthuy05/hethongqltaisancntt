@@ -1,42 +1,41 @@
 # Project Status
 
-## 24/10/2026 — Kiểm định, gia cố và hoàn thiện nhánh feature/auto-code-generation
+## 24/10/2026 — Kiểm định, gia cố an toàn Transaction và sẵn sàng bàn giao Import/Export Excel
 
-Thực hiện rà soát chuyên sâu, gia cố an toàn hạ tầng và hoàn thiện toàn diện nhánh `feature/auto-code-generation`:
+Hoàn tất kiểm chứng chuyên sâu trên nhánh `feature/auto-code-generation` trước khi bàn giao sang module Import/Export Excel:
 
-1. **Gia cố cơ chế tự khởi tạo PostgreSQL Sequence (`BusinessCodeGenerators.cs` & `AssetCodeGenerator.cs`):**
-   - **Chống race condition đa instance:** Tích hợp PostgreSQL transaction-level advisory lock (`PERFORM pg_advisory_xact_lock(837112, hashtext('{sequenceName}'));`) bên trong khối DO khởi tạo, triệt tiêu nguy cơ xung đột danh mục khi nhiều instance cùng khởi tạo sequence đồng thời.
-   - **Xử lý rủi ro rollback transaction:** Không lưu trạng thái vào cache `EnsuredSequences` khi đang nằm trong ambient transaction (`currentTx != null`), ngăn chặn triệt để tình trạng đầu độc cache in-memory nếu transaction chứa lệnh DDL bị rollback.
-   - **Tự phục hồi lỗi quan hệ chưa tồn tại (Self-healing on 42P01):** Bắt ngoại lệ `PostgresException` mã `42P01` (undefined table/relation) khi gọi `SELECT nextval(...)`: tự động xóa cache, kích hoạt lại `EnsureSequenceAsync` và thử lại lệnh `nextval`.
-   - **Tái cấu trúc `AssetCodeGenerator`:** Chuyển sang dùng chung engine hạ tầng `BusinessCodeGeneratorEngine`, chia sẻ 100% cơ chế advisory lock, quét dữ liệu cũ và tự phục hồi lỗi.
+1. **Khắc phục triệt để nguy cơ lỗi PostgreSQL 25P02 / 42P01 trong Transaction (`BusinessCodeGenerators.cs`):**
+   - **Bản chất vấn đề:** Trong PostgreSQL, khi một lệnh SQL bên trong transaction block bị lỗi (ví dụ `42P01: relation does not exist`), PostgreSQL lập tức đánh dấu transaction ở trạng thái hủy (`25P02: current transaction is aborted, commands ignored until end of transaction block`). Bất kỳ lệnh SQL nào tiếp tục gửi vào connection với transaction đó (kể cả lệnh DDL khắc phục `EnsureSequenceAsync` hay `retryCmd`) đều thất bại với lỗi `25P02`.
+   - **Giải pháp dứt điểm:**
+     - Ưu tiên cơ chế **khởi tạo sequence có kiểm soát** (`EnsureControlledSequencesAsync`), định nghĩa danh mục 6 thực thể (`ControlledSequences`) chuẩn hóa.
+     - Khi cần đảm bảo sequence tại runtime: nếu đang có ambient transaction (`currentTx != null`), generator mở một kết nối độc lập riêng biệt (`isolatedConn`) để thực thi khối DO chứa advisory lock và `CREATE SEQUENCE IF NOT EXISTS`, commit ngay lập tức bên ngoài transaction nghiệp vụ của người gọi. Nhờ vậy, `currentTx` không bị đụng chạm, sequence được tạo bền vững và không bao giờ xảy ra lỗi `42P01` khi gọi `SELECT nextval(...)`.
+     - Tuyệt đối không thực thi SQL phục hồi trên transaction đã bị đánh dấu lỗi: nếu `SELECT nextval` xảy ra lỗi, cache `EnsuredSequences` bị xóa và ngoại lệ được rethrow ngay để caller rollback.
 
-2. **Bổ sung bài kiểm thử tích hợp PostgreSQL Cô Lập (`BusinessCodeGeneratorIntegrationTests.cs`):**
-   - Bổ sung 4 ca kiểm thử chuyên sâu chạy trên PostgreSQL thực tế sử dụng thuộc tính `[NeonFact]`:
-     - Khởi tạo sequence trực tiếp trên hệ thống catalog `pg_class` (`relkind = 'S'`).
-     - Bảo tồn dữ liệu cũ: quét mã lớn nhất (`PB000xxx`) và sinh mã tiếp theo lớn hơn bản ghi lịch sử.
-     - Kiểm tra an toàn trước transaction rollback: rollback giao dịch không làm hỏng trình tạo mã và ca cấp phát sau vẫn thành công.
-     - Chống trùng lặp đa luồng: 15 request song song sinh 15 mã phân biệt đơn điệu.
-   - **Quy định kiểm thử trung thực:** Bổ sung ca kiểm thử khẳng định rõ ràng bộ test offline (`FallbackCodeCounter`) chỉ kiểm tra định dạng và luồng nghiệp vụ, không được xem là bằng chứng PostgreSQL live đã PASS.
+2. **Gia cố tính độc lập của bài test Rollback (`BusinessCodeGeneratorIntegrationTests.cs`):**
+   - Độc lập với trạng thái khởi tạo trước: kiểm tra với `ResetEnsuredSequences()` để bảo đảm logic khởi tạo tự động bên ngoài transaction hoạt động chính xác ngay cả khi sequence chưa từng tồn tại trước khi test chạy.
+   - Phân biệt rõ ràng giữa mã đã cấp trong transaction rollback với mã của bản ghi thực sự được lưu:
+     - Giao dịch rollback: stage thực thể người dùng với `rolledBackCode`, rollback giao dịch -> khẳng định không có bản ghi nào tồn tại trong database (`Assert.Null(unpersisted)`).
+     - Giao dịch tiếp theo: cấp phát `nextCode`, tạo thực thể và commit -> khẳng định bản ghi với `nextCode` tồn tại thực sự trong database.
+   - Không đưa ra giả định cứng nhắc không tái sử dụng số đã rollback (`Assert.NotEqual`), mà khẳng định tính toàn vẹn của database: đúng 1 bản ghi duy nhất tồn tại và không có va chạm mã (`Assert.Single(matchingRecords)`).
 
-3. **Gia cố bảo mật UserService và Frontend Read-Only (`UserService.cs` & `users.js`):**
-   - **Chặn hoàn toàn việc tự chỉ định `EmployeeCode`:** Loại bỏ khối mã cho phép gán `request.EmployeeCode` khi `user.EmployeeCode == null`.
-   - **Bất biến và tự sinh cho tài khoản cũ:** Bất kỳ request cập nhật nào truyền `EmployeeCode` khác với mã hiện có đều bị từ chối `400 EMPLOYEE_CODE_IMMUTABLE`. Với tài khoản cũ chưa có mã, hệ thống tự động sinh mã chuẩn `NVxxxxxx` khi cập nhật hồ sơ.
-   - **Chế độ chỉ đọc thực sự ở Frontend:** Gán `readOnly: true` trực tiếp trên phần tử input HTML trong `users.js`, loại bỏ cơ chế chặn phím tạm thời; cập nhật ca kiểm thử tương ứng trong `frontend-user-dialog-access.test.mjs`.
+3. **Xác nhận toàn diện `AssetImportService` ([src/ItAssetManagement.Application/Import/AssetImportService.cs](src/ItAssetManagement.Application/Import/AssetImportService.cs)):**
+   - Đã kiểm chứng `AssetImportService` sử dụng `IAssetCodeGenerator` (`codes.NextAsync(ct)`) được tiêm từ DI.
+   - Mọi dòng hợp lệ khi nhập khẩu được cấp mã `AST-xxxxxx` duy nhất từ sequence engine.
+   - Chặn tuyệt đối việc tự điền mã tài sản trong file Excel (`READ_ONLY_FIELD`), bắt buộc để trống để hệ thống tự cấp.
+   - Kiểm tra chống trùng số serial trên cả file và cơ sở dữ liệu (`DuplicateFile`, `DuplicateDb`).
+   - Nhập khẩu là Create-Only: không ghi đè, không sửa đổi mã tài sản của các bản ghi cũ trong cơ sở dữ liệu.
+   - Chế độ `dryRun` không tiêu tốn sequence và không tạo bản ghi mới.
+   - Bổ sung unit test `Import_committed_assigns_canonical_generated_codes_and_preserves_legacy_assets` trong `ImportExportSecurityTests.cs` để bảo vệ các bất biến này.
 
-4. **Rà soát `AssetType.Code`:**
-   - Xác định `AssetType.Code` là **mã phân loại danh mục ngữ nghĩa cấu hình thủ công** (semantic category code như `LAPTOP`, `DESKTOP`, `SERVER`), phục vụ phân loại thiết bị, nhập khẩu Excel và tính khấu hao.
-   - Giữ nguyên cơ chế cấu hình thủ công có chủ đích; bổ sung kiểm tra bất biến `Immutable(t.Code, x.Code)` trong `MasterService.cs` và `readOnly: Boolean(item)` trên giao diện `masters.js` để ngăn chặn việc sửa đổi mã loại tài sản sau khi tạo.
-
-5. **Chuẩn hóa liên kết tài liệu:**
-   - Chuyển đổi 100% liên kết máy cá nhân `file:///` trong `docs/business-code-generation.md` thành đường dẫn tương đối dùng được trên GitHub.
-
-6. **Kết quả kiểm thử thực tế (Evidence-Based):**
-   - `.NET Build -c Release`: **0 Warning, 0 Error**.
-   - **Backend Unit Tests:** **775 tests PASS**, 0 fail, 0 skipped.
-   - **Backend Integration Tests (Offline):** **198 tests PASS**, 161 cloud tests SKIP theo đúng guard `ITAM_RUN_NEON_TESTS=1`.
+4. **Báo cáo kết quả kiểm thử thực tế (Evidence-Based):**
+   - **.NET Build -c Release:** **0 Warning(s), 0 Error(s)**.
+   - **Backend Unit Tests:** **778 tests PASS**, 0 fail, 0 skipped (+3 test mới).
+   - **Backend Integration Tests (Offline):** **198 tests PASS**, 0 fail.
+   - **Kiểm thử PostgreSQL Cô Lập (`[NeonFact]`):** **161 cloud tests SKIP** theo đúng opt-in guard (`ITAM_RUN_NEON_TESTS=1`). Môi trường hiện tại chưa cấu hình connection string tới database cô lập rehearsal, ghi nhận rõ ràng là **chưa kiểm chứng thực địa**, không báo PASS giả mạo.
    - **Frontend Tests (`npm.cmd test`):** **369 tests PASS**, 0 fail.
-   - **Frontend CSP & Code Syntax Checks:** **48 Syntax PASS**, **52 CSP Checks PASS**.
-   - **Quy tắc an toàn:** Không tự merge `main`, không deploy Render, không chỉnh sửa database Neon production.
+   - **Frontend CSP & Cú Pháp:** **48 Syntax PASS**, **52 CSP Checks PASS**.
+   - **Mức độ sẵn sàng cho Import/Export Excel:** Toàn bộ cơ chế tự sinh mã, bảo vệ transaction, kiểm tra trùng lặp và tính bất biến đã hoàn thiện 100%, sẵn sàng cho việc hoàn thiện module Import/Export Excel.
+   - **Tuân thủ quy tắc AGENTS.md:** Không tự merge `main`, không deploy Render, không ghi dữ liệu lên Neon production.
 
 ## 24/10/2026 — Tiếp quản và hoàn thành tích hợp Git: main và codex/lecturer-feedback
 

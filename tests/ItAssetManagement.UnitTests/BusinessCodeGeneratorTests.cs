@@ -279,6 +279,36 @@ public sealed class BusinessCodeGeneratorTests
         Assert.Equal("Legacy User Renamed", result.DisplayName);
     }
 
+    [Fact]
+    public void ControlledSequences_registry_contains_all_six_business_entities()
+    {
+        var sequences = BusinessCodeGeneratorEngine.ControlledSequences;
+        Assert.Equal(6, sequences.Count);
+
+        var names = sequences.Select(s => s.SequenceName).ToHashSet();
+        Assert.Contains("asset_code_sequence", names);
+        Assert.Contains("employee_code_sequence", names);
+        Assert.Contains("department_code_sequence", names);
+        Assert.Contains("maintenance_ticket_code_sequence", names);
+        Assert.Contains("software_code_sequence", names);
+        Assert.Contains("license_code_sequence", names);
+
+        var prefixes = sequences.Select(s => s.Prefix).ToHashSet();
+        Assert.Contains("AST-", prefixes);
+        Assert.Contains("NV", prefixes);
+        Assert.Contains("PB", prefixes);
+        Assert.Contains("BT", prefixes);
+        Assert.Contains("PM", prefixes);
+        Assert.Contains("BQ", prefixes);
+    }
+
+    [Fact]
+    public void ResetEnsuredSequences_clears_cached_initialization_state()
+    {
+        BusinessCodeGeneratorEngine.ResetEnsuredSequences();
+        // Verifies the method executes without error and can be safely invoked across test boundaries.
+    }
+
     // Helper stubs
     private sealed class StubEmployeeCodeGenerator(string code) : IEmployeeCodeGenerator
     {

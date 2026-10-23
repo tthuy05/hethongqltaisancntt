@@ -74,23 +74,87 @@ public sealed class BusinessCodeGeneratorIntegrationTests(MvpFixture fixture)
     [NeonFact]
     public async Task Transaction_rollback_does_not_corrupt_generator_state_or_fail_future_allocations()
     {
+        // Reset local in-memory cache to guarantee test independence regardless of whether sequence
+        // was previously initialized or not.
+        BusinessCodeGeneratorEngine.ResetEnsuredSequences();
+
         await using var scope = fixture.Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var empGen = scope.ServiceProvider.GetRequiredService<IEmployeeCodeGenerator>();
 
-        // Intentionally allocate within a transaction that will be rolled back
         string rolledBackCode = "";
+        // 1. Allocate within a transaction, stage an entity with this code, and roll back
         await using (var tx = await db.Database.BeginTransactionAsync(default))
         {
             rolledBackCode = await empGen.NextAsync(default);
             Assert.Matches(@"^NV\d{6}$", rolledBackCode);
+
+            var testUser = new User
+            {
+                Username = fixture.Prefix + "rb_usr",
+                NormalizedUsername = (fixture.Prefix + "rb_usr").ToUpperInvariant(),
+                Email = fixture.Prefix + "rb_usr@fixture.test",
+                NormalizedEmail = (fixture.Prefix + "rb_usr@fixture.test").ToUpperInvariant(),
+                FullName = "Rollback Staged User",
+                EmployeeCode = rolledBackCode,
+                IsActive = true,
+                IsEmailConfirmed = true
+            };
+            db.Add(testUser);
+            await db.SaveChangesAsync(default);
+
             await tx.RollbackAsync(default);
         }
 
-        // Subsequent allocation outside transaction or in new transaction must succeed gracefully
-        var nextCode = await empGen.NextAsync(default);
-        Assert.Matches(@"^NV\d{6}$", nextCode);
-        Assert.NotEqual(rolledBackCode, nextCode);
+        // 2. Distinguish: The record staged in the rolled-back transaction was NOT persisted to the database
+        await using (var verifyScope = fixture.Factory.Services.CreateAsyncScope())
+        {
+            var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var unpersisted = await verifyDb.Set<User>().AsNoTracking().FirstOrDefaultAsync(u => u.EmployeeCode == rolledBackCode);
+            Assert.Null(unpersisted);
+        }
+
+        // 3. Subsequent allocation succeeds gracefully in a new transaction and can be committed
+        string nextCode = "";
+        await using (var commitScope = fixture.Factory.Services.CreateAsyncScope())
+        {
+            var commitDb = commitScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var nextEmpGen = commitScope.ServiceProvider.GetRequiredService<IEmployeeCodeGenerator>();
+
+            await using var commitTx = await commitDb.Database.BeginTransactionAsync(default);
+            nextCode = await nextEmpGen.NextAsync(default);
+            Assert.Matches(@"^NV\d{6}$", nextCode);
+
+            var committedUser = new User
+            {
+                Username = fixture.Prefix + "ok_usr",
+                NormalizedUsername = (fixture.Prefix + "ok_usr").ToUpperInvariant(),
+                Email = fixture.Prefix + "ok_usr@fixture.test",
+                NormalizedEmail = (fixture.Prefix + "ok_usr@fixture.test").ToUpperInvariant(),
+                FullName = "Committed User",
+                EmployeeCode = nextCode,
+                IsActive = true,
+                IsEmailConfirmed = true
+            };
+            commitDb.Add(committedUser);
+            await commitDb.SaveChangesAsync(default);
+            await commitTx.CommitAsync(default);
+        }
+
+        // 4. Verify database state: exactly one record exists with a valid allocated code,
+        // without making ungrounded assumptions about whether rolled-back sequence numbers were reused or gapped.
+        await using (var finalScope = fixture.Factory.Services.CreateAsyncScope())
+        {
+            var finalDb = finalScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var persisted = await finalDb.Set<User>().AsNoTracking().FirstOrDefaultAsync(u => u.EmployeeCode == nextCode);
+            Assert.NotNull(persisted);
+            Assert.Equal(nextCode, persisted.EmployeeCode);
+
+            var matchingRecords = await finalDb.Set<User>().AsNoTracking()
+                .Where(u => u.EmployeeCode == rolledBackCode || u.EmployeeCode == nextCode)
+                .ToListAsync();
+            Assert.Single(matchingRecords);
+        }
     }
 
     [NeonFact]

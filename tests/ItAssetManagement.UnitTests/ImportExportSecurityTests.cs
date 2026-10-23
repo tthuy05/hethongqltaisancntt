@@ -507,4 +507,70 @@ public sealed class ImportExportSecurityTests
         // Preview is read-only, including audit and sequence state.
         Assert.Empty(audit.Records); Assert.Equal(0, repo.Saves);
     }
+
+    [Fact]
+    public async Task Import_committed_assigns_canonical_generated_codes_and_preserves_legacy_assets()
+    {
+        var actor = new FakeActor();
+        actor.Grants.Add(Permissions.ImportAssets);
+        actor.Grants.Add(Permissions.AssetCost);
+
+        var repo = new FakeRepository();
+        repo.Seed(new Department { Id = 1, Name = "IT Department", Code = "IT", IsActive = true });
+        repo.Seed(new AssetType { Id = 1, Name = "Laptop", Code = "LAP", IsActive = true });
+
+        // Seed an existing legacy asset with an existing code
+        var legacyAsset = new Asset
+        {
+            Id = 1,
+            AssetCode = "AST-000001",
+            Name = "Legacy Machine",
+            SerialNumber = "LEGACY-SN-001",
+            AssetTypeId = 1,
+            OwningDepartmentId = 1,
+            CurrentStatus = "IN_STOCK"
+        };
+        repo.Seed(legacyAsset);
+
+        var uow = new FakeUnitOfWork();
+        var audit = new FakeAuditWriter();
+        var fakeGenerator = new SequentialAssetCodeGenerator(["AST-000002", "AST-000003"]);
+        var service = new AssetImportService(repo, uow, actor, audit, fakeGenerator);
+
+        var headers = new[] { "Tên tài sản", "Loại tài sản", "Phòng ban", "Số serial", "Giá mua" };
+        var rows = new List<IReadOnlyList<object?>>
+        {
+            new object?[] { "New Laptop A", "Laptop", "IT Department", "SN-NEW-001", 1500m },
+            new object?[] { "New Laptop B", "Laptop", "IT Department", "SN-NEW-002", 1800m }
+        };
+        var fileBytes = SafeExcelWorkbookWriter.CreateWorkbook(headers, rows);
+
+        using var ms = new MemoryStream(fileBytes);
+        var result = await service.ImportAssetsAsync(
+            ms, "import.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileBytes.Length);
+
+        Assert.True(result.Committed);
+        Assert.Equal(2, result.ValidRows);
+        Assert.Empty(result.Errors);
+
+        // Verify legacy asset code is completely unchanged
+        var legacyInDb = repo.Query<Asset>().Single(a => a.Id == 1);
+        Assert.Equal("AST-000001", legacyInDb.AssetCode);
+        Assert.Equal("Legacy Machine", legacyInDb.Name);
+
+        // Verify new assets received canonical generated codes without collisions
+        var importedAssets = repo.Query<Asset>().Where(a => a.Id != 1).OrderBy(a => a.AssetCode).ToList();
+        Assert.Equal(2, importedAssets.Count);
+        Assert.Equal("AST-000002", importedAssets[0].AssetCode);
+        Assert.Equal("AST-000003", importedAssets[1].AssetCode);
+        Assert.NotEqual(legacyInDb.AssetCode, importedAssets[0].AssetCode);
+        Assert.NotEqual(importedAssets[0].AssetCode, importedAssets[1].AssetCode);
+    }
+
+    private sealed class SequentialAssetCodeGenerator(IEnumerable<string> codes) : IAssetCodeGenerator
+    {
+        private readonly Queue<string> _queue = new(codes);
+        public Task<string> NextAsync(CancellationToken ct) =>
+            Task.FromResult(_queue.Count > 0 ? _queue.Dequeue() : "AST-" + Guid.NewGuid().ToString("N")[..6]);
+    }
 }
