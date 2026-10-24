@@ -1,4 +1,4 @@
-import { createApiServices } from './api-services.js';
+﻿import { createApiServices } from './api-services.js';
 export { ServiceError } from './service-error.js';
 
 /** Production entry: never select demo services, including on localhost. */
@@ -7,6 +7,6 @@ export function createServices({ mode = 'api', ...options } = {}) {
   return createApiServices(options);
 }
 
-export const services = createServices();
+export const services = createServices({ reportingEnabled: true, importExportEnabled: true, importExportEnabled: true });
 export const { auth, assets, departments, assetTypes, dashboard } = services;
 export default services;

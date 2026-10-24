@@ -1,4 +1,4 @@
-import { createMockServices } from './mock-services.js';
+﻿import { createMockServices } from './mock-services.js';
 import { createApiServices } from './api-services.js';
 export { ServiceError } from './service-error.js';
 
@@ -15,6 +15,6 @@ export function createServices({ mode = 'api', hostname = globalThis.location?.h
 const hostname = globalThis.location?.hostname ?? '';
 const localHost = ['localhost', '127.0.0.1'].includes(hostname);
 const demoRequested = new URLSearchParams(globalThis.location?.search ?? '').get('demo') === '1';
-export const services = createServices({ mode: localHost && demoRequested ? 'mock' : 'api', hostname });
+export const services = createServices({ mode: localHost && demoRequested ? 'mock' : 'api', hostname, reportingEnabled: true, importExportEnabled: true });
 export const { auth, assets, departments, assetTypes, dashboard } = services;
 export default services;

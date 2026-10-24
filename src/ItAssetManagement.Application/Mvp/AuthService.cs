@@ -1,4 +1,4 @@
-using System.Net.Mail;
+﻿using System.Net.Mail;
 using ItAssetManagement.Domain.Entities;
 
 namespace ItAssetManagement.Application.Mvp;
@@ -62,6 +62,6 @@ public sealed class AuthService(IRepository repo, IUnitOfWork uow, IPasswordServ
                               join p in repo.Query<Permission>() on rp.PermissionId equals p.Id
                               where p.IsActive && Permissions.All.Contains(p.Code) select p.Code;
         var permissions = await repo.ListAsync(permissionQuery.Distinct().OrderBy(x => x), ct);
-        return new(user.Id, user.FullName, user.Email, user.DepartmentId, roles.ToArray(), permissions.ToArray());
+        return new(user.Id, user.FullName, user.Email, user.DepartmentId, roles.ToArray(), roles.Contains("ADMIN_IT") ? permissions.Union(Permissions.Reports).Union(Permissions.ImportExport).Distinct().OrderBy(x => x).ToArray() : permissions.ToArray());
     }
 }

@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using ItAssetManagement.Domain.Entities;
 
 namespace ItAssetManagement.Application.Mvp;
@@ -103,6 +103,7 @@ public static class Permissions
         AssignmentRead, AssignmentAssign, AssignmentReturn, .. ImportExport];
     public static readonly string[] Admin = [DepartmentCreate, DepartmentUpdate, DepartmentArchive, TypeCreate, TypeUpdate, TypeArchive,
         UserRead, UserCreate, UserUpdate, UserStatus, RoleAssign, RolePermissionsRead, AuditRead];
+    public static readonly string[] Reports = [ReportAssets, ReportAssignments, ReportMaintenance, ReportLicenses, ReportReplacement, ReportCost, DashboardCost];
     public static readonly string[] All = [.. Read, .. Operate, .. Admin];
     public static readonly string[] Roles = ["ADMIN_IT", "SYSTEM_MANAGER", "TECHNICAL_SUPPORT"];
     // Compatibility name for Thien's prepared service, not a new permission/grant.
