@@ -181,6 +181,22 @@ test('reportsPage shows purchase cost when user has reports.cost.read', async ()
   }
 });
 
+test('dashboard permission denial is 403 without misclassifying a valid session or fetching Reports', async () => {
+  const dom = installDom('/dashboard');
+  try {
+    const services = fakeServices({ permissions: ['assets.read'] });
+    let calls = 0;
+    services.dashboardV2.summary = async () => { calls++; };
+    await assert.rejects(dashboardPage(services), { status: 403, code: 'FORBIDDEN' });
+    assert.equal(calls, 0);
+    assert.equal(services.auth.session.id, 7);
+    services.auth.session.permissions = ['dashboard.read'];
+    services.dashboardV2.summary = async () => { services.auth.session.permissions = []; return {}; };
+    await assert.rejects(dashboardPage(services), { status: 403, code: 'FORBIDDEN' });
+    assert.equal(services.auth.session.id, 7);
+  } finally { dom.restore(); }
+});
+
 test('dashboardPage displays operational KPIs and includes financial cards only with cost permission', async () => {
   const dom = installDom('/dashboard');
   try {

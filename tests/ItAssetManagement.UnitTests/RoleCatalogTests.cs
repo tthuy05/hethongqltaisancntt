@@ -6,6 +6,39 @@ namespace ItAssetManagement.UnitTests;
 
 public sealed class RoleCatalogTests
 {
+    [Theory]
+    [InlineData("ADMIN_IT", false)]
+    [InlineData("ADMIN_IT", true)]
+    [InlineData("SYSTEM_MANAGER", true)]
+    [InlineData("TECHNICAL_SUPPORT", true)]
+    public async Task Authentication_uses_effective_grants_without_role_based_report_or_excel_bonus(string roleCode, bool custom)
+    {
+        var repo = new Repository(
+            new User[] { new() { Id = 8, IsActive = true, IsEmailConfirmed = true, HasCustomPermissions = custom } },
+            new Role[] { new() { Id = 31, Code = roleCode, Name = "Role", IsActive = true } },
+            new UserRole[] { new() { Id = 1, UserId = 8, RoleId = 31 } },
+            new Permission[] {
+                new() { Id = 1, Code = Permissions.AssetRead, Name = "Assets", Module = "assets" },
+                new() { Id = 2, Code = Permissions.ImportAssets, Name = "Import", Module = "imports" },
+                new() { Id = 3, Code = Permissions.ExportAssets, Name = "Export", Module = "exports" },
+                new() { Id = 4, Code = Permissions.ReportAssets, Name = "Prepared report", Module = "reports" },
+                new() { Id = 5, Code = Permissions.UserCreate, Name = "Ungrantable", Module = "users" } },
+            new RolePermission[] {
+                new() { Id = 1, RoleId = 31, PermissionId = 1 },
+                new() { Id = 2, RoleId = 31, PermissionId = 2 },
+                new() { Id = 3, RoleId = 31, PermissionId = 3 },
+                new() { Id = 4, RoleId = 31, PermissionId = 4 } },
+            new UserPermission[] {
+                new() { Id = 1, UserId = 8, PermissionId = 1 },
+                new() { Id = 2, UserId = 8, PermissionId = 5 } });
+        var current = await new AuthService(repo, null!, null!, null!, null!).ValidateAsync(8, 0, default);
+        Assert.NotNull(current);
+        Assert.Equal([roleCode], current.Roles);
+        Assert.Equal(custom ? [Permissions.AssetRead] : new[] { Permissions.AssetRead, Permissions.ImportAssets, Permissions.ExportAssets }.Order().ToArray(), current.Permissions);
+        Assert.DoesNotContain(Permissions.UserCreate, current.Permissions); // User allow-list cannot exceed the role.
+        Assert.DoesNotContain(Permissions.ReportAssets, current.Permissions); // Prepared catalog is still closed.
+    }
+
     private static Repository Data() => new(
         new Role[] { new() { Id = 31, Code = "ADMIN_IT", Name = "Same" }, new() { Id = 7, Code = "SYSTEM_MANAGER", Name = "Same" },
             new() { Id = 52, Code = "TECHNICAL_SUPPORT", Name = "Support%_", IsActive = false }, new() { Id = 99, Code = "CUSTOM", Name = "Custom" } },

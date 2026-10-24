@@ -8,8 +8,10 @@ export async function dashboardPage(services) {
   const useReporting = services.reportingEnabled === true && Boolean(services.dashboardV2);
   const verify = () => {
     if (!Number.isSafeInteger(actorId) || actorId <= 0 || services.auth?.session?.id !== actorId ||
-        window.location.hash !== initialHash || !can(services, useReporting ? 'dashboard.read' : 'assets.read'))
+        window.location.hash !== initialHash)
       throw new ServiceError(401, 'SESSION_CHANGED', 'Phiên hoặc trang đã thay đổi.');
+    if (!can(services, useReporting ? 'dashboard.read' : 'assets.read'))
+      throw new ServiceError(403, 'FORBIDDEN', 'Bạn không có quyền xem tổng quan hệ thống.');
   };
   verify();
   let summary = null;

@@ -58,7 +58,7 @@ public sealed class AuthService(IRepository repo, IUnitOfWork uow, IPasswordServ
         var roleQuery = from ur in repo.Query<UserRole>() join role in repo.Query<Role>() on ur.RoleId equals role.Id
                         where ur.UserId == user.Id && role.IsActive select role;
         var roles = await repo.ListAsync(roleQuery.Select(x => x.Code).Distinct().OrderBy(x => x), ct);
-          var permissions = await repo.ListAsync(EffectivePermissionQuery.ForUser(repo, user.Id).OrderBy(x => x), ct);
-          return new(user.Id, user.FullName, user.Email, user.DepartmentId, roles.ToArray(), roles.Contains("ADMIN_IT") ? permissions.Union(Permissions.Reports).Union(Permissions.ImportExport).Distinct().OrderBy(x => x).ToArray() : permissions.ToArray());
+        var permissions = await repo.ListAsync(EffectivePermissionQuery.ForUser(repo, user.Id).OrderBy(x => x), ct);
+        return new(user.Id, user.FullName, user.Email, user.DepartmentId, roles.ToArray(), permissions.ToArray());
     }
 }

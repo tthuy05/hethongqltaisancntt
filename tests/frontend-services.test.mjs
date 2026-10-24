@@ -16,6 +16,9 @@ async function mock(role = 'ADMIN_IT') {
 test('mock gate rejects non-local hosts; isolated default has no automatic mock', () => {
   assert.throws(() => createServices({ mode: 'mock', hostname: 'example.com' }), errorWith(403, 'MOCK_DISABLED'));
   assert.equal(defaultServices.mode, 'api');
+  assert.equal(defaultServices.reportingEnabled, false);
+  assert.equal(defaultServices.importExportEnabled, true);
+  assert.equal(createServices({ reportingEnabled: true }).reportingEnabled, true);
   assert.throws(() => createServices({ mode: 'unexpected' }), TypeError);
 });
 test('login validation, safe session and logout work without credential storage', async () => {
