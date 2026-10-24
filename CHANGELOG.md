@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — 24/10/2026 — Production rollout & Neon permissions sync
+
+- Added: enabled `Features:ImportExportApi:Enabled` in `appsettings.json` for live production deployment.
+- Added: synced 5 Excel permissions into Neon production database (`neondb`) with advisory lock and audit logging; granted to `ADMIN_IT` and `SYSTEM_MANAGER` (0 grants to `TECHNICAL_SUPPORT`).
+- Added: backup snapshot of pre-sync permissions in `artifacts/neon-permissions-backup-before-sync.json`.
+- Merged: PR #3 fast-forwarded and merged into `main`. Cleaned up temporary `takeover/excel-acceptance` branch.
+
 ## Unreleased — 24/10/2026 — Excel authorization & permission catalog sync
 
 - Fixed: resolved 403 Forbidden error for valid accounts by integrating 5 Excel permissions (`import.assets.execute`, `export.assets.execute`, `export.maintenance.execute`, `export.assignments.execute`, `export.replacement.execute`) into `Permissions.ImportExport`, `Permissions.Operate`, and `Permissions.All` (catalog count: 33).
