@@ -1,5 +1,45 @@
 # Permission Matrix
 
+## Cơ chế Phân quyền người dùng (Cập nhật 24/10/2026 — Single Role & Custom Permissions)
+
+- **Nguyên tắc Single Role per User**: Mỗi người dùng thuộc duy nhất 1 Role (`ADMIN_IT`, `SYSTEM_MANAGER`, `TECHNICAL_SUPPORT` hoặc Role tùy chỉnh). Không cho phép chọn hoặc gán đồng thời nhiều Role.
+- **Role là giới hạn quyền tối đa (Role Permissions Upper Bound)**: Role xác định tập quyền trần mà một người dùng thuộc Role đó có thể được cấp.
+- **Phân quyền riêng theo từng User (`UserAllowedPermissions`)**:
+  - Hai người dùng cùng một Role có thể sở hữu tập quyền hiệu lực thực tế khác nhau.
+  - Khi tạo hoặc sửa người dùng, quản trị viên chọn 1 Role duy nhất và có thể tùy chỉnh đánh dấu/bỏ chọn từng quyền trong giới hạn của Role.
+  - Người dùng không thể sở hữu bất kỳ quyền nào nằm ngoài Role (`PRIVILEGE_ESCALATION` - 400).
+  - Thu hồi quyền của Role sẽ tự động làm mất quyền tương ứng của mọi User thuộc Role.
+  - Bổ sung quyền mới vào Role không tự động nâng quyền cho User đã được cấu hình quyền riêng tùy chỉnh (`has_custom_permissions = true`).
+  - Hỗ trợ nút "Khôi phục mặc định theo vai trò" để hủy quyền riêng tùy chỉnh và quay lại nhận đủ quyền của Role.
+- **Công thức tính quyền hiệu lực**:
+  $$\text{EffectivePermissions} = \text{RolePermissions} \cap \text{UserAllowedPermissions} \cap \text{AvailablePermissions}$$
+- **Vô hiệu hóa phiên cũ**: Khi quyền hoặc Role của User bị thay đổi, hệ thống tăng `TokenVersion`, lập tức làm mất hiệu lực của các JWT cũ mang quyền đã bị thu hồi.
+- **Bảo vệ Admin cuối cùng**: Không cho phép thu hồi Role Admin hoặc tước các quyền quản trị thiết yếu của tài khoản Admin có thể đăng nhập cuối cùng.
+
+### Giao diện ma trận phân quyền người dùng (Cập nhật UI/UX 24/10/2026)
+
+- **Modal kích thước rộng (`dialog--wide`)**: Chiều rộng mở rộng tới 1000px trên desktop, tối ưu không gian hiển thị danh sách quyền không bị gò bó.
+- **Bố cục phân tầng tuần tự**:
+  1. **Khối thông tin người dùng**:
+     - Khi *Thêm người dùng*: 6 trường thông tin tài khoản được xếp dạng lưới 2 cột gọn gàng (`.user-profile-section`).
+     - Khi *Phân quyền người dùng*: Thanh tóm tắt hồ sơ (`.user-role-summary-bar`) hiển thị họ tên, tài khoản, mã nhân viên tự sinh (`NVxxxxxx`), email và phòng ban.
+  2. **Khối chọn Vai trò (`.role-choices-box`)**:
+     - Hiển thị danh sách vai trò dạng thẻ radio trực quan (`.role-radio-card`), làm nổi bật vai trò đang được chọn bằng viền và nền active. Mỗi người dùng chỉ chọn một vai trò duy nhất.
+     - Khi chuyển vai trò trong khi đang có quyền tùy chỉnh, hệ thống hiển thị hộp thoại xác nhận trước khi tính toán lại tập quyền.
+  3. **Khối Ma trận quyền (`.user-permissions-panel`)**:
+     - Đặt ngay bên dưới phần chọn Vai trò và chiếm trọn 100% chiều ngang vùng nội dung của modal, tạo cảm giác khối nội dung chính trực quan và chuyên nghiệp.
+     - Lưới hiển thị các nhóm quyền 2 cột trên desktop (`.permission-matrix-body`), tự động thích ứng 1 cột trên màn hình di động/tablet (<820px).
+     - Mỗi module card hiển thị rõ ràng tiêu đề module tiếng Việt cùng số lượng quyền đã chọn theo module (`X/Y`).
+     - Checkbox 17px, tên quyền tiếng Việt đầy đủ và chú thích quyền phụ thuộc không bị ép chật hay tràn ngang.
+- **Triệt tiêu cuộn lồng nhiều lớp (Zero Nested Scroll)**:
+  - Loại bỏ hoàn toàn thanh cuộn riêng biệt bên trong widget ma trận quyền (`overflow-y: auto`, `max-height: 48vh`).
+  - Toàn bộ nội dung modal nằm trong một vùng cuộn dọc duy nhất (`.dialog-body`), header và footer được ghim cố định (`flex-shrink: 0`).
+- **Thao tác nhanh**:
+  - Huy hiệu tổng số quyền trực tiếp (`Đã chọn: X/Y quyền`), tự động đổi trạng thái trực quan giữa "Mặc định theo vai trò" (xanh lá) và "Tùy chỉnh riêng" (vàng cam).
+  - Nút "Khôi phục mặc định theo vai trò" tức thì đưa danh sách quyền về đúng định mức của Role.
+  - Nút "Xem trước quyền hiệu lực" hiển thị danh sách tag quyền hiệu lực.
+
+
 ## Shared helper 12/10/2026 — LOCAL / UNDER REVIEW, chưa bật module
 
 Đã chuẩn bị scope/field policy của Thủy cho Maintenance; constants chưa vào catalog active hoặc seed. [Contract và giới hạn](week-04-maintenance-access-handoff.md): Support assigned-only, queue/self-claim mặc định deny khi chưa có policy; cost presence kể cả null/0 cần quyền; nhóm tùy chỉnh không tự được global scope. Endpoint/DTO integration và scope review còn PLANNED. Không thay đổi grant production.

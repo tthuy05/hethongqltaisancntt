@@ -24,10 +24,12 @@ public sealed class UserAccountTests
     [Fact]
     public void Roles_require_unique_positive_bounded_ids_and_allow_explicit_empty_replacement()
     {
-        foreach (var ids in new long[][] { null!, [0], [-1], [1, 1], Enumerable.Range(1,51).Select(x=>(long)x).ToArray() })
+        foreach (var ids in new long[][] { null!, [0], [-1], [1, 1], [3, 1], Enumerable.Range(1,51).Select(x=>(long)x).ToArray() })
             Assert.Throws<BusinessException>(() => UserAccountValidation.Roles(new() { RoleIds = ids, RowVersion = Version }));
-        var request = new ReplaceUserRolesRequest { RoleIds = [3, 1], RowVersion = Version };
-        UserAccountValidation.Roles(request); Assert.Equal([1L, 3L], request.RoleIds);
+        var request = new ReplaceUserRolesRequest { RoleIds = [3], RowVersion = Version };
+        UserAccountValidation.Roles(request); Assert.Equal([3L], request.RoleIds);
+        var requestWithSingleId = new ReplaceUserRolesRequest { RoleId = 2, RoleIds = [], RowVersion = Version };
+        UserAccountValidation.Roles(requestWithSingleId); Assert.Equal([2L], requestWithSingleId.RoleIds);
         Assert.Equal(16, UserAccountValidation.Roles(new() { RoleIds = [], RowVersion = Version }).Length);
         Assert.Throws<BusinessException>(() => UserAccountValidation.Roles(new() { RoleIds = [], RowVersion = "bad" }));
     }

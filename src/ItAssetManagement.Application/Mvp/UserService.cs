@@ -18,6 +18,8 @@ public sealed class CreateUserRequest : UserProfileRequest
 {
     public string? Password { get; set; }
     public long[] RoleIds { get; set; } = [];
+    public long? RoleId { get; set; }
+    public string[]? PermissionCodes { get; set; }
 }
 public sealed class UpdateUserRequest : UserProfileRequest
 {
@@ -73,8 +75,10 @@ public static class UserValidation
     {
         Profile(request);
         if (request.Password != null) throw Validation.Invalid("password", "Người dùng tự đặt mật khẩu qua email kích hoạt; Admin không nhập mật khẩu.");
-        if(request.RoleIds==null || request.RoleIds.Length is <1 or >50 || request.RoleIds.Any(x=>x<=0) || request.RoleIds.Distinct().Count()!=request.RoleIds.Length)
-            throw Validation.Invalid("roleIds", "Chọn ít nhất một nhóm hợp lệ, tối đa 50 nhóm không trùng.");
+        if (request.RoleId.HasValue && (request.RoleIds == null || request.RoleIds.Length == 0))
+            request.RoleIds = [request.RoleId.Value];
+        if (request.RoleIds == null || request.RoleIds.Length != 1 || request.RoleIds[0] <= 0)
+            throw Validation.Invalid("roleId", "Mỗi người dùng chỉ được sở hữu đúng một vai trò.");
     }
     public static void List(UserListQuery query)
     {

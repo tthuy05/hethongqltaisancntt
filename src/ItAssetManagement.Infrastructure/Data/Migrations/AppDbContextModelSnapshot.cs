@@ -1728,6 +1728,12 @@ namespace ItAssetManagement.Infrastructure.Data.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("full_name");
 
+                    b.Property<bool>("HasCustomPermissions")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("has_custom_permissions");
+
                     b.Property<string>("InvitationEmailStatus")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -1845,6 +1851,49 @@ namespace ItAssetManagement.Infrastructure.Data.Migrations
 
                             t.HasCheckConstraint("ck_users_token_version_nonnegative", "token_version >= 0");
                         });
+                });
+
+            modelBuilder.Entity("ItAssetManagement.Domain.Entities.UserPermission", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("GrantedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("granted_at_utc")
+                        .HasDefaultValueSql("clock_timestamp()");
+
+                    b.Property<long?>("GrantedByUserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("granted_by_user_id");
+
+                    b.Property<long>("PermissionId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("permission_id");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_permissions");
+
+                    b.HasIndex("GrantedByUserId")
+                        .HasDatabaseName("ix_user_permissions_granted_by_user_id");
+
+                    b.HasIndex("PermissionId", "UserId")
+                        .HasDatabaseName("ix_user_permissions_permission");
+
+                    b.HasIndex("UserId", "PermissionId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_user_permissions_user_permission");
+
+                    b.ToTable("user_permissions", "public");
                 });
 
             modelBuilder.Entity("ItAssetManagement.Domain.Entities.UserRole", b =>
@@ -2170,6 +2219,29 @@ namespace ItAssetManagement.Infrastructure.Data.Migrations
                         .HasForeignKey("UpdatedByUserId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .HasConstraintName("fk_users_updated_by_user_id");
+                });
+
+            modelBuilder.Entity("ItAssetManagement.Domain.Entities.UserPermission", b =>
+                {
+                    b.HasOne("ItAssetManagement.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("GrantedByUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_user_permissions_granted_by_user_id");
+
+                    b.HasOne("ItAssetManagement.Domain.Entities.Permission", null)
+                        .WithMany()
+                        .HasForeignKey("PermissionId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_permissions_permission_id");
+
+                    b.HasOne("ItAssetManagement.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_permissions_user_id");
                 });
 
             modelBuilder.Entity("ItAssetManagement.Domain.Entities.UserRole", b =>

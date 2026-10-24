@@ -86,8 +86,10 @@ export async function assetListPage(services) {
     { key: 'warranty', label: 'Bảo hành', render: row => row.detail ? date(row.detail.warrantyExpirationDate) : 'Không tải được' },
     { key: 'actions', label: 'Thao tác', render: row => h('div', { className: 'actions' }, button('Xem', { kind: 'ghost', iconName: 'eye', onClick: () => route('/assets/' + row.id), 'aria-label': 'Xem ' + row.assetCode }), can(services, 'assets.update') ? button('Sửa', { kind: 'ghost', iconName: 'pencil', onClick: () => route('/assets/' + row.id + '/edit'), 'aria-label': 'Sửa ' + row.assetCode }) : null, can(services, 'assets.read') && can(services, 'assets.archive') ? archiveAction(row) : null) }
   ];
-  return h('div', {}, pageHeader('Danh sách tài sản', 'Tra cứu, theo dõi và quản lý thiết bị trong doanh nghiệp.', { eyebrow: 'Tài sản', actions: [...assetExcelActions(services, query, () => window.location.hash === pageHash && services.auth?.session?.id === actorId && can(services, 'assets.read')),
-    ...(can(services, 'assets.create') ? [button('Thêm tài sản', { iconName: 'plus', onClick: () => route('/assets/new') })] : [])] }), h('section', { className: 'card filters-card' }, filters), h('section', { className: 'card' }, h('div', { className: 'card-header' }, h('h2', {}, 'Danh mục thiết bị'), h('span', { className: 'meta' }, result.totalItems + ' tài sản')), dataTable({ columns, rows, emptyMessage: 'Không tìm thấy tài sản. Thử thay đổi hoặc đặt lại bộ lọc.' }), pagination(result, page => setQuery('/assets', { ...query, page }))));
+  return h('div', {}, pageHeader('Danh sách tài sản', 'Tra cứu, theo dõi và quản lý thiết bị trong doanh nghiệp.', { eyebrow: 'Tài sản', actions: [
+    ...(can(services, 'assets.create') ? [button('Thêm tài sản', { iconName: 'plus', onClick: () => route('/assets/new') })] : []),
+    ...assetExcelActions(services, query, () => window.location.hash === pageHash && services.auth?.session?.id === actorId && can(services, 'assets.read'))
+  ] }), h('section', { className: 'card filters-card' }, filters), h('section', { className: 'card' }, h('div', { className: 'card-header' }, h('h2', {}, 'Danh mục thiết bị'), h('span', { className: 'meta' }, result.totalItems + ' tài sản')), dataTable({ columns, rows, emptyMessage: 'Không tìm thấy tài sản. Thử thay đổi hoặc đặt lại bộ lọc.' }), pagination(result, page => setQuery('/assets', { ...query, page }))));
 }
 
 export async function assetDetailPage(services, id) {

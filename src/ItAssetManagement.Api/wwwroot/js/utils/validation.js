@@ -109,8 +109,13 @@ export function validateUser(dto = {}, { isUpdate = false } = {}) {
   if (present(dto.departmentId) && !isPositiveId(dto.departmentId)) error(errors, 'departmentId', 'Phòng ban phải là ID hợp lệ hoặc để trống.');
   if (isUpdate) {
     if (typeof dto.rowVersion !== 'string' || !/^[A-Za-z0-9+/]{22}==$/.test(dto.rowVersion)) error(errors, 'rowVersion', 'Tải lại hồ sơ trước khi lưu.');
-  } else if (!Array.isArray(dto.roleIds) || !dto.roleIds.length || dto.roleIds.length > 50 || dto.roleIds.some(id => !Number.isSafeInteger(id) || id <= 0) || new Set(dto.roleIds).size !== dto.roleIds.length) error(errors, 'roleIds', 'Chọn ít nhất một nhóm quyền hợp lệ.');
-  const allowed = ['username', 'email', 'displayName', 'employeeCode', 'departmentId', 'phone', ...(isUpdate ? ['rowVersion'] : ['roleIds'])];
+  } else if (!Array.isArray(dto.roleIds) || dto.roleIds.length !== 1 || !Number.isSafeInteger(dto.roleIds[0]) || dto.roleIds[0] <= 0) {
+    error(errors, 'roleIds', 'Mỗi người dùng chỉ được sở hữu đúng một vai trò.');
+  }
+  if (!isUpdate && dto.permissionCodes != null && (!Array.isArray(dto.permissionCodes) || dto.permissionCodes.some(c => typeof c !== 'string'))) {
+    error(errors, 'permissionCodes', 'Danh sách quyền không hợp lệ.');
+  }
+  const allowed = ['username', 'email', 'displayName', 'employeeCode', 'departmentId', 'phone', ...(isUpdate ? ['rowVersion'] : ['roleIds', 'roleId', 'permissionCodes'])];
   for (const key of Object.keys(dto)) if (!allowed.includes(key)) error(errors, key, 'Trường này không thuộc hồ sơ người dùng.');
   return errors;
 }
@@ -124,8 +129,15 @@ export function validateUserStatus(dto = {}) {
 }
 export function validateUserRoles(dto = {}) {
   const errors = {};
-  if (!Array.isArray(dto.roleIds) || dto.roleIds.length > 50 || dto.roleIds.some(id => !Number.isSafeInteger(id) || id <= 0) || new Set(dto.roleIds).size !== dto.roleIds.length) error(errors, 'roleIds', 'Chọn tối đa 50 nhóm hợp lệ; không trùng.');
+  if (dto.roleId != null && (!dto.roleIds || !dto.roleIds.length)) dto.roleIds = [dto.roleId];
+  if (!Array.isArray(dto.roleIds) || dto.roleIds.length > 1 || dto.roleIds.some(id => !Number.isSafeInteger(id) || id <= 0)) {
+    error(errors, 'roleIds', 'Mỗi người dùng chỉ được sở hữu tối đa một vai trò.');
+  }
+  if (dto.permissionCodes != null && (!Array.isArray(dto.permissionCodes) || dto.permissionCodes.some(c => typeof c !== 'string'))) {
+    error(errors, 'permissionCodes', 'Danh sách quyền riêng không hợp lệ.');
+  }
   if (typeof dto.rowVersion !== 'string' || !/^[A-Za-z0-9+/]{22}==$/.test(dto.rowVersion)) error(errors, 'rowVersion', 'Tải lại quyền của tài khoản.');
-  for (const key of Object.keys(dto)) if (!['roleIds', 'rowVersion'].includes(key)) error(errors, key, 'Trường không thuộc lệnh gán vai trò.');
+  const allowed = ['roleIds', 'roleId', 'permissionCodes', 'resetToRoleDefaults', 'rowVersion'];
+  for (const key of Object.keys(dto)) if (!allowed.includes(key)) error(errors, key, 'Trường không thuộc lệnh gán vai trò.');
   return errors;
 }

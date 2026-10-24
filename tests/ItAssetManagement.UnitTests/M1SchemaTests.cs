@@ -16,10 +16,10 @@ public sealed class M1SchemaTests
         using var context = new AppDbContextFactory().CreateDbContext([]);
         Assert.Null(context.Database.GetConnectionString());
         var originalTables = new InitialM1().TargetModel.GetEntityTypes().Select(e => e.GetTableName());
-        Assert.Equal(originalTables.Concat(["asset_assignments", "maintenance_tickets"]).Concat(FullSchemaBaseline.NewTables).Order(),
+        Assert.Equal(originalTables.Concat(["asset_assignments", "maintenance_tickets"]).Concat(FullSchemaBaseline.NewTables).Concat(["user_permissions"]).Order(),
             context.Model.GetEntityTypes().Select(e => e.GetTableName()).Order());
-        Assert.Equal(18,context.Model.GetEntityTypes().Count());
-        Assert.Equal(41,context.Model.GetEntityTypes().Sum(e => e.GetForeignKeys().Count()));
+        Assert.Equal(19,context.Model.GetEntityTypes().Count());
+        Assert.Equal(44,context.Model.GetEntityTypes().Sum(e => e.GetForeignKeys().Count()));
         Assert.All(context.Model.GetEntityTypes(),e =>
         {
             Assert.Equal("public",e.GetSchema());
@@ -86,7 +86,7 @@ public sealed class M1SchemaTests
         using var context = new AppDbContextFactory().CreateDbContext([]);
         Assert.Null(context.Database.GetConnectionString());
         Assert.False(context.Database.HasPendingModelChanges());
-        Assert.Equal(new[] { "20261002151601_InitialM1", "20261008080630_AddAssignmentMaintenance", FullSchemaBaseline.Migration, "20261011103054_LecturerFeedbackIdentityAndAssetCodes" }, context.Database.GetMigrations());
+        Assert.Equal(new[] { "20261002151601_InitialM1", "20261008080630_AddAssignmentMaintenance", FullSchemaBaseline.Migration, "20261011103054_LecturerFeedbackIdentityAndAssetCodes", "20261024043835_AddUserPermissions" }, context.Database.GetMigrations());
         var target = new AddAssignmentMaintenance().TargetModel;
         Assert.Equal(12,target.GetEntityTypes().Count());
         Assert.Equal(27,target.GetEntityTypes().Sum(entity => entity.GetForeignKeys().Count()));
