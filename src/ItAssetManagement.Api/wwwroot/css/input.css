@@ -484,6 +484,30 @@ progress::-moz-progress-bar { background: var(--primary); }
 .activation-page { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #f8fafc; }
 .activation-page > .card { width: min(100%, 480px); }
 .activation-page .field { margin: 16px 0; }
+/* User Custom Permissions Matrix */
+.user-permissions-panel { margin-top: 16px; border: 1px solid var(--border); border-radius: 10px; background: white; padding: 16px; }
+.permission-panel-header { display: flex; flex-direction: column; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.permission-summary { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.permission-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.permission-counter { font-size: 12px; font-weight: 500; padding: 3px 8px; border-radius: 12px; background: #EEF2F6; color: var(--text); }
+.permission-counter.custom-badge { background: #FEF3C7; color: #92400E; }
+.permission-counter.default-badge { background: #DCFCE7; color: #166534; }
+.permission-preview-box { background: var(--canvas); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-size: 12px; margin-top: 8px; }
+.preview-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.preview-tag { display: inline-block; padding: 2px 7px; border-radius: 4px; background: #E0E7FF; color: #3730A3; font-size: 11px; }
+.permission-matrix-body { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; max-height: 48vh; overflow-y: auto; padding-right: 4px; }
+.permission-module-group { border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px; background: #F8FAFC; }
+.module-title { font-size: 13px; font-weight: 600; color: #1E293B; margin-bottom: 8px; }
+.permission-checkboxes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.permission-item-label { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; cursor: pointer; padding: 4px 6px; border-radius: 6px; transition: background .12s; }
+.permission-item-label:hover { background: white; }
+.permission-item-label input[type="checkbox"] { margin-top: 2px; }
+.permission-info { display: flex; flex-direction: column; }
+.permission-name { font-weight: 500; color: var(--text); line-height: 1.35; }
+.permission-req { font-size: 11px; color: var(--muted); }
+.radio-label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
+.radio-label:hover { background: #F1F5F9; }
+
 @media (max-width: 900px) { .permission-layout { grid-template-columns: 1fr; } .permission-groups { max-height: 240px; overflow: auto; } }
 @media (max-width: 479px) {
   .login-panel { padding: 26px 22px; }

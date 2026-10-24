@@ -50,7 +50,7 @@ public sealed class UserManagementHostTests
         Assert.Equal(["departmentId", "keyword", "page", "pageSize", "roleId", "sortBy", "sortDirection", "status"],
             paths.GetProperty("/api/v1/users").GetProperty("get").GetProperty("parameters").EnumerateArray().Select(x => x.GetProperty("name").GetString()).Order());
         var schemas = document.GetProperty("components").GetProperty("schemas");
-        Assert.Equal(["departmentId", "displayName", "email", "employeeCode", "password", "phone", "roleIds", "username"],
+        Assert.Equal(["departmentId", "displayName", "email", "employeeCode", "password", "permissionCodes", "phone", "roleId", "roleIds", "username"],
             schemas.GetProperty("CreateUserRequest").GetProperty("properties").EnumerateObject().Select(x => x.Name).Order());
         Assert.Equal(["departmentId", "displayName", "email", "employeeCode", "phone", "rowVersion", "username"],
             schemas.GetProperty("UpdateUserRequest").GetProperty("properties").EnumerateObject().Select(x => x.Name).Order());

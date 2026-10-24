@@ -1,5 +1,21 @@
 # Permission Matrix
 
+## Cơ chế Phân quyền người dùng (Cập nhật 24/10/2026 — Single Role & Custom Permissions)
+
+- **Nguyên tắc Single Role per User**: Mỗi người dùng thuộc duy nhất 1 Role (`ADMIN_IT`, `SYSTEM_MANAGER`, `TECHNICAL_SUPPORT` hoặc Role tùy chỉnh). Không cho phép chọn hoặc gán đồng thời nhiều Role.
+- **Role là giới hạn quyền tối đa (Role Permissions Upper Bound)**: Role xác định tập quyền trần mà một người dùng thuộc Role đó có thể được cấp.
+- **Phân quyền riêng theo từng User (`UserAllowedPermissions`)**:
+  - Hai người dùng cùng một Role có thể sở hữu tập quyền hiệu lực thực tế khác nhau.
+  - Khi tạo hoặc sửa người dùng, quản trị viên chọn 1 Role duy nhất và có thể tùy chỉnh đánh dấu/bỏ chọn từng quyền trong giới hạn của Role.
+  - Người dùng không thể sở hữu bất kỳ quyền nào nằm ngoài Role (`PRIVILEGE_ESCALATION` - 400).
+  - Thu hồi quyền của Role sẽ tự động làm mất quyền tương ứng của mọi User thuộc Role.
+  - Bổ sung quyền mới vào Role không tự động nâng quyền cho User đã được cấu hình quyền riêng tùy chỉnh (`has_custom_permissions = true`).
+  - Hỗ trợ nút "Khôi phục mặc định theo vai trò" để hủy quyền riêng tùy chỉnh và quay lại nhận đủ quyền của Role.
+- **Công thức tính quyền hiệu lực**:
+  $$\text{EffectivePermissions} = \text{RolePermissions} \cap \text{UserAllowedPermissions} \cap \text{AvailablePermissions}$$
+- **Vô hiệu hóa phiên cũ**: Khi quyền hoặc Role của User bị thay đổi, hệ thống tăng `TokenVersion`, lập tức làm mất hiệu lực của các JWT cũ mang quyền đã bị thu hồi.
+- **Bảo vệ Admin cuối cùng**: Không cho phép thu hồi Role Admin hoặc tước các quyền quản trị thiết yếu của tài khoản Admin có thể đăng nhập cuối cùng.
+
 ## Shared helper 12/10/2026 — LOCAL / UNDER REVIEW, chưa bật module
 
 Đã chuẩn bị scope/field policy của Thủy cho Maintenance; constants chưa vào catalog active hoặc seed. [Contract và giới hạn](week-04-maintenance-access-handoff.md): Support assigned-only, queue/self-claim mặc định deny khi chưa có policy; cost presence kể cả null/0 cần quyền; nhóm tùy chỉnh không tự được global scope. Endpoint/DTO integration và scope review còn PLANNED. Không thay đổi grant production.

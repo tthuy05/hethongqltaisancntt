@@ -29,6 +29,7 @@ internal static class M1Model
         Check(u,"invitation_status", "invitation_email_status IN ('NotRequired','Pending','Sent','Sandboxed','Failed','NotConfigured','Activated')");
         u.Property(x => x.FailedLoginCount).HasDefaultValue(0);
         u.Property(x => x.TokenVersion).HasDefaultValue(0);
+        u.Property(x => x.HasCustomPermissions).HasDefaultValue(false);
         Check(u,"failed_login_nonnegative","failed_login_count >= 0");
         Check(u,"token_version_nonnegative","token_version >= 0");
         Check(u,"admin_lock_time","(NOT is_admin_locked AND admin_locked_at_utc IS NULL) OR (is_admin_locked AND admin_locked_at_utc IS NOT NULL)");
@@ -56,6 +57,12 @@ internal static class M1Model
         rp.Property(x => x.GrantedAtUtc).HasDefaultValueSql("clock_timestamp()");
         rp.HasIndex(x => new { x.RoleId, x.PermissionId }).IsUnique().HasDatabaseName("uq_role_permissions_role_permission");
         rp.HasIndex(x => new { x.PermissionId, x.RoleId }).HasDatabaseName("ix_role_permissions_permission");
+
+        var up = Table<UserPermission>(model,"user_permissions");
+        Foreign<UserPermission,User>(up,"UserId"); Foreign<UserPermission,Permission>(up,"PermissionId"); Foreign<UserPermission,User>(up,"GrantedByUserId");
+        up.Property(x => x.GrantedAtUtc).HasDefaultValueSql("clock_timestamp()");
+        up.HasIndex(x => new { x.UserId, x.PermissionId }).IsUnique().HasDatabaseName("uq_user_permissions_user_permission");
+        up.HasIndex(x => new { x.PermissionId, x.UserId }).HasDatabaseName("ix_user_permissions_permission");
 
         var at = Table<AssetType>(model,"asset_types");
         Strings(at,("Code",50),("Name",200),("Description",1000)); Mutable(at);

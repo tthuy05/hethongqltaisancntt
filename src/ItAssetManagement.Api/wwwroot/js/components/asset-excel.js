@@ -19,7 +19,7 @@ export function excelDownloadButton(services, { label = 'Xuất Excel', permissi
   const costs = ['assets.cost.read', 'reports.cost.read'].filter(p => can(services, p));
   const valid = () => excelAvailable(services) && active() && services.auth?.session?.id === actor && can(services, permission) && costs.every(p => can(services, p));
   let pending = false;
-  const control = button(label, { kind: 'secondary', onClick: async () => {
+  const control = button(label, { kind: 'secondary', iconName: 'download', onClick: async () => {
     if (pending || control.disabled || !control.isConnected || !valid()) return;
     pending = true; control.disabled = true; control.setAttribute('aria-busy', 'true');
     try {
@@ -96,7 +96,7 @@ export function assetImportDialog(services, onDone) {
 export function assetExcelActions(services, query, active) {
   if (!excelAvailable(services)) return [];
   const actions = [];
-  if (can(services, 'import.assets.execute')) actions.push(button('Nhập Excel', { kind: 'secondary', onClick: () => {
+  if (can(services, 'import.assets.execute')) actions.push(button('Nhập Excel', { kind: 'secondary', iconName: 'upload', onClick: () => {
     if (active()) assetImportDialog(services, () => window.dispatchEvent(new Event('frontend-refresh')));
   } }));
   const supportedSort = ['assetCode', 'name', 'createdAt'].includes(query.sortBy);

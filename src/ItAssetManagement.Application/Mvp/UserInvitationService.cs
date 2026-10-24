@@ -64,25 +64,60 @@ public sealed class UserInvitationService(IRepository repo, IUnitOfWork uow, IPa
             if(request.DepartmentId!=null&&!await repo.AnyAsync(repo.Query<Department>().Where(x=>x.Id==request.DepartmentId&&x.IsActive),ct))throw Validation.Invalid("departmentId","Phòng ban phải đang hoạt động.");
             var roles=await repo.ListAsync(repo.Query<Role>().Where(x=>request.RoleIds.Contains(x.Id)&&x.IsActive),ct);
             if(roles.Count!=request.RoleIds.Length)throw Validation.Invalid("roleIds","Nhóm phải tồn tại và đang hoạt động.");
-            var admin=from link in repo.Query<UserRole>() join role in repo.Query<Role>() on link.RoleId equals role.Id where link.UserId==actor.UserId&&role.IsActive&&role.Code=="ADMIN_IT" select link.Id;
-            if(!await repo.AnyAsync(admin,ct))
+            var selectedRole = roles[0];
+            var admin=from ur in repo.Query<UserRole>() join role in repo.Query<Role>() on ur.RoleId equals role.Id where ur.UserId==actor.UserId&&role.IsActive&&role.Code=="ADMIN_IT" select ur.Id;
+            var callerIsAdmin = await repo.AnyAsync(admin, ct);
+
+            var roleGrants = from grant in repo.Query<RolePermission>() join p in repo.Query<Permission>() on grant.PermissionId equals p.Id where grant.RoleId == selectedRole.Id && p.IsActive select p;
+            var rolePermissionList = await repo.ListAsync(roleGrants, ct);
+            var rolePermissionCodes = rolePermissionList.Select(p => p.Code).ToHashSet();
+
+            if(!callerIsAdmin)
             {
-                var codes=from grant in repo.Query<RolePermission>() join p in repo.Query<Permission>() on grant.PermissionId equals p.Id where request.RoleIds.Contains(grant.RoleId)&&p.IsActive select p.Code;
-                var currentCodes=await repo.ListAsync(EffectivePermissionQuery.ForUser(repo,actor.UserId!.Value),ct);
-                if(roles.Any(x=>x.Code=="ADMIN_IT")||(await repo.ListAsync(codes,ct)).Any(code=>!currentCodes.Contains(code)))throw new BusinessException(403,"PRIVILEGE_ESCALATION","Không được cấp nhóm có quyền vượt quyền hiện tại.");
+                var currentCodes=(await repo.ListAsync(EffectivePermissionQuery.ForUser(repo,actor.UserId!.Value),ct)).ToHashSet();
+                if(roles.Any(x=>x.Code=="ADMIN_IT")||rolePermissionList.Any(p=>!currentCodes.Contains(p.Code)))throw new BusinessException(403,"PRIVILEGE_ESCALATION","Không được cấp nhóm có quyền vượt quyền hiện tại.");
             }
+
+            bool hasCustom = request.PermissionCodes != null;
+            if (hasCustom)
+            {
+                foreach (var code in request.PermissionCodes!)
+                {
+                    if (!rolePermissionCodes.Contains(code))
+                        throw new BusinessException(400, "INVALID_USER_PERMISSIONS", $"Quyền '{code}' không thuộc vai trò đã chọn.");
+                }
+                if (!callerIsAdmin)
+                {
+                    var currentCodes = (await repo.ListAsync(EffectivePermissionQuery.ForUser(repo, actor.UserId!.Value), ct)).ToHashSet();
+                    if (request.PermissionCodes!.Any(code => !currentCodes.Contains(code)))
+                        throw new BusinessException(403, "PRIVILEGE_ESCALATION", "Không được cấp quyền riêng vượt quyền hiện tại.");
+                }
+            }
+
             var employeeCode = employeeCodes != null ? await employeeCodes.NextAsync(ct) : null;
             var user=new User {Username=request.Username,NormalizedUsername=normalizedUsername,Email=request.Email,NormalizedEmail=normalizedEmail,
                 FullName=request.DisplayName,EmployeeCode=employeeCode,DepartmentId=request.DepartmentId,Phone=request.Phone,CreatedByUserId=actor.UserId,
-                IsEmailConfirmed=false,ActivationTokenHash=hash,ActivationExpiresAtUtc=Now.AddMinutes(30),InvitationEmailStatus="Pending"};
+                IsEmailConfirmed=false,ActivationTokenHash=hash,ActivationExpiresAtUtc=Now.AddMinutes(30),InvitationEmailStatus="Pending",
+                HasCustomPermissions=hasCustom};
             user.PasswordHash=passwords.Hash(user,ActivationTokens.Create()); // Unusable random secret, never sent or retained.
             repo.Add(user);await repo.SaveAsync(ct);
-            audit.Record("users.invite",user,actor.UserId,"USER",after:new{user.DepartmentId,user.IsEmailConfirmed,roleCount=roles.Count});
-            foreach(var role in roles)
+            audit.Record("users.invite",user,actor.UserId,"USER",after:new{user.DepartmentId,user.IsEmailConfirmed,roleCount=roles.Count,hasCustomPermissions=hasCustom});
+
+            var link=new UserRole {UserId=user.Id,RoleId=selectedRole.Id,AssignedByUserId=actor.UserId,AssignedAtUtc=Now};
+            repo.Add(link);await repo.SaveAsync(ct);audit.Record("users.roles.add",link,actor.UserId,"USER",after:new{link.UserId,link.RoleId});
+
+            if (hasCustom)
             {
-                var link=new UserRole {UserId=user.Id,RoleId=role.Id,AssignedByUserId=actor.UserId,AssignedAtUtc=Now};
-                repo.Add(link);await repo.SaveAsync(ct);audit.Record("users.roles.add",link,actor.UserId,"USER",after:new{link.UserId,link.RoleId});
+                foreach (var code in request.PermissionCodes!.Distinct())
+                {
+                    var perm = rolePermissionList.First(p => p.Code == code);
+                    var userPerm = new UserPermission { UserId = user.Id, PermissionId = perm.Id, GrantedByUserId = actor.UserId, GrantedAtUtc = Now };
+                    repo.Add(userPerm);
+                }
+                await repo.SaveAsync(ct);
+                audit.Record("users.permissions.assign", user, actor.UserId, "USER", after: new { user.Id, permissionCount = request.PermissionCodes!.Length });
             }
+
             await repo.SaveAsync(ct);return user.Id;
         },ct);
         await DeliverAsync(id,token,hash,ct);

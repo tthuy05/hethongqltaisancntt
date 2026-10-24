@@ -47,7 +47,7 @@ public sealed class RoleCatalogHostTests
             foreach (var status in new[] { "200", "400", "401", "403" }) Assert.True(get.GetProperty("responses").TryGetProperty(status, out _));
         }
         var account = doc.GetProperty("components").GetProperty("schemas").GetProperty("UserAccountStateDto");
-        Assert.Equal(["effectivePermissions", "id", "isActive", "isAdminLocked", "roleIds", "rowVersion"], account.GetProperty("properties").EnumerateObject().Select(x => x.Name).Order());
+        Assert.Equal(["customPermissions", "effectivePermissions", "hasCustomPermissions", "id", "isActive", "isAdminLocked", "roleIds", "rolePermissions", "rowVersion"], account.GetProperty("properties").EnumerateObject().Select(x => x.Name).Order());
     }
 }
 
