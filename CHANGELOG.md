@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — 24/10/2026 — Excel authorization & permission catalog sync
+
+- Fixed: resolved 403 Forbidden error for valid accounts by integrating 5 Excel permissions (`import.assets.execute`, `export.assets.execute`, `export.maintenance.execute`, `export.assignments.execute`, `export.replacement.execute`) into `Permissions.ImportExport`, `Permissions.Operate`, and `Permissions.All` (catalog count: 33).
+- Added: `PermissionContract.Action` ("Nhập Excel", "Xuất Excel") and prerequisite mapping in `RoleManagementService`; gated Excel catalog entries behind `Features:ImportExportApi:Enabled`.
+- Added: additive role grants for `ADMIN_IT` and `SYSTEM_MANAGER` in `DevelopmentSeed`; scoped controller authorization policies on `ImportController` and `ExportController`.
+- Verified: Release build 0 warnings/0 errors; 793 unit tests PASS; 202 offline integration tests PASS (165 cloud/local-opt-in skipped); 380 frontend tests PASS; 50 JS/54 CSP checks PASS; production frontend build 45 assets PASS.
+
 ## Unreleased — 24/10/2026 — Excel acceptance
 
 - Fixed: offline sequence-test assertion now accepts the CI disabled opt-in value0; only value1 enables cloud tests. Reproduced failing CI case locally before fix; workflow and database guards unchanged.

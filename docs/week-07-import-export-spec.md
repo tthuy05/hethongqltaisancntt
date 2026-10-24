@@ -2,11 +2,45 @@
 
 Ngày cập nhật: 24/10/2026. **LOCAL IMPLEMENTATION / PRODUCTION ROLLOUT PENDING.** Theo yêu cầu tiếp quản, Thủy bổ sung UI Excel trên Backend/adapter hiện có; không mở rộng workflow Assignment/Maintenance của Thiện. Evidence 20/10 được giữ ở tài liệu review, không dùng làm kết quả của source mới.
 
-## Nghiệm thu tích hợp 24/10/2026 — CHƯA PHÊ DUYỆT MERGE/ROLLOUT
+## Nghiệm thu tích hợp 24/10/2026 — TIẾP QUẢN & HOÀN TẤT CATALOG / AUTHORIZATION
 
-Đã fetch và kiểm tra `origin/main=59dde04`, `feature/auto-code-generation=d644791`, `codex/asset-excel-ui=ef369a7`. Main và auto-code đều là tổ tiên của Excel (0 behind/5 ahead); virtual merge không conflict. Nhánh nghiệm thu `codex/excel-acceptance` kế thừa trực tiếp Excel, không merge trùng auto-code; worktree chính và 5 file WIP/report cá nhân giữ nguyên.
+Đã tiếp quản từ nhánh `codex/excel-acceptance` (commit `5d7f2e2`) sang nhánh riêng `takeover/excel-acceptance`. Kế thừa nguyên vẹn kết quả kiểm thử trình duyệt và XLSX thực tế của Codex, giải quyết dứt điểm các vấn đề authorization catalog, role grants, JWT claims và lỗi 403:
 
-### Browser và XLSX thực tế
+### 1. Đồng bộ Permission Catalog, Role Grants & JWT Claims (Đã giải quyết triệt để 403)
+- **Nguyên nhân lỗi 403 trước đây:** 5 quyền Excel (`import.assets.execute`, `export.assets.execute`, `export.maintenance.execute`, `export.assignments.execute`, `export.replacement.execute`) chưa nằm trong `Permissions.All` và `Permissions.Operate`. Do đó, `AuthService.CurrentAsync` và `EffectivePermissionQuery` tự động lọc bỏ chúng khi sinh token/claims, khiến actor hợp lệ không có claim `permission` tương ứng và bị từ chối 403 Forbidden.
+- **Giải pháp triển khai:**
+  - `Contracts.cs`: Định nghĩa `Permissions.ImportExport` gồm 5 quyền Excel, đưa vào `Permissions.Operate` và `Permissions.All` (tổng số quyền trong catalog tăng từ 28 lên 33).
+  - `RoleManagementService.cs`: Bổ sung metadata hành động (`PermissionContract.Action`: "Nhập Excel", "Xuất Excel") và ràng buộc tiên quyết (`PermissionContract.Requires`: `import.assets.execute` & `export.assets.execute` yêu cầu `assets.read`).
+  - `PermissionAvailability.cs`: Gate 5 quyền Excel theo cấu hình `Features:ImportExportApi:Enabled`.
+  - `DevelopmentSeed.cs`: Bổ sung cơ chế cấp grant additively cho `ADMIN_IT` (toàn bộ `Permissions.All`) và `SYSTEM_MANAGER` (Read + Operate) khi khởi tạo/seed.
+  - `ImportController.cs` & `ExportController.cs`: Thay thế `[Authorize]` generic bằng các policy cụ thể (`[Authorize(Policy = Permissions.ImportAssets)]`, `Permissions.ExportAssets`, `Permissions.ExportMaintenance`, `Permissions.ExportAssignments`, `Permissions.ExportReplacement`).
+- **Kết quả xác thực:**
+  - Tài khoản `ADMIN_IT` và `SYSTEM_MANAGER` sau khi đăng nhập nhận đầy đủ 5 claims quyền Excel trong JWT, gọi API Import/Export thành công (200 OK), giải quyết hoàn toàn lỗi 403 trước đây.
+  - Tài khoản không có quyền (`TECHNICAL_SUPPORT` chỉ có quyền Read) bị từ chối 403 Forbidden theo đúng ma trận phân quyền.
+  - Caller chưa xác thực bị từ chối 401 Unauthorized.
+  - Khi Feature Flag `Features:ImportExportApi:Enabled` tắt, API trả về 404 Not Found như thiết kế an toàn.
+
+### 2. Kiểm soát xem giá và bảo vệ dữ liệu nhạy cảm
+- Tải template nhập tài sản: Chỉ hiển thị cột `PurchasePrice` khi người dùng có quyền `assets.cost.read` (12 cột); không có quyền chỉ có 11 cột.
+- Nhập tài sản có giá: Yêu cầu cả `import.assets.execute` và `assets.cost.read`. Nếu thiếu `assets.cost.read` mà file có giá sẽ bị từ chối.
+- Xuất tài sản: Chỉ hiển thị giá khi có `assets.cost.read` hoặc `reports.cost.read`.
+- Xuất bảo trì / thay thế: Chỉ hiển thị chi phí khi có `reports.cost.read`.
+- Toàn bộ key bản quyền bị masked; công thức Excel được vô hiệu hóa tiền tố (`'`, `=`, `+`, `-`, `@`) chống formula injection; mã tài sản `AST-xxxxxx` do sequence engine tự động sinh (read-only, không nhận mã tự đặt).
+
+### 3. Giao diện người dùng (UI Entry)
+- Điểm truy cập Import/Export trên Asset List và Reports UI sẵn sàng hoạt động khi khởi tạo `createApiServices({ importExportEnabled: true })`.
+- Khi cờ tắt (`importExportEnabled: false`), các nút Nhập/Xuất Excel tiếp tục bị ẩn hoặc vô hiệu hóa theo đúng quy tắc an toàn.
+- Form nhập XLSX hỗ trợ tải mẫu Backend, xem trước lỗi từng dòng/trường (tối đa 100 lỗi), xác nhận nhập nguyên khối (all-or-nothing), tự động cập nhật danh sách sau khi thành công và ngăn chặn submit lặp.
+
+### 4. Kết quả kiểm thử thực tế (Evidence-Based)
+- **Release Build:** `dotnet build ItAssetManagement.slnx --configuration Release --no-restore`: **0 warnings, 0 errors**.
+- **Backend Unit Tests:** `dotnet test tests/ItAssetManagement.UnitTests -c Release`: **793/793 PASS** (0 failed, 0 skipped; bổ sung 6 bài kiểm tra catalog, role matrix, action metadata và permission contract).
+- **Backend Integration Tests (offline):** `dotnet test tests/ItAssetManagement.IntegrationTests -c Release --no-build`: **202/202 PASS** (0 failed; 165 cloud/local-opt-in skipped do không cấu hình credential production; kiểm tra toàn bộ WebApplicationFactory gates, synthetic handlers, route allowlists và permission boundaries).
+- **Frontend Unit Tests:** `npm.cmd test`: **380/380 PASS** (0 failed, 0 skipped).
+- **Frontend Code & CSP Checks:** `node scripts/frontend-check.mjs`: **PASS** (50 JavaScript syntax checks; 54 CSP/database-boundary checks).
+- **Frontend Production Build:** `npm.cmd run build:production`: **PASS** (45 assets độc lập, không mock/Swagger).
+
+### Browser và XLSX thực tế (Kế thừa từ Codex)
 
 Browser dùng module UI/adapter, Controller/Service và PostgreSQL thật qua harness loopback chỉ có trong `test-results/` (ignored). **Authentication và permission claims trong harness là synthetic**, không phải JWT production. Chỉ Excel API được opt-in trong fixture; workflow Assignment/Maintenance/Reporting vẫn đóng. Database mới riêng, SCRAM/password authentication, pooling=false; không đọc/ghi Neon shared.
 

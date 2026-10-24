@@ -27,6 +27,7 @@ public static class PermissionContract
         _ when code.StartsWith("departments.") && code != Permissions.DepartmentRead => Permissions.DepartmentRead,
         _ when code.StartsWith("asset-types.") && code != Permissions.TypeRead => Permissions.TypeRead,
         Permissions.AssignmentAssign or Permissions.AssignmentReturn => Permissions.AssignmentRead,
+        Permissions.ImportAssets or Permissions.ExportAssets => Permissions.AssetRead,
         _ => null
     };
     public static string Action(string code) => code switch
@@ -35,6 +36,8 @@ public static class PermissionContract
         Permissions.UserLookup => "Tra cứu", Permissions.UserStatus or Permissions.AssetStatus => "Trạng thái",
         Permissions.RoleAssign => "Gán nhóm", Permissions.RolePermissionsRead => "Xem quyền",
         Permissions.AssignmentAssign => "Cấp phát", Permissions.AssignmentReturn => "Thu hồi",
+        Permissions.ImportAssets => "Nhập Excel",
+        Permissions.ExportAssets or Permissions.ExportMaintenance or Permissions.ExportAssignments or Permissions.ExportReplacement => "Xuất Excel",
         _ => code.Split('.').Last() switch { "read" => "Xem", "create" => "Thêm", "update" => "Sửa", "archive" => "Lưu trữ", _ => code }
     };
 }

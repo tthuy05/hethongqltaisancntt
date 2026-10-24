@@ -9,7 +9,7 @@ namespace ItAssetManagement.Api.Mvp;
 public sealed class ExportController(AssetExportService exportService) : ControllerBase
 {
     // EP-088: GET /api/v1/export/assets
-    [HttpGet("assets"), Authorize]
+    [HttpGet("assets"), Authorize(Policy = Permissions.ExportAssets)]
     public async Task<IActionResult> ExportAssets([FromQuery] AssetExportQuery query, CancellationToken ct)
     {
         Errors.Query(Request, "keyword", "status", "assetTypeId", "departmentId", "fromUtc", "toUtc", "sortBy", "sortDirection");
@@ -18,7 +18,7 @@ public sealed class ExportController(AssetExportService exportService) : Control
     }
 
     // EP-089: GET /api/v1/export/maintenance
-    [HttpGet("maintenance"), Authorize]
+    [HttpGet("maintenance"), Authorize(Policy = Permissions.ExportMaintenance)]
     public async Task<IActionResult> ExportMaintenance([FromQuery] MaintenanceExportQuery query, CancellationToken ct)
     {
         Errors.Query(Request, "fromUtc", "toUtc", "assetId", "technicianId", "status");
@@ -27,7 +27,7 @@ public sealed class ExportController(AssetExportService exportService) : Control
     }
 
     // EP-090: GET /api/v1/export/assignment-history
-    [HttpGet("assignment-history"), Authorize]
+    [HttpGet("assignment-history"), Authorize(Policy = Permissions.ExportAssignments)]
     public async Task<IActionResult> ExportAssignments([FromQuery] AssignmentExportQuery query, CancellationToken ct)
     {
         Errors.Query(Request, "fromUtc", "toUtc", "assetId", "userId", "departmentId");
@@ -36,7 +36,7 @@ public sealed class ExportController(AssetExportService exportService) : Control
     }
 
     // EP-091: GET /api/v1/export/warranty-expiration
-    [HttpGet("warranty-expiration"), Authorize]
+    [HttpGet("warranty-expiration"), Authorize(Policy = Permissions.ExportAssets)]
     public async Task<IActionResult> ExportWarranty([FromQuery] WarrantyExportQuery query, CancellationToken ct)
     {
         Errors.Query(Request, "fromUtc", "toUtc", "departmentId", "assetTypeId");
@@ -45,7 +45,7 @@ public sealed class ExportController(AssetExportService exportService) : Control
     }
 
     // EP-092: GET /api/v1/export/replacement-report
-    [HttpGet("replacement-report"), Authorize]
+    [HttpGet("replacement-report"), Authorize(Policy = Permissions.ExportReplacement)]
     public async Task<IActionResult> ExportReplacement([FromQuery] ReplacementExportQuery query, CancellationToken ct)
     {
         Errors.Query(Request, "year", "departmentId", "priority", "status");

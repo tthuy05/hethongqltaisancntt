@@ -96,10 +96,11 @@ public static class Permissions
         ExportMaintenance = "export.maintenance.execute",
         ExportAssignments = "export.assignments.execute",
         ExportReplacement = "export.replacement.execute";
+    public static readonly string[] ImportExport = [ImportAssets, ExportAssets, ExportMaintenance, ExportAssignments, ExportReplacement];
     public static readonly string[] Read = [AssetRead, AssetHistory, DepartmentRead, TypeRead, DashboardRead, UserLookup];
     // Support assignment reads require a scoped support contract, not this unrestricted service.
     public static readonly string[] Operate = [AssetCreate, AssetUpdate, AssetArchive, AssetStatus, AssetCost, RoleRead,
-        AssignmentRead, AssignmentAssign, AssignmentReturn];
+        AssignmentRead, AssignmentAssign, AssignmentReturn, .. ImportExport];
     public static readonly string[] Admin = [DepartmentCreate, DepartmentUpdate, DepartmentArchive, TypeCreate, TypeUpdate, TypeArchive,
         UserRead, UserCreate, UserUpdate, UserStatus, RoleAssign, RolePermissionsRead, AuditRead];
     public static readonly string[] All = [.. Read, .. Operate, .. Admin];

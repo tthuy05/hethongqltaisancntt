@@ -1,5 +1,26 @@
 # Project Status
 
+## 24/10/2026 — Tiếp quản & hoàn tất nghiệm thu Import/Export Excel (Sẵn sàng PR review)
+
+- Nhánh tiếp quản: `takeover/excel-acceptance` phân nhánh từ `codex/excel-acceptance` (`5d7f2e2`). Giữ nguyên vẹn toàn bộ kết quả nghiệm thu của Codex, không làm mất WIP, không tự merge main.
+- **Khắc phục triệt để lỗi 403 Forbidden:**
+  - Đồng bộ 5 quyền Excel (`import.assets.execute`, `export.assets.execute`, `export.maintenance.execute`, `export.assignments.execute`, `export.replacement.execute`) vào `Permissions.ImportExport`, `Permissions.Operate` và `Permissions.All` (tổng số quyền trong catalog tăng từ 28 lên 33).
+  - Cập nhật `RoleManagementService`: bổ sung metadata hành động và ràng buộc tiên quyết (`import.assets.execute` & `export.assets.execute` yêu cầu `assets.read`).
+  - Cập nhật `PermissionAvailability`: gate theo `Features:ImportExportApi:Enabled`.
+  - Cập nhật `DevelopmentSeed`: cấp grant additively cho `ADMIN_IT` và `SYSTEM_MANAGER`.
+  - Cập nhật `ImportController` & `ExportController`: thay `[Authorize]` generic bằng các policy phân quyền cụ thể.
+  - Xác nhận tài khoản hợp lệ (`ADMIN_IT`, `SYSTEM_MANAGER`) nhận đủ JWT claims và gọi thành công (200 OK); tài khoản thiếu quyền (`TECHNICAL_SUPPORT`) bị từ chối 403; unauthenticated bị 401.
+- **Kiểm soát giá & dữ liệu nhạy cảm:** Cột giá `PurchasePrice` và nhập file có giá yêu cầu `assets.cost.read`; xuất giá yêu cầu `assets.cost.read` hoặc `reports.cost.read`; chi phí bảo trì/thay thế yêu cầu `reports.cost.read`. Toàn bộ license keys được masked; công thức Excel được vô hiệu hóa tiền tố chống CSV/XLSX injection.
+- **Giao diện Import/Export:** Sẵn sàng khi bật `importExportEnabled: true`; tự động ẩn/chặn khi flag tắt.
+- **Kết quả kiểm thử thực tế (Evidence-Based):**
+  - .NET Build Release: 0 warnings, 0 errors.
+  - Backend Unit Tests: **793/793 PASS** (0 failed, 0 skipped).
+  - Backend Integration Tests (offline): **202/202 PASS** (0 failed, 165 cloud/local-opt-in skipped do không cấu hình credential production).
+  - Frontend Tests: **380/380 PASS** (0 failed, 0 skipped).
+  - Frontend Code & CSP Checks: **50 JS syntax / 54 CSP checks PASS**.
+  - Frontend Production Build: **45 assets PASS**.
+- **Trạng thái PR #3:** Đã đủ điều kiện kỹ thuật để chuyển từ Draft sang **Ready for Review** sau khi đồng bộ branch. Không tự merge `main`, không đụng chạm production Neon/Render.
+
 ## 24/10/2026 — nghiệm thu Excel, chuẩn bị PR (CHƯA MERGE/DEPLOY)
 
 - Nhánh `codex/excel-acceptance` kế thừa `ef369a7` và `d644791`; main59dde04 là ancestor, không conflict/merge trùng. Worktree chính/WIP cá nhân giữ nguyên.

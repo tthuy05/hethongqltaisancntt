@@ -8,7 +8,7 @@ namespace ItAssetManagement.Api.Mvp;
 [ApiController, Route("api/v1/import")]
 public sealed class ImportController(AssetImportService importService) : ControllerBase
 {
-    [HttpGet("assets/template"), Authorize]
+    [HttpGet("assets/template"), Authorize(Policy = Permissions.ImportAssets)]
     public IActionResult Template()
     {
         Errors.Query(Request);
@@ -16,7 +16,7 @@ public sealed class ImportController(AssetImportService importService) : Control
     }
 
     // EP-087: POST /api/v1/import/assets
-    [HttpPost("assets"), Authorize]
+    [HttpPost("assets"), Authorize(Policy = Permissions.ImportAssets)]
     [RequestSizeLimit(ImportSecurityLimits.MaxFileSizeBytes + 64 * 1024)]
     [RequestFormLimits(MultipartBodyLengthLimit = ImportSecurityLimits.MaxFileSizeBytes + 64 * 1024)]
     public async Task<IActionResult> ImportAssets(

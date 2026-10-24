@@ -23,8 +23,13 @@ public sealed class PreparedQueryContractTests
     public sealed class Handler(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder)
         : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
     {
-        protected override Task<AuthenticateResult> HandleAuthenticateAsync() => Task.FromResult(AuthenticateResult.Success(
-            new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "1"), new Claim("permission", Permissions.DashboardRead)], Scheme.Name)), Scheme.Name)));
+        protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+        {
+            var claims = new List<Claim> { new("sub", "1") };
+            claims.AddRange(Permissions.All.Select(p => new Claim("permission", p)));
+            return Task.FromResult(AuthenticateResult.Success(
+                new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity(claims, Scheme.Name)), Scheme.Name)));
+        }
     }
     private sealed class Actor : IActor
     {

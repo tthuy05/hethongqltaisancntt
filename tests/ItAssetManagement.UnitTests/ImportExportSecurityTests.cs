@@ -94,6 +94,35 @@ public sealed class ImportExportSecurityTests
         Assert.Equal("INVALID_EXPORT_DATA", Assert.Throws<BusinessException>(() => SafeExcelWorkbookWriter.CreateWorkbook(["Name"], new object?[][] { [text] })).Code);
     }
 
+    [Fact]
+    public void Excel_permissions_are_present_in_catalog_and_assigned_to_admin_and_manager_only()
+    {
+        Assert.Equal(5, Permissions.ImportExport.Length);
+        Assert.Equal(5, Permissions.ImportExport.Distinct().Count());
+        Assert.Equal(33, Permissions.All.Length);
+        Assert.Equal(33, Permissions.All.Distinct().Count());
+
+        foreach (var p in Permissions.ImportExport)
+        {
+            Assert.Contains(p, Permissions.All);
+            Assert.Contains(p, Permissions.Operate);
+            Assert.DoesNotContain(p, Permissions.Read);
+            Assert.DoesNotContain(p, Permissions.Admin);
+        }
+    }
+
+    [Theory]
+    [InlineData("import.assets.execute", "assets.read", "Nhập Excel")]
+    [InlineData("export.assets.execute", "assets.read", "Xuất Excel")]
+    [InlineData("export.maintenance.execute", null, "Xuất Excel")]
+    [InlineData("export.assignments.execute", null, "Xuất Excel")]
+    [InlineData("export.replacement.execute", null, "Xuất Excel")]
+    public void Excel_permissions_have_correct_contracts_and_actions(string code, string? parent, string action)
+    {
+        Assert.Equal(parent, PermissionContract.Requires(code));
+        Assert.Equal(action, PermissionContract.Action(code));
+    }
+
     private sealed class FakeActor : IActor
     {
         public long? UserId { get; set; } = 1;

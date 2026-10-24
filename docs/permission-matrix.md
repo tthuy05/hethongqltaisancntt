@@ -190,12 +190,14 @@ Union quyền active của các role active refresh mỗi request. Quyền thao 
 - Chỉ Admin IT xem Audit Log để tránh lộ metadata nhạy cảm và bảo đảm separation of duties.
 - Audit Log append-only; không role nào update/delete. Export (nếu được triển khai) cũng phải sanitize.
 
-### 10.7 Import
+### 10.7 Import / Export Excel
 
-- UI Excel 24/10: template/preview/commit dùng `import.assets.execute`; template có cột PurchasePrice chỉ với `assets.cost.read`. Export Asset cần `export.assets.execute`, giá chỉ với `assets.cost.read` hoặc `reports.cost.read`; chi phí file Maintenance/Replacement chỉ với `reports.cost.read`, không dùng `dashboard.cost.read` như quyền xuất giá. Grants/catalog production chưa thay đổi. Chi tiết: [Excel](week-07-import-export-spec.md).
-
-- Import có blast radius lớn nên chỉ Admin IT/System Manager; all-or-nothing, validation trước commit và lỗi theo dòng.
-- Support không có master/admin/import action.
+- Hoàn tất 24/10: 5 quyền Excel (`import.assets.execute`, `export.assets.execute`, `export.maintenance.execute`, `export.assignments.execute`, `export.replacement.execute`) đã chính thức được kích hoạt trong permission catalog (`Permissions.ImportExport`, `Permissions.Operate`, `Permissions.All`, nâng tổng số quyền từ 28 lên 33).
+- Seed grant đã cấp additively cho `ADMIN_IT` (toàn bộ `Permissions.All`) và `SYSTEM_MANAGER` (Read + Operate).
+- `TECHNICAL_SUPPORT` bị từ chối 403 cho toàn bộ thao tác Import/Export Excel.
+- Tải template/preview/commit dùng `import.assets.execute`; cột `PurchasePrice` và nhập tài sản có giá yêu cầu thêm `assets.cost.read`.
+- Export Asset cần `export.assets.execute`, giá chỉ hiển thị với `assets.cost.read` hoặc `reports.cost.read`.
+- Chi phí trong file Maintenance/Replacement chỉ hiển thị khi có `reports.cost.read`. Chi tiết: [Excel](week-07-import-export-spec.md).
 
 ### 10.8 Approval
 
