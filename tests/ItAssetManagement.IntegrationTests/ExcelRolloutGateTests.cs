@@ -146,7 +146,7 @@ public sealed class ExcelRolloutGateTests
     }
 
     [LocalPostgresFact]
-    public async Task Real_JWT_activates_excel_permission_with_isolated_database_grant()
+    public async Task Real_JWT_honors_excel_catalog_and_admin_user_permission_overrides()
     {
         await using (var guarded = LocalSequenceAuthenticationTests.Database()) await guarded.Database.MigrateAsync();
         await using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder => {
@@ -162,21 +162,83 @@ public sealed class ExcelRolloutGateTests
         });
         const string email = "excel-jwt@fixture.test";
         const string password = "Synthetic-test-password-2026!";
+        await RestoreUserFixtureAsync(factory, email);
         await using (var scope = factory.Services.CreateAsyncScope())
         {
             var provider = scope.ServiceProvider;
             await provider.GetRequiredService<DevelopmentSeed>().RunAsync(new(email, password));
         }
         using var client = factory.CreateClient();
-        using var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email, password });
-        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
-        var session = (await login.Content.ReadFromJsonAsync<LoginResponse>())!;
-        Assert.Contains(Permissions.AssetRead, session.User.Permissions);
-        Assert.Contains(Permissions.ImportAssets, session.User.Permissions);
-        Assert.Contains(Permissions.ExportAssets, session.User.Permissions);
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", session.AccessToken);
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/assets")).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/import/assets/template")).StatusCode);
+        try
+        {
+            using var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email, password });
+            Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+            var session = (await login.Content.ReadFromJsonAsync<LoginResponse>())!;
+            Assert.Contains(Permissions.AssetRead, session.User.Permissions);
+            Assert.Contains(Permissions.ImportAssets, session.User.Permissions);
+            Assert.Contains(Permissions.ExportAssets, session.User.Permissions);
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", session.AccessToken);
+            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/assets")).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/import/assets/template")).StatusCode);
+            Assert.DoesNotContain(Permissions.ReportAssets, session.User.Permissions);
+            Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/v1/reports/asset-inventory")).StatusCode);
+
+            // Fixture-only override: even ADMIN_IT must lose Excel access when its user allow-list excludes it.
+            await using (var scope = factory.Services.CreateAsyncScope())
+            {
+                var provider = scope.ServiceProvider;
+                var db = provider.GetRequiredService<AppDbContext>();
+                var audit = provider.GetRequiredService<IAuditWriter>();
+                await provider.GetRequiredService<IUnitOfWork>().RunAsync(async () => {
+                    var user = await db.Set<User>().SingleAsync(x => x.Id == session.User.Id);
+                    var permission = await db.Set<Permission>().SingleAsync(x => x.Code == Permissions.AssetRead);
+                    user.HasCustomPermissions = true;
+                    user.TokenVersion++;
+                    var grant = await db.Set<UserPermission>().SingleOrDefaultAsync(x => x.UserId == user.Id && x.PermissionId == permission.Id);
+                    if (grant == null) { grant = new UserPermission { UserId = user.Id, PermissionId = permission.Id }; db.Add(grant); }
+                    await db.SaveChangesAsync();
+                    audit.Record("test.fixture", user, null, "SYSTEM");
+                    audit.Record("test.fixture", grant, null, "SYSTEM");
+                    await db.SaveChangesAsync();
+                    return true;
+                }, default);
+            }
+            Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/v1/assets")).StatusCode);
+            using var customLogin = await client.PostAsJsonAsync("/api/v1/auth/login", new { email, password });
+            Assert.Equal(HttpStatusCode.OK, customLogin.StatusCode);
+            var custom = (await customLogin.Content.ReadFromJsonAsync<LoginResponse>())!;
+            Assert.Equal([Permissions.AssetRead], custom.User.Permissions);
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", custom.AccessToken);
+            Assert.Equal([Permissions.AssetRead], (await client.GetFromJsonAsync<CurrentUser>("/api/v1/auth/me"))!.Permissions);
+            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/assets")).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/v1/import/assets/template")).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/v1/export/assets")).StatusCode);
+        }
+        finally { await RestoreUserFixtureAsync(factory, email); }
+    }
+
+    private static async Task RestoreUserFixtureAsync(WebApplicationFactory<Program> factory, string email)
+    {
+        // Leave the isolated seed reusable for subsequent regression runs.
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var provider = scope.ServiceProvider;
+            var db = provider.GetRequiredService<AppDbContext>();
+            var audit = provider.GetRequiredService<IAuditWriter>();
+            var user = await db.Set<User>().SingleOrDefaultAsync(x => x.Email == email);
+            if (user == null) return;
+            await provider.GetRequiredService<IUnitOfWork>().RunAsync(async () => {
+                var grants = await db.Set<UserPermission>().Where(x => x.UserId == user.Id).ToListAsync();
+                foreach (var grant in grants) provider.GetRequiredService<IAccountPersistence>().RemoveUserPermission(grant);
+                user.HasCustomPermissions = false;
+                user.TokenVersion++;
+                await db.SaveChangesAsync();
+                audit.Record("test.fixture", user, null, "SYSTEM");
+                foreach (var grant in grants) audit.Record("test.fixture", grant, null, "SYSTEM");
+                await db.SaveChangesAsync();
+                return true;
+            }, default);
+        }
     }
 }
 

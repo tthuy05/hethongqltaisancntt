@@ -186,6 +186,19 @@ test('M1 app returns to Login on session invalidation even when pages consume er
       });
     }
 
+    await t.test('opt-in Reports without dashboard grant shows 403 without a render loop or logout', async () => {
+      services.reportingEnabled = true;
+      const calls = [];
+      try {
+        await start('/dashboard', url => { calls.push(url); return Response.json(assetPage); });
+        await until(() => app.querySelector('h1')?.textContent === 'Không thể tải nội dung');
+        assert.ok(services.auth.session);
+        assert.equal(isLogin(), false);
+        assert.equal(calls.some(url => url.startsWith('/api/v1/dashboard/')), false);
+        assert.ok(app.textContent.includes('Bạn không có quyền xem tổng quan hệ thống.'));
+      } finally { services.reportingEnabled = false; }
+    });
+
     const viewUser = () => {
       const button = descendants(app).find(node => node.tagName === 'BUTTON' && node.textContent === 'Xem');
       assert.ok(button); button.fire('click');

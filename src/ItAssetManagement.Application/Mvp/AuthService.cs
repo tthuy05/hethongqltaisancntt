@@ -1,4 +1,4 @@
-using System.Net.Mail;
+﻿using System.Net.Mail;
 using ItAssetManagement.Domain.Entities;
 
 namespace ItAssetManagement.Application.Mvp;

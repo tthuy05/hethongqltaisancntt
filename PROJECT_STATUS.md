@@ -1,5 +1,12 @@
 # Project Status
 
+## 24/10/2026 — Rà tích hợp Reports PR #6 / UNDER REVIEW
+
+- Main009a8c9 và PR #4/#5 được bảo toàn; nhánh Thiện25c035f đã merge main, không còn conflict văn bản.
+- Bỏ cộng quyền Reports/Excel theo Admin; giữ effective RBAC v2 và Excel UI. Reporting backend/frontend mặc định đóng. Sửa Dashboard nhầm thiếu quyền thành SESSION_CHANGED gây render loop và timeout.
+- Release0 warning/error;797 unit PASS;207 integration PASS/163 cloud SKIP;384 frontend PASS/0 SKIP;50 JS/54 CSP PASS trên worktree riêng và PostgreSQL local có mật khẩu. Không ghi Neon/deploy production. Linux Docker/CI đúng revision phải đối chiếu trước bàn giao PR.
+- Đủ11 API trên7 tab ở source prepared; còn catalog/grants, real-JWT Reports với fixture đại diện, browser/load và phê duyệt rollout. [Chi tiết](docs/reports-ui-handoff-2026-10-21.md).
+
 ## 24/10/2026 — Hoàn thiện Single Role per User, Ma trận quyền riêng tùy chỉnh & Giao diện Import/Export Excel (RBAC v2)
 
 - **Nhiệm vụ A: Nâng cấp Phân quyền người dùng (Single Role & Custom Permissions)**:

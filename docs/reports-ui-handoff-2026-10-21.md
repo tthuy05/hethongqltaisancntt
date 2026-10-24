@@ -60,3 +60,44 @@ Default pageSize 20, range 1..100; ID phải safe positive integer; page offset 
 - Sẵn sàng bàn giao cho Thiện tiếp tục phần việc mà không có xung đột mã nguồn.
 
 Cần owner review độc lập; real JWT/grant/report-fixture E2E; EXPLAIN/query-count/load tests và rollout được duyệt trước nghiệm thu production. Không coi các phần này đã PASS từ screenshot hay CI. Đây là UI report thay thế, không phải hoàn thiện engine thay thế của Thiện.
+
+## Tích hợp PR #6 — 24/10/2026
+
+**UNDER REVIEW; Reporting chưa mở production.** Thiện đã merge main `009a8c9` vào `25c035f`; merge main tại worktree tích hợp trả `Already up to date`. Không rebase/force hoặc làm lại conflict đã giải quyết.
+
+- Ba file từng conflict: `services/index.js`, `services/production-index.js`, `Application/Mvp/AuthService.cs`. Giữ Excel `importExportEnabled: true` và ma trận quyền của PR #4/#5. Reports dùng mặc địnhfalse ở factory; chỉ opt-in bằng `createServices({ reportingEnabled: true })` trong môi trường được duyệt. Production entry vẫn API-only.
+- Auth chỉ trả `EffectivePermissionQuery.ForUser()`, không cộng Reports/Excel theo tên `ADMIN_IT`. Catalog giữ33 quyền;7 code `Permissions.Reports` chưa vào `Permissions.All` hoặc seed/grant. `dashboard.read` đã có trong catalog.
+- Trước sửa: session suite14 PASS /3 FAIL (hai delayed-Me subtests và parent). Reports bật mặc định khiến M1 gọi Dashboard V2 khi thiếu `dashboard.read`. Guard trả nhầm401 SESSION_CHANGED, app thấy session còn hợp lệ nên render lại liên tục, làm đói timer tới khi token hết hạn khoảng60 giây. Sửa thiếu quyền thành403; phiên/hash đổi vẫn401. Không tăng timeout, bỏ test hoặc thêm quyền giả cho mock.
+- Backend `Features:ReportingApi:Enabled=false`; Excel giữtrue. Không sửa email, Assignment/Maintenance, migrations, secrets hoặc Neon production.
+
+### 11 API trên 7 tab
+
+| API | Tab / khối | Source đã có; giới hạn |
+|---|---|---|
+| EP-076 asset-inventory | inventory | Lọc, paging, che giá |
+| EP-077 assets-by-department | groups — phòng ban | Reader và tổng hợp |
+| EP-078 assets-by-type | groups — loại | Reader và tổng hợp |
+| EP-079 asset-status | groups — trạng thái | Reader và tổng hợp |
+| EP-080 assignment-history | assignments | Bộ lọc và paging |
+| EP-081 maintenance-history | maintenance | Bộ lọc và paging |
+| EP-082 maintenance-cost | cost — bảo trì | month/department/type; chưa có quý/năm |
+| EP-083 warranty-expiration | expiry — bảo hành | Business date và page riêng |
+| EP-084 license-expiration | expiry — bản quyền | UTC/status/software, page riêng, che key |
+| EP-085 replacement-recommendations | replacement | Chỉ đọc, không thay evaluator/disposition |
+| EP-086 replacement-budget | cost — dự toán | Năm/department/priority; không phải thực chi |
+
+Đủ đường nối API–reader–UI; không cần11 tab. Test mới chạy11 report query và4 dashboard query trên PostgreSQL riêng có migrate, tài sản fixture có giá, kiểm cost masking/403. History/License/Replacement trong test local này chủ yếu là tập rỗng; chưa thay thế fixture nghiệp vụ cloud đang SKIP.
+
+### Verification thực tế đợt tích hợp
+
+- `dotnet build --configuration Release --no-restore`:0 warnings/0 errors.
+- `dotnet test --configuration Release --no-build --no-restore`:797 unit PASS;207 integration PASS /163 SKIP /0 FAIL khi có `ITAM_LOCAL_POSTGRES_TEST_CONNECTION` trỏ database mới trên127.0.0.1 và `ITAM_RUN_NEON_TESTS=0`. Gồm202 offline và5 local PostgreSQL cases. Cloud/shared suites không chạy.
+- Real JWT: Admin có grant Excel dùng được template; sau user override chỉ còn assets.read thì token cũ401, login/Me mới chỉ assets.read, Assets200, Import/Export403. Reports route404 khi flag đóng. Fixture khôi phục quyền mặc định bằng persistence/audit hợp lệ; chạy lại được.
+- `npm.cmd test`:384 PASS /0 FAIL /0 SKIP; session suite18 PASS, gồm opt-in thiếu grant không loop/logout. `node scripts/frontend-check.mjs`:50 JS /54 CSP-boundary PASS. Frozen pnpm install PASS.
+- Logs/TRX nằm ở ignored `test-results/reports-integration/`, không commit. Docker local chưa chạy vì Linux daemon không hoạt động; CI đúng revision PR phải xác minh Linux container build/smoke riêng, không suy ra PASS từ CLI.
+
+### Phần còn thiếu trước rollout
+
+- Review catalog/grants và real-JWT Reports có grant hợp lệ, dữ liệu nghiệp vụ đại diện, EXPLAIN/load, browser E2E mới và owner approval. Prepared UI hiện kiểm bằng DOM/fetch fixtures, chưa nghiệm thu production.
+- Bật backend flag và frontend opt-in chỉ trong đợt rollout riêng đã duyệt; không nối quyền trực tiếp vào JWT để bỏ qua catalog hoặc quyền riêng User.
+- `pnpm audit --json`:1 moderate ở dependency build CSS `postcss-selector-parser` <7.1.6 (quadratic selector parsing). CSS lấy từ repo, không nhận selector từ upload/API; parser không đóng gói vào runtime browser. Chưa nâng dependency ngoài phạm vi; theo dõi riêng, không chạy audit fix --force.

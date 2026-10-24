@@ -32,6 +32,9 @@ test('production ignores localhost demo query and rejects explicit mock without 
   try {
     const { services, createServices } = await import(pathToFileURL(path.join(frontendProductionOutput, 'js/services/index.js')).href);
     assert.equal(services.mode, 'api');
+    assert.equal(services.reportingEnabled, false);
+    assert.equal(services.importExportEnabled, true);
+    assert.equal(createServices({ reportingEnabled: true }).reportingEnabled, true);
     assert.throws(() => createServices({ mode: 'mock', hostname: 'localhost' }), /Unsupported production service mode/u);
     const failingApi = createServices({ fetchImpl: async () => { throw new Error('offline'); } });
     await assert.rejects(failingApi.auth.login({ email: 'test@example.invalid', password: 'not-a-real-password' }), error => error.code === 'NETWORK_ERROR');

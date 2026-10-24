@@ -1,5 +1,7 @@
 # Permission Matrix
 
+**Regression PR #6 (24/10):** Login/Me/JWT giữ `EffectivePermissionQuery.ForUser()`; không `Union` Reports/Excel cho ADMIN_IT. Admin tùy chỉnh chỉ assets.read không được dùng Excel; Reports prepared chưa tự thêm vào catalog/grants. Dashboard thiếu grant trả403, không xóa session hợp lệ. Xem [handoff Reports](reports-ui-handoff-2026-10-21.md).
+
 ## Cơ chế Phân quyền người dùng (Cập nhật 24/10/2026 — Single Role & Custom Permissions)
 
 - **Nguyên tắc Single Role per User**: Mỗi người dùng thuộc duy nhất 1 Role (`ADMIN_IT`, `SYSTEM_MANAGER`, `TECHNICAL_SUPPORT` hoặc Role tùy chỉnh). Không cho phép chọn hoặc gán đồng thời nhiều Role.

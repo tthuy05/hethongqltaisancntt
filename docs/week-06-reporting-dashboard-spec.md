@@ -68,6 +68,8 @@ Tài liệu thực hiện **W6-THUY-D1-01**, **W6-THUY-D1-03**, **W6-THUY-D1-05*
 
 ## 3. Tiêu chí kiểm định độc lập (Thiện Review Checklist)
 
+**Tích hợp 24/10:** Backend/frontend Reporting mặc định đóng, không cấp quyền theo role name. PR #4/#5 và Excel được bảo toàn. [Handoff Reports](reports-ui-handoff-2026-10-21.md) có ma trận11 API /7 tab, nguyên nhân timeout, test PostgreSQL/JWT và điều kiện rollout. `dashboard.read` đã có trong catalog;7 code của `Permissions.Reports` vẫn prepared. Dashboard thiếu quyền trả403; chỉ phiên/hash đổi mới trả401 SESSION_CHANGED.
+
 **Bổ sung contract 20/10:** YTD chỉ gồm resolvedAtUtc từ00:00 UTC ngày01/01 đến thời điểm truy vấn (inclusive), giao với fromUtc/toUtc caller nếu có; không tính ngày tương lai hoặc phiếu chưa hoàn thành. Report maintenance không phải YTD mặc định: count mọi phiếu nonarchived khớp filter, gồm phiếu chưa có actual_cost; nhóm month thiếu resolvedAtUtc là `0000-00`/“Chưa có ngày hoàn thành”. Date filter trên resolvedAtUtc loại phiếu chưa có ngày. Counts và known subtotal aggregate cùng SQL; tổng/group missing và ticket counts phải khớp. UI hiển thị missing/total, dùng “—” nếu response cũ không có count; không dựng0 giả. Tất cả đây vẫn là prepared source/default disabled, chưa cấp grant hoặc nghiệm thu production.
 
 1. **Không N+1 Query:** Aggregate chạy SQL GROUP BY/SUM/COUNT; batch lookup labels có query riêng, không khẳng định toàn endpoint chỉ 1 SQL. Cần đo query count trên workload thống nhất.

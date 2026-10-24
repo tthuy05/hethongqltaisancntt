@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — 24/10/2026 — Reports integration review
+
+- Fixed: preserve RBAC v2 effective permissions without Admin report/Excel bonus; retain Excel and PR #4/#5 UI.
+- Fixed: default Reporting closed; Dashboard permission denial returns403 rather than a SESSION_CHANGED render loop. No timeout increase or skipped frontend tests.
+- Verified locally:797 unit/207 integration/384 frontend PASS;163 cloud tests SKIP; Release0 warnings/errors;50 JS/54 CSP checks. Added real-JWT custom Admin and all11 report queries on password-authenticated isolated PostgreSQL. No production migration/deploy.
+
 ## Unreleased — 24/10/2026 — Production rollout & Neon permissions sync
 
 - Added: enabled `Features:ImportExportApi:Enabled` in `appsettings.json` for live production deployment.
