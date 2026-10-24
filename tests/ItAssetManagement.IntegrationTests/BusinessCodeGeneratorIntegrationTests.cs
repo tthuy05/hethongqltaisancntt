@@ -184,9 +184,8 @@ public sealed class BusinessCodeGeneratorIntegrationTests(MvpFixture fixture)
         // Fallback tests verify algorithmic formatting, immutability, and state transitions,
         // but are NOT considered proof of PostgreSQL sequence execution.
         var isNeonOptIn = Environment.GetEnvironmentVariable("ITAM_RUN_NEON_TESTS") == "1";
-        if (!isNeonOptIn)
-        {
-            Assert.Null(Environment.GetEnvironmentVariable("ITAM_RUN_NEON_TESTS"));
-        }
+        // CI deliberately sets "0"; unset and every value except "1" must
+        // keep cloud tests skipped, not fail this offline safety assertion.
+        Assert.Equal(isNeonOptIn, new NeonFactAttribute().Skip is null);
     }
 }
