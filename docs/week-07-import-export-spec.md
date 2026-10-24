@@ -2,6 +2,51 @@
 
 Ngày cập nhật: 24/10/2026. **LOCAL IMPLEMENTATION / PRODUCTION ROLLOUT PENDING.** Theo yêu cầu tiếp quản, Thủy bổ sung UI Excel trên Backend/adapter hiện có; không mở rộng workflow Assignment/Maintenance của Thiện. Evidence 20/10 được giữ ở tài liệu review, không dùng làm kết quả của source mới.
 
+## Nghiệm thu tích hợp 24/10/2026 — CHƯA PHÊ DUYỆT MERGE/ROLLOUT
+
+Đã fetch và kiểm tra `origin/main=59dde04`, `feature/auto-code-generation=d644791`, `codex/asset-excel-ui=ef369a7`. Main và auto-code đều là tổ tiên của Excel (0 behind/5 ahead); virtual merge không conflict. Nhánh nghiệm thu `codex/excel-acceptance` kế thừa trực tiếp Excel, không merge trùng auto-code; worktree chính và 5 file WIP/report cá nhân giữ nguyên.
+
+### Browser và XLSX thực tế
+
+Browser dùng module UI/adapter, Controller/Service và PostgreSQL thật qua harness loopback chỉ có trong `test-results/` (ignored). **Authentication và permission claims trong harness là synthetic**, không phải JWT production. Chỉ Excel API được opt-in trong fixture; workflow Assignment/Maintenance/Reporting vẫn đóng. Database mới riêng, SCRAM/password authentication, pooling=false; không đọc/ghi Neon shared.
+
+| Kiểm tra đã thực hiện | Kết quả / bằng chứng |
+|---|---|
+| Tải template từ nút UI | PASS: XLSX trống, 12 cột khi có quyền giá / 11 cột khi không có; không có AssetCode |
+| Upload tệp lỗi, DryRun và dòng/trường | PASS: 2 dòng, 3 lỗi; row/field/code/message hiển thị, Confirm disabled |
+| Upload hợp lệ và DryRun | PASS: 2/2 hợp lệ; assets=0, history=0, audit=5, sequence=(1,false) không thay đổi sau cả hai preview |
+| Confirm import, AST và refresh | PASS: 2 asset AST-000001/000002, 2 history, audit tăng đúng3, sequence=(2,true); UI tự hiển thị2 dòng sau refresh |
+| Import không có quyền giá | PASS: tệp có giá bị403; template không có PurchasePrice; nhập tệp không giá thành công với AST-000003 |
+| AssetCode tự đặt | PASS: READ_ONLY_FIELD trên dòng2, không ghi tài sản |
+| Filter và export từ UI | PASS: keyword QA-EXCEL-001 chỉ xuất1 dòng; export đầy đủ3 dòng ở database fixture đầu |
+| Masking giá trong file thật | PASS: export có quyền là11 cột, giá numeric1200.25; không có quyền là10 cột, không chứa giá; không lộ cột rồi để giá trống |
+| Thiếu quyền Excel | PASS với fixture claims: UI không có nút Import/Export; gọi template/export trực tiếp403 |
+| API503 | PASS: hiển thị lỗi, Confirm disabled; không báo nhập thành công hoặc dựng số liệu0 |
+| Công thức và đọc workbook | PASS: Artifact Tool import được7 file tải thực tế; tên có =SUM là text, không có công thức executable; số0 khác null, số thập phân giữ nguyên |
+
+Kiểm tra render file tải về phát hiện cột mặc định cắt header. Đã sửa **chỉ độ rộng cột** trong `SafeExcelWorkbookWriter` (14–60 ký tự, dựa vào header/dữ liệu), không đổi giá trị, kiểu cell, header/API, masking hoặc sanitizer. Unit regression kiểm width bound + numeric1200.25 + không có formula. Browser tải mẫu/import/export lại trên database local mới thứ hai PASS; render sau sửa đọc đủ header/mã/serial của fixture. Chuỗi dài hơn60 vẫn cần resize trong Excel, không cố tạo cột rộng vô hạn.
+
+Ảnh local: `artifacts/verification/excel-acceptance-20261024/{invalid-preview,valid-preview,import-success,no-cost-import-denied,denied-controls-hidden,api-error,manual-code-denied,final-import-success}.png`. Workbook inspections/render và JSON nằm trong `test-results/excel-acceptance-inspect`; TRX/log trong `test-results/excel-acceptance`. Những artifact này không đưa vào Git/production package. Microsoft Excel Desktop **NOT VERIFIED**; render/parse không được coi là đã mở bằng Excel Desktop. Browser report-export templates ngoài Asset chưa nghiệm thu E2E; unit/DOM regression hiện hữu vẫn PASS.
+
+### Gate JWT/catalog còn chặn rollout
+
+`ExcelRolloutGateTests` kiểm PostgreSQL isolated + authentication/JWT thật (không thay auth handler): seed synthetic Admin và Import grant trong local DB, đăng nhập thành công, Asset API200 nhưng CurrentUser không có import.assets.execute và template403. Denied call không đổi asset/audit; các route workflow chưa mở vẫn404. Test này **PASS cho gate đang đóng**, không phải PASS cho đăng nhập dùng Excel.
+
+Nguyên nhân: `AuthService` và `EffectivePermissionQuery` lọc qua `Permissions.All`, hiện chưa chứa5 quyền Excel. `IPermissionAvailability` không khắc phục lọc JWT. Bật flag + seed đơn lẻ **không đủ**. Cần review activation catalog cùng bootstrap/seed, protected Admin baseline, ma trận cấp quyền và current-user claims. Không thêm All/grants hoặc bật module trong lượt nghiệm thu.
+
+Quyền cần review: `import.assets.execute`, `export.assets.execute`, `export.maintenance.execute`, `export.assignments.execute`, `export.replacement.execute`. Không cấp import/export cho Technical Support ngoài matrix. Nhập giá cần assets.cost.read; export Asset cần assets.cost.read hoặc reports.cost.read; Maintenance/Replacement cost cần reports.cost.read.
+
+UI production entry cũng chưa truyền `importExportEnabled:true`; không có env variable nào tự mở option JS này. Cần approved wiring/release source, không chỉ đặt env Render. Backend gate `Features:ImportExportApi:Enabled` vẫn false; Reporting có gate/UI opt-in riêng, không mở để lách nghiệm thu Excel.
+
+### Regression và PR/deploy
+
+- Release: 0 warnings/errors; unit787 PASS; integration204 PASS =200 offline +4 local PostgreSQL, 161 cloud SKIP, 0 FAIL. Bốn local gồm2 sequence auth,1 XLSX HTTP/UoW/rollback,1 real-JWT gate. Frontend380 PASS, 50 JS/54 CSP checks PASS; production frontend45 assets PASS.
+- Không có migration Excel mới. Chuỗi4 migrations hiện hữu đến LecturerFeedback được apply chỉ trên database local mới. Không sửa InitialM1/B/S18/LecturerFeedback. Runtime sequence DDL vẫn cần quyền tạo/khởi tạo sequence khi thiếu; đã kiểm trên isolated, không giả định runtime Neon role đã được nghiệm thu.
+- Docker local NOT RUN (Linux daemon chưa chạy); GitHub CI của commit tích hợp cần PR vào main hoặc workflow_dispatch. Push nhánh Excel không kích hoạt workflow hiện tại. Không coi workflow của commit cũ là evidence SHA mới.
+- Render Dashboard đã kiểm chỉ đọc: Live59dde04, branch main, After CI Checks Pass, PR Previews Off, health path /health/live; không sửa env/secrets/settings. Merge main có thể tự deploy, nên chưa merge và không tạo preview service.
+- PNPM audit lockfile:1 moderate ở postcss-selector-parser (build dependency, đã có trước, không phải mã Excel). Không chạy audit fix/force hoặc mở rộng nâng dependency trong task này. NPM audit không có package-lock không phải evidence PASS; dùng lockfile PNPM làm kết quả đối chiếu.
+- Kết luận: source có thể đưa PR review ở trạng thái draft/blocked rollout, **chưa phê duyệt merge hoặc bật Excel production**. Cần CI đúng SHA, acceptance Excel Desktop/report exports nếu yêu cầu, và quyết định catalog/grants/UI wiring trước merge/deploy. Neon shared không cần migration mới cho riêng Excel; mọi seed quyền tương lai phải rehearsal + được phê duyệt riêng.
+
 ## Giao diện và luồng xử lý 24/10
 
 `assets.js` → `components/asset-excel.js` → `import-export-service.js` → Import/Export Controller → Application services → repository/UoW → PostgreSQL. Tái sử dụng parser/writer và sequence generator, không thêm migration hoặc bảng.

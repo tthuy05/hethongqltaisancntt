@@ -1,5 +1,14 @@
 # Project Status
 
+## 24/10/2026 — nghiệm thu Excel, chuẩn bị PR (CHƯA MERGE/DEPLOY)
+
+- Nhánh `codex/excel-acceptance` kế thừa `ef369a7` và `d644791`; main59dde04 là ancestor, không conflict/merge trùng. Worktree chính/WIP cá nhân giữ nguyên.
+- Browser UI + real local PostgreSQL PASS cho template, lỗi dòng, DryRun không ghi, import/AST/refresh, filtered export, cost masking, deny và API503. Harness authentication synthetic được ghi rõ; không xem là production JWT proof.
+- Real-JWT isolated test xác nhận catalog vẫn chặn quyền Excel (Asset200/template403 dù grant tồn tại). **Rollout BLOCKED** đến khi catalog/grants/UI-entry wiring được review; không chỉ bật flag và seed.
+- Sửa hẹp độ rộng cột XLSX sau khi render phát hiện header bị cắt; không đổi cell types/API/masking/sequence/schema. Kiểm lại browser download và workbook render PASS.
+- Release0 warning/error; unit787 PASS; integration204 PASS (200 offline +4 local),161 cloud SKIP; frontend380 PASS;50 JS/54 CSP PASS; production frontend45 assets PASS. Excel Desktop/Docker local NOT VERIFIED/NOT RUN; PNPM audit còn1 moderate build dependency ngoài phạm vi Excel.
+- Render thực tế vẫn Live59dde04, main/After CI Checks Pass/PR Previews Off; không đổi Neon/Render. Chi tiết bằng chứng và gate: [Excel contract/handoff](docs/week-07-import-export-spec.md#nghiệm-thu-tích-hợp-24102026--chưa-phê-duyệt-mergerollout).
+
 ## 24/10/2026 — Import/Export Excel UI trên nhánh riêng
 
 - Hoàn thiện luồng nhập XLSX từ Asset List: tải template Backend, DryRun, lỗi dòng/trường, xác nhận cùng tệp, all-or-nothing, AST do Backend cấp, refresh sau thành công; không retry ghi khi outcome chưa rõ.

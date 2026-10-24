@@ -10,6 +10,22 @@ namespace ItAssetManagement.UnitTests;
 
 public sealed class ImportExportSecurityTests
 {
+    [Fact]
+    public void Workbook_sizes_headers_and_values_without_changing_numeric_or_formula_safety()
+    {
+        var bytes = SafeExcelWorkbookWriter.CreateWorkbook(["WarrantyExpirationDate", "Name", "Price"],
+            new object?[][] { ["2026-10-24", "=SUM(1,2)", 1200.25m], [null, new string('x', 4000), null] });
+        using var zip = new ZipArchive(new MemoryStream(bytes));
+        using var stream = zip.GetEntry("xl/worksheets/sheet1.xml")!.Open();
+        var xml = System.Xml.Linq.XDocument.Load(stream);
+        System.Xml.Linq.XNamespace ns = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+        var columns = xml.Descendants(ns + "col").ToArray();
+        Assert.Equal(3, columns.Length); Assert.Equal("25", columns[0].Attribute("width")!.Value);
+        Assert.Equal("60", columns[1].Attribute("width")!.Value); Assert.Equal("14", columns[2].Attribute("width")!.Value);
+        Assert.Empty(xml.Descendants(ns + "f"));
+        var price = xml.Descendants(ns + "c").Single(x => x.Attribute("r")!.Value == "C2");
+        Assert.Equal("1200.25", price.Element(ns + "v")!.Value); Assert.Null(price.Attribute("t"));
+    }
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

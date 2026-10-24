@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — 24/10/2026 — Excel acceptance
+
+- Fixed: bounded XLSX column widths after browser download/render exposed clipped headers; cell values/types, formula protection and cost masking unchanged.
+- Verified: actual browser/synthetic-auth + isolated PostgreSQL flow; added real-JWT regression proving the catalog gate remains closed even with an isolated import grant. No permission activation, production config, migration or deployment changes.
+- Local regression:787 unit/200 offline integration/4 PostgreSQL/380 frontend PASS;161 cloud SKIP. CI exact revision and catalog/grants/UI activation remain review gates. [Evidence](docs/week-07-import-export-spec.md).
+
 ## Unreleased — 24/10/2026 — Asset Excel UI
 
 - Added: permission/opt-in guarded import preview/confirmation UI, blank XLSX template endpoint and filtered downloads using existing export APIs.

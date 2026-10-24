@@ -73,6 +73,17 @@ public static class SafeExcelWorkbookWriter
             var sb = new StringBuilder();
             sb.Append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>");
             sb.Append("<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">");
+            // Excel's default width clips even short translated headers. Keep the
+            // existing cells/types unchanged; bound width for long free-text data.
+            sb.Append("<cols>");
+            for (var column = 0; column < headers.Count; column++)
+            {
+                var longest = rows.Select(row => column < row.Count ?
+                    Convert.ToString(row[column], System.Globalization.CultureInfo.InvariantCulture)?.Length ?? 0 : 0).DefaultIfEmpty(0).Max();
+                var width = Math.Clamp(Math.Max(headers[column].Length, longest) + 3, 14, 60);
+                sb.Append($"<col min=\"{column + 1}\" max=\"{column + 1}\" width=\"{width}\" customWidth=\"1\"/>");
+            }
+            sb.Append("</cols>");
             sb.Append("<sheetData>");
 
             // Hàng tiêu đề (Row 1)
