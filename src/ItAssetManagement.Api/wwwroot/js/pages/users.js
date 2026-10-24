@@ -110,6 +110,7 @@ function createUserPermissionMatrix({ roleDetail, initialSelectedCodes = null, h
       countBadge.className = 'permission-counter default-badge';
       countBadge.title = 'Tài khoản đang dùng quyền mặc định theo vai trò';
     }
+    for (const updater of groupCountUpdaters) updater();
     renderPreview();
     onChange?.({ selectedCodes: Array.from(selected), isCustom });
   }
@@ -177,7 +178,7 @@ function createUserPermissionMatrix({ roleDetail, initialSelectedCodes = null, h
 
   const header = h('div', { className: 'permission-panel-header' },
     h('div', { className: 'permission-summary' },
-      h('span', { className: 'font-semibold' }, 'Ma trận quyền của người dùng:'),
+      h('span', { className: 'permission-panel-title' }, 'Ma trận quyền chi tiết của người dùng:'),
       countBadge
     ),
     h('div', { className: 'permission-actions' }, resetBtn, previewBtn),
@@ -191,6 +192,8 @@ function createUserPermissionMatrix({ roleDetail, initialSelectedCodes = null, h
     moduleMap.get(mod).push(perm);
   }
 
+  const groupCountUpdaters = [];
+
   inputs.clear();
   groupsContainer.replaceChildren();
 
@@ -198,9 +201,20 @@ function createUserPermissionMatrix({ roleDetail, initialSelectedCodes = null, h
     groupsContainer.append(h('p', { className: 'meta' }, 'Vai trò này hiện chưa được cấu hình quyền trong hệ thống.'));
   } else {
     for (const [mod, perms] of moduleMap) {
+      const countEl = h('span', { className: 'module-perm-count' });
+      function refreshCount() {
+        const selCount = perms.filter(p => selected.has(p.code)).length;
+        countEl.textContent = `${selCount}/${perms.length}`;
+      }
+      groupCountUpdaters.push(refreshCount);
+      refreshCount();
+
       const groupEl = h('div', { className: 'permission-module-group' },
-        h('h4', { className: 'module-title' }, moduleLabels[mod] || mod),
-        h('div', { className: 'permission-checkboxes-grid' },
+        h('div', { className: 'module-header' },
+          h('h4', { className: 'module-title' }, moduleLabels[mod] || mod),
+          countEl
+        ),
+        h('div', { className: 'permission-checkboxes-list' },
           perms.map(p => {
             const req = permissionDependencies[p.code];
             const reqName = req ? (permissionLabels[req] || req) : null;
@@ -422,25 +436,30 @@ export async function userPage(services) {
           write: () => item ? services.users.update(item.id, dto) : services.users.create(dto), getUser: response => response,
           onSuccess: response => saved(modal, item ? 'Đã cập nhật hồ sơ.' : ('Đã tạo tài khoản chờ kích hoạt' + (response?.employeeCode ? ' [' + response.employeeCode + ']. ' : '. ') + emailStatus(response.invitationEmailStatus)))
         });
-      } }, h('div', { className: 'dialog-body form-grid' },
-        add({ name: 'displayName', label: 'Họ và tên', required: true, maxLength: 200 }),
-        add({ name: 'username', label: 'Tên đăng nhập', required: true, maxLength: 100 }),
-        add({ name: 'email', label: 'Email', type: 'email', required: true, maxLength: 320 }),
-        add({ name: 'employeeCode', label: 'Mã nhân viên', maxLength: 50, readOnly: true, placeholder: item ? '' : 'Mã sẽ được hệ thống tự động tạo khi lưu (NVxxxxxx)', hint: item ? 'Mã nhân viên không thể thay đổi sau khi tạo.' : 'Mã sẽ được hệ thống tự động tạo khi lưu (NVxxxxxx).' }),
-        add({ name: 'departmentId', label: 'Phòng ban', options: departmentOptions }),
-        add({ name: 'phone', label: 'Số điện thoại', type: 'tel', maxLength: 30 }),
-        !item ? h('div', { className: 'role-and-permissions-section' },
-          h('fieldset', { className: 'role-choices' },
-            h('legend', {}, 'Vai trò (chọn duy nhất một vai trò)'),
-            h('div', { className: 'radio-group' },
-              choices.map(({ role, input }) => h('label', { className: 'radio-label' }, input, h('span', { className: 'font-medium' }, role.name)))
+      } }, h('div', { className: 'dialog-body' },
+        h('div', { className: 'user-profile-section' },
+          h('h3', { className: 'section-title' }, 'Thông tin tài khoản'),
+          h('div', { className: 'form-grid' },
+            add({ name: 'displayName', label: 'Họ và tên', required: true, maxLength: 200 }),
+            add({ name: 'username', label: 'Tên đăng nhập', required: true, maxLength: 100 }),
+            add({ name: 'email', label: 'Email', type: 'email', required: true, maxLength: 320 }),
+            add({ name: 'employeeCode', label: 'Mã nhân viên', maxLength: 50, readOnly: true, placeholder: item ? '' : 'Mã sẽ được hệ thống tự động tạo khi lưu (NVxxxxxx)', hint: item ? 'Mã nhân viên không thể thay đổi sau khi tạo.' : 'Mã sẽ được hệ thống tự động tạo khi lưu (NVxxxxxx).' }),
+            add({ name: 'departmentId', label: 'Phòng ban', options: departmentOptions }),
+            add({ name: 'phone', label: 'Số điện thoại', type: 'tel', maxLength: 30 })
+          )
+        ),
+        !item ? h('div', { className: 'user-role-section' },
+          h('fieldset', { className: 'role-choices-box' },
+            h('legend', {}, 'Vai trò người dùng (chọn một vai trò duy nhất)'),
+            h('div', { className: 'radio-group role-radio-group' },
+              choices.map(({ role, input }) => h('label', { className: 'role-radio-card' }, input, h('span', { className: 'role-radio-name' }, role.name)))
             ),
-            h('p', { className: 'field-hint' }, 'Người dùng tự đặt mật khẩu qua liên kết email có hiệu lực 30 phút. Mỗi người dùng chỉ sở hữu một vai trò.')
+            h('p', { className: 'field-hint mt-2' }, 'Người dùng tự đặt mật khẩu qua liên kết email có hiệu lực 30 phút. Mỗi người dùng chỉ sở hữu một vai trò.')
           ),
           matrixMount
         ) : null,
         feedback), h('div', { className: 'dialog-footer' }, button('Hủy', { kind: 'secondary', onClick: () => modal.close() }), save));
-      modal = openDialog({ title: item ? 'Sửa hồ sơ người dùng' : 'Thêm người dùng', body: form });
+      modal = openDialog({ title: item ? 'Sửa hồ sơ người dùng' : 'Thêm người dùng', body: form, className: item ? '' : 'dialog--wide' });
     } catch (error) { report(error); }
   }
   async function detailDialog(row) {
@@ -598,17 +617,43 @@ export async function userPage(services) {
           onSuccess: response => saved(modal, 'Đã cập nhật vai trò và quyền. JWT cũ của tài khoản đã bị thu hồi.', response.warnings)
         });
       } });
-      modal = openDialog({ title: 'Vai trò & Phân quyền — ' + row.displayName, body: h('div', { className: 'dialog-body' },
-        h('fieldset', { className: 'role-choices' },
-          h('legend', {}, 'Chọn một vai trò duy nhất'),
-          h('div', { className: 'radio-group' },
-            choices.map(({ role, input }) => h('label', { className: 'radio-label' }, input, h('span', { className: 'font-medium' }, role.name)))
-          )
+      const summaryBar = h('div', { className: 'user-role-summary-bar' },
+        h('div', { className: 'user-summary-item' },
+          h('span', { className: 'summary-label' }, 'Người dùng:'),
+          h('strong', {}, row.displayName + ' (' + row.username + ')')
         ),
-        h('p', { className: 'info-note' }, 'Mỗi người dùng chỉ được sở hữu một vai trò. Bạn có thể cấp hoặc bỏ bớt các quyền riêng trong giới hạn của vai trò. Backend bảo vệ Admin cuối cùng.'),
-        matrixMount,
-        unmapped.length ? formAlert('Có vai trò cũ không còn trong danh mục hoạt động: ' + unmapped.join(', ') + '. Cần review; giao diện không tự loại bỏ.') : null, feedback),
-        footer: [button('Hủy', { kind: 'secondary', onClick: () => modal.close() }), confirm] });
+        row.employeeCode ? h('div', { className: 'user-summary-item' },
+          h('span', { className: 'summary-label' }, 'Mã NV:'),
+          h('span', { className: 'font-mono' }, row.employeeCode)
+        ) : null,
+        h('div', { className: 'user-summary-item' },
+          h('span', { className: 'summary-label' }, 'Email:'),
+          h('span', {}, row.email)
+        ),
+        row.departmentName ? h('div', { className: 'user-summary-item' },
+          h('span', { className: 'summary-label' }, 'Phòng ban:'),
+          h('span', {}, row.departmentName)
+        ) : null
+      );
+
+      modal = openDialog({
+        title: 'Vai trò & Phân quyền — ' + row.displayName,
+        className: 'dialog--wide',
+        body: h('div', { className: 'dialog-body' },
+          summaryBar,
+          h('fieldset', { className: 'role-choices-box' },
+            h('legend', {}, 'Vai trò người dùng (chọn một vai trò duy nhất)'),
+            h('div', { className: 'radio-group role-radio-group' },
+              choices.map(({ role, input }) => h('label', { className: 'role-radio-card' }, input, h('span', { className: 'role-radio-name' }, role.name)))
+            ),
+            h('p', { className: 'field-hint mt-2' }, 'Mỗi người dùng chỉ sở hữu một vai trò. Bạn có thể cấp hoặc bỏ bớt các quyền riêng trong giới hạn vai trò đã chọn. Backend bảo vệ Admin cuối cùng.')
+          ),
+          matrixMount,
+          unmapped.length ? formAlert('Có vai trò cũ không còn trong danh mục hoạt động: ' + unmapped.join(', ') + '. Cần review; giao diện không tự loại bỏ.') : null,
+          feedback
+        ),
+        footer: [button('Hủy', { kind: 'secondary', onClick: () => modal.close() }), confirm]
+      });
     } catch (error) { report(error); }
   }
   async function resend(row, control) {

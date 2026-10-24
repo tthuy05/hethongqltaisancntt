@@ -5,10 +5,13 @@
 - **Nhiệm vụ A: Nâng cấp Phân quyền người dùng (Single Role & Custom Permissions)**:
   - **Mỗi người dùng sở hữu duy nhất 1 Role**: Chuyển giao diện từ checkbox chọn nhiều role sang Radio Group chọn đúng 1 Role duy nhất cho mỗi tài khoản (`ADMIN_IT`, `SYSTEM_MANAGER`, `TECHNICAL_SUPPORT` hoặc Role tùy chỉnh). Cấm chọn đồng thời nhiều role ở cả Frontend lẫn Backend (`400 VALIDATION_ERROR`).
   - **Role quy định tập quyền tối đa (Upper Bound)**: Role là giới hạn trần. Người dùng không thể sở hữu bất kỳ quyền nào vượt ngoài phạm vi của Role (`PRIVILEGE_ESCALATION` - 400).
-  - **Ma trận Checkbox quyền riêng ngay bên dưới Role**:
-    - Khi chọn Role, bảng quyền hiển thị ngay lập tức, phân nhóm theo Module, tên quyền tiếng Việt, giải quyết quan hệ phụ thuộc (Dependencies).
-    - Mặc định chọn toàn bộ quyền của Role khi tạo tài khoản mới. Cho phép bỏ chọn từng quyền cụ thể để cấp ít quyền hơn.
-    - Hiển thị badge số lượng quyền đang chọn (`X / Y quyền`).
+  - **Ma trận Checkbox quyền riêng dạng khối chính (Full-width Wide Modal)**:
+    - Nâng cấp modal Thêm người dùng và Phân quyền người dùng sang chuẩn kích thước rộng (`dialog--wide`, tối đa 1000px trên desktop).
+    - Tách biệt 3 khối nội dung tuần tự: Khối thông tin hồ sơ người dùng (hoặc thanh tóm tắt thông tin tài khoản) $\rightarrow$ Khối chọn 1 Vai trò duy nhất dạng thẻ radio (`role-radio-card`) $\rightarrow$ Khối Ma trận quyền chi tiết toàn chiều ngang (`user-permissions-panel`, 100% width).
+    - Triệt tiêu hoàn toàn hiện tượng cuộn lồng nhiều lớp (nested scrollbar): chỉ giữ một vùng cuộn dọc duy nhất cho toàn modal (`dialog-body`), ghim cố định header và footer.
+    - Bố cục lưới 2 cột cho các nhóm module quyền (`permission-matrix-body`), tự động chuyển về 1 cột trên màn hình nhỏ (<820px).
+    - Hiển thị số lượng quyền trực tiếp theo từng module (`X / Y`) và huy hiệu tổng số quyền (`Đã chọn: X / Y quyền`).
+    - Phân biệt trực quan giữa chế độ "Mặc định theo vai trò" (xanh lá) và "Tùy chỉnh riêng" (vàng cam).
     - Nút "Khôi phục mặc định" để nhanh chóng hoàn nguyên về trọn vẹn tập quyền của Role.
     - Xem trước danh sách quyền hiệu lực thực tế (Effective Permissions Preview).
     - Hộp thoại xác nhận an toàn khi đổi Role trước khi tính toán lại tập quyền.
@@ -36,7 +39,7 @@
   - `dotnet build --configuration Release`: **Build succeeded. 0 Warning(s), 0 Error(s)**.
   - Backend Unit Tests: **793 / 793 PASS (100%)**.
   - Backend Offline Integration Tests: **202 / 202 PASS (100%)**, 167 cloud tests skipped an toàn.
-  - Frontend Tests (`npm.cmd test`): **380 / 380 PASS (100%)**.
+  - Frontend Tests (`npm.cmd test`): **382 / 382 PASS (100%)** (Bổ sung kiểm thử UI/UX ma trận quyền rộng rãi).
   - Frontend Code & CSP Checks (`node scripts/frontend-check.mjs`): **PASS** (50 JS syntax checks, 54 CSP checks).
   - Production Package Build & Verification (`verify-production-publish.mjs`): **PASS** (75 files, 45 public assets).
   - Production Smoke Tests (`smoke-production.mjs`): **PASS 32/32 (Normal) và 36/36 (Maintenance)**.

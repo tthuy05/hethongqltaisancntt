@@ -46,8 +46,8 @@ export async function busy(control, work) {
   control.textContent = 'Đang xử lý…';
   try { return await work(); } finally { control.disabled = false; control.removeAttribute('aria-busy'); control.replaceChildren(...before); }
 }
-export function openDialog({ title, body, footer, onClose }) {
-  const dialog = h('dialog', { className: 'dialog', 'aria-label': title });
+export function openDialog({ title, body, footer, onClose, className = '' }) {
+  const dialog = h('dialog', { className: ('dialog ' + className).trim(), 'aria-label': title });
   const close = () => { dialog.close(); dialog.remove(); onClose?.(); };
   dialog.append(h('div', { className: 'dialog-header' }, h('h2', {}, title), button('Đóng', { kind: 'ghost', iconName: 'x', onClick: close, 'aria-label': 'Đóng hộp thoại' })), body, h('div', { className: 'dialog-footer' }, footer));
   dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
