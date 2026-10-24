@@ -1,5 +1,46 @@
 # Project Status
 
+## 24/10/2026 — Hoàn thiện Single Role per User, Ma trận quyền riêng tùy chỉnh & Giao diện Import/Export Excel (RBAC v2)
+
+- **Nhiệm vụ A: Nâng cấp Phân quyền người dùng (Single Role & Custom Permissions)**:
+  - **Mỗi người dùng sở hữu duy nhất 1 Role**: Chuyển giao diện từ checkbox chọn nhiều role sang Radio Group chọn đúng 1 Role duy nhất cho mỗi tài khoản (`ADMIN_IT`, `SYSTEM_MANAGER`, `TECHNICAL_SUPPORT` hoặc Role tùy chỉnh). Cấm chọn đồng thời nhiều role ở cả Frontend lẫn Backend (`400 VALIDATION_ERROR`).
+  - **Role quy định tập quyền tối đa (Upper Bound)**: Role là giới hạn trần. Người dùng không thể sở hữu bất kỳ quyền nào vượt ngoài phạm vi của Role (`PRIVILEGE_ESCALATION` - 400).
+  - **Ma trận Checkbox quyền riêng ngay bên dưới Role**:
+    - Khi chọn Role, bảng quyền hiển thị ngay lập tức, phân nhóm theo Module, tên quyền tiếng Việt, giải quyết quan hệ phụ thuộc (Dependencies).
+    - Mặc định chọn toàn bộ quyền của Role khi tạo tài khoản mới. Cho phép bỏ chọn từng quyền cụ thể để cấp ít quyền hơn.
+    - Hiển thị badge số lượng quyền đang chọn (`X / Y quyền`).
+    - Nút "Khôi phục mặc định" để nhanh chóng hoàn nguyên về trọn vẹn tập quyền của Role.
+    - Xem trước danh sách quyền hiệu lực thực tế (Effective Permissions Preview).
+    - Hộp thoại xác nhận an toàn khi đổi Role trước khi tính toán lại tập quyền.
+  - **Cơ chế lưu trữ và tính toán quyền hiệu lực**:
+    - Bổ sung bảng `user_permissions` và cờ `users.has_custom_permissions`.
+    - Công thức: $\text{EffectivePermissions} = \text{RolePermissions} \cap \text{UserAllowedPermissions} \cap \text{AvailablePermissions}$.
+    - Sửa quyền của một User không bao giờ tác động đến User khác.
+    - Thu hồi quyền của Role tự động làm mất quyền tương ứng của User.
+    - Cấp thêm quyền vào Role không tự động tăng cho User đã tùy chỉnh quyền riêng (`has_custom_permissions = true`).
+    - Tự động tăng `TokenVersion` để vô hiệu hóa ngay lập tức các JWT cũ khi User bị đổi quyền hoặc Role.
+    - Bảo vệ tuyệt đối Admin cuối cùng (`LAST_ADMIN_PROTECTED` - 409).
+    - Bảo toàn toàn vẹn quy trình tạo User, tự sinh mã nhân viên `NVxxxxxx`, gửi email mời kích hoạt qua Brevo và liên kết 30 phút.
+  - **Tương thích dữ liệu Neon Production**:
+    - Kiểm tra thực tế: Cả 6 tài khoản trên Neon production hiện có đều có $\le 1$ Role (0 tài khoản nào vi phạm).
+    - Đã tạo Migration EF Core `20261024043835_AddUserPermissions` và sinh script SQL idempotent an toàn [migration-user-permissions.sql](docs/migration-user-permissions.sql) sẵn sàng xin phê duyệt.
+- **Nhiệm vụ B: Hoàn thiện Giao diện Import/Export Excel trên Danh sách tài sản**:
+  - **Sửa lỗi gốc tại nguồn**: Kích hoạt `importExportEnabled: true` trong `services/index.js` và `services/production-index.js`.
+  - **Thanh thao tác Danh sách tài sản (`/assets`)**: Hiển thị bộ 3 nút cân đối, trực quan: `Thêm tài sản` (kèm icon `plus`), `Nhập Excel` (kèm icon `upload`), `Xuất Excel` (kèm icon `download`).
+  - **Hiển thị độc lập theo quyền hiệu lực**:
+    - Nút "Nhập Excel" chỉ hiển thị khi tài khoản có quyền `import.assets.execute`.
+    - Nút "Xuất Excel" chỉ hiển thị khi tài khoản có quyền `export.assets.execute`.
+    - Hai người dùng cùng Role có thể hiển thị khác nhau nếu quản trị viên cấu hình quyền riêng khác nhau.
+    - Bảo vệ an toàn quyền xem giá (`assets.cost.read` / `reports.cost.read`) và chống Excel Formula Injection.
+- **Kết quả Kiểm thử toàn diện**:
+  - `dotnet build --configuration Release`: **Build succeeded. 0 Warning(s), 0 Error(s)**.
+  - Backend Unit Tests: **793 / 793 PASS (100%)**.
+  - Backend Offline Integration Tests: **202 / 202 PASS (100%)**, 167 cloud tests skipped an toàn.
+  - Frontend Tests (`npm.cmd test`): **380 / 380 PASS (100%)**.
+  - Frontend Code & CSP Checks (`node scripts/frontend-check.mjs`): **PASS** (50 JS syntax checks, 54 CSP checks).
+  - Production Package Build & Verification (`verify-production-publish.mjs`): **PASS** (75 files, 45 public assets).
+  - Production Smoke Tests (`smoke-production.mjs`): **PASS 32/32 (Normal) và 36/36 (Maintenance)**.
+
 ## 24/10/2026 — Hoàn tất PR #3, Sync Neon Grants & Rollout Import/Export Excel trên Production
 
 - **PR #3 Merged**: Đã fast-forward commit `7d86dc4` vào `codex/excel-acceptance` và merge vào `main`. PR #3 đã được đóng với trạng thái MERGED thành công trên GitHub.

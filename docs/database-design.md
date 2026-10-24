@@ -1,5 +1,14 @@
 # Thiết kế cơ sở dữ liệu
 
+## Physical/source snapshot 24/10/2026 — Bổ sung bảng user_permissions và hỗ trợ Phân quyền riêng theo User (RBAC v2)
+
+Mô hình hiện tại gồm **19 bảng / 44 FK / 85 CHECK / 99 indexes / 5 migrations**:
+- Migration mới: `20261024043835_AddUserPermissions`:
+  - Thêm cột `users.has_custom_permissions` (`boolean NOT NULL DEFAULT FALSE`).
+  - Thêm bảng `user_permissions` (id, user_id, permission_id, granted_at_utc, granted_by_user_id) với 3 Foreign Keys (`user_id -> users.id`, `permission_id -> permissions.id`, `granted_by_user_id -> users.id`) đều sử dụng `ON DELETE NO ACTION`.
+  - Thêm unique index `uq_user_permissions_user_permission` trên `(user_id, permission_id)` và 2 secondary index `ix_user_permissions_permission` trên `(permission_id, user_id)` và `ix_user_permissions_granted_by_user_id` trên `(granted_by_user_id)`.
+  - Kịch bản migration chuẩn bị sẵn tại [migration-user-permissions.sql](migration-user-permissions.sql), bảo đảm tính idempotent và an toàn dữ liệu 100%.
+
 ## Physical/source snapshot 11/10/2026
 
 Shared Neon read-only: **18 bảng /41 FK /83 CHECK /96 indexes /3 migrations**, 28 permissions/49 grants. Schema Baseline V1 có thật, không đồng nghĩa mọi module có API. Checkpoint 10/19 phía dưới là lịch sử.

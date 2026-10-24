@@ -9,6 +9,7 @@ namespace ItAssetManagement.Infrastructure.Mvp;
 public sealed class AccountPersistence(AppDbContext db) : IAccountPersistence
 {
     public void RemoveMembership(UserRole membership) => db.RemoveRoleMembership(membership);
+    public void RemoveUserPermission(UserPermission permission) => db.RemoveUserPermission(permission);
     public async Task<string[]> AllocationWarningsAsync(CancellationToken ct)
     {
         // Neither allocation table exists in M1. If a later migration adds one, do not

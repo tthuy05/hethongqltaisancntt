@@ -1,5 +1,63 @@
 # API Specification
 
+## Contract update 24/10/2026 — Single Role per User và Phân quyền riêng theo người dùng (RBAC v2)
+
+### 1. Phân quyền người dùng (Single Role & Custom Permissions)
+- **Quy tắc Single Role**: Mỗi người dùng chỉ được sở hữu tối đa 1 Role (`RoleId` hoặc mảng `RoleIds` có độ dài <= 1). Request gửi nhiều hơn 1 role bị từ chối ngay tại tầng validation với mã `400 VALIDATION_ERROR`.
+- **Giới hạn trần theo Role (Upper Bound)**: Role quy định tập quyền tối đa mà tài khoản có thể sở hữu. Người dùng không thể sở hữu bất kỳ quyền nào nằm ngoài giới hạn của Role.
+- **Tập quyền riêng tùy chỉnh (`UserAllowedPermissions`)**: Quản trị viên có thể tùy chọn cấp hoặc bỏ bớt quyền cho từng người dùng cụ thể trong giới hạn của Role.
+- **Công thức tính quyền hiệu lực**:
+  $$\text{EffectivePermissions} = \text{RolePermissions} \cap \text{UserAllowedPermissions} \cap \text{AvailablePermissions}$$
+  - Nếu tài khoản chưa từng tùy chỉnh quyền (`has_custom_permissions = false`), tài khoản tự động kế thừa toàn bộ quyền của Role: $\text{EffectivePermissions} = \text{RolePermissions} \cap \text{AvailablePermissions}$.
+  - Nếu tài khoản có tùy chỉnh quyền (`has_custom_permissions = true`), tài khoản chỉ nhận giao điểm giữa quyền Role và quyền riêng được cấp.
+- **Chống leo thang đặc quyền (`PRIVILEGE_ESCALATION` - 400)**: Bất kỳ nỗ lực nào nhằm gán quyền nằm ngoài tập quyền của Role qua API đều bị từ chối với lỗi `400 PRIVILEGE_ESCALATION`.
+- **Thu hồi quyền tức thời & Bảo vệ phiên đăng nhập**: Khi thay đổi Role hoặc quyền của User, hệ thống tự động tăng `TokenVersion` của User trong cơ sở dữ liệu. Mọi JWT cũ mang `TokenVersion` cũ lập tức bị vô hiệu hóa trong phiên làm việc tiếp theo (`401 UNAUTHORIZED`).
+- **Bảo vệ Admin cuối cùng (`LAST_ADMIN_PROTECTED` - 409)**: Không cho phép tước quyền quản trị cốt lõi (`roles.assign`, `users.status.manage`) của tài khoản Admin cuối cùng còn khả dụng.
+- **Đồng bộ Audit Log**: Ghi nhận hành động `users.roles.replace` và `users.permissions.assign` trong `audit_logs`.
+
+### 2. Chi tiết Endpoints liên quan
+- `POST /api/v1/users`:
+  - Request body bổ sung: `roleId?: number`, `roleIds: number[]` (bắt buộc đúng 1 phần tử), `permissionCodes?: string[]`.
+  - Validate: Single role (`roleIds.Length == 1`), `permissionCodes` phải là tập con của quyền thuộc Role đã chọn.
+  - Tự động lưu các quyền riêng vào bảng `user_permissions` nếu có tùy chỉnh khác mặc định.
+- `PUT /api/v1/users/{userId}/roles`:
+  - Request body:
+    ```json
+    {
+      "roleId": 2,
+      "roleIds": [2],
+      "permissionCodes": ["assets.read", "assets.create", "export.assets.execute"],
+      "resetToRoleDefaults": false,
+      "rowVersion": "AAAAAA=="
+    }
+    ```
+  - `roleIds`: Bắt buộc mảng chứa tối đa 1 role ID (hoặc mảng rỗng để thu hồi vai trò).
+  - `permissionCodes`: Danh sách mã quyền riêng muốn cấp cho User (phải thuộc Role được gán).
+  - `resetToRoleDefaults`: Nếu `true`, hệ thống xóa toàn bộ cấu hình quyền riêng trong `user_permissions` và đặt `has_custom_permissions = false`.
+- `GET /api/v1/users/{userId}/account`:
+  - Trả về thông tin trạng thái tài khoản và phân quyền:
+    ```json
+    {
+      "id": 12,
+      "isActive": true,
+      "isAdminLocked": false,
+      "roleIds": [2],
+      "rolePermissions": ["assets.read", "assets.create", "assets.update", "import.assets.execute", "export.assets.execute"],
+      "customPermissions": ["assets.read", "assets.create", "export.assets.execute"],
+      "effectivePermissions": ["assets.read", "assets.create", "export.assets.execute"],
+      "hasCustomPermissions": true,
+      "rowVersion": "AAAAAA=="
+    }
+    ```
+
+### 3. Giao diện Danh sách tài sản & Import/Export Excel
+- `services/index.js` và `services/production-index.js` được cấu hình `importExportEnabled: true`.
+- Tại thanh thao tác Danh sách tài sản (`/assets`), hiển thị bộ nút:
+  - `Thêm tài sản`: Hiển thị khi có quyền `assets.create`.
+  - `Nhập Excel`: Hiển thị khi `importExportEnabled === true` và có quyền `import.assets.execute`.
+  - `Xuất Excel`: Hiển thị khi `importExportEnabled === true` và có quyền `export.assets.execute`.
+- Các nút hiển thị độc lập theo quyền hiệu lực của người dùng; hai người cùng Role có thể hiển thị khác nhau nếu quản trị viên phân quyền riêng khác nhau.
+
 ## Contract update 24/10/2026 — Chuẩn hóa mã tự sinh và bất biến
 
 - **Người dùng (Users):**

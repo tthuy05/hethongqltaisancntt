@@ -50,12 +50,16 @@ public static class NeonSchemaInspection
                 tables=reader.GetFieldValue<string[]>(4); pk=reader.GetInt32(5); fk=reader.GetInt32(6); check=reader.GetInt32(7);
                 indexes=reader.GetInt32(8); migration=reader.GetString(9);
             }
-            var businessTables = migration == FullSchemaBaseline.Migration
+            var businessTables = migration is "20261024043835_AddUserPermissions"
+                ? NeonM1Setup.Tables.Concat(NeonAssignmentMaintenanceSetup.NewTables).Concat(FullSchemaBaseline.NewTables).Append("user_permissions").ToArray()
+                : migration is (FullSchemaBaseline.Migration or "20261011103054_LecturerFeedbackIdentityAndAssetCodes")
                 ? NeonM1Setup.Tables.Concat(NeonAssignmentMaintenanceSetup.NewTables).Concat(FullSchemaBaseline.NewTables).ToArray()
                 : migration == NeonAssignmentMaintenanceSetup.Migration
                 ? NeonM1Setup.Tables.Concat(NeonAssignmentMaintenanceSetup.NewTables).ToArray() : NeonM1Setup.Tables;
-            var expectedFk = migration == FullSchemaBaseline.Migration ? 41 : migration == NeonAssignmentMaintenanceSetup.Migration ? 27 : 19;
-            if (migration is not (NeonAssignmentMaintenanceSetup.InitialMigration or NeonAssignmentMaintenanceSetup.Migration or FullSchemaBaseline.Migration) ||
+            var expectedFk = migration is "20261024043835_AddUserPermissions" ? 44
+                : migration is (FullSchemaBaseline.Migration or "20261011103054_LecturerFeedbackIdentityAndAssetCodes") ? 41
+                : migration == NeonAssignmentMaintenanceSetup.Migration ? 27 : 19;
+            if (migration is not (NeonAssignmentMaintenanceSetup.InitialMigration or NeonAssignmentMaintenanceSetup.Migration or FullSchemaBaseline.Migration or "20261011103054_LecturerFeedbackIdentityAndAssetCodes" or "20261024043835_AddUserPermissions") ||
                 !tables.Order().SequenceEqual(businessTables.Append("ef_migrations_history").Order()) || pk!=businessTables.Length || fk!=expectedFk)
                 return new("SchemaMismatch", Database:db);
             // Fixed source-controlled allowlist, no user-supplied SQL identifiers; SELECT only.

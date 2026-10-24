@@ -7,11 +7,15 @@ namespace ItAssetManagement.Application.Mvp;
 public interface IAccountPersistence
 {
     void RemoveMembership(UserRole membership);
+    void RemoveUserPermission(UserPermission permission);
     Task<string[]> AllocationWarningsAsync(CancellationToken ct);
 }
 public sealed class ReplaceUserRolesRequest
 {
     [JsonRequired] public long[] RoleIds { get; set; } = [];
+    public long? RoleId { get; set; }
+    public string[]? PermissionCodes { get; set; }
+    public bool ResetToRoleDefaults { get; set; }
     [Required] public string RowVersion { get; set; } = "";
 }
 // The four profile endpoints keep their existing DTO. These two privileged operations
@@ -29,10 +33,10 @@ public static class UserAccountValidation
     }
     public static byte[] Roles(ReplaceUserRolesRequest request)
     {
-        if (request.RoleIds == null || request.RoleIds.Length > 50 ||
-            request.RoleIds.Any(x => x <= 0) || request.RoleIds.Distinct().Count() != request.RoleIds.Length)
-            throw Validation.Invalid("roleIds", "Danh sách tối đa 50 ID dương, không trùng; [] để bỏ mọi nhóm.");
-        request.RoleIds = request.RoleIds.Order().ToArray();
+        if (request.RoleId.HasValue && (request.RoleIds == null || request.RoleIds.Length == 0))
+            request.RoleIds = [request.RoleId.Value];
+        if (request.RoleIds == null || request.RoleIds.Length > 1 || request.RoleIds.Any(x => x <= 0))
+            throw Validation.Invalid("roleIds", "Mỗi người dùng chỉ được sở hữu tối đa một vai trò.");
         return Validation.Version(request.RowVersion);
     }
     public static void IncrementVersion(User user)
@@ -118,21 +122,60 @@ public sealed class UserAccountService(IRepository repo, IAccountPersistence acc
             var user = await BeginAsync(id, Permissions.RoleAssign, version, ct);
             var selected = await repo.ListAsync(repo.Query<Role>().Where(x => request.RoleIds.Contains(x.Id) && x.IsActive), ct);
             if (selected.Count != request.RoleIds.Length) throw Validation.Invalid("roleIds", "Nhóm phải tồn tại và đang hoạt động.");
-            // Delegated identity operators cannot grant themselves or anyone else more
-            // permissions than they currently hold, or grant the protected Admin role.
+            
             var callerIsAdmin = await repo.AnyAsync(AdminUsers().Where(x => x == actor.UserId), ct);
+            var targetIsAdmin = selected.Any(x => x.Code == "ADMIN_IT");
+
+            List<Permission> rolePermissionList = [];
+            HashSet<string> rolePermissionCodes = [];
+            if (selected.Count > 0)
+            {
+                var roleGrants = from grant in repo.Query<RolePermission>() join definition in repo.Query<Permission>() on grant.PermissionId equals definition.Id
+                                 where grant.RoleId == selected[0].Id && definition.IsActive select definition;
+                rolePermissionList = await repo.ListAsync(roleGrants, ct);
+                rolePermissionCodes = rolePermissionList.Select(p => p.Code).ToHashSet();
+            }
+
             if (!callerIsAdmin)
             {
-                var grants = from grant in repo.Query<RolePermission>() join definition in repo.Query<Permission>() on grant.PermissionId equals definition.Id
-                             where request.RoleIds.Contains(grant.RoleId) && definition.IsActive select definition.Code;
-                var codes = await repo.ListAsync(grants.Distinct(), ct);
-                var currentCodes = await repo.ListAsync(EffectivePermissionQuery.ForUser(repo, actor.UserId!.Value), ct);
-                if (selected.Any(x => x.Code == "ADMIN_IT") || codes.Any(code => !currentCodes.Contains(code)))
+                var currentCodes = (await repo.ListAsync(EffectivePermissionQuery.ForUser(repo, actor.UserId!.Value), ct)).ToHashSet();
+                if (targetIsAdmin || rolePermissionCodes.Any(code => !currentCodes.Contains(code)))
                     throw new BusinessException(403, "PRIVILEGE_ESCALATION", "Không được cấp quyền vượt quyền hiện tại.");
+
+                if (request.PermissionCodes != null && request.PermissionCodes.Any(code => !currentCodes.Contains(code)))
+                    throw new BusinessException(403, "PRIVILEGE_ESCALATION", "Không được cấp quyền riêng vượt quyền hiện tại.");
             }
-            await ProtectLastAdminAsync(user, !selected.Any(x => x.Code == "ADMIN_IT"), ct);
+
+            if (request.PermissionCodes != null)
+            {
+                foreach (var code in request.PermissionCodes)
+                {
+                    if (!rolePermissionCodes.Contains(code))
+                        throw new BusinessException(400, "INVALID_USER_PERMISSIONS", $"Quyền '{code}' không thuộc vai trò đã chọn.");
+                }
+            }
+
+            var losesAdminRole = !targetIsAdmin;
+            await ProtectLastAdminAsync(user, losesAdminRole, ct);
+
+            if (callerIsAdmin && !losesAdminRole && request.PermissionCodes != null)
+            {
+                var now = DateTime.UtcNow;
+                var admins = AdminUsers();
+                var other = repo.Query<User>().Where(x => x.Id != user.Id && x.IsEmailConfirmed && x.IsActive && !x.IsAdminLocked &&
+                    (x.LockoutEndUtc == null || x.LockoutEndUtc <= now) && admins.Contains(x.Id));
+                if (!await repo.AnyAsync(other, ct))
+                {
+                    var missingAdminPerms = Permissions.Admin.Where(p => !request.PermissionCodes.Contains(p)).ToArray();
+                    if (missingAdminPerms.Length > 0)
+                        throw new BusinessException(409, "LAST_ADMIN_PROTECTED", "Không được thu hồi quyền quản trị của Admin cuối cùng.");
+                }
+            }
+
             var current = await repo.ListAsync(repo.Query<UserRole>(true).Where(x => x.UserId == id), ct);
             var existingIds = current.Select(x => x.RoleId).ToHashSet();
+            bool roleChanged = !existingIds.SetEquals(request.RoleIds);
+
             foreach (var link in current.Where(x => !request.RoleIds.Contains(x.RoleId)))
             {
                 audit.Record("users.roles.remove", link, actor.UserId, "USER", before: new { link.UserId, link.RoleId });
@@ -144,9 +187,50 @@ public sealed class UserAccountService(IRepository repo, IAccountPersistence acc
                 repo.Add(link); await repo.SaveAsync(ct);
                 audit.Record("users.roles.add", link, actor.UserId, "USER", after: new { link.UserId, link.RoleId });
             }
+
+            var currentUserPerms = await repo.ListAsync(repo.Query<UserPermission>(true).Where(x => x.UserId == id), ct);
+            if (request.ResetToRoleDefaults)
+            {
+                user.HasCustomPermissions = false;
+                foreach (var up in currentUserPerms)
+                {
+                    accounts.RemoveUserPermission(up);
+                }
+                audit.Record("users.permissions.reset", user, actor.UserId, "USER", after: new { user.Id, resetToDefaults = true });
+            }
+            else if (request.PermissionCodes != null)
+            {
+                user.HasCustomPermissions = true;
+                foreach (var up in currentUserPerms)
+                {
+                    accounts.RemoveUserPermission(up);
+                }
+                foreach (var code in request.PermissionCodes.Distinct())
+                {
+                    var perm = rolePermissionList.First(p => p.Code == code);
+                    var newUp = new UserPermission
+                    {
+                        UserId = id,
+                        PermissionId = perm.Id,
+                        GrantedByUserId = actor.UserId,
+                        GrantedAtUtc = DateTime.UtcNow
+                    };
+                    repo.Add(newUp);
+                }
+                audit.Record("users.permissions.replace", user, actor.UserId, "USER", after: new { user.Id, permissionCount = request.PermissionCodes.Length });
+            }
+            else if (roleChanged)
+            {
+                user.HasCustomPermissions = false;
+                foreach (var up in currentUserPerms)
+                {
+                    accounts.RemoveUserPermission(up);
+                }
+            }
+
             UserAccountValidation.IncrementVersion(user); user.UpdatedByUserId = actor.UserId;
             audit.Record("users.roles.replace", user, actor.UserId, "USER", before: new { roleCount = current.Count },
-                after: new { roleCount = request.RoleIds.Length, adminRoleAssigned = selected.Any(x => x.Code == "ADMIN_IT") });
+                after: new { roleCount = request.RoleIds.Length, adminRoleAssigned = targetIsAdmin, hasCustomPermissions = user.HasCustomPermissions });
             await repo.SaveAsync(ct);
             return await ResultAsync(user, [], ct);
         }, ct);

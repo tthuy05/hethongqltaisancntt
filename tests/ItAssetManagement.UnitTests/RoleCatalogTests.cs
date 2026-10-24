@@ -14,7 +14,8 @@ public sealed class RoleCatalogTests
             new() { Id = 9, Code = "custom.secret", Name = "Hidden", Module = "custom" } },
         new RolePermission[] { new() { Id = 1, RoleId = 31, PermissionId = 2 }, new() { Id = 2, RoleId = 31, PermissionId = 4 } },
         new User[] { new() { Id = 8, IsActive = false, IsAdminLocked = true, RowVersion = new byte[16] } },
-        new UserRole[] { new() { Id = 1, UserId = 8, RoleId = 31 }, new() { Id = 2, UserId = 8, RoleId = 7 } });
+        new UserRole[] { new() { Id = 1, UserId = 8, RoleId = 31 }, new() { Id = 2, UserId = 8, RoleId = 7 } },
+        new UserPermission[] { });
     [Theory]
     [InlineData(0, 20, null, "name", "asc")] [InlineData(1, 101, null, "name", "asc")]
     [InlineData(int.MaxValue, 100, null, "name", "asc")] [InlineData(1, 0, null, "name", "asc")]
@@ -77,7 +78,7 @@ public sealed class RoleCatalogTests
         var result = await service.GetAsync(8, default);
         Assert.False(result.IsActive); Assert.True(result.IsAdminLocked); Assert.Equal([7L, 31L], result.RoleIds);
         Assert.Equal(16, Convert.FromBase64String(result.RowVersion).Length);
-        Assert.Equal(["EffectivePermissions", "Id", "IsActive", "IsAdminLocked", "RoleIds", "RowVersion"], typeof(UserAccountStateDto).GetProperties().Select(x => x.Name).Order());
+        Assert.Equal(["CustomPermissions", "EffectivePermissions", "HasCustomPermissions", "Id", "IsActive", "IsAdminLocked", "RoleIds", "RolePermissions", "RowVersion"], typeof(UserAccountStateDto).GetProperties().Select(x => x.Name).Order());
         Assert.Equal(404, (await Assert.ThrowsAsync<BusinessException>(() => service.GetAsync(999, default))).Status);
         Assert.Equal(400, (await Assert.ThrowsAsync<BusinessException>(() => service.GetAsync(0, default))).Status);
     }

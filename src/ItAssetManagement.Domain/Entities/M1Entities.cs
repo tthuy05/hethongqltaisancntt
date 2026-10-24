@@ -39,6 +39,7 @@ public sealed class User
     public int FailedLoginCount { get; set; }
     public DateTime? LockoutEndUtc { get; set; }
     public int TokenVersion { get; set; }
+    public bool HasCustomPermissions { get; set; }
     public DateTime? LastLoginAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public long? CreatedByUserId { get; set; }
@@ -67,6 +68,15 @@ public sealed class UserRole
     public long RoleId { get; set; }
     public DateTime AssignedAtUtc { get; set; }
     public long? AssignedByUserId { get; set; }
+}
+
+public sealed class UserPermission
+{
+    public long Id { get; set; }
+    public long UserId { get; set; }
+    public long PermissionId { get; set; }
+    public DateTime GrantedAtUtc { get; set; }
+    public long? GrantedByUserId { get; set; }
 }
 
 public sealed class Permission

@@ -43,7 +43,7 @@ public sealed class UserAccountHostTests
             foreach (var status in new[] { "200", "400", "401", "403", "404", "409" }) Assert.True(op.GetProperty("responses").TryGetProperty(status, out _));
         }
         var schemas = doc.GetProperty("components").GetProperty("schemas");
-        Assert.Equal(["roleIds", "rowVersion"], schemas.GetProperty("ReplaceUserRolesRequest").GetProperty("properties").EnumerateObject().Select(x => x.Name).Order());
+        Assert.Equal(["permissionCodes", "resetToRoleDefaults", "roleId", "roleIds", "rowVersion"], schemas.GetProperty("ReplaceUserRolesRequest").GetProperty("properties").EnumerateObject().Select(x => x.Name).Order());
         Assert.Contains("roleIds", schemas.GetProperty("ReplaceUserRolesRequest").GetProperty("required").EnumerateArray().Select(x => x.GetString()));
         Assert.Equal(["isAdminLocked", "roleIds", "user", "warnings"], schemas.GetProperty("AccountChangeResult").GetProperty("properties").EnumerateObject().Select(x => x.Name).Order());
     }
@@ -164,7 +164,7 @@ public sealed class UserAccountApiTests(MvpFixture fixture)
     public async Task Invalid_roles_status_unknown_fields_and_missing_roleIds_are_400_and_missing_user_is_404()
     {
         using var admin = await fixture.ClientAsync(); var user = await Create(admin); var path = Path + user.Id;
-        foreach (var ids in new long[][] { [0], [-1], [1, 1], Enumerable.Range(1,51).Select(x=>(long)x).ToArray(), [long.MaxValue] })
+        foreach (var ids in new long[][] { [0], [-1], [1, 1], [1, 2], Enumerable.Range(1,51).Select(x=>(long)x).ToArray(), [long.MaxValue] })
             await Error(await admin.PutAsJsonAsync(path + "/roles", new { roleIds = ids, rowVersion = user.RowVersion }), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
         await Error(await admin.PutAsJsonAsync(path + "/roles", new { rowVersion = user.RowVersion }), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
         await Error(await admin.PutAsJsonAsync(path + "/roles", new { roleIds = (long[]?)null, rowVersion = user.RowVersion }), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
@@ -183,11 +183,11 @@ public sealed class UserAccountApiTests(MvpFixture fixture)
     [NeonFact]
     public async Task Retained_memberships_keep_ids_and_timestamps_and_inactive_role_is_rejected_without_mutation()
     {
-        using var admin = await fixture.ClientAsync(); var user = await Create(admin); var support = await Role("TECHNICAL_SUPPORT"); var manager = await Role("SYSTEM_MANAGER");
-        var assigned = await Assign(admin, user, support, manager);
+        using var admin = await fixture.ClientAsync(); var user = await Create(admin); var support = await Role("TECHNICAL_SUPPORT");
+        var assigned = await Assign(admin, user, support);
         await using var scope = fixture.Factory.Services.CreateAsyncScope(); var sp = scope.ServiceProvider; var db = sp.GetRequiredService<AppDbContext>();
         var before = await db.Set<UserRole>().AsNoTracking().Where(x => x.UserId == user.Id).OrderBy(x => x.RoleId).ToListAsync();
-        var repeated = await Assign(admin, assigned.User, manager, support);
+        var repeated = await Assign(admin, assigned.User, support);
         Assert.NotEqual(assigned.User.RowVersion, repeated.User.RowVersion);
         var after = await db.Set<UserRole>().AsNoTracking().Where(x => x.UserId == user.Id).OrderBy(x => x.RoleId).ToListAsync();
         Assert.Equal(before.Select(x => (x.Id, x.AssignedAtUtc)), after.Select(x => (x.Id, x.AssignedAtUtc)));
@@ -350,5 +350,100 @@ public sealed class UserAccountApiTests(MvpFixture fixture)
         }
         finally { await Toggle(true); }
         Assert.Equal(user.RowVersion, (await Get(admin, user.Id)).RowVersion);
+    }
+
+    [NeonFact]
+    public async Task Single_role_per_user_is_strictly_enforced_on_both_creation_and_role_assignment()
+    {
+        using var admin = await fixture.ClientAsync();
+        var key = fixture.Prefix + Guid.NewGuid().ToString("N")[..8];
+        var support = await Role("TECHNICAL_SUPPORT");
+        var manager = await Role("SYSTEM_MANAGER");
+
+        var multiCreate = await admin.PostAsJsonAsync("/api/v1/users", new CreateUserRequest
+        {
+            Username = key,
+            Email = key + "@fixture.test",
+            DisplayName = "Multi role test",
+            RoleIds = [support, manager]
+        });
+        await Error(multiCreate, HttpStatusCode.BadRequest, "VALIDATION_ERROR");
+
+        var singleCreate = await admin.PostAsJsonAsync("/api/v1/users", new CreateUserRequest
+        {
+            Username = key,
+            Email = key + "@fixture.test",
+            DisplayName = "Single role test",
+            RoleIds = [support]
+        });
+        Assert.Equal(HttpStatusCode.Created, singleCreate.StatusCode);
+        var createdUser = await fixture.ActivateUserAsync((await singleCreate.Content.ReadFromJsonAsync<UserDto>())!);
+
+        await Error(await admin.PutAsJsonAsync(Path + createdUser.Id + "/roles", new ReplaceUserRolesRequest
+        {
+            RoleIds = [support, manager],
+            RowVersion = createdUser.RowVersion
+        }), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
+    }
+
+    [NeonFact]
+    public async Task Custom_permissions_within_role_upper_bound_work_and_privilege_escalation_is_prevented()
+    {
+        using var admin = await fixture.ClientAsync();
+        var support = await Role("TECHNICAL_SUPPORT");
+        var manager = await Role("SYSTEM_MANAGER");
+
+        var key1 = fixture.Prefix + "sm1_" + Guid.NewGuid().ToString("N")[..6];
+        var key2 = fixture.Prefix + "sm2_" + Guid.NewGuid().ToString("N")[..6];
+        var u1Resp = await admin.PostAsJsonAsync("/api/v1/users", new CreateUserRequest
+        {
+            Username = key1, Email = key1 + "@fixture.test", DisplayName = "Manager Default", RoleIds = [manager]
+        });
+        var user1 = await fixture.ActivateUserAsync((await u1Resp.Content.ReadFromJsonAsync<UserDto>())!);
+
+        var u2Resp = await admin.PostAsJsonAsync("/api/v1/users", new CreateUserRequest
+        {
+            Username = key2, Email = key2 + "@fixture.test", DisplayName = "Manager Custom", RoleIds = [manager],
+            PermissionCodes = [Permissions.AssetRead, Permissions.AssetUpdate]
+        });
+        var user2 = await fixture.ActivateUserAsync((await u2Resp.Content.ReadFromJsonAsync<UserDto>())!);
+
+        var state1 = (await admin.GetFromJsonAsync<UserAccountStateDto>("/api/v1/users/" + user1.Id + "/account"))!;
+        Assert.False(state1.HasCustomPermissions);
+        Assert.Contains(Permissions.ExportAssets, state1.EffectivePermissions);
+        Assert.Contains(Permissions.ImportAssets, state1.EffectivePermissions);
+
+        var state2 = (await admin.GetFromJsonAsync<UserAccountStateDto>("/api/v1/users/" + user2.Id + "/account"))!;
+        Assert.True(state2.HasCustomPermissions);
+        Assert.Equal([Permissions.AssetRead, Permissions.AssetUpdate], state2.CustomPermissions.Order());
+        Assert.Equal([Permissions.AssetRead, Permissions.AssetUpdate], state2.EffectivePermissions.Order());
+        Assert.DoesNotContain(Permissions.ExportAssets, state2.EffectivePermissions);
+        Assert.DoesNotContain(Permissions.ImportAssets, state2.EffectivePermissions);
+
+        await Error(await admin.PutAsJsonAsync(Path + user2.Id + "/roles", new ReplaceUserRolesRequest
+        {
+            RoleIds = [manager],
+            PermissionCodes = [Permissions.AssetRead, Permissions.RoleAssign],
+            RowVersion = state2.RowVersion
+        }), HttpStatusCode.BadRequest, "PRIVILEGE_ESCALATION");
+
+        var badKey = fixture.Prefix + "bad_" + Guid.NewGuid().ToString("N")[..6];
+        var badCreate = await admin.PostAsJsonAsync("/api/v1/users", new CreateUserRequest
+        {
+            Username = badKey, Email = badKey + "@fixture.test", DisplayName = "Escalator", RoleIds = [support],
+            PermissionCodes = [Permissions.UserCreate]
+        });
+        await Error(badCreate, HttpStatusCode.BadRequest, "PRIVILEGE_ESCALATION");
+
+        var resetResult = await Success(await admin.PutAsJsonAsync(Path + user2.Id + "/roles", new ReplaceUserRolesRequest
+        {
+            RoleIds = [manager],
+            ResetToRoleDefaults = true,
+            RowVersion = state2.RowVersion
+        }));
+        var state2Reset = (await admin.GetFromJsonAsync<UserAccountStateDto>("/api/v1/users/" + user2.Id + "/account"))!;
+        Assert.False(state2Reset.HasCustomPermissions);
+        Assert.Empty(state2Reset.CustomPermissions);
+        Assert.Contains(Permissions.ExportAssets, state2Reset.EffectivePermissions);
     }
 }

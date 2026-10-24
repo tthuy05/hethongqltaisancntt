@@ -34,8 +34,8 @@ test('status commands are explicit independent axes with required reason and ver
 });
 test('role replacement requires explicitly present bounded unique numeric IDs, empty array is allowed', () => {
   assert.deepEqual(validateUserRoles({ roleIds: [], rowVersion: version }), {});
-  assert.deepEqual(validateUserRoles({ roleIds: [31, 7], rowVersion: version }), {});
-  for (const roleIds of [undefined, null, [1, 1], [0], [-1], ['7'], Array.from({ length: 51 }, (_, i) => i + 1)]) assert.ok(validateUserRoles({ roleIds, rowVersion: version }).roleIds);
+  assert.deepEqual(validateUserRoles({ roleIds: [31], rowVersion: version }), {});
+  for (const roleIds of [undefined, null, [1, 1], [31, 7], [0], [-1], ['7'], Array.from({ length: 51 }, (_, i) => i + 1)]) assert.ok(validateUserRoles({ roleIds, rowVersion: version }).roleIds);
   assert.ok(validateUserRoles({ roleIds: [], rowVersion: 'bad' }).rowVersion);
 });
 test('user and catalog reads preserve real IDs, query names, paging and same-origin paths', async () => {

@@ -4,6 +4,238 @@ import { validateUser, validateUserStatus, validateUserRoles } from '../utils/va
 import { ServiceError } from '../services/service-error.js';
 import { can, hasPermission, route, queryFrom, setQuery, option, field, displayErrors, formAlert, busy, openDialog, allCatalog, allActive, date } from './shared.js';
 
+const moduleLabels = {
+  assets: 'Quản lý tài sản',
+  departments: 'Phòng ban',
+  'asset-types': 'Loại tài sản',
+  users: 'Người dùng',
+  roles: 'Nhóm quyền & Phân quyền',
+  dashboard: 'Tổng quan',
+  'audit-logs': 'Nhật ký kiểm toán',
+  assignments: 'Cấp phát tài sản',
+  reports: 'Báo cáo',
+  import: 'Nhập Excel',
+  export: 'Xuất Excel',
+};
+
+const permissionLabels = {
+  'assets.read': 'Xem tài sản',
+  'assets.create': 'Thêm tài sản',
+  'assets.update': 'Sửa thông tin tài sản',
+  'assets.archive': 'Lưu trữ tài sản',
+  'assets.status.manage': 'Cập nhật trạng thái tài sản',
+  'assets.history.read': 'Xem lịch sử tài sản',
+  'assets.cost.read': 'Xem giá mua & thông tin tài chính',
+  'import.assets.execute': 'Nhập dữ liệu Excel tài sản',
+  'export.assets.execute': 'Xuất dữ liệu Excel tài sản',
+  'departments.read': 'Xem danh sách phòng ban',
+  'departments.create': 'Thêm phòng ban',
+  'departments.update': 'Sửa phòng ban',
+  'departments.archive': 'Lưu trữ phòng ban',
+  'asset-types.read': 'Xem danh sách loại tài sản',
+  'asset-types.create': 'Thêm loại tài sản',
+  'asset-types.update': 'Sửa loại tài sản',
+  'asset-types.archive': 'Lưu trữ loại tài sản',
+  'dashboard.read': 'Xem dashboard tổng quan',
+  'dashboard.cost.read': 'Xem giá trị tài chính trên dashboard',
+  'users.lookup': 'Tra cứu nhân viên',
+  'users.read': 'Xem danh sách người dùng',
+  'users.create': 'Tạo tài khoản & gửi email kích hoạt',
+  'users.update': 'Sửa thông tin người dùng',
+  'users.status.manage': 'Khóa / Mở khóa người dùng',
+  'roles.read': 'Xem danh sách vai trò',
+  'roles.assign': 'Phân quyền & gán vai trò',
+  'roles.permissions.read': 'Xem ma trận quyền hệ thống',
+  'audit-logs.read': 'Xem nhật ký kiểm toán (Audit Logs)',
+  'assignments.read': 'Xem danh sách cấp phát',
+  'assignments.assign': 'Cấp phát tài sản cho nhân viên',
+  'assignments.return': 'Thu hồi tài sản từ nhân viên',
+  'reports.assets.read': 'Báo cáo tài sản',
+  'reports.assignments.read': 'Báo cáo cấp phát',
+  'reports.cost.read': 'Báo cáo tài chính & chi phí',
+};
+
+const permissionDependencies = {
+  'assets.create': 'assets.read',
+  'assets.update': 'assets.read',
+  'assets.archive': 'assets.read',
+  'assets.status.manage': 'assets.read',
+  'assets.history.read': 'assets.read',
+  'assets.cost.read': 'assets.read',
+  'import.assets.execute': 'assets.read',
+  'export.assets.execute': 'assets.read',
+  'departments.create': 'departments.read',
+  'departments.update': 'departments.read',
+  'departments.archive': 'departments.read',
+  'asset-types.create': 'asset-types.read',
+  'asset-types.update': 'asset-types.read',
+  'asset-types.archive': 'asset-types.read',
+  'users.create': 'users.read',
+  'users.update': 'users.read',
+  'users.status.manage': 'users.read',
+  'roles.assign': 'roles.read',
+  'roles.permissions.read': 'roles.read',
+  'assignments.assign': 'assignments.read',
+  'assignments.return': 'assignments.read',
+  'reports.cost.read': 'reports.assets.read',
+  'dashboard.cost.read': 'dashboard.read',
+};
+
+function createUserPermissionMatrix({ roleDetail, initialSelectedCodes = null, hasCustom = false, onChange }) {
+  const rolePermissions = roleDetail?.permissions || [];
+  const maxCodes = new Set(rolePermissions.map(p => p.code));
+
+  const selected = new Set();
+  let isCustom = hasCustom;
+  if (initialSelectedCodes != null) {
+    for (const code of initialSelectedCodes) {
+      if (maxCodes.has(code)) selected.add(code);
+    }
+  } else {
+    for (const code of maxCodes) selected.add(code);
+  }
+
+  const container = h('div', { className: 'user-permissions-panel' });
+  const countBadge = h('span', { className: 'permission-counter' });
+  const previewBox = h('div', { className: 'permission-preview-box', hidden: true });
+  const groupsContainer = h('div', { className: 'permission-matrix-body' });
+  const inputs = new Map();
+
+  function update() {
+    countBadge.textContent = `Đã chọn: ${selected.size}/${maxCodes.size} quyền`;
+    if (isCustom) {
+      countBadge.className = 'permission-counter custom-badge';
+      countBadge.title = 'Tài khoản đang được tùy chỉnh quyền riêng';
+    } else {
+      countBadge.className = 'permission-counter default-badge';
+      countBadge.title = 'Tài khoản đang dùng quyền mặc định theo vai trò';
+    }
+    renderPreview();
+    onChange?.({ selectedCodes: Array.from(selected), isCustom });
+  }
+
+  function renderPreview() {
+    previewBox.replaceChildren(
+      h('div', { className: 'preview-content' },
+        h('strong', {}, 'Quyền hiệu lực thực tế (' + selected.size + '): '),
+        h('div', { className: 'preview-tags' },
+          selected.size === 0
+            ? h('span', { className: 'meta' }, 'Không có quyền nào')
+            : Array.from(selected).sort().map(c => h('span', { className: 'preview-tag' }, permissionLabels[c] || c))
+        )
+      )
+    );
+  }
+
+  function toggle(code, checked) {
+    if (checked) {
+      selected.add(code);
+      const req = permissionDependencies[code];
+      if (req && maxCodes.has(req) && !selected.has(req)) {
+        selected.add(req);
+        const reqInput = inputs.get(req);
+        if (reqInput) reqInput.checked = true;
+      }
+    } else {
+      selected.delete(code);
+      for (const [depCode, reqCode] of Object.entries(permissionDependencies)) {
+        if (reqCode === code && selected.has(depCode)) {
+          selected.delete(depCode);
+          const depInput = inputs.get(depCode);
+          if (depInput) depInput.checked = false;
+        }
+      }
+    }
+    isCustom = (selected.size !== maxCodes.size || Array.from(maxCodes).some(c => !selected.has(c)));
+    update();
+  }
+
+  function resetToDefaults() {
+    selected.clear();
+    for (const code of maxCodes) selected.add(code);
+    for (const [code, input] of inputs) {
+      input.checked = selected.has(code);
+    }
+    isCustom = false;
+    update();
+  }
+
+  const resetBtn = button('Khôi phục mặc định theo vai trò', {
+    kind: 'secondary',
+    type: 'button',
+    onClick: () => resetToDefaults()
+  });
+
+  const previewBtn = button('Xem trước quyền hiệu lực', {
+    kind: 'ghost',
+    type: 'button',
+    onClick: () => {
+      previewBox.hidden = !previewBox.hidden;
+      previewBtn.textContent = previewBox.hidden ? 'Xem trước quyền hiệu lực' : 'Ẩn xem trước';
+    }
+  });
+
+  const header = h('div', { className: 'permission-panel-header' },
+    h('div', { className: 'permission-summary' },
+      h('span', { className: 'font-semibold' }, 'Ma trận quyền của người dùng:'),
+      countBadge
+    ),
+    h('div', { className: 'permission-actions' }, resetBtn, previewBtn),
+    previewBox
+  );
+
+  const moduleMap = new Map();
+  for (const perm of rolePermissions) {
+    const mod = perm.module || 'other';
+    if (!moduleMap.has(mod)) moduleMap.set(mod, []);
+    moduleMap.get(mod).push(perm);
+  }
+
+  inputs.clear();
+  groupsContainer.replaceChildren();
+
+  if (maxCodes.size === 0) {
+    groupsContainer.append(h('p', { className: 'meta' }, 'Vai trò này hiện chưa được cấu hình quyền trong hệ thống.'));
+  } else {
+    for (const [mod, perms] of moduleMap) {
+      const groupEl = h('div', { className: 'permission-module-group' },
+        h('h4', { className: 'module-title' }, moduleLabels[mod] || mod),
+        h('div', { className: 'permission-checkboxes-grid' },
+          perms.map(p => {
+            const req = permissionDependencies[p.code];
+            const reqName = req ? (permissionLabels[req] || req) : null;
+            const input = h('input', {
+              type: 'checkbox',
+              checked: selected.has(p.code),
+              onChange: (e) => toggle(p.code, e.target.checked)
+            });
+            inputs.set(p.code, input);
+            return h('label', { className: 'permission-item-label' },
+              input,
+              h('div', { className: 'permission-info' },
+                h('span', { className: 'permission-name' }, permissionLabels[p.code] || p.name || p.code),
+                reqName ? h('span', { className: 'permission-req' }, `(Cần: ${reqName})`) : null
+              )
+            );
+          })
+        )
+      );
+      groupsContainer.append(groupEl);
+    }
+  }
+
+  container.replaceChildren(header, groupsContainer);
+  update();
+
+  return {
+    element: container,
+    getSelectedCodes: () => Array.from(selected),
+    isCustom: () => isCustom,
+    resetToDefaults,
+    inputs: () => Array.from(inputs.values())
+  };
+}
+
 export async function userPage(services) {
   if (!can(services, 'users.read') || services.mode !== 'api') throw Object.assign(new Error('Bạn không có quyền quản lý người dùng.'), { status: 403 });
   const actorId = services.auth.session.id, pageHash = window.location.hash;
@@ -42,7 +274,9 @@ export async function userPage(services) {
     state.pending = true; control.disabled = true; control.setAttribute('aria-busy', 'true');
     const before = inputs.map(input => ({ input, disabled: input.disabled, readOnly: input.readOnly }));
     for (const { input } of before) {
-      if (input.tagName === 'SELECT' || input.getAttribute('type') === 'checkbox') input.disabled = true; else input.readOnly = true;
+      if (input.tagName === 'SELECT' || ['checkbox', 'radio'].includes(input.getAttribute('type'))) {
+        input.disabled = true; input.readOnly = true;
+      } else input.readOnly = true;
     }
     try {
       const response = await write();
@@ -90,7 +324,79 @@ export async function userPage(services) {
       if (item?.departmentId && !departmentOptions.some(d => Number(d.value) === item.departmentId)) {
         departmentOptions.push({ value: item.departmentId, label: (item.departmentName || departments.find(d => d.id === item.departmentId)?.name || 'Phòng ban không còn khả dụng') + ' (tham chiếu cũ)' });
       }
-      const choices = roles.map(role => ({ role, input: h('input', { type: 'checkbox', name: 'roleIds', value: role.id }) }));
+
+      const roleDetailsCache = new Map();
+      async function getRoleDetail(roleId) {
+        if (roleDetailsCache.has(roleId)) return roleDetailsCache.get(roleId);
+        if (typeof services.roles?.get === 'function') {
+          try {
+            const detail = await services.roles.get(roleId);
+            roleDetailsCache.set(roleId, detail);
+            return detail;
+          } catch { /* ignore fallback */ }
+        }
+        return { id: roleId, permissions: [] };
+      }
+
+      let selectedRoleId = roles.find(r => r.isActive)?.id ?? roles[0]?.id;
+      let matrixInstance = null;
+      const matrixMount = h('div', { className: 'role-permission-matrix-mount' });
+
+      async function renderMatrixForRole(roleId) {
+        matrixMount.replaceChildren(h('p', { className: 'meta' }, 'Đang tải ma trận quyền...'));
+        const detail = await getRoleDetail(roleId);
+        matrixInstance = createUserPermissionMatrix({
+          roleDetail: detail,
+          initialSelectedCodes: null,
+          hasCustom: false
+        });
+        matrixMount.replaceChildren(matrixInstance.element);
+      }
+
+      const choices = roles.map(role => {
+        const input = h('input', {
+          type: 'radio',
+          name: 'roleIds',
+          value: role.id,
+          checked: role.id === selectedRoleId,
+          onChange: async () => {
+            if (role.id === selectedRoleId) return;
+            if (matrixInstance?.isCustom()) {
+              let confirmModal;
+              const proceed = button('Xác nhận đổi', {
+                kind: 'primary',
+                onClick: async () => {
+                  confirmModal.close();
+                  selectedRoleId = role.id;
+                  choices.forEach(c => { c.input.checked = c.role.id === selectedRoleId; });
+                  await renderMatrixForRole(selectedRoleId);
+                }
+              });
+              const cancel = button('Giữ nguyên', {
+                kind: 'secondary',
+                onClick: () => {
+                  confirmModal.close();
+                  choices.forEach(c => { c.input.checked = c.role.id === selectedRoleId; });
+                }
+              });
+              confirmModal = openDialog({
+                title: 'Xác nhận thay đổi vai trò',
+                body: h('div', { className: 'dialog-body' }, h('p', {}, 'Đổi vai trò sẽ tính lại danh sách quyền theo vai trò mới. Bạn có chắc chắn muốn đổi không?')),
+                footer: [cancel, proceed]
+              });
+              return;
+            }
+            selectedRoleId = role.id;
+            await renderMatrixForRole(selectedRoleId);
+          }
+        });
+        return { role, input };
+      });
+
+      if (!item && selectedRoleId) {
+        await renderMatrixForRole(selectedRoleId);
+      }
+
       const form = h('form', { noValidate: true, onSubmit: event => {
         event.preventDefault(); if (save.disabled || !form.isConnected) return;
         if (!alive(...required)) { save.disabled = true; feedback.replaceChildren(formAlert('Phiên hoặc quyền đã thay đổi. Vui lòng mở lại trang.')); return; }
@@ -98,7 +404,12 @@ export async function userPage(services) {
         dto.departmentId = dto.departmentId ? Number(dto.departmentId) : null;
         if (!item) {
           dto.employeeCode = null;
-          dto.roleIds = choices.filter(choice => choice.input.checked).map(choice => choice.role.id);
+          const checkedRadio = choices.find(c => c.input.checked);
+          const chosenRoleId = checkedRadio ? checkedRadio.role.id : selectedRoleId;
+          dto.roleIds = chosenRoleId ? [chosenRoleId] : [];
+          if (matrixInstance && matrixInstance.isCustom()) {
+            dto.permissionCodes = matrixInstance.getSelectedCodes();
+          }
         } else {
           dto.employeeCode = item.employeeCode ?? null;
         }
@@ -106,7 +417,8 @@ export async function userPage(services) {
         const errors = validateUser(dto, { isUpdate: Boolean(item) }); displayErrors(fields, errors); feedback.replaceChildren();
         if (Object.keys(errors).length) { if (errors.roleIds) feedback.append(formAlert(errors.roleIds.join(' '))); return; }
         return runWrite(writeState, { control: save, modal, feedback, fields, required,
-          inputs: [...Object.values(fields).map(field => field.input), ...choices.map(choice => choice.input)], expectedId: item?.id,
+          inputs: [...Object.values(fields).map(field => field.input), ...choices.map(choice => choice.input), ...(matrixInstance ? matrixInstance.inputs() : [])],
+          expectedId: item?.id,
           write: () => item ? services.users.update(item.id, dto) : services.users.create(dto), getUser: response => response,
           onSuccess: response => saved(modal, item ? 'Đã cập nhật hồ sơ.' : ('Đã tạo tài khoản chờ kích hoạt' + (response?.employeeCode ? ' [' + response.employeeCode + ']. ' : '. ') + emailStatus(response.invitationEmailStatus)))
         });
@@ -117,7 +429,16 @@ export async function userPage(services) {
         add({ name: 'employeeCode', label: 'Mã nhân viên', maxLength: 50, readOnly: true, placeholder: item ? '' : 'Mã sẽ được hệ thống tự động tạo khi lưu (NVxxxxxx)', hint: item ? 'Mã nhân viên không thể thay đổi sau khi tạo.' : 'Mã sẽ được hệ thống tự động tạo khi lưu (NVxxxxxx).' }),
         add({ name: 'departmentId', label: 'Phòng ban', options: departmentOptions }),
         add({ name: 'phone', label: 'Số điện thoại', type: 'tel', maxLength: 30 }),
-        !item ? h('fieldset', { className: 'role-choices' }, h('legend', {}, 'Nhóm quyền (chọn ít nhất một)'), choices.map(({ role, input }) => h('label', {}, input, h('span', {}, role.name))), h('p', { className: 'field-hint' }, 'Người dùng tự đặt mật khẩu qua liên kết email có hiệu lực 30 phút. Không tự cấp quyền theo phòng ban.')) : null,
+        !item ? h('div', { className: 'role-and-permissions-section' },
+          h('fieldset', { className: 'role-choices' },
+            h('legend', {}, 'Vai trò (chọn duy nhất một vai trò)'),
+            h('div', { className: 'radio-group' },
+              choices.map(({ role, input }) => h('label', { className: 'radio-label' }, input, h('span', { className: 'font-medium' }, role.name)))
+            ),
+            h('p', { className: 'field-hint' }, 'Người dùng tự đặt mật khẩu qua liên kết email có hiệu lực 30 phút. Mỗi người dùng chỉ sở hữu một vai trò.')
+          ),
+          matrixMount
+        ) : null,
         feedback), h('div', { className: 'dialog-footer' }, button('Hủy', { kind: 'secondary', onClick: () => modal.close() }), save));
       modal = openDialog({ title: item ? 'Sửa hồ sơ người dùng' : 'Thêm người dùng', body: form });
     } catch (error) { report(error); }
@@ -132,6 +453,7 @@ export async function userPage(services) {
       const pairs = [['Tên đăng nhập', item.username], ['Email', item.email], ['Mã nhân viên', item.employeeCode], ['Số điện thoại', item.phone],
         ['Phòng ban', item.departmentName || departments.find(d => d.id === item.departmentId)?.name || (item.departmentId ? 'Phòng ban không còn khả dụng' : 'Không có')],
         ['Vai trò', state.roleIds.map(id => roles.find(role => role.id === id)?.name || '#' + id).join(', ') || 'Chưa có vai trò'],
+        ['Quyền riêng', state.hasCustomPermissions ? (state.customPermissions?.length + ' quyền được cấp riêng') : 'Sử dụng toàn bộ quyền mặc định của vai trò'],
         ['Hoạt động', item.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động'], ['Khóa quản trị', state.isAdminLocked ? 'Đang khóa' : 'Không khóa'],
         ['Xác nhận email', item.isEmailConfirmed ? 'Đã kích hoạt' : 'Chờ kích hoạt'], ['Gửi lời mời', emailStatus(item.invitationEmailStatus)],
         ['Quyền hiệu lực', state.effectivePermissions?.join(', ') || 'Chưa có quyền'],
@@ -169,26 +491,122 @@ export async function userPage(services) {
   async function rolesDialog(row) {
     if (!alive('roles.assign', 'roles.read')) return;
     try {
-      const [state, catalog] = await Promise.all([services.users.account(row.id), allActive(services.roles)]); if (!alive('roles.assign', 'roles.read')) return;
+      const [state, catalog] = await Promise.all([services.users.account(row.id), allActive(services.roles)]);
+      if (!alive('roles.assign', 'roles.read')) return;
       const unmapped = state.roleIds.filter(id => !catalog.some(role => role.id === id));
-      const choices = catalog.map(role => ({ role, input: h('input', { type: 'checkbox', name: 'roleIds', value: role.id, checked: state.roleIds.includes(role.id) }) }));
+
+      const roleDetailsCache = new Map();
+      async function getRoleDetail(roleId) {
+        if (roleDetailsCache.has(roleId)) return roleDetailsCache.get(roleId);
+        if (typeof services.roles?.get === 'function') {
+          try {
+            const detail = await services.roles.get(roleId);
+            roleDetailsCache.set(roleId, detail);
+            return detail;
+          } catch { /* ignore fallback */ }
+        }
+        return { id: roleId, permissions: [] };
+      }
+
+      let selectedRoleId = state.roleIds[0] || (catalog.find(r => r.isActive)?.id ?? catalog[0]?.id ?? null);
+      let matrixInstance = null;
+      let hasReset = false;
+      const matrixMount = h('div', { className: 'role-permission-matrix-mount' });
+
+      async function renderMatrix(roleId, initialPermissions, isCustom) {
+        matrixMount.replaceChildren(h('p', { className: 'meta' }, 'Đang tải ma trận quyền...'));
+        const detail = await getRoleDetail(roleId);
+        matrixInstance = createUserPermissionMatrix({
+          roleDetail: detail,
+          initialSelectedCodes: initialPermissions,
+          hasCustom: isCustom,
+          onChange: ({ isCustom: custom }) => {
+            if (custom) hasReset = false;
+          }
+        });
+        matrixMount.replaceChildren(matrixInstance.element);
+      }
+
+      const choices = catalog.map(role => {
+        const input = h('input', {
+          type: 'radio',
+          name: 'roleIds',
+          value: role.id,
+          checked: role.id === selectedRoleId,
+          onChange: async () => {
+            if (role.id === selectedRoleId) return;
+            if (matrixInstance?.isCustom()) {
+              let confirmModal;
+              const proceed = button('Xác nhận đổi', {
+                kind: 'primary',
+                onClick: async () => {
+                  confirmModal.close();
+                  selectedRoleId = role.id;
+                  hasReset = false;
+                  choices.forEach(c => { c.input.checked = c.role.id === selectedRoleId; });
+                  await renderMatrix(selectedRoleId, null, false);
+                }
+              });
+              const cancel = button('Giữ nguyên', {
+                kind: 'secondary',
+                onClick: () => {
+                  confirmModal.close();
+                  choices.forEach(c => { c.input.checked = c.role.id === selectedRoleId; });
+                }
+              });
+              confirmModal = openDialog({
+                title: 'Xác nhận thay đổi vai trò',
+                body: h('div', { className: 'dialog-body' }, h('p', {}, 'Đổi vai trò sẽ tính lại danh sách quyền theo vai trò mới. Bạn có chắc chắn muốn đổi không?')),
+                footer: [cancel, proceed]
+              });
+              return;
+            }
+            selectedRoleId = role.id;
+            hasReset = false;
+            await renderMatrix(selectedRoleId, null, false);
+          }
+        });
+        return { role, input };
+      });
+
+      if (selectedRoleId) {
+        await renderMatrix(selectedRoleId, state.hasCustomPermissions ? state.customPermissions : null, state.hasCustomPermissions);
+      }
+
       const feedback = h('div', { 'aria-live': 'polite' }); let modal;
       const writeState = { pending: false, blocked: false };
       const confirm = button('Lưu vai trò', { disabled: Boolean(unmapped.length), onClick: () => {
         if (confirm.disabled || !modal.dialog.isConnected) return;
         if (!alive('roles.assign', 'roles.read')) { confirm.disabled = true; feedback.replaceChildren(formAlert('Phiên hoặc quyền đã thay đổi. Vui lòng mở lại trang.')); return; }
-        const dto = { roleIds: choices.filter(choice => choice.input.checked).map(choice => choice.role.id), rowVersion: state.rowVersion };
+        const selectedRadio = choices.find(c => c.input.checked);
+        const roleId = selectedRadio ? selectedRadio.role.id : selectedRoleId;
+        const dto = {
+          roleIds: roleId ? [roleId] : [],
+          rowVersion: state.rowVersion
+        };
+        if (hasReset || (matrixInstance && !matrixInstance.isCustom())) {
+          dto.resetToRoleDefaults = true;
+        } else if (matrixInstance && matrixInstance.isCustom()) {
+          dto.permissionCodes = matrixInstance.getSelectedCodes();
+        }
         const errors = validateUserRoles(dto); feedback.replaceChildren();
         if (Object.keys(errors).length) { feedback.append(formAlert(Object.values(errors).flat().join(' '))); return; }
         return runWrite(writeState, { control: confirm, modal, feedback, required: ['roles.assign', 'roles.read'],
-          inputs: choices.map(choice => choice.input), expectedId: row.id, accountResult: true,
+          inputs: [...choices.map(choice => choice.input), ...(matrixInstance ? matrixInstance.inputs() : [])],
+          expectedId: row.id, accountResult: true,
           write: () => services.users.replaceRoles(row.id, dto), getUser: response => response?.user,
-          onSuccess: response => saved(modal, 'Đã cập nhật vai trò. JWT cũ của tài khoản đã bị thu hồi.', response.warnings)
+          onSuccess: response => saved(modal, 'Đã cập nhật vai trò và quyền. JWT cũ của tài khoản đã bị thu hồi.', response.warnings)
         });
       } });
-      modal = openDialog({ title: 'Vai trò — ' + row.displayName, body: h('div', { className: 'dialog-body' },
-        h('fieldset', { className: 'role-choices' }, h('legend', {}, 'Chọn vai trò đăng nhập'), choices.map(({ role, input }) => h('label', {}, input, h('span', {}, role.name)))),
-        h('p', { className: 'info-note' }, 'Bỏ chọn tất cả sẽ thu hồi toàn bộ vai trò đăng nhập. Quản lý định nghĩa nhóm tại trang Phân quyền. Backend bảo vệ Admin cuối cùng.'),
+      modal = openDialog({ title: 'Vai trò & Phân quyền — ' + row.displayName, body: h('div', { className: 'dialog-body' },
+        h('fieldset', { className: 'role-choices' },
+          h('legend', {}, 'Chọn một vai trò duy nhất'),
+          h('div', { className: 'radio-group' },
+            choices.map(({ role, input }) => h('label', { className: 'radio-label' }, input, h('span', { className: 'font-medium' }, role.name)))
+          )
+        ),
+        h('p', { className: 'info-note' }, 'Mỗi người dùng chỉ được sở hữu một vai trò. Bạn có thể cấp hoặc bỏ bớt các quyền riêng trong giới hạn của vai trò. Backend bảo vệ Admin cuối cùng.'),
+        matrixMount,
         unmapped.length ? formAlert('Có vai trò cũ không còn trong danh mục hoạt động: ' + unmapped.join(', ') + '. Cần review; giao diện không tự loại bỏ.') : null, feedback),
         footer: [button('Hủy', { kind: 'secondary', onClick: () => modal.close() }), confirm] });
     } catch (error) { report(error); }
