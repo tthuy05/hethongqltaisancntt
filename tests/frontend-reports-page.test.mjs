@@ -105,6 +105,9 @@ test('reports suppress late data after a session or route change', async () => {
     let release;
     services.reports.assetInventory = () => new Promise(resolve => { release = resolve; });
     const pending = reportsPage(services);
+    // Department/type lookups load first, so wait until the inventory request is really in flight.
+    for (let attempt = 0; !release && attempt < 50; attempt += 1) await new Promise(resolve => setImmediate(resolve));
+    assert.equal(typeof release, 'function', 'inventory request should be pending');
     services.auth.session = { ...services.auth.session, id: 99 }; window.location.hash = '#/assets';
     release({ items: [], page: 1, pageSize: 20, totalItems: 0, totalPages: 0 });
     await assert.rejects(pending, e => e.code === 'SESSION_CHANGED');
@@ -218,4 +221,26 @@ test('dashboardPage displays operational KPIs and includes financial cards only 
   } finally {
     dom.restore();
   }
+});
+
+test('seven report views are grouped into four navigation groups and respect per-view grants', async () => {
+  const dom = installDom();
+  try {
+    const all = ['reports.assets.read', 'reports.assignments.read', 'reports.maintenance.read', 'reports.licenses.read',
+      'reports.replacement.read', 'reports.cost.read', 'dashboard.read'];
+    window.location.hash = '#/reports';
+    const full = await reportsPage(fakeServices({ permissions: all }));
+    const groups = full.querySelectorAll('div.tab-bar')[0];
+    assert.equal(groups.children.length, 4, 'four groups for a user who holds every report grant');
+    assert.match(groups.textContent, /Tài sản/); assert.match(groups.textContent, /Cấp phát & Bảo trì/);
+    assert.match(groups.textContent, /Hạn bảo hành & License/); assert.match(groups.textContent, /Chi phí & Đề xuất/);
+    const segmented = full.querySelectorAll('div.segmented');
+    assert.equal(segmented.length, 1, 'the active group shows its own view switch');
+
+    window.location.hash = '#/reports?tab=assignments';
+    const partial = await reportsPage(fakeServices({ permissions: ['reports.assignments.read', 'dashboard.read'] }));
+    const partialGroups = partial.querySelectorAll('div.tab-bar')[0];
+    assert.equal(partialGroups.children.length, 1, 'groups without a grant are hidden');
+    assert.doesNotMatch(partial.textContent, /Lịch sử bảo trì/, 'maintenance view needs reports.maintenance.read');
+  } finally { dom.restore(); }
 });

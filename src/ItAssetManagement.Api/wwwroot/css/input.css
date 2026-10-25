@@ -438,7 +438,23 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--primary); widt
 .filters-card { margin-bottom: 20px; }
 .filters-card .filters { border: 0; }
 .reports-page .report-sections { display: flex; flex-direction: column; gap: 24px; }
-.reports-page .tab-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+.reports-page .tab-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.reports-page .report-nav { margin-bottom: 20px; }
+.reports-page .segmented { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-alt, rgba(127, 127, 127, 0.08)); }
+.reports-page .segmented .button { min-height: 36px; padding: 6px 14px; }
+.reports-page .report-title { margin: 0 0 14px; font-size: 18px; }
+.reports-page .report-filters .filters-advanced { grid-column: 1 / -1; border-top: 1px dashed var(--border); padding-top: 10px; }
+.reports-page .filters-advanced summary { cursor: pointer; font-size: 13px; color: var(--muted); padding: 4px 0 10px; }
+.reports-page .filters-advanced-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+.reports-page .row-clickable { cursor: pointer; }
+.reports-page .row-clickable:hover, .reports-page .row-clickable:focus-visible { background: rgba(127, 127, 127, 0.08); outline: none; }
+.reports-page .col-action { text-align: right; width: 1%; white-space: nowrap; }
+.report-detail { display: flex; flex-direction: column; gap: 20px; }
+.report-detail .detail-grid { display: grid; grid-template-columns: minmax(140px, 200px) 1fr; gap: 8px 16px; margin: 0; }
+.report-detail .detail-grid dt { color: var(--muted); font-size: 13px; }
+.report-detail .detail-grid dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; }
+.report-detail .detail-section h3 { margin: 0 0 10px; font-size: 15px; }
+@media (max-width: 560px) { .report-detail .detail-grid { grid-template-columns: 1fr; gap: 2px; } .report-detail .detail-grid dd { margin-bottom: 8px; } }
 .reports-page .grid-kpis { grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
 .reports-page .data-table td:first-child { white-space: nowrap; }
 .reports-page .report-filters { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }

@@ -1,9 +1,36 @@
 import { h } from '../utils/dom.js';
 import { button, pageHeader, dataTable, pagination, statCard, badge } from '../components.js';
-import { can, date, money, route, setQuery } from './shared.js';
+import { allActive, can, date, money, openDialog, route, setQuery } from './shared.js';
 import { ServiceError } from '../services/service-error.js';
 import { readReportQuery, validateReportQuery, reportNumber, reportUtc } from './reports-query.js';
 import { reportExcelActions } from '../components/report-excel.js';
+
+
+const LOOKUP_TTL_MS = 60_000;
+const lookupCache = new WeakMap();
+const stamp = value => {
+  const parsed = value ? new Date(value) : null;
+  return parsed && Number.isFinite(parsed.getTime()) ? parsed.toISOString().replace('T', ' ').slice(0, 16) + ' UTC' : '—';
+};
+const assetStatusText = { IN_STOCK: 'Trong kho', IN_USE: 'Đang sử dụng', MAINTENANCE: 'Đang bảo trì', BROKEN: 'Hỏng', RETIRED: 'Ngừng sử dụng' };
+const filterDefaults = { pageSize: '20', sortBy: 'createdAt', sortDirection: 'desc' };
+
+// Department/type pickers by name. Falls back to numeric ID inputs when a lookup is unavailable.
+async function loadLookups(services, actorId) {
+  const cached = lookupCache.get(services);
+  if (cached && cached.actorId === actorId && Date.now() - cached.at < LOOKUP_TTL_MS) return cached.value;
+  const pick = async (service, permission) => {
+    if (typeof service?.list !== 'function' || !can(services, permission)) return null;
+    try { return (await allActive(service)).map(item => [String(item.id), item.name]); } catch { return null; }
+  };
+  const value = { departments: await pick(services.departments, 'departments.read'), types: await pick(services.assetTypes, 'asset-types.read') };
+  if (value.departments || value.types) lookupCache.set(services, { actorId, at: Date.now(), value });
+  return value;
+}
+
+function detailList(pairs) {
+  return h('dl', { className: 'detail-grid' }, pairs.flatMap(([label, value]) => [h('dt', {}, label), h('dd', {}, typeof value === 'number' ? String(value) : (value ?? '—'))]));
+}
 
 export async function reportsPage(services) {
   if (services.reportingEnabled !== true) throw new ServiceError(404, 'MODULE_UNAVAILABLE', 'Báo cáo chưa được mở.');
@@ -27,6 +54,7 @@ export async function reportsPage(services) {
   }
 
   const query = readReportQuery();
+  const lookups = await loadLookups(services, actorId);
   const allowedTabs = [['inventory', canAssets], ['groups', canAssets], ['assignments', canAssignments], ['maintenance', canMaintenance], ['expiry', canAssets || canLicenses], ['cost', canCost], ['replacement', canReplacement]]
     .filter(([, allowed]) => allowed).map(([tab]) => tab);
   const currentTab = allowedTabs.includes(query.tab) ? query.tab : allowedTabs[0];
@@ -53,6 +81,11 @@ export async function reportsPage(services) {
       return { spec, input, element: h('div', { className: 'filter-field' }, h('label', { htmlFor: id }, spec.label), input) };
     });
     const error = h('p', { className: 'field-error report-filter-error', role: 'alert' });
+    const primary = controls.filter(c => !c.spec.advanced), advanced = controls.filter(c => c.spec.advanced);
+    const advancedActive = advanced.some(({ spec }) => {
+      const value = state[spec.name];
+      return value !== undefined && value !== '' && String(value) !== filterDefaults[spec.name];
+    });
     return h('form', { className: 'filters report-filters', 'aria-label': label, onSubmit: event => {
       event.preventDefault(); if (!viewRoot?.isConnected || !validView()) return;
       try {
@@ -63,60 +96,129 @@ export async function reportsPage(services) {
         }
         navigate(values);
       } catch (failure) { error.textContent = failure.message || 'Bộ lọc không hợp lệ.'; }
-    } }, controls.map(c => c.element), h('div', { className: 'toolbar report-filter-actions' },
-      button('Lọc', { type: 'submit', iconName: 'search' }),
-      button('Đặt lại', { kind: 'secondary', onClick: () => navigate({ tab: currentTab }) })), error);
+    } }, primary.map(c => c.element),
+      advanced.length ? h('details', { className: 'filters-advanced', open: advancedActive },
+        h('summary', {}, 'Bộ lọc nâng cao'), h('div', { className: 'filters-advanced-grid' }, advanced.map(c => c.element))) : null,
+      h('div', { className: 'toolbar report-filter-actions' },
+        button('Lọc', { type: 'submit', iconName: 'search' }),
+        button('Đặt lại', { kind: 'secondary', onClick: () => navigate({ tab: currentTab }) })), error);
   }
   const priorities = [['', 'Tất cả mức ưu tiên'], ['LOW', 'Thấp'], ['MEDIUM', 'Trung bình'], ['HIGH', 'Cao'], ['CRITICAL', 'Khẩn cấp']];
-  const pageSizeFilter = { name: 'pageSize', label: 'Số dòng mỗi trang' };
-  const departmentFilter = { name: 'departmentId', label: 'ID phòng ban (tùy chọn)' };
-  const typeFilter = { name: 'assetTypeId', label: 'ID loại tài sản (tùy chọn)' };
+  const pageSizeFilter = { name: 'pageSize', label: 'Số dòng mỗi trang', advanced: true };
+  const departmentFilter = lookups.departments
+    ? { name: 'departmentId', label: 'Phòng ban', options: [['', 'Tất cả phòng ban'], ...lookups.departments] }
+    : { name: 'departmentId', label: 'ID phòng ban (tùy chọn)' };
+  const typeFilter = lookups.types
+    ? { name: 'assetTypeId', label: 'Loại tài sản', options: [['', 'Tất cả loại tài sản'], ...lookups.types] }
+    : { name: 'assetTypeId', label: 'ID loại tài sản (tùy chọn)' };
   const assetFilter = { name: 'assetId', label: 'ID tài sản (tùy chọn)' };
   const assetStatuses = [['', 'Tất cả trạng thái'], ['IN_STOCK', 'Trong kho'], ['IN_USE', 'Đang sử dụng'],
     ['MAINTENANCE', 'Đang bảo trì'], ['BROKEN', 'Hỏng'], ['RETIRED', 'Ngừng sử dụng']];
 
-  const tabButtons = [];
-  if (canAssets) {
-    tabButtons.push(button('Kiểm kê tài sản', {
-      kind: currentTab === 'inventory' ? 'primary' : 'secondary',
-      iconName: 'laptop',
-      onClick: () => navigate({ tab: 'inventory', page: 1 })
-    }));
-    tabButtons.push(button('Tổng hợp tài sản', { kind: currentTab === 'groups' ? 'primary' : 'secondary',
-      iconName: 'chart', onClick: () => navigate({ tab: 'groups' }) }));
-  }
-  if (canAssignments) {
-    tabButtons.push(button('Lịch sử phân bổ', {
-      kind: currentTab === 'assignments' ? 'primary' : 'secondary',
-      iconName: 'assignment',
-      onClick: () => navigate({ tab: 'assignments', page: 1 })
-    }));
-  }
-  if (canMaintenance) {
-    tabButtons.push(button('Lịch sử bảo trì', {
-      kind: currentTab === 'maintenance' ? 'primary' : 'secondary',
-      iconName: 'maintenance',
-      onClick: () => navigate({ tab: 'maintenance', page: 1 })
-    }));
-  }
-  if (canAssets || canLicenses) {
-    tabButtons.push(button('Hạn bảo hành & License', {
-      kind: currentTab === 'expiry' ? 'primary' : 'secondary',
-      iconName: 'license',
-      onClick: () => navigate({ tab: 'expiry' })
-    }));
-  }
-  if (canCost) {
-    tabButtons.push(button('Chi phí & Ngân sách', {
-      kind: currentTab === 'cost' ? 'primary' : 'secondary',
-      iconName: 'chart',
-      onClick: () => navigate({ tab: 'cost' })
-    }));
-  }
-  if (canReplacement) tabButtons.push(button('Đề xuất thay thế', { kind: currentTab === 'replacement' ? 'primary' : 'secondary',
-    iconName: 'laptop', onClick: () => navigate({ tab: 'replacement', page: 1 }) }));
+  // Seven report views are reached through four groups; the query contract (`tab=`) is unchanged.
+  const tabLabels = { inventory: 'Kiểm kê tài sản', groups: 'Tổng hợp theo nhóm', assignments: 'Lịch sử cấp phát',
+    maintenance: 'Lịch sử bảo trì', expiry: 'Hạn bảo hành & License', cost: 'Chi phí & Ngân sách', replacement: 'Đề xuất thay thế' };
+  const tabGroups = [
+    { label: 'Tài sản', iconName: 'laptop', tabs: ['inventory', 'groups'] },
+    { label: 'Cấp phát & Bảo trì', iconName: 'assignment', tabs: ['assignments', 'maintenance'] },
+    { label: 'Hạn bảo hành & License', iconName: 'license', tabs: ['expiry'] },
+    { label: 'Chi phí & Đề xuất', iconName: 'chart', tabs: ['cost', 'replacement'] }
+  ].map(group => ({ ...group, tabs: group.tabs.filter(tab => allowedTabs.includes(tab)) })).filter(group => group.tabs.length);
+  const activeGroup = tabGroups.find(group => group.tabs.includes(currentTab));
+  const tabBar = h('div', { className: 'report-nav' },
+    h('div', { className: 'tab-bar', role: 'group', 'aria-label': 'Nhóm báo cáo' }, tabGroups.map(group => button(group.label, {
+      kind: group === activeGroup ? 'primary' : 'secondary', iconName: group.iconName,
+      'aria-current': group === activeGroup ? 'page' : null, onClick: () => navigate({ tab: group.tabs[0], page: 1 }) }))),
+    activeGroup && activeGroup.tabs.length > 1 ? h('div', { className: 'segmented', role: 'group', 'aria-label': 'Chế độ xem báo cáo' },
+      activeGroup.tabs.map(tab => button(tabLabels[tab], { kind: tab === currentTab ? 'primary' : 'ghost',
+        'aria-pressed': String(tab === currentTab), onClick: () => navigate({ tab, page: 1 }) }))) : null);
 
-  const tabBar = h('div', { className: 'tab-bar' }, ...tabButtons);
+  // Detail dialog: summary of the selected row plus lazily loaded history of the same asset.
+  function historySection(title, load, columns) {
+    const body = h('div', { className: 'detail-section-body' }, h('p', { className: 'meta', role: 'status' }, 'Đang tải…'));
+    const section = h('section', { className: 'detail-section', 'aria-label': title }, h('h3', {}, title), body);
+    load().then(res => {
+      if (!validView()) return;
+      body.replaceChildren(res.items.length ? dataTable({ columns, rows: res.items, label: title })
+        : h('p', { className: 'meta' }, 'Chưa có bản ghi nào.'));
+    }).catch(failure => {
+      body.replaceChildren(h('p', { className: 'meta', role: 'alert' },
+        failure?.status === 403 ? 'Bạn không có quyền xem phần này.' : 'Không tải được dữ liệu. Vui lòng thử lại.'));
+    });
+    return section;
+  }
+  const detailAssignmentColumns = [
+    { key: 'recipient', label: 'Người / phòng ban nhận', render: row => [row.assignedUserName, row.assignedDepartmentName].filter(Boolean).join(' · ') || '—' },
+    { key: 'assignedAtUtc', label: 'Giao lúc', render: row => stamp(row.assignedAtUtc) },
+    { key: 'returnedAtUtc', label: 'Trả lúc', render: row => row.returnedAtUtc ? stamp(row.returnedAtUtc) : '—' },
+    { key: 'status', label: 'Trạng thái', render: row => badge(row.status === 'RETURNED' ? 'Resolved' : 'InUse') }
+  ];
+  const detailMaintenanceColumns = [
+    { key: 'ticketCode', label: 'Mã phiếu' }, { key: 'title', label: 'Tiêu đề' },
+    { key: 'status', label: 'Trạng thái', render: row => badge(row.status) },
+    { key: 'technicianName', label: 'Kỹ thuật viên', render: row => row.technicianName || '—' },
+    { key: 'openedAtUtc', label: 'Mở lúc', render: row => stamp(row.openedAtUtc) },
+    ...(canCost ? [{ key: 'cost', label: 'Chi phí', render: row => money(row.cost) }] : [])
+  ];
+  function openDetail({ title, pairs, assetId, assetStatus }) {
+    if (!viewRoot?.isConnected || !validView()) return;
+    const sections = [];
+    const showAssignments = canAssignments && Number.isSafeInteger(assetId) && assetId > 0;
+    let holder = null;
+    if (showAssignments) {
+      holder = h('span', {}, 'Đang tải…');
+      sections.push(historySection('Lịch sử cấp phát của tài sản', async () => {
+        const res = await services.reports.assignmentHistory({ page: 1, pageSize: 10, assetId });
+        const current = res.items.find(item => item.status !== 'RETURNED');
+        holder.textContent = current
+          ? `${[current.assignedUserName, current.assignedDepartmentName].filter(Boolean).join(' · ') || '—'} (từ ${stamp(current.assignedAtUtc)})`
+          : 'Hiện không có ai đang giữ';
+        return res;
+      }, detailAssignmentColumns));
+    }
+    if (canMaintenance && Number.isSafeInteger(assetId) && assetId > 0)
+      sections.push(historySection('Phiếu bảo trì của tài sản', () => services.reports.maintenanceHistory({ page: 1, pageSize: 10, assetId }), detailMaintenanceColumns));
+    const summary = [...pairs];
+    if (holder) summary.push(['Đang được giữ bởi', holder]);
+    const footer = [];
+    if (can(services, 'assets.read') && Number.isSafeInteger(assetId) && assetId > 0)
+      footer.push(button('Mở trang tài sản', { kind: 'secondary', onClick: () => { dialog.close(); route('/assets/' + assetId); } }));
+    const dialog = openDialog({ title, className: 'dialog--wide', body: h('div', { className: 'dialog-body report-detail' }, detailList(summary), ...sections), footer });
+    return dialog;
+  }
+  // Clickable rows: mouse and keyboard (Enter/Space); inner buttons keep their own behaviour.
+  function reportTable({ columns, rows, label, onRow }) {
+    const node = dataTable({ columns, rows, label });
+    if (!onRow || !rows.length || typeof node.querySelectorAll !== 'function') return node;
+    const bodyRows = [...node.querySelectorAll('tr')].slice(1);
+    if (bodyRows.length !== rows.length) return node;
+    bodyRows.forEach((tr, index) => {
+      tr.className = 'row-clickable'; tr.setAttribute('tabindex', '0'); tr.setAttribute('title', 'Bấm để xem chi tiết');
+      tr.addEventListener('click', event => { if (!event.target?.closest?.('button, a')) onRow(rows[index]); });
+      tr.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onRow(rows[index]); } });
+    });
+    return node;
+  }
+  const detailColumn = onRow => ({ key: 'detail', label: '', className: 'col-action', render: row => button('Chi tiết', { kind: 'ghost', iconName: 'chevron_right', onClick: () => onRow(row) }) });
+  const showAsset = row => openDetail({ title: `Tài sản ${row.assetCode}`, assetId: row.id, pairs: [
+    ['Mã tài sản', row.assetCode], ['Tên tài sản', row.name], ['Loại', row.assetTypeName], ['Phòng ban', row.departmentName],
+    ['Trạng thái', assetStatusText[row.currentStatus] || row.currentStatus], ['Số serial', row.serialNumber || '—'],
+    ['Ngày mua', date(row.purchaseDate)], ['Hết bảo hành', date(row.warrantyEndDate)],
+    ...(canCost ? [['Giá mua', money(row.purchaseCost)]] : [])] });
+  const showAssignment = row => openDetail({ title: `Cấp phát ${row.assetCode}`, assetId: row.assetId, pairs: [
+    ['Tài sản', `${row.assetCode} — ${row.assetName}`], ['Người nhận', row.assignedUserName || '—'], ['Phòng ban nhận', row.assignedDepartmentName || '—'],
+    ['Giao lúc', stamp(row.assignedAtUtc)], ['Trả lúc', row.returnedAtUtc ? stamp(row.returnedAtUtc) : 'Chưa trả'],
+    ['Trạng thái', row.status === 'RETURNED' ? 'Đã thu hồi' : 'Đang sử dụng']] });
+  const showTicket = row => openDetail({ title: `Phiếu bảo trì ${row.ticketCode}`, assetId: row.assetId, pairs: [
+    ['Mã phiếu', row.ticketCode], ['Tài sản', row.assetCode], ['Tiêu đề', row.title], ['Ưu tiên', row.priority],
+    ['Trạng thái', row.status], ['Kỹ thuật viên', row.technicianName || '—'], ['Mở lúc', stamp(row.openedAtUtc)],
+    ['Hoàn tất lúc', row.resolvedAtUtc ? stamp(row.resolvedAtUtc) : '—'], ...(canCost ? [['Chi phí', money(row.cost)]] : [])] });
+  const showRecommendation = row => openDetail({ title: `Đề xuất thay thế ${row.assetCode}`, assetId: row.assetId, pairs: [
+    ['Tài sản', `${row.assetCode} — ${row.assetName}`], ['Phòng ban', row.departmentName], ['Quy tắc', row.ruleCode],
+    ['Ưu tiên', priorities.find(([value]) => value === row.priority)?.[1] || row.priority],
+    ['Xử lý', ({ ACTIVE: 'Đang xem xét', PLANNED: 'Đã lên kế hoạch', DISMISSED: 'Đã bỏ qua', SUPERSEDED: 'Đã thay thế' })[row.disposition] || row.disposition],
+    ['Năm dự kiến', row.plannedYear ?? '—'], ['Điểm', row.score ?? 'Chưa có điểm'], ['Đề xuất lúc', stamp(row.recommendedAtUtc)],
+    ...(canCost ? [['Chi phí dự kiến', money(row.estimatedCost)]] : [])] });
 
   let tabContent = null;
   const page = reportNumber(query.page, 1);
@@ -154,13 +256,15 @@ export async function reportsPage(services) {
       { key: 'currentStatus', label: 'Trạng thái', render: row => badge(row.currentStatus) },
       { key: 'purchaseDate', label: 'Ngày mua', render: row => date(row.purchaseDate) },
       ...(canCost ? [{ key: 'purchaseCost', label: 'Giá mua', render: row => money(row.purchaseCost) }] : []),
-      { key: 'warrantyEndDate', label: 'Hết bảo hành', render: row => date(row.warrantyEndDate) }
+      { key: 'warrantyEndDate', label: 'Hết bảo hành', render: row => date(row.warrantyEndDate) },
+      detailColumn(showAsset)
     ];
 
     tabContent = h('div', {},
       h('section', { className: 'card filters-card' }, filterForm),
       h('section', { className: 'card' },
-        dataTable({ columns, rows: res.items, label: 'Kiểm kê tài sản' }),
+        h('p', { className: 'meta report-note' }, `${res.totalItems ?? res.items.length} tài sản khớp bộ lọc. Bấm vào một dòng để xem ai đang giữ, lịch sử cấp phát và bảo trì.`),
+        reportTable({ columns, rows: res.items, label: 'Kiểm kê tài sản', onRow: showAsset }),
         pagination(res, p => navigate({ ...state, page: p }))
       )
     );
@@ -195,7 +299,8 @@ export async function reportsPage(services) {
       { key: 'assignedDepartmentName', label: 'Phòng ban nhận', render: row => row.assignedDepartmentName || '—' },
       { key: 'assignedAtUtc', label: 'Ngày giao', render: row => date(row.assignedAtUtc) },
       { key: 'returnedAtUtc', label: 'Ngày trả', render: row => date(row.returnedAtUtc) },
-      { key: 'status', label: 'Trạng thái', render: row => badge(row.status === 'RETURNED' ? 'Resolved' : 'InUse') }
+      { key: 'status', label: 'Trạng thái', render: row => badge(row.status === 'RETURNED' ? 'Resolved' : 'InUse') },
+      detailColumn(showAssignment)
     ];
 
     tabContent = h('section', { className: 'card' },
@@ -203,7 +308,7 @@ export async function reportsPage(services) {
         { name: 'assignmentFrom', label: 'Cấp phát từ (UTC)', type: 'datetime-local' },
         { name: 'assignmentTo', label: 'Cấp phát đến (UTC)', type: 'datetime-local' }, pageSizeFilter], state, { page: 1 }),
       h('p', { className: 'meta report-note' }, 'Khoảng thời gian lọc theo lúc cấp phát (UTC), không phải ngày thu hồi. Phòng ban là bên nhận; không phải phòng ban sở hữu tài sản. Chỉ đọc lịch sử, không thực hiện cấp phát/thu hồi.'),
-      dataTable({ columns, rows: res.items, label: 'Báo cáo phân bổ' }),
+      reportTable({ columns, rows: res.items, label: 'Báo cáo phân bổ', onRow: showAssignment }),
       pagination(res, p => navigate({ ...state, page: p }))
     );
   }
@@ -223,7 +328,8 @@ export async function reportsPage(services) {
       { key: 'technicianName', label: 'Kỹ thuật viên', render: row => row.technicianName || '—' },
       { key: 'openedAtUtc', label: 'Ngày tạo', render: row => date(row.openedAtUtc) },
       { key: 'resolvedAtUtc', label: 'Hoàn tất', render: row => date(row.resolvedAtUtc) },
-      ...(canCost ? [{ key: 'cost', label: 'Chi phí', render: row => money(row.cost) }] : [])
+      ...(canCost ? [{ key: 'cost', label: 'Chi phí', render: row => money(row.cost) }] : []),
+      detailColumn(showTicket)
     ];
 
     tabContent = h('section', { className: 'card' },
@@ -233,7 +339,7 @@ export async function reportsPage(services) {
         { name: 'maintenanceFrom', label: 'Mở phiếu từ (UTC)', type: 'datetime-local' },
         { name: 'maintenanceTo', label: 'Mở phiếu đến (UTC)', type: 'datetime-local' }, pageSizeFilter], state, { page: 1 }),
       h('p', { className: 'meta report-note' }, 'Bộ lọc thời gian dùng lúc mở phiếu (UTC). Mỗi dòng là trạng thái hiện tại của một phiếu, không phải mọi sự kiện trong nhật ký bảo trì.'),
-      dataTable({ columns, rows: res.items, label: 'Lịch sử bảo trì' }),
+      reportTable({ columns, rows: res.items, label: 'Lịch sử bảo trì', onRow: showTicket }),
       pagination(res, p => navigate({ ...state, page: p }))
     );
   }
@@ -345,7 +451,8 @@ export async function reportsPage(services) {
         const value = row.recommendedAtUtc ? new Date(row.recommendedAtUtc) : null;
         return value && Number.isFinite(value.getTime()) ? value.toISOString().replace('T', ' ').replace('Z', '') : '—';
       } },
-      ...(canCost ? [{ key: 'estimatedCost', label: 'Chi phí dự kiến', render: row => money(row.estimatedCost) }] : [])
+      ...(canCost ? [{ key: 'estimatedCost', label: 'Chi phí dự kiến', render: row => money(row.estimatedCost) }] : []),
+      detailColumn(showRecommendation)
     ];
     tabContent = h('section', { className: 'card' },
       filters('Lọc báo cáo đề xuất thay thế', [departmentFilter, { name: 'priority', label: 'Ưu tiên', options: priorities },
@@ -353,7 +460,7 @@ export async function reportsPage(services) {
         { name: 'plannedYear', label: 'Năm dự kiến (tùy chọn)' }, { name: 'generatedFrom', label: 'Đề xuất từ (UTC)', type: 'datetime-local' },
         { name: 'generatedTo', label: 'Đề xuất đến (UTC)', type: 'datetime-local' }, pageSizeFilter], state, { page: 1 }),
       h('p', { className: 'meta report-note' }, 'Báo cáo chỉ đọc, gồm các bản hiện hành/lịch sử khớp bộ lọc; không chạy đánh giá hoặc sửa đề xuất.'),
-      dataTable({ columns, rows: res.items, label: 'Báo cáo đề xuất thay thế' }),
+      reportTable({ columns, rows: res.items, label: 'Báo cáo đề xuất thay thế', onRow: showRecommendation }),
       pagination(res, p => navigate({ ...state, page: p })));
   }
 
@@ -362,6 +469,7 @@ export async function reportsPage(services) {
   viewRoot = h('div', { className: 'reports-page' },
     pageHeader('Báo cáo hệ thống', 'Tra cứu số liệu kiểm kê, phân bổ, bảo trì, hạn bản quyền và ngân sách.', { eyebrow: 'Báo cáo & Thống kê' }),
     tabBar,
+    h('h2', { className: 'report-title' }, tabLabels[currentTab]),
     reportExcelActions(services, currentTab, query, () => viewRoot?.isConnected && validView()),
     tabContent
   );
