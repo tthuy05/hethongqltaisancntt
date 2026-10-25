@@ -239,3 +239,27 @@ Sau khi được publish/review và gate DB mở:
 8. Hoàn thiện MaintenanceService/audit/status-history/maintenance-history theo phân công trước khi kích hoạt scaffold Controller. Đổi đúng route/policy/DTO theo EP-036–045/matrix (không `maintenance.complete` tùy ý), resolve DI, không trả success DTO rỗng, kiểm object scope và cost permission. Table mapping tồn tại không đồng nghĩa Maintenance workflow đã xong; không dùng code scaffold build PASS thay chứng minh nghiệp vụ.
 
 **Dừng tại gate review/deployment. Không commit/push hoặc apply/seed shared trong lượt bàn giao này.**
+
+## Addendum 25/10/2026 — Assignment completion / UNDER REVIEW
+
+### Cập nhật 26/10/2026 — Đóng các kiểm tra còn thiếu của checkpoint 25/10
+
+WorkflowAuthorization recheck account/token/read/action dưới users-identity sau asset/master locks và trước mutation; Maintenance còn recheck financial scope snapshot. Không sửa migrations/DTO hoặc mở module. 5 LocalWorkflowRevocationTests PASS khi request JWT thực sự chờ row lock PostgreSQL; revoke quyền trả/transfer/start/cost hoặc tokenVersion gây401/403 và không đổi dữ liệu. 4 case mới ở LocalMaintenanceCompletionTests: Support scope/finance và concurrent fail-resolve/reassign-start/cost-cost PASS. Support browser start/resolve/history PASS, không ô/cột cost hay assign/cancel; screenshot ignored `test-results/workflow26-support-browser.png`, console không warning/error.
+
+Full checkpoint mới: Release0 warnings/errors; 817 unit PASS; 222 integration PASS/163 cloud SKIP; 405 frontend PASS; 53 syntax/57 CSP checks; production frontend build PASS. Logs ignored `workflow26-build-final.log`, `workflow26-tests-final.log`, `workflow26-frontend-final.log`, `workflow26-production-build.log`. Focused 5 revocation + 9 completion là subset, không cộng lại vào222. Các lệnh tái hiện phía dưới giữ nguyên, target mới là database local được guard, ITAM_RUN_NEON_TESTS=0.
+
+Các release gates còn lại: review diff, CI/Docker đúng revision, rehearsal seed/readiness và production acceptance có phê duyệt. Actor tokenless chỉ trusted in-process test/system, không thay HttpActor/JWT đã validate. Không commit/push/merge/deploy hay ghi shared Neon; WIP các checkout khác giữ nguyên. Phần mô tả/chưa hoàn thiện 25/10 bên dưới là lịch sử checkpoint, các test nêu trên đã được bổ sung ngày26/10.
+
+Nội dung lịch sử phía trên giữ nguyên theo checkpoint cũ. Source mới trên `codex/assignment-completion` bổ sung `AssignmentService.TransferAsync`, list filters và asset history; không gọi return/assign thành hai transaction. Asset lock → master-data/users-identity locks → đóng bản ghi cũ trước insert bản ghi mới → hai linked audits → commit. Lỗi audit/phiên bản rollback cả hai; tài sản vẫn IN_USE trong điều chuyển. Không thay bảng hoặc migration.
+
+`AssignmentDto` bổ sung mã/tên tài sản, người/phòng ban nhận, actor IDs, status Active/Returned và expectedReturnAt. Không lộ chi phí/email. `condition`/`returnCondition` là mô tả tối đa 200 ký tự lưu cùng lý do trong ReturnNote tối đa 1000, không phải enum mới. History dùng quyền assignments.read, kể cả tài sản đã archive để giữ lịch sử; mutation vẫn chặn archive.
+
+UI `/assignments`, `/assignments/{id}` và tab lịch sử tài sản chỉ mở khi client opt-in và có quyền; adapter dùng JWT transport hiện tại. Mỗi thao tác lấy version mới, khóa double click, không tự retry khi 403/409/503/network; bỏ phản hồi khi đổi trang/session.
+
+Phụ thuộc: AssignmentService, IRepository/IUnitOfWork, audit, assets/users/departments, partial unique assignment index hiện có. Quyền mới `assignments.transfer`; additive CLI Development `--seed-assignment-transfer` tối đa 1 permission + 2 grants Admin/Manager, repeat thêm 0, không cấp Support. Seed B lịch sử không sửa. Feature server/client default vẫn đóng; production seed/rollout PLANNED.
+
+Evidence local ignored `test-results/workflow-build.log`, `workflow-final-dotnet.log`, `workflow-final-frontend.log`: Release 0 warnings/errors, 817 unit PASS, 213 integration PASS/163 cloud SKIP, 405 frontend PASS, 53 JS/57 CSP PASS. Integration bao gồm 3 LocalAssignmentCompletionTests (real JWT happy path, effective grants, concurrent transfer + injected second-audit rollback) và 2 LocalMaintenanceCompletionTests. Local PostgreSQL password/SCRAM, không phải Neon. Browser Assignment checkpoint trước: tạo → chuyển người/phòng ban → lịch sử → trả PASS. Không coi đó là production acceptance.
+
+Tái hiện: `dotnet build --configuration Release`, `dotnet test --configuration Release --no-build`, `npm.cmd test`, `node scripts/frontend-check.mjs`, `npm.cmd run build:production`. Local facts chỉ chạy khi ITAM_LOCAL_POSTGRES_TEST_CONNECTION trỏ database kiểm thử local được guard; ITAM_RUN_NEON_TESTS=0. Không đưa giá trị connection vào command history/tài liệu. Cloud tests SKIP không tính PASS.
+
+Tiếp quản: review quyền/readiness, mở opt-in chỉ trên isolated để nghiệm thu; kiểm thử thêm actor revocation khi chờ lock và fail/cost/reassign đồng thời qua HTTP trước release. Chưa commit/push, chưa seed/migrate shared, chưa bật Assignment/Maintenance/Reporting production.

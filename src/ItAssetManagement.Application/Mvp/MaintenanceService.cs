@@ -2,7 +2,7 @@ using ItAssetManagement.Domain.Entities;
 
 namespace ItAssetManagement.Application.Mvp;
 
-public sealed class MaintenanceService(IRepository repo, IUnitOfWork uow, IActor actor, IAuditWriter audit,
+public sealed partial class MaintenanceService(IRepository repo, IUnitOfWork uow, IActor actor, IAuditWriter audit,
     MaintenanceAccessPolicy access, IMaintenanceTicketCodeGenerator? ticketCodes = null)
 {
     private void Require(string permission)
@@ -32,6 +32,11 @@ public sealed class MaintenanceService(IRepository repo, IUnitOfWork uow, IActor
             Id = x.Id,
             TicketCode = x.TicketCode,
             AssetId = x.AssetId,
+            AssetCode = repo.Query<Asset>().Where(a => a.Id == x.AssetId).Select(a => a.AssetCode).FirstOrDefault(),
+            AssetName = repo.Query<Asset>().Where(a => a.Id == x.AssetId).Select(a => a.Name).FirstOrDefault(),
+            AssignedToName = repo.Query<User>().Where(u => u.Id == x.AssignedToUserId).Select(u => u.FullName).FirstOrDefault(),
+            Title = x.Title, Priority = x.Priority, RequestedByUserId = x.RequestedByUserId,
+            AssignedToUserId = x.AssignedToUserId, DueAtUtc = x.DueAtUtc,
             Description = x.Description,
             OpenedAtUtc = x.OpenedAtUtc,
             StartedAtUtc = x.StartedAtUtc,
@@ -88,6 +93,7 @@ public sealed class MaintenanceService(IRepository repo, IUnitOfWork uow, IActor
         {
             // 1. Khóa tài sản tránh tranh chấp đồng thời
             await repo.LockAssetAsync(request.AssetId, ct);
+            await WorkflowAuthorization.RequireAsync(repo, actor, ct, Permissions.MaintenanceRead, Permissions.MaintenanceCreate);
 
             // 2. Kiểm tra tài sản & trạng thái hợp lệ
             var asset = await repo.FirstAsync(repo.Query<Asset>(true).Where(a => a.Id == request.AssetId), ct)
@@ -99,18 +105,17 @@ public sealed class MaintenanceService(IRepository repo, IUnitOfWork uow, IActor
             if (asset.CurrentStatus == "MAINTENANCE")
                 throw new BusinessException(409, "ASSET_ALREADY_IN_MAINTENANCE", "Tài sản đang trong quá trình bảo trì.");
 
-            if (asset.CurrentStatus == "IN_USE")
-                throw new BusinessException(409, "ASSET_IN_USE", "Tài sản đang được cấp phát sử dụng. Cần thu hồi tài sản trước khi đưa vào bảo trì.");
-
-            if (asset.CurrentStatus != "IN_STOCK")
-                throw new BusinessException(409, "ASSET_NOT_IN_STOCK", "Chỉ tài sản sẵn sàng trong kho (IN_STOCK) mới có thể đưa vào bảo trì.");
-
-            if (await repo.HasActiveWorkflowAsync(asset.Id, ct))
-                throw new BusinessException(409, "ASSET_ACTIVE_WORKFLOW", "Tài sản đang có quy trình chưa kết thúc.");
+            if (asset.CurrentStatus is not ("IN_STOCK" or "IN_USE" or "BROKEN"))
+                throw new BusinessException(409, "ASSET_STATUS_CONFLICT", "Không thể mở bảo trì cho tài sản đã ngừng sử dụng.");
+            if (await repo.AnyAsync(repo.Query<MaintenanceTicket>().Where(x => x.AssetId == asset.Id && !x.IsArchived &&
+                    (x.Status == "PENDING" || x.Status == "IN_PROGRESS")), ct))
+                throw new BusinessException(409, "ASSET_ACTIVE_WORKFLOW", "Tài sản đã có phiếu bảo trì chưa kết thúc.");
 
             var now = DateTime.UtcNow;
-            var ticketCode = ticketCodes != null ? await ticketCodes.NextAsync(ct) : $"BT-{Guid.NewGuid():N}";
-            var title = request.Description.Length > 50 ? request.Description[..50] : request.Description;
+            var ticketCode = await (ticketCodes ?? throw new InvalidOperationException("Maintenance code generator required.")).NextAsync(ct);
+            var title = request.Title == null ? (request.Description.Length > 50 ? request.Description[..50] : request.Description) : Validation.Required(request.Title, 200, "title");
+            Priority(request.Priority); Utc(request.DueAtUtc, "dueAt");
+            if (request.DueAtUtc < now) throw Validation.Invalid("dueAt", "Hạn xử lý không được trước thời điểm mở phiếu.");
 
             // 3. Khởi tạo phiếu bảo trì mới
             var ticket = new MaintenanceTicket
@@ -119,7 +124,7 @@ public sealed class MaintenanceService(IRepository repo, IUnitOfWork uow, IActor
                 AssetId = request.AssetId,
                 Title = title,
                 Description = request.Description.Trim(),
-                Priority = "MEDIUM",
+                Priority = request.Priority, DueAtUtc = request.DueAtUtc,
                 Status = "PENDING",
                 RequestedByUserId = actor.UserId!.Value,
                 OpenedAtUtc = now,
@@ -144,7 +149,9 @@ public sealed class MaintenanceService(IRepository repo, IUnitOfWork uow, IActor
         }, ct);
     }
 
-    public async Task<MaintenanceDto> CompleteAsync(long id, CompleteMaintenanceRequest request, CancellationToken ct)
+    public Task<MaintenanceDto> CompleteAsync(long id, CompleteMaintenanceRequest request, CancellationToken ct) => FinishAsync(id, request, true, ct);
+
+    private async Task<MaintenanceDto> FinishAsync(long id, CompleteMaintenanceRequest request, bool usable, CancellationToken ct)
     {
         Require(Permissions.MaintenanceComplete);
         access.RequireCostWrite(request.HasActualCost);
@@ -155,6 +162,7 @@ public sealed class MaintenanceService(IRepository repo, IUnitOfWork uow, IActor
         if (request.Resolution.Length > 2000)
             throw Validation.Invalid("resolution", "Nội dung xử lý không được vượt quá 2000 ký tự.");
         Money(request.ActualCost, "actualCost");
+        Utc(request.CompletedAtUtc, "completedAt");
 
         // Kiểm tra và giải mã RowVersion
         var version = Validation.Version(request.RowVersion);
@@ -167,6 +175,7 @@ public sealed class MaintenanceService(IRepository repo, IUnitOfWork uow, IActor
             // Same lock order as Assignment/start/return: asset first, then reload
             // the tracked ticket so a waiter cannot validate a stale pre-lock row.
             await repo.LockAssetAsync(snapshot.AssetId, ct);
+            await WorkflowAuthorization.RequireAsync(repo, actor, ct, Permissions.MaintenanceRead, Permissions.MaintenanceResolve);
             var ticket = await repo.FirstAsync(repo.Query<MaintenanceTicket>(true).Where(t => t.Id == id && !t.IsArchived), ct)
                 ?? throw NotFound();
             access.Require(ticket, MaintenanceTicketAction.Resolve);
@@ -185,8 +194,8 @@ public sealed class MaintenanceService(IRepository repo, IUnitOfWork uow, IActor
             if (asset.IsArchived || asset.CurrentStatus != "MAINTENANCE")
                 throw new BusinessException(409, "ASSET_STATUS_CONFLICT", "Trạng thái tài sản không khớp phiếu đang bảo trì.");
 
-            var now = DateTime.UtcNow;
-            if (ticket.StartedAtUtc > now)
+            var now = request.CompletedAtUtc ?? DateTime.UtcNow;
+            if (ticket.StartedAtUtc > now || now > DateTime.UtcNow)
                 throw new BusinessException(409, "MAINTENANCE_TIME_CONFLICT", "Thời điểm bắt đầu nằm trong tương lai.");
             var before = MaintenanceAuditState.Capture(ticket);
             var hasAssignment = await repo.AnyAsync(repo.Query<AssetAssignment>().Where(a =>
@@ -194,17 +203,17 @@ public sealed class MaintenanceService(IRepository repo, IUnitOfWork uow, IActor
             repo.ExpectVersion(ticket, version);
 
             // 1. Cập nhật phiếu bảo trì
-            ticket.Status = "RESOLVED";
+            ticket.Status = usable ? "RESOLVED" : "FAILED";
             ticket.Resolution = request.Resolution.Trim();
             if (request.HasActualCost) ticket.ActualCost = request.ActualCost;
             ticket.ResolvedAtUtc = now;
             ticket.UpdatedAtUtc = now;
 
             // Reuse the shared return/maintenance protocol; do not erase an active assignment.
-            repo.Add(AssetStatusTransitions.Apply(asset, AssetStatusTransitions.AfterMaintenance(true, hasAssignment),
+            repo.Add(AssetStatusTransitions.Apply(asset, AssetStatusTransitions.AfterMaintenance(usable, hasAssignment),
                 AssetStatusChangeSource.Maintenance, actor, now, "Hoàn tất bảo trì"));
             asset.UpdatedAtUtc = now;
-            var history = History(ticket, "RESOLVED", "IN_PROGRESS", now);
+            var history = History(ticket, usable ? "RESOLVED" : "FAILED", "IN_PROGRESS", now);
             history.Comment = request.Resolution.Trim();
             history.Cost = ticket.ActualCost;
             repo.Add(history);

@@ -1,5 +1,25 @@
 # Project Status
 
+## 26/10/2026 — Workflow revocation / concurrency acceptance — UNDER REVIEW
+
+- Sửa khe hở quyền bị thu hồi lúc command chờ asset row lock: recheck account/tokenVersion và EffectivePermissionQuery dưới `users-identity` lock trong transaction của Assignment/Maintenance. Grant chi phí đã bị thu hồi cũng chặn response dựa snapshot cũ.
+- 5 real-JWT cases chờ PostgreSQL row lock thật, xác nhận bằng `pg_blocking_pids`, rồi revoke return/transfer/work/cost hoặc tokenVersion: tất cả 401/403 và dữ liệu giữ nguyên.
+- Hoàn tất kiểm thử concurrent fail-vs-resolve, reassign-vs-start, cost-vs-cost; cùng rowVersion chỉ một writer/event thắng. Technical Support real JWT và browser: scope đúng, start/resolve phiếu được giao, không xem/ghi chi phí, không assign/cancel hoặc đọc history phiếu khác.
+- Release 0 warning/error; 817 unit / 222 integration PASS, 163 cloud SKIP; 405 frontend PASS; 53 JS/57 CSP checks PASS; production frontend build PASS. Logs local ignored `test-results/workflow26-*`; browser proof `workflow26-support-browser.png`. CI/Docker/production acceptance của WIP này chưa kiểm chứng.
+- Không đổi cấu hình, migrations hoặc shared Neon. WIP ở `codex/assignment-completion`, chưa commit/push/merge/deploy; Assignment/Maintenance/Reporting production vẫn chưa bật.
+- Phần còn lại theo thứ tự: (1) review/CI và rollout có phê duyệt cho Assignment/Maintenance; (2) Software/License CRUD và seat allocation/revoke/transfer tích hợp backend với UI đã chuẩn bị; (3) Replacement rule/evaluate/disposition và UI; (4) nghiệm thu/open Reports/Dashboard V2 cùng permission catalog/grants; (5) E2E toàn luồng, tải và nghiệm thu phát hành. Các policy/reader/form đã có không được coi là module API hoàn chỉnh.
+
+## 25/10/2026 — Assignment / Maintenance completion — UNDER REVIEW
+
+- Nhánh `codex/assignment-completion`, kế thừa main `dbdba57`; bảo toàn WIP khác. Chưa commit/push/merge/deploy trong lượt này.
+- Assignment: bổ sung điều chuyển nguyên tử, lịch sử theo tài sản, DTO tên hiển thị, hẹn trả, tình trạng thu hồi; giao diện danh sách/chi tiết/thao tác có quyền và kiểm soát stale session/version.
+- Maintenance: nối danh sách/chi tiết/tạo/sửa/giao kỹ thuật viên/bắt đầu/resolve/fail/cancel/history, hỗ trợ route cũ; UI và adapter opt-in. Phiếu PENDING không đổi trạng thái tài sản; start/finish/cancel cập nhật trạng thái và audit trong transaction.
+- Catalog biên dịch 42 quyền (thêm transfer và 8 Maintenance). Đây không phải số quyền đã seed production. Seed bổ sung chỉ qua lệnh Development rõ ràng; không tự chạy khi startup.
+- PostgreSQL 18 local dùng password/SCRAM: luồng JWT thật Assignment và Maintenance PASS; không kết nối/ghi shared Neon. Không thay Entity/mapping/migration/schema.
+- Kiểm thử: Release 0 warnings/errors; 817 unit PASS; full integration 213 PASS/163 cloud SKIP; frontend 405 PASS; 53 JS/57 CSP checks PASS. Chi tiết evidence và lệnh tại handoff hiện có.
+- Browser local: Maintenance create → assign → start → resolve → history PASS, console không warning/error; Assignment create/transfer/return đã kiểm ở checkpoint trước. Production acceptance và rollout vẫn PLANNED, hai module mặc định đóng.
+- Còn lại trước release: review diff/quyền/grants; rehearsal seed/readiness trên môi trường release được duyệt; kiểm thử tranh chấp thu hồi quyền trong lúc command chờ khóa và các nhánh fail/cost/reassign đồng thời bằng JWT thật; nghiệm thu Support trên browser; phê duyệt publication/rollout riêng. Không kết luận toàn project hoàn thành.
+
 ## 24/10/2026 — Rà tích hợp Reports PR #6 / UNDER REVIEW
 
 - Main009a8c9 và PR #4/#5 được bảo toàn; nhánh Thiện25c035f đã merge main, không còn conflict văn bản.

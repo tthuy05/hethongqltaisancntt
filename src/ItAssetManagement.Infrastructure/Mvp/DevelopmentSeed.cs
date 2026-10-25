@@ -10,9 +10,55 @@ public sealed record SeedResult(int Roles, int Permissions, int RolePermissions,
 public sealed class DevelopmentSeed(AppDbContext db, IRepository repo, IUnitOfWork uow, IPasswordService passwords, IAuditWriter audit)
 {
     // Explicit Week 4 catalog/grants only; never reset accounts or restore unrelated grants.
-    public Task<int> RunAssignmentPermissionsAsync(CancellationToken ct = default) => uow.RunAsync(async () =>
+    public Task<int> RunAssignmentPermissionsAsync(CancellationToken ct = default) =>
+        SeedAssignmentPermissionsAsync([Permissions.AssignmentRead, Permissions.AssignmentAssign, Permissions.AssignmentReturn], ct);
+
+    // Separate additive step: historical B still seeds exactly its original three permissions.
+    public Task<int> RunAssignmentTransferPermissionAsync(CancellationToken ct = default) =>
+        SeedAssignmentPermissionsAsync([Permissions.AssignmentTransfer], ct);
+
+    public Task<int> RunMaintenancePermissionsAsync(CancellationToken ct = default) => uow.RunAsync(async () =>
     {
         await repo.LockAsync("development-seed", ct);
+        // A missing schema fails before any permission write; this command never migrates.
+        await db.Set<MaintenanceHistory>().AnyAsync(ct);
+        var roles = await db.Set<Role>().Where(x => Permissions.Roles.Contains(x.Code)).ToListAsync(ct);
+        if (roles.Count != 3 || roles.Any(x => !x.IsActive)) throw new InvalidOperationException("Existing active fixed roles required.");
+        var forbidden = Permissions.Maintenance.Except(Permissions.MaintenanceSupport).ToArray();
+        if (await (from link in db.Set<RolePermission>() join role in db.Set<Role>() on link.RoleId equals role.Id
+            join permission in db.Set<Permission>() on link.PermissionId equals permission.Id
+            where role.Code == "TECHNICAL_SUPPORT" && forbidden.Contains(permission.Code) select link.Id).AnyAsync(ct))
+            throw new InvalidOperationException("Support grants require independent review.");
+        var created = new List<object>();
+        foreach (var code in Permissions.Maintenance)
+        {
+            var permission = await db.Set<Permission>().SingleOrDefaultAsync(x => x.Code == code, ct);
+            if (permission is { IsActive: false }) throw new InvalidOperationException("Inactive permission requires review.");
+            if (permission == null) { permission = new Permission { Code = code, Name = code, Module = "maintenance" }; db.Add(permission); created.Add(permission); await db.SaveChangesAsync(ct); }
+            foreach (var role in roles.Where(x => x.Code != "TECHNICAL_SUPPORT" || Permissions.MaintenanceSupport.Contains(code)))
+                if (!await db.Set<RolePermission>().AnyAsync(x => x.RoleId == role.Id && x.PermissionId == permission.Id, ct))
+                {
+                    var grant = new RolePermission { RoleId = role.Id, PermissionId = permission.Id, GrantedAtUtc = DateTime.UtcNow };
+                    db.Add(grant); created.Add(grant);
+                }
+        }
+        await db.SaveChangesAsync(ct);
+        foreach (var entity in created) audit.Record("development.maintenance-permissions.seed", entity, null, "SYSTEM");
+        await db.SaveChangesAsync(ct); return created.Count;
+    }, ct);
+
+    private Task<int> SeedAssignmentPermissionsAsync(string[] codes, CancellationToken ct) => uow.RunAsync(async () =>
+    {
+        await repo.LockAsync("development-seed", ct);
+        if (codes.Length == 1 && codes[0] == Permissions.AssignmentTransfer)
+        {
+            string[] baseline = [Permissions.AssignmentRead, Permissions.AssignmentAssign, Permissions.AssignmentReturn];
+            if (await db.Set<Permission>().CountAsync(x => baseline.Contains(x.Code) && x.IsActive, ct) != 3 ||
+                await (from link in db.Set<RolePermission>() join role in db.Set<Role>() on link.RoleId equals role.Id
+                       join permission in db.Set<Permission>() on link.PermissionId equals permission.Id
+                       where role.Code == "TECHNICAL_SUPPORT" && permission.Code == Permissions.AssignmentTransfer select link.Id).AnyAsync(ct))
+                throw new InvalidOperationException("Assignment baseline or support grants require review.");
+        }
         var created = new List<object>();
         var roles = new List<Role>();
         foreach (var (code, name) in new[] { ("ADMIN_IT", "Admin IT"), ("SYSTEM_MANAGER", "System Manager") })
@@ -26,7 +72,7 @@ public sealed class DevelopmentSeed(AppDbContext db, IRepository repo, IUnitOfWo
             }
             roles.Add(role);
         }
-        foreach (var code in new[] { Permissions.AssignmentRead, Permissions.AssignmentAssign, Permissions.AssignmentReturn })
+        foreach (var code in codes)
         {
             var permission = await db.Set<Permission>().SingleOrDefaultAsync(x => x.Code == code, ct);
             if (permission is { IsActive: false }) throw new InvalidOperationException("Inactive assignment permission requires review.");
@@ -166,7 +212,7 @@ public sealed class DevelopmentSeed(AppDbContext db, IRepository repo, IUnitOfWo
             foreach (var roleCode in Permissions.Roles)
             {
                 var role = roles.Single(x => x.Code == roleCode);
-                var grants = roleCode == "ADMIN_IT" ? Permissions.All : roleCode == "SYSTEM_MANAGER" ? [.. Permissions.Read, .. Permissions.Operate] : Permissions.Read;
+                var grants = roleCode == "ADMIN_IT" ? Permissions.All : roleCode == "SYSTEM_MANAGER" ? [.. Permissions.Read, .. Permissions.Operate] : [.. Permissions.Read, .. Permissions.MaintenanceSupport];
                 foreach (var permissionCode in grants)
                 {
                     var permission = permissions.Single(x => x.Code == permissionCode);

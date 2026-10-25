@@ -152,6 +152,7 @@ public sealed class AssignmentServiceTests
     public async Task List_filters_and_pages_stably_without_removing_closed_history()
     {
         var fixture = new Fixture(); fixture.Active();
+        fixture.Repo.Assets.Add(new() { Id = 2, CurrentStatus = "IN_USE" });
         fixture.Repo.Assignments.Add(new() { Id = 2, AssetId = 1, AssignedUserId = 2, AssignedAtUtc = AssignedAt,
             ReturnedAtUtc = AssignedAt.AddDays(1), RowVersion = Version.ToArray() });
         fixture.Repo.Assignments.Add(new() { Id = 3, AssetId = 2, AssignedDepartmentId = 3, AssignedAtUtc = AssignedAt, RowVersion = Version.ToArray() });
@@ -366,6 +367,84 @@ public sealed class AssignmentServiceTests
         var json = JsonSerializer.Serialize(new AssignmentDto { AssignedAtUtc = AssignedAt, ReturnedAtUtc = AssignedAt.AddDays(1) }, options);
         Assert.Contains("\"assignedAt\":", json); Assert.Contains("\"returnedAt\":", json); Assert.DoesNotContain("AtUtc", json);
     }
+    private static TransferAssetRequest Transfer() => new() { DepartmentId = 3, RowVersion = EncodedVersion,
+        Note = "Điều chuyển theo nhu cầu", TransferredAtUtc = AssignedAt.AddDays(2), ExpectedReturnAtUtc = AssignedAt.AddDays(7) };
+
+    [Fact]
+    public async Task Transfer_keeps_asset_in_use_closes_previous_links_new_and_does_not_fake_status_history()
+    {
+        var fixture = new Fixture(new(9, Permissions.AssignmentTransfer)); fixture.Active();
+        var result = await fixture.Service.TransferAsync(1, Transfer(), default);
+        Assert.Equal(1, result.Previous.Id); Assert.Equal(2, result.Current.Id);
+        Assert.Equal(result.Previous.ReturnedAtUtc, result.Current.AssignedAtUtc);
+        Assert.Null(result.Current.ReturnedAtUtc); Assert.Equal(3, result.Current.AssignedDepartmentId);
+        Assert.Equal(AssignedAt.AddDays(7), result.Current.ExpectedReturnAtUtc);
+        Assert.Equal(9, result.Current.AssignedByUserId); Assert.Equal(9, result.Previous.ReturnedByUserId);
+        Assert.Equal("IN_USE", fixture.Repo.Assets[0].CurrentStatus); Assert.Empty(fixture.Repo.Histories);
+        Assert.Single(fixture.Repo.Assignments, x => x.ReturnedAtUtc == null);
+        Assert.Equal(["asset:1", "track:AssetAssignment", "lock:master-data", "lock:users-identity"], fixture.Repo.Operations);
+        Assert.Equal(1, fixture.Repo.ExpectedVersions);
+        Assert.Equal(2, fixture.Audit.Events.Count); Assert.All(fixture.Audit.Events, x => Assert.Equal("assignments.transfer", x.Action));
+        Assert.Contains("previousAssignmentId", JsonSerializer.Serialize(fixture.Audit.Events[1].After));
+        Assert.DoesNotContain("Note", JsonSerializer.Serialize(fixture.Audit.Events.Select(x => x.After)));
+    }
+
+    [Theory]
+    [InlineData("IN_STOCK")] [InlineData("MAINTENANCE")] [InlineData("BROKEN")] [InlineData("RETIRED")]
+    public async Task Transfer_denies_unsuitable_asset_status_without_closing_previous(string status)
+    {
+        var fixture = new Fixture(new(9, Permissions.AssignmentTransfer)); fixture.Active(); fixture.Repo.Assets[0].CurrentStatus = status;
+        await Error(fixture.Service.TransferAsync(1, Transfer(), default), 409, "ASSET_STATUS_CONFLICT");
+        Assert.Null(fixture.Repo.Assignments[0].ReturnedAtUtc); Assert.Empty(fixture.Audit.Events);
+    }
+
+    [Theory]
+    [InlineData("permission")] [InlineData("same-target")] [InlineData("stale")]
+    [InlineData("inactive")] [InlineData("already-returned")] [InlineData("in-progress")]
+    public async Task Transfer_rejects_invalid_target_permission_version_and_workflow(string scenario)
+    {
+        var fixture = new Fixture(new(9, scenario == "permission" ? Permissions.AssignmentAssign : Permissions.AssignmentTransfer));
+        fixture.Active(); var request = Transfer();
+        if (scenario == "same-target") { request.UserId = 2; request.DepartmentId = null; }
+        if (scenario == "stale") request.RowVersion = Convert.ToBase64String(new byte[16]);
+        if (scenario == "inactive") fixture.Repo.Departments[0].IsActive = false;
+        if (scenario == "already-returned") fixture.Repo.Assignments[0].ReturnedAtUtc = AssignedAt.AddDays(1);
+        if (scenario == "in-progress") fixture.Repo.Tickets.Add(new() { AssetId = 1, Status = "IN_PROGRESS" });
+        await Error(fixture.Service.TransferAsync(1, request, default), scenario == "permission" ? 403 : scenario == "inactive" ? 400 : 409);
+        Assert.Single(fixture.Repo.Assignments); Assert.Empty(fixture.Audit.Events);
+    }
+
+    [Fact]
+    public async Task Expected_return_and_free_text_condition_are_validated_and_persisted_without_schema_change()
+    {
+        var fixture = new Fixture(); var request = Assign(); request.AssignedAtUtc = AssignedAt; request.ExpectedReturnAtUtc = AssignedAt.AddDays(-1);
+        await Error(fixture.Service.AssignAsync(request, default), 400);
+        Assert.Empty(fixture.Repo.Assignments);
+        request.ExpectedReturnAtUtc = AssignedAt.AddDays(7);
+        var assigned = await fixture.Service.AssignAsync(request, default); Assert.Equal(request.ExpectedReturnAtUtc, assigned.ExpectedReturnAtUtc);
+        var returned = Return(); returned.Condition = "Vỏ máy còn nguyên";
+        var result = await fixture.Service.ReturnAsync(assigned.Id, returned, default);
+        Assert.Contains("Tình trạng: Vỏ máy còn nguyên", result.ReturnNote);
+        Assert.DoesNotContain("Vỏ máy", JsonSerializer.Serialize(fixture.Audit.Events.Select(x => x.After)));
+    }
+
+    [Fact]
+    public async Task History_filters_status_UTC_range_and_sort_and_omits_financial_identity_secrets()
+    {
+        var fixture = new Fixture(); fixture.Active();
+        fixture.Repo.Assets[0].AssetCode = "AST-000001"; fixture.Repo.Assets[0].PurchaseCost = 999m;
+        fixture.Repo.Users[0].FullName = "Người nhận";
+        fixture.Repo.Assignments.Add(new() { Id = 2, AssetId = 1, AssignedDepartmentId = 3, AssignedAtUtc = AssignedAt.AddDays(-5),
+            ReturnedAtUtc = AssignedAt.AddDays(-4), RowVersion = Version });
+        var result = await fixture.Service.HistoryAsync(1, new() { Status = "Active", From = AssignedAt, To = AssignedAt, SortDirection = "asc" }, default);
+        Assert.Equal("Người nhận", Assert.Single(result.Items).AssignedUserName);
+        var json = JsonSerializer.Serialize(result); Assert.DoesNotContain("PurchaseCost", json); Assert.DoesNotContain("Email", json);
+        await Error(fixture.Service.ListAsync(new() { Status = "Any" }, default), 400);
+        await Error(fixture.Service.ListAsync(new() { From = AssignedAt, To = AssignedAt.AddDays(-1) }, default), 400);
+        await Error(fixture.Service.ListAsync(new() { SortBy = "purchaseCost" }, default), 400);
+        await Error(fixture.Service.HistoryAsync(99, new(), default), 404);
+    }
+
     private static void AssertAuditPair(Fixture fixture, string action, AssetAssignment assignment)
     {
         Assert.Equal(2, fixture.Audit.Events.Count);

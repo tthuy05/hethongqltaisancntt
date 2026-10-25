@@ -69,9 +69,9 @@ public static class Permissions
         UserRead = "users.read", UserCreate = "users.create", UserUpdate = "users.update",
         UserStatus = "users.status.manage", RoleAssign = "roles.assign", RoleRead = "roles.read",
         RolePermissionsRead = "roles.permissions.read", AuditRead = "audit-logs.read",
-        AssignmentRead = "assignments.read", AssignmentAssign = "assignments.assign", AssignmentReturn = "assignments.return";
-    // Week 4 integration contracts only: intentionally excluded from All/seed/policies
-    // until the Maintenance rollout is reviewed. Reuses Thien's read/create names.
+        AssignmentRead = "assignments.read", AssignmentAssign = "assignments.assign", AssignmentReturn = "assignments.return",
+        AssignmentTransfer = "assignments.transfer";
+    // Compiled catalog; production availability still requires the reviewed Maintenance rollout.
     public const string MaintenanceRead = "maintenance.read", MaintenanceCreate = "maintenance.create",
         MaintenanceUpdate = "maintenance.update", MaintenanceAssign = "maintenance.assign",
         MaintenanceWork = "maintenance.work", MaintenanceResolve = "maintenance.resolve",
@@ -97,10 +97,13 @@ public static class Permissions
         ExportAssignments = "export.assignments.execute",
         ExportReplacement = "export.replacement.execute";
     public static readonly string[] ImportExport = [ImportAssets, ExportAssets, ExportMaintenance, ExportAssignments, ExportReplacement];
+    public static readonly string[] Maintenance = [MaintenanceRead, MaintenanceCreate, MaintenanceUpdate, MaintenanceAssign,
+        MaintenanceWork, MaintenanceResolve, MaintenanceCancel, MaintenanceCostWrite];
+    public static readonly string[] MaintenanceSupport = [MaintenanceRead, MaintenanceCreate, MaintenanceUpdate, MaintenanceWork, MaintenanceResolve];
     public static readonly string[] Read = [AssetRead, AssetHistory, DepartmentRead, TypeRead, DashboardRead, UserLookup];
     // Support assignment reads require a scoped support contract, not this unrestricted service.
     public static readonly string[] Operate = [AssetCreate, AssetUpdate, AssetArchive, AssetStatus, AssetCost, RoleRead,
-        AssignmentRead, AssignmentAssign, AssignmentReturn, .. ImportExport];
+        AssignmentRead, AssignmentAssign, AssignmentReturn, AssignmentTransfer, .. ImportExport, .. Maintenance];
     public static readonly string[] Admin = [DepartmentCreate, DepartmentUpdate, DepartmentArchive, TypeCreate, TypeUpdate, TypeArchive,
         UserRead, UserCreate, UserUpdate, UserStatus, RoleAssign, RolePermissionsRead, AuditRead];
     public static readonly string[] Reports = [ReportAssets, ReportAssignments, ReportMaintenance, ReportLicenses, ReportReplacement, ReportCost, DashboardCost];
@@ -118,6 +121,9 @@ public sealed class CreateMaintenanceRequest
     { AssetId = assetId; Description = description; if (estimatedCost.HasValue) EstimatedCost = estimatedCost; }
     public long AssetId { get; set; }
     public string Description { get; set; } = "";
+    public string? Title { get; set; }
+    public string Priority { get; set; } = "MEDIUM";
+    [JsonPropertyName("dueAt")] public DateTime? DueAtUtc { get; set; }
     public decimal? EstimatedCost { get => estimatedCost; set { estimatedCost = value; HasEstimatedCost = true; } }
     [JsonIgnore] public bool HasEstimatedCost { get; private set; }
 }
@@ -129,6 +135,7 @@ public sealed class CompleteMaintenanceRequest
     { Resolution = resolution; RowVersion = rowVersion; if (actualCost.HasValue) ActualCost = actualCost; }
     public string Resolution { get; set; } = "";
     public string? RowVersion { get; set; }
+    [JsonPropertyName("completedAt")] public DateTime? CompletedAtUtc { get; set; }
     public decimal? ActualCost { get => actualCost; set { actualCost = value; HasActualCost = true; } }
     [JsonIgnore] public bool HasActualCost { get; private set; }
 }
@@ -138,6 +145,14 @@ public sealed class MaintenanceDto
     public long Id { get; set; }
     public string TicketCode { get; set; } = "";
     public long AssetId { get; set; }
+    public string Title { get; set; } = "";
+    public string? AssetCode { get; set; }
+    public string? AssetName { get; set; }
+    public string? AssignedToName { get; set; }
+    public string Priority { get; set; } = "MEDIUM";
+    public long RequestedByUserId { get; set; }
+    public long? AssignedToUserId { get; set; }
+    public DateTime? DueAtUtc { get; set; }
     public string Description { get; set; } = "";
     public DateTime OpenedAtUtc { get; set; }
     public DateTime? StartedAtUtc { get; set; }

@@ -13,6 +13,10 @@ public static class AssignmentRollout
     public const string ConfigurationKey = "Features:AssignmentApi:Enabled";
     public static bool IsEnabled(IConfiguration configuration) =>
         bool.TryParse(configuration[ConfigurationKey], out var enabled) && enabled;
+    public static bool IsPath(PathString path) =>
+        path.StartsWithSegments("/api/v1/asset-assignments", StringComparison.OrdinalIgnoreCase) ||
+        System.Text.RegularExpressions.Regex.IsMatch(path.Value ?? "", @"^/api/v1/assets/[0-9]+/assignments/?$",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 }
 
 // Run after the framework's controller discovery. Disabled routes are also absent
@@ -85,7 +89,7 @@ public sealed class AssignmentRolloutMiddleware(RequestDelegate next, IConfigura
 {
     public async Task InvokeAsync(HttpContext context)
     {
-        if (context.Request.Path.StartsWithSegments("/api/v1/asset-assignments", StringComparison.OrdinalIgnoreCase))
+        if (AssignmentRollout.IsPath(context.Request.Path))
         {
             if (!AssignmentRollout.IsEnabled(configuration)) { context.Response.StatusCode = StatusCodes.Status404NotFound; return; }
             // Before authentication/model binding/Controller activation. Even a stale

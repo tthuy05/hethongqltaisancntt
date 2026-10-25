@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased — 26/10/2026 — Recheck workflow authorization after lock waits
+
+- Fixed: Assignment/Maintenance commands recheck live account, JWT version and effective permissions under the identity coordinator after asset locks; deny revoked financial scope before returning costs.
+- Verified: five real-PostgreSQL lock-wait revocation cases, competing fail/resolve, reassign/start and cost writes; scoped Support API and browser acceptance. Release 0 warnings/errors; 817 unit/222 integration/405 frontend PASS, 163 cloud SKIP; 53 JS/57 CSP checks and production frontend build PASS.
+- Deployment: WIP only; no migration, shared database write, production flag change, commit/push or Render deployment.
+
+## Unreleased — 25/10/2026 — Assignment / Maintenance completion
+
+- Added: atomic assignment transfer, asset assignment history, expected return date and return-condition note; permission-aware Assignment pages.
+- Added: opt-in Maintenance workflow API/UI, eligible technician lookup, paged history, terminal cost correction with append-only audit; preserve legacy routes.
+- Changed: explicit additive development seed for transfer/Maintenance permissions, fail-closed rollout readiness, safe client validation and cost masking.
+- Verified: Release 0 warnings/errors; 817 unit/213 integration/405 frontend PASS, 163 cloud SKIP; 53 JS/57 CSP source checks. Real-JWT PostgreSQL and local browser happy-path verified. Additional readiness test recorded in module handoff.
+- Deployment: UNDER REVIEW; no shared Neon writes, migration, production feature activation, Git publication or Render deployment.
+
 ## Unreleased — 24/10/2026 — Reports integration review
 
 - Fixed: preserve RBAC v2 effective permissions without Admin report/Excel bonus; retain Excel and PR #4/#5 UI.

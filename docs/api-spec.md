@@ -1,5 +1,27 @@
 # API Specification
 
+## Runtime addendum 25/10/2026 — Assignment/Maintenance — UNDER REVIEW
+
+Update 26/10: không đổi DTO/routes; mutation còn kiểm tra lại account/token/effective grants sau lock wait, trước ghi. Nếu account/token đã thay đổi trả401 UNAUTHORIZED; grant đã thu hồi trả403 FORBIDDEN, toàn transaction không đổi dữ liệu. UI yêu cầu refresh/login, không tự replay. Local acceptance tại handoff; chưa bật production.
+
+Addendum này cập nhật runtime nhánh `codex/assignment-completion`, không khẳng định API đã bật production; các đoạn kế hoạch/historical phía dưới giữ phạm vi checkpoint cũ. Hai server flags AssignmentApi/MaintenanceApi và client opt-in mặc định false. Flag false: 404; opt-in nhưng schema/grants chưa ready: 503; ready mới áp dụng JWT 401 và permission 403. Errors RFC7807 như API hiện tại, không tự retry mutation.
+
+### Assignment
+
+Giữ GET/POST `/api/v1/asset-assignments`, GET detail và POST `/{id}/return`. Thêm POST `/{id}/transfer` (assignments.transfer), GET `/api/v1/assets/{assetId}/assignments` (assignments.read). Transfer trả 200 `{previous,current}` trong cùng transaction; mục tiêu XOR userId/departmentId, rowVersion Base64 16 bytes, note bắt buộc, returnCondition tùy chọn ≤200, transferredAt UTC tùy chọn. Assign nhận expectedReturnAt UTC tùy chọn ≥assignedAt. Return nhận condition tùy chọn ≤200, note bắt buộc; tổng ReturnNote sau ghép ≤1000.
+
+List/history: page≥1, pageSize 1..100, offset int32; list hỗ trợ assetId/userId/departmentId/active, status Active|Returned, from/to UTC lọc assignedAt inclusive; sortBy assignedAt|returnedAt|id, sortDirection asc|desc, id tie-breaker. History cố định assetId từ path. active=true + status=Returned trả 400. DTO thêm assetCode/assetName, assignedUserName/assignedDepartmentName, actor IDs, status/expectedReturnAt; không có chi phí/email. 400 invalid/XOR/time; 404 missing; 409 stale/version/active workflow/state conflict. Assign201; GET200+ETag; return/transfer200.
+
+### Maintenance
+
+Canonical `/api/v1/maintenance-tickets`; alias `/api/v1/asset-maintenance` giữ tương thích. GET list/detail/history cần maintenance.read; POST create cần maintenance.create; PUT detail cần maintenance.update; POST `/{id}/assign` cần maintenance.assign; `/start` cần maintenance.work; `/resolve` hoặc alias `/complete`, `/fail` cần maintenance.resolve; `/cancel` cần maintenance.cancel. GET `/technicians` cần maintenance.assign, global scope, trả UserLookupDto safe (không email).
+
+Create201+Location: assetId, description≤2000 bắt buộc, title tùy chọn≤200, priority LOW|MEDIUM|HIGH|CRITICAL (MEDIUM mặc định), dueAt UTC tùy chọn, estimatedCost tùy chọn. Backend sinh ticketCode BT, client không được chỉ định. List200 hỗ trợ page/pageSize, assetId/reporterId/technicianId, status PENDING|IN_PROGRESS|RESOLVED|FAILED|CANCELLED, priority, keyword≤200 (literal Contains, phân biệt hoa thường), from/to UTC inclusive theo openedAtUtc; sortBy openedAt|dueAt|priority|id, sortDirection asc|desc; id tie-breaker, priority sắp theo mức LOW→CRITICAL.
+
+Mutation200 bắt buộc rowVersion Base64 16 bytes. Assign: technicianId + note≤1000; start: note≤1000 + startedAt UTC tùy chọn; resolve: resolution≤2000 + actualCost/completedAt tùy chọn; fail: reason≤2000 + cost/completedAt tùy chọn; cancel: reason≤1000. PUT nhận title/description/priority/dueAt/estimatedCost/actualCost và note≤1000; ít nhất một trường thay đổi. Terminal chỉ actualCost + note. dueAt/chi phí có semantics presence: bỏ trường giữ nguyên, null xóa giá trị; null cost cũng cần maintenance.cost.write. Money decimal không âm tối đa hai chữ số lẻ theo schema, UI giới hạn cents an toàn JavaScript.
+
+GET detail200+ETag; DTO có assetCode/assetName/assignedToName, title/priority/reporter/technician/dueAtUtc, timestamps UTC, version. GET `/{id}/history`: page/pageSize/from/to/eventType, newest first, cùng object scope; chỉ event allowlist CREATED/ASSIGNED/STATUS_CHANGED/COMMENTED/COST_UPDATED/RESOLVED/FAILED/CANCELLED. Cost fields null nếu thiếu global scope + maintenance.cost.write. Không lộ security fields. 400 validation; 403 permission/cost; 404 ticket ngoài scope; 409 stale/terminal/workflow/asset-history conflict. Phạm vi Support và seed tại permission-matrix; trạng thái triển khai/evidence tại handoff.
+
 ## Contract update 24/10/2026 — Single Role per User và Phân quyền riêng theo người dùng (RBAC v2)
 
 ### 1. Phân quyền người dùng (Single Role & Custom Permissions)

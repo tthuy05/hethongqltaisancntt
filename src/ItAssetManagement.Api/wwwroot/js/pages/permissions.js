@@ -2,7 +2,7 @@ import { h } from '../utils/dom.js';
 import { button, pageHeader, showToast } from '../components.js';
 import { allCatalog, busy, can, hasPermission, field, formAlert, openDialog, route } from './shared.js';
 
-const modules = { assets: 'Quản lý tài sản', departments: 'Phòng ban', 'asset-types': 'Loại tài sản', users: 'Người dùng', roles: 'Nhóm quyền', dashboard: 'Tổng quan', 'audit-logs': 'Nhật ký thao tác', assignments: 'Cấp phát tài sản' };
+const modules = { assets: 'Quản lý tài sản', departments: 'Phòng ban', 'asset-types': 'Loại tài sản', users: 'Người dùng', roles: 'Nhóm quyền', dashboard: 'Tổng quan', 'audit-logs': 'Nhật ký thao tác', assignments: 'Cấp phát tài sản', maintenance: 'Bảo trì tài sản' };
 
 export async function permissionPage(services) {
   if (services.mode !== 'api' || !services.auth.session?.roles?.includes('ADMIN_IT') || !can(services, 'roles.assign') || !can(services, 'roles.permissions.read')) throw Object.assign(new Error('Chỉ Admin IT được quản lý phân quyền.'), { status: 403 });
@@ -14,6 +14,8 @@ export async function permissionPage(services) {
   const root = h('div', { className: 'permission-page' });
   const active = () => root.isConnected && window.location.hash === pageHash;
   let selected = null, dirty = false, draft = new Set(), controls = new Map(), modal, selectionRequest = 0, loading = false, saving = false, blocked = false, groupEditorOpen = false, needsCatalogRefresh = false;
+  const forbiddenSupport = permission => selected?.code === 'TECHNICAL_SUPPORT' &&
+    (permission.code.startsWith('assignments.') || ['maintenance.assign', 'maintenance.cancel', 'maintenance.cost.write'].includes(permission.code));
   const feedback = h('div', { 'aria-live': 'polite' });
   const notice = h('p', { className: 'meta', role: 'status' });
   const matrix = h('div', { className: 'permission-matrix table-wrap' });
@@ -32,7 +34,7 @@ export async function permissionPage(services) {
     const locked = loading || saving || blocked || !authorized();
     for (const [id, input] of controls) {
       const permission = catalog.find(item => item.id === id);
-      input.disabled = Boolean(locked || !permission.available || !selected.isActive || selected.code === 'ADMIN_IT' || permission.adminOnly);
+      input.disabled = Boolean(locked || !permission.available || !selected.isActive || selected.code === 'ADMIN_IT' || permission.adminOnly || forbiddenSupport(permission) && !draft.has(id));
     }
     save.disabled = locked || !dirty; edit.disabled = status.disabled = locked || !selected || selected.isSystem;
     create.disabled = locked;
@@ -43,6 +45,7 @@ export async function permissionPage(services) {
     modal = openDialog({ title: 'Xác nhận thay đổi', body: h('div', { className: 'dialog-body' }, h('p', {}, message)), footer: [button('Hủy', { kind: 'secondary', onClick: () => modal.close() }), proceed] });
   }
   function toggle(permission, value) {
+    if (value && forbiddenSupport(permission)) { controls.get(permission.id).checked = draft.has(permission.id); return; }
     if (loading || saving || blocked || !active() || !authorized()) { controls.get(permission.id).checked = draft.has(permission.id); return; }
     if (value) {
       draft.add(permission.id);
@@ -69,7 +72,7 @@ export async function permissionPage(services) {
         const permission = catalog.find(item => item.module === module && item.action === action);
         if (!permission) return h('td', {}, '—');
         const protectedAdmin = selected.code === 'ADMIN_IT';
-        const input = h('input', { type: 'checkbox', checked: draft.has(permission.id), disabled: !permission.available || !selected.isActive || protectedAdmin || (permission.adminOnly && !protectedAdmin),
+        const input = h('input', { type: 'checkbox', checked: draft.has(permission.id), disabled: !permission.available || !selected.isActive || protectedAdmin || (permission.adminOnly && !protectedAdmin) || forbiddenSupport(permission) && !draft.has(permission.id),
           'aria-label': `${modules[module] || module} ${action}`, title: permission.adminOnly ? 'Chỉ Admin IT' : permission.available ? permission.code : 'Chưa khả dụng · API chưa được mở', onChange: event => toggle(permission, event.target.checked) });
         controls.set(permission.id, input);
         return h('td', {}, input, !permission.available ? h('span', { className: 'field-hint' }, 'Chưa khả dụng') : null);

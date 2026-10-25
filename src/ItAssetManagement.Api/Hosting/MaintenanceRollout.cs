@@ -13,12 +13,18 @@ public sealed class MaintenanceRolloutMiddleware(RequestDelegate next, IConfigur
 {
     public async Task InvokeAsync(HttpContext context)
     {
-        if (context.Request.Path.StartsWithSegments("/api/v1/asset-maintenance", StringComparison.OrdinalIgnoreCase)
-            && !MaintenanceRollout.IsEnabled(configuration))
+        if (context.Request.Path.StartsWithSegments("/api/v1/asset-maintenance", StringComparison.OrdinalIgnoreCase) ||
+            context.Request.Path.StartsWithSegments("/api/v1/maintenance-tickets", StringComparison.OrdinalIgnoreCase))
         {
             context.Response.Headers.CacheControl = "no-store";
-            context.Response.StatusCode = StatusCodes.Status404NotFound;
-            return;
+            if (!MaintenanceRollout.IsEnabled(configuration)) { context.Response.StatusCode = StatusCodes.Status404NotFound; return; }
+            var readiness = context.RequestServices.GetRequiredService<IMaintenanceSchemaReadiness>();
+            if (!await readiness.IsReadyAsync(context.RequestAborted)) {
+                context.Response.Headers.RetryAfter = "30";
+                await Mvp.Errors.WriteAsync(context, StatusCodes.Status503ServiceUnavailable, "MAINTENANCE_NOT_READY", "Bảo trì chưa sẵn sàng. Thử lại sau.");
+                return;
+            }
+            if (!MaintenanceRollout.IsEnabled(configuration)) { context.Response.StatusCode = StatusCodes.Status404NotFound; return; }
         }
         await next(context);
     }

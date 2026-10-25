@@ -6,13 +6,21 @@ namespace ItAssetManagement.UnitTests;
 
 public sealed class AuditLogTests
 {
+    [Fact]
+    public void Transfer_audit_links_are_positive_IDs_and_never_allow_notes_or_sensitive_payloads()
+    {
+        var valid = AuditSnapshot.Read("{\"previousAssignmentId\":1,\"currentAssignmentId\":2}", false);
+        Assert.False(valid.Redacted); Assert.Equal(2, valid.Values!.Count);
+        var invalid = AuditSnapshot.Read("{\"previousAssignmentId\":-1,\"currentAssignmentId\":\"2\",\"note\":\"private\"}", false);
+        Assert.True(invalid.Redacted); Assert.Empty(invalid.Values!);
+    }
     private static readonly DateTime Now = new(2026, 10, 5, 0, 0, 0, DateTimeKind.Utc);
     [Fact]
     public void Permission_is_admin_only_without_duplicate_catalog_entries()
     {
         Assert.Equal("audit-logs.read", Permissions.AuditRead); Assert.Contains(Permissions.AuditRead, Permissions.Admin);
         Assert.DoesNotContain(Permissions.AuditRead, Permissions.Read); Assert.DoesNotContain(Permissions.AuditRead, Permissions.Operate);
-        Assert.Equal(33, Permissions.All.Distinct().Count()); Assert.Equal(Permissions.All.Length, Permissions.All.Distinct().Count());
+        Assert.Equal(42, Permissions.All.Distinct().Count()); Assert.Equal(Permissions.All.Length, Permissions.All.Distinct().Count());
     }
     [Fact]
     public void Date_defaults_and_explicit_offsets_use_half_open_utc_window()

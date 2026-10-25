@@ -5,6 +5,8 @@ namespace ItAssetManagement.UnitTests;
 
 public sealed class MaintenanceServiceTests
 {
+    private sealed class TicketCodes : IMaintenanceTicketCodeGenerator
+    { public Task<string> NextAsync(CancellationToken ct) => Task.FromResult("BT000001"); }
     private static readonly DateTime StartedAt = new(2026, 10, 13, 8, 0, 0, DateTimeKind.Utc);
     private static readonly byte[] Version = Enumerable.Repeat((byte)5, 16).ToArray();
     private static string EncodedVersion => Convert.ToBase64String(Version);
@@ -16,6 +18,9 @@ public sealed class MaintenanceServiceTests
         public readonly List<AssetStatusHistory> Histories = [];
         public readonly List<MaintenanceHistory> TicketHistories = [];
         public readonly List<AssetAssignment> Assignments = [];
+        public readonly List<User> Users = [new() { Id = 9, IsActive = true, IsEmailConfirmed = true }];
+        public readonly List<Role> Roles = [new() { Id = 91, Code = "TECHNICAL_SUPPORT", IsActive = true }];
+        public readonly List<UserRole> Memberships = [new() { UserId = 9, RoleId = 91 }];
         public readonly List<string> Operations = [];
         public int Saves { get; private set; }
         public int ExpectedVersions { get; private set; }
@@ -24,6 +29,7 @@ public sealed class MaintenanceServiceTests
         {
             if (tracking) Operations.Add("track:" + typeof(T).Name);
             IEnumerable<T> values = typeof(T) == typeof(Asset) ? Assets.Cast<T>() :
+                typeof(T) == typeof(User) ? Users.Cast<T>() : typeof(T) == typeof(Role) ? Roles.Cast<T>() : typeof(T) == typeof(UserRole) ? Memberships.Cast<T>() :
                 typeof(T) == typeof(MaintenanceTicket) ? Tickets.Cast<T>() :
                 typeof(T) == typeof(MaintenanceHistory) ? TicketHistories.Cast<T>() :
                 typeof(T) == typeof(AssetAssignment) ? Assignments.Cast<T>() :
@@ -104,9 +110,8 @@ public sealed class MaintenanceServiceTests
 
         public Fixture(Actor? actor = null, string[]? roles = null)
         {
-            actor ??= new(9, Permissions.MaintenanceRead, Permissions.MaintenanceCreate,
-                Permissions.MaintenanceComplete, Permissions.MaintenanceCostWrite);
-            Service = new(Repo, Uow, actor, Audit, new MaintenanceAccessPolicy(actor.Current(roles ?? ["ADMIN_IT"])));
+            actor ??= new(9, Permissions.Maintenance);
+            Service = new(Repo, Uow, actor, Audit, new MaintenanceAccessPolicy(actor.Current(roles ?? ["ADMIN_IT"])), new TicketCodes());
         }
 
         public MaintenanceTicket ActiveTicket()
@@ -154,7 +159,7 @@ public sealed class MaintenanceServiceTests
     }
 
     [Theory]
-    [InlineData("IN_USE")]
+    [InlineData("RETIRED")]
     [InlineData("MAINTENANCE")]
     public async Task CreateAsync_WhenAssetNotInStock_ThrowsConflict(string currentStatus)
     {
@@ -344,6 +349,79 @@ public sealed class MaintenanceServiceTests
         var f = new Fixture();
         var ex = await Assert.ThrowsAsync<BusinessException>(() => f.Service.ListAsync(null, int.MaxValue, 100, default));
         Assert.Equal(400, ex.Status);
+    }
+
+    [Fact]
+    public async Task Assigned_asset_can_be_opened_assigned_started_and_resolved_without_erasing_assignment()
+    {
+        var f = new Fixture(); f.Repo.Assets[0].CurrentStatus = "IN_USE";
+        f.Repo.Assignments.Add(new() { AssetId = 1, AssignedUserId = 9 });
+        var ticket = await f.Service.CreateAsync(new(1, "Repair while assigned", null), default);
+        Assert.Equal("IN_USE", f.Repo.Assets[0].CurrentStatus);
+        var assigned = await f.Service.AssignAsync(ticket.Id, new() { TechnicianId = 9, Note = "Assign", RowVersion = ticket.RowVersion }, default);
+        var started = await f.Service.StartAsync(ticket.Id, new() { Note = "Start", RowVersion = assigned.RowVersion }, default);
+        Assert.Equal("MAINTENANCE", f.Repo.Assets[0].CurrentStatus); Assert.Equal("IN_PROGRESS", started.Status);
+        var result = await f.Service.CompleteAsync(ticket.Id, new("Repaired", null, started.RowVersion), default);
+        Assert.Equal("RESOLVED", result.Status); Assert.Equal("IN_USE", f.Repo.Assets[0].CurrentStatus);
+        Assert.Null(f.Repo.Assignments[0].ReturnedAtUtc);
+        Assert.Equal(new[] { "CREATED", "ASSIGNED", "STATUS_CHANGED", "RESOLVED" }, f.Repo.TicketHistories.Select(x => x.EventType));
+        Assert.Equal(2, f.Repo.Histories.Count);
+    }
+
+    [Theory]
+    [InlineData("IN_STOCK")] [InlineData("BROKEN")]
+    public async Task Cancel_after_start_restores_prior_broken_or_available_state(string original)
+    {
+        var f = new Fixture(); f.Repo.Assets[0].CurrentStatus = original;
+        var ticket = await f.Service.CreateAsync(new(1, "Pending repair", null), default);
+        var assigned = await f.Service.AssignAsync(ticket.Id, new() { TechnicianId = 9, Note = "Assign", RowVersion = ticket.RowVersion }, default);
+        var started = await f.Service.StartAsync(ticket.Id, new() { Note = "Start", RowVersion = assigned.RowVersion }, default);
+        var result = await f.Service.CancelAsync(ticket.Id, new() { Reason = "Stop safely", RowVersion = started.RowVersion }, default);
+        Assert.Equal("CANCELLED", result.Status); Assert.Equal(original, f.Repo.Assets[0].CurrentStatus);
+        Assert.Equal("CANCELLED", f.Repo.TicketHistories[^1].EventType);
+        await Assert.ThrowsAsync<BusinessException>(() => f.Service.StartAsync(ticket.Id, new() { Note = "Reopen", RowVersion = result.RowVersion }, default));
+    }
+
+    [Fact]
+    public async Task Fail_sets_broken_and_cost_correction_is_a_new_event_without_mutating_old_history()
+    {
+        var f = new Fixture(); var ticket = f.ActiveTicket();
+        var failed = await f.Service.FailAsync(ticket.Id, new() { Reason = "Unrepairable", Cost = 12.25m, RowVersion = EncodedVersion }, default);
+        Assert.Equal("FAILED", failed.Status); Assert.Equal("BROKEN", f.Repo.Assets[0].CurrentStatus);
+        var old = f.Repo.TicketHistories[0]; Assert.Equal(12.25m, old.Cost);
+        var updated = await f.Service.UpdateAsync(ticket.Id, new() { ActualCost = 0m, Note = "Correct invoice", RowVersion = EncodedVersion }, default);
+        Assert.Equal(0m, updated.ActualCost); Assert.Equal(12.25m, old.Cost);
+        Assert.Equal("COST_UPDATED", f.Repo.TicketHistories[^1].EventType);
+        var history = await f.Service.HistoryAsync(ticket.Id, 1, 20, null, null, "COST_UPDATED", default);
+        Assert.Equal(0m, Assert.Single(history.Items).Cost);
+        await Assert.ThrowsAsync<BusinessException>(() => f.Service.UpdateAsync(ticket.Id, new() { Title = "Cannot rewrite terminal", Note = "Change", RowVersion = EncodedVersion }, default));
+    }
+
+    [Fact]
+    public async Task Technician_is_revalidated_and_missing_or_future_start_never_changes_asset()
+    {
+        var f = new Fixture(); var ticket = await f.Service.CreateAsync(new(1, "Repair", null), default);
+        await Assert.ThrowsAsync<BusinessException>(() => f.Service.StartAsync(ticket.Id, new() { Note = "No technician", RowVersion = ticket.RowVersion }, default));
+        f.Repo.Users[0].IsActive = false;
+        await Assert.ThrowsAsync<BusinessException>(() => f.Service.AssignAsync(ticket.Id, new() { TechnicianId = 9, Note = "Inactive", RowVersion = ticket.RowVersion }, default));
+        f.Repo.Users[0].IsActive = true;
+        await f.Service.AssignAsync(ticket.Id, new() { TechnicianId = 9, Note = "Assign", RowVersion = ticket.RowVersion }, default);
+        await Assert.ThrowsAsync<BusinessException>(() => f.Service.StartAsync(ticket.Id, new() { Note = "Future", StartedAtUtc = DateTime.UtcNow.AddDays(1), RowVersion = ticket.RowVersion }, default));
+        Assert.Equal("PENDING", f.Repo.Tickets[0].Status); Assert.Equal("IN_STOCK", f.Repo.Assets[0].CurrentStatus);
+        Assert.Empty(f.Repo.Histories);
+    }
+
+    [Fact]
+    public async Task Support_scopes_history_and_cannot_write_even_explicit_null_financial_fields()
+    {
+        var f = new Fixture(); var ticket = f.ActiveTicket();
+        var actor = new Actor(9, Permissions.Maintenance);
+        var support = new MaintenanceService(f.Repo, f.Uow, actor, f.Audit, new(actor.Current(["TECHNICAL_SUPPORT"])), new TicketCodes());
+        await Assert.ThrowsAsync<BusinessException>(() => support.UpdateAsync(ticket.Id, new() { ActualCost = null, Note = "No financial access", RowVersion = EncodedVersion }, default));
+        var error = await Assert.ThrowsAsync<BusinessException>(() => support.AssignAsync(ticket.Id, new() { TechnicianId = 9, Note = "Cannot claim", RowVersion = EncodedVersion }, default));
+        Assert.Equal(403, error.Status);
+        ticket.AssignedToUserId = 10;
+        Assert.Equal(404, (await Assert.ThrowsAsync<BusinessException>(() => support.HistoryAsync(ticket.Id, 1, 20, null, null, null, default))).Status);
     }
 
     [Theory]

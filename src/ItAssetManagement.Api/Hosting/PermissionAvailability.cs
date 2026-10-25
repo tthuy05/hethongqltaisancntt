@@ -6,6 +6,7 @@ public sealed class PermissionAvailability(IConfiguration config) : IPermissionA
 {
     public bool IsAvailable(string code) => Permissions.All.Contains(code) &&
         (!code.StartsWith("assignments.", StringComparison.Ordinal) || AssignmentRollout.IsEnabled(config)) &&
+        (!code.StartsWith("maintenance.", StringComparison.Ordinal) || MaintenanceRollout.IsEnabled(config)) &&
         (!IsImportExport(code) || IsImportExportEnabled(config));
 
     private static bool IsImportExport(string code) =>

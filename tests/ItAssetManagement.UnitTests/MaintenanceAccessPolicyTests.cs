@@ -91,11 +91,14 @@ public sealed class MaintenanceAccessPolicyTests
     }
 
     [Fact]
-    public void Invalid_context_and_unknown_action_fail_closed_and_no_catalog_is_activated()
+    public void Invalid_context_and_unknown_action_fail_closed_and_support_grants_remain_scoped()
     {
         Denied(() => new MaintenanceAccessPolicy(User() with { Id = 0 }));
         Denied(() => new MaintenanceAccessPolicy(User("ADMIN_IT")).Require(Ticket(), (MaintenanceTicketAction)99));
-        Assert.DoesNotContain(Permissions.All, code => code.StartsWith("maintenance.", StringComparison.Ordinal));
+        Assert.All(Permissions.Maintenance, code => Assert.Contains(code, Permissions.All));
+        Assert.DoesNotContain(Permissions.MaintenanceCostWrite, Permissions.MaintenanceSupport);
+        Assert.DoesNotContain(Permissions.MaintenanceAssign, Permissions.MaintenanceSupport);
+        Assert.DoesNotContain(Permissions.MaintenanceCancel, Permissions.MaintenanceSupport);
         using var body = JsonDocument.Parse("null");
         Assert.Equal(400, Assert.Throws<BusinessException>(() => new MaintenanceAccessPolicy(User()).RequireCostWrite(body.RootElement)).Status);
     }

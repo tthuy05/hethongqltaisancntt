@@ -1,5 +1,13 @@
 # Thiết kế cơ sở dữ liệu
 
+## Addendum 25/10/2026 — Assignment/Maintenance runtime — UNDER REVIEW
+
+Không thay Entity, mapping, index, sequence hoặc migration trong lượt hoàn thiện workflow. Baseline vật lý được giữ nguyên theo source hiện có, không suy từ counts Baseline V1 cũ rằng schema sau các migration email/RBAC vẫn chỉ 18 bảng. Không kiểm tra hoặc ghi shared Neon trong lượt này.
+
+Assignment tận dụng expected_return_at_utc/return_note và partial unique active assignment hiện có. Transfer lưu hai bản ghi liên tiếp trong một UoW; previousAssignmentId/currentAssignmentId chỉ là scalar audit snapshot allowlist, không tạo FK/bảng mới. Maintenance dùng maintenance_tickets/maintenance_histories/asset_status_histories đã có và sequence BT hiện tại; không dùng GUID fallback hoặc COUNT+1. Metadata, priority, due/cost/history tương ứng cột hiện có. UTC cho system timestamps, decimal precision/scale giữ nguyên.
+
+Seed bổ sung permission/grant là thao tác có phê duyệt riêng; không đổi migration đã apply. Rehearsal dùng database PostgreSQL 18 local độc lập/SCRAM; không reset/drop các database kiểm thử cũ. Xem handoff và API spec để tiếp quản, production rollout PLANNED.
+
 ## Physical/source snapshot 24/10/2026 — Bổ sung bảng user_permissions và hỗ trợ Phân quyền riêng theo User (RBAC v2)
 
 Mô hình hiện tại gồm **19 bảng / 44 FK / 85 CHECK / 99 indexes / 5 migrations**:

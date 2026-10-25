@@ -36,7 +36,8 @@ test('four current routes and lookup share the authenticated same-origin transpo
     assert.equal(options.headers.Authorization, 'Bearer synthetic-client-token');
     assert.equal(options.cache, 'no-store'); assert.equal(options.credentials, 'omit');
   }
-  assert.equal(client.assignments.transfer, undefined); assert.equal(client.maintenance, undefined);
+  assert.equal(typeof client.assignments.transfer, 'function'); assert.equal(typeof client.maintenance.list, 'function');
+  assert.equal(client.maintenanceEnabled, false);
 });
 
 test('invalid XOR, DTO fields, UTC, query and stale-version inputs reject before a network request', async () => {
@@ -48,7 +49,7 @@ test('invalid XOR, DTO fields, UTC, query and stale-version inputs reject before
     () => client.assignments.assign({ assetId: 2, userId: 7, expectedReturnAt: '2026-10-15T00:00:00Z' }),
     () => client.assignments.assign({ assetId: 2, userId: 7, assignedAt: '2026-10-14T08:00:00+07:00' }),
     () => client.assignments.assign({ assetId: 2, userId: 7, assignedAt: '2026-02-31T08:00:00Z' }),
-    () => client.assignments.list({ status: 'Active' }),
+    () => client.assignments.list({ status: 'Unknown' }),
     () => client.assignments.list({ pageSize: 101 }),
     () => client.assignments.list({ page: 2147483647, pageSize: 100 }),
     () => client.assignments.list({ active: 'false' }),
@@ -57,7 +58,7 @@ test('invalid XOR, DTO fields, UTC, query and stale-version inputs reject before
     () => client.assignments.get(true),
     () => client.assignments.returnAsset(true, { rowVersion: version, note: 'Returned' }),
     () => client.assignments.returnAsset(4, { rowVersion: version, note: ' ' }),
-    () => client.assignments.returnAsset(4, { rowVersion: version, note: 'Returned', condition: 'Good' }),
+    () => client.assignments.returnAsset(4, { rowVersion: version, note: 'Returned', condition: 'x'.repeat(201) }),
     () => client.assignments.returnAsset(4, { rowVersion: 'x'.repeat(22) + '==', note: 'Returned' }),
   ];
   for (const operation of invalid) await assert.rejects(operation, error => error instanceof ServiceError && error.status === 400);
@@ -68,6 +69,25 @@ test('unauthenticated callers do not send assignment or lookup requests', async 
   const { client, calls } = fixture();
   await assert.rejects(client.assignments.get(4), error => error.status === 401);
   await assert.rejects(client.users.lookup(), error => error.status === 401); assert.equal(calls.length, 0);
+});
+
+test('transfer and asset history preserve version, UTC filters and the authenticated transport', async () => {
+  const { client, calls } = fixture(); await client.auth.login(credentials);
+  await client.assignments.transfer(4, { departmentId: 9, rowVersion: version, note: '  Điều chuyển  ', returnCondition: 'Còn tốt', transferredAt: '2026-10-24T08:00:00Z' });
+  await client.assignments.history(2, { status: 'Returned', from: '2026-01-01T00:00:00Z', sortBy: 'assignedAt', sortDirection: 'asc', page: 2 });
+  assert.equal(calls[0].url, '/api/v1/asset-assignments/4/transfer');
+  assert.equal(JSON.parse(calls[0].options.body).note, 'Điều chuyển');
+  assert.equal(JSON.parse(calls[0].options.body).rowVersion, version);
+  assert.match(calls[1].url, /^\/api\/v1\/assets\/2\/assignments\?/);
+  assert.equal(new URL(calls[1].url, 'https://fixture.test').searchParams.get('status'), 'Returned');
+  for (const operation of [
+    () => client.assignments.transfer(4, { userId: 7, departmentId: 9, rowVersion: version, note: 'Transfer' }),
+    () => client.assignments.transfer(4, { userId: 7, rowVersion: 'invalid', note: 'Transfer' }),
+    () => client.assignments.history(2, { assetId: 9 }),
+    () => client.assignments.list({ from: '2026-10-24T00:00:00Z', to: '2026-01-01T00:00:00Z' }),
+    () => client.assignments.list({ active: true, status: 'Returned' }),
+  ]) await assert.rejects(operation, { status: 400 });
+  assert.equal(calls.length, 2);
 });
 
 test('403, 409 and disabled/not-ready rollout errors preserve the session and never retry mutations', async () => {

@@ -19,6 +19,8 @@ namespace ItAssetManagement.IntegrationTests;
 // Local HTTP wiring/policy tests with no database connection or real JWT grants.
 public sealed class MaintenanceRolloutTests
 {
+    private sealed class Ready : IMaintenanceSchemaReadiness
+    { public Task<bool> IsReadyAsync(CancellationToken ct) => Task.FromResult(true); }
     public sealed class Handler(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder)
         : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
     {
@@ -60,6 +62,7 @@ public sealed class MaintenanceRolloutTests
             if (fixtureAuth) builder.ConfigureServices(s =>
             {
                 s.RemoveAll<IRepository>(); s.AddSingleton<IRepository, ReadOnlyRepository>();
+                s.RemoveAll<IMaintenanceSchemaReadiness>(); s.AddSingleton<IMaintenanceSchemaReadiness, Ready>();
                 s.AddAuthentication("fixture").AddScheme<AuthenticationSchemeOptions, Handler>("fixture", _ => { });
             });
         });
@@ -73,6 +76,11 @@ public sealed class MaintenanceRolloutTests
         await using var factory = Factory(enabled); using var client = factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new("Bearer", "invalid-fixture");
         foreach (var (method, path) in new[] { (HttpMethod.Get, "/api/v1/asset-maintenance"),
+            (HttpMethod.Get, "/api/v1/maintenance-tickets"), (HttpMethod.Get, "/api/v1/maintenance-tickets/technicians"),
+            (HttpMethod.Get, "/api/v1/maintenance-tickets/1/history"), (HttpMethod.Put, "/api/v1/maintenance-tickets/1"),
+            (HttpMethod.Post, "/api/v1/maintenance-tickets/1/assign"), (HttpMethod.Post, "/api/v1/maintenance-tickets/1/start"),
+            (HttpMethod.Post, "/api/v1/maintenance-tickets/1/resolve"), (HttpMethod.Post, "/api/v1/maintenance-tickets/1/fail"),
+            (HttpMethod.Post, "/api/v1/maintenance-tickets/1/cancel"),
             (HttpMethod.Get, "/api/v1/asset-maintenance/1"), (HttpMethod.Post, "/api/v1/asset-maintenance"),
             (HttpMethod.Post, "/api/v1/asset-maintenance/1/complete") })
         {
@@ -88,14 +96,28 @@ public sealed class MaintenanceRolloutTests
     }
 
     [Fact]
-    public async Task Prepared_policies_exist_but_do_not_enter_active_grant_catalog()
+    public async Task Enabled_without_database_configuration_fails_closed_before_controller_or_auth()
+    {
+        await using var factory = Factory("true"); using var client = factory.CreateClient();
+        foreach (var route in new[] { "/api/v1/maintenance-tickets", "/api/v1/asset-maintenance/1", "/api/v1/maintenance-tickets/technicians" })
+        {
+            using var response = await client.GetAsync(route);
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+            Assert.Contains("MAINTENANCE_NOT_READY", await response.Content.ReadAsStringAsync());
+        }
+    }
+
+    [Fact]
+    public async Task Compiled_maintenance_policies_are_unavailable_until_reviewed_rollout()
     {
         await using var factory = Factory(null);
         var provider = factory.Services.GetRequiredService<Microsoft.AspNetCore.Authorization.IAuthorizationPolicyProvider>();
+        using var scope = factory.Services.CreateScope();
         foreach (var permission in new[] { Permissions.MaintenanceRead, Permissions.MaintenanceCreate, Permissions.MaintenanceResolve })
         {
             Assert.NotNull(await provider.GetPolicyAsync(permission));
-            Assert.DoesNotContain(permission, Permissions.All);
+            Assert.Contains(permission, Permissions.All);
+            Assert.False(scope.ServiceProvider.GetRequiredService<IPermissionAvailability>().IsAvailable(permission));
         }
         Assert.Equal(Permissions.MaintenanceResolve, Permissions.MaintenanceComplete);
     }
