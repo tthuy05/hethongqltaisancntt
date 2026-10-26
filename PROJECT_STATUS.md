@@ -1,5 +1,11 @@
 # Project Status
 
+## 26/10/2026 — Public Assignment/Maintenance rollout — PREPARED
+
+- Được phép merge main và đưa workflow lên web; chuẩn bị UI opt-in, giới hạn ingress120/phút +8đồng thời trước readiness, seed phối hợp identity lock. Server defaults vẫn đóng đến khi cấu hình Render được duyệt theo yêu cầu hiện tại.
+- Neon read-only baseline19 bảng nghiệp vụ/44FK/85CHECK/100indexes,33permissions/59rolelinks. Backup ngoài Git+restore drill20public tables PASS; narrow seed/BT sequence rehearsal PASS,32entities added/repeat0,17business table hashes giữ nguyên. Không chạy migration.
+- Render Settings hiện After CI Checks Pass, main/live dbdba57. Chờ PR/main CI và production verification, chưa coi rollout PASS. Runbook bổ sung trong assignment-safe-rollout.md; không lẫn Software đang phát triển trên nhánh riêng.
+
 ## 26/10/2026 — Workflow revocation / concurrency acceptance — UNDER REVIEW
 
 - Sửa khe hở quyền bị thu hồi lúc command chờ asset row lock: recheck account/tokenVersion và EffectivePermissionQuery dưới `users-identity` lock trong transaction của Assignment/Maintenance. Grant chi phí đã bị thu hồi cũng chặn response dựa snapshot cũ.

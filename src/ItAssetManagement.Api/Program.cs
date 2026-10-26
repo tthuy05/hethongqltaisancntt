@@ -100,6 +100,7 @@ builder.Services.AddScoped<DevelopmentSeed>();
 builder.Services.AddScoped<DevelopmentDemoSeed>();
 builder.Services.AddRateLimiter(options =>
 {
+    options.GlobalLimiter = WorkflowIngress.CreateLimiter(builder.Configuration);
     options.AddPolicy("login", context => RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ =>
         new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
     options.OnRejected = async (context, _) =>
@@ -303,9 +304,10 @@ if (app.Environment.IsDevelopment() && app.Configuration.GetValue("Swagger:Enabl
     else app.Logger.LogWarning("Development Swagger build missing. Run pnpm build from the repository root.");
 }
 app.UseRouting(); // Static middleware must run before endpoint selection (including fallback).
+app.UseRateLimiter(); // Bound anonymous workflow readiness probes before any database connection.
 app.UseMiddleware<AssignmentRolloutMiddleware>(); // Closed before auth/Controller/DB-dependent business code.
 app.UseMiddleware<MaintenanceRolloutMiddleware>(); // Prepared owner module stays absent by default.
-app.UseAuthentication(); app.UseAuthorization(); app.UseRateLimiter();
+app.UseAuthentication(); app.UseAuthorization();
 app.MapControllers();
 app.MapMethods("/health/live", [HttpMethods.Get, HttpMethods.Head], () => Results.Ok(new { status = "Alive" })).AllowAnonymous();
 app.MapMethods("/health/version", [HttpMethods.Get, HttpMethods.Head],

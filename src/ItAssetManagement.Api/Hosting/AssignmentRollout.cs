@@ -64,17 +64,17 @@ public sealed class AssignmentSchemaReadiness(IConfiguration configuration) : IA
                 if (!Equals(await inventory.ExecuteScalarAsync(cancellationToken), true)) return false;
             await using var command = new NpgsqlCommand("""
                 SELECT EXISTS (SELECT 1 FROM public.ef_migrations_history WHERE "MigrationId"=@migration)
-                  AND (SELECT count(*) FROM public.permissions WHERE code=ANY(@codes) AND is_active)=3
+                  AND (SELECT count(*) FROM public.permissions WHERE code=ANY(@codes) AND is_active)=4
                   AND (SELECT count(*) FROM public.role_permissions rp
                       JOIN public.roles r ON r.id=rp.role_id
                       JOIN public.permissions p ON p.id=rp.permission_id
-                      WHERE r.code IN ('ADMIN_IT','SYSTEM_MANAGER') AND r.is_active AND p.is_active AND p.code=ANY(@codes))=6
+                      WHERE r.code IN ('ADMIN_IT','SYSTEM_MANAGER') AND r.is_active AND p.is_active AND p.code=ANY(@codes))=8
                   AND NOT EXISTS (SELECT 1 FROM public.role_permissions rp
                       JOIN public.roles r ON r.id=rp.role_id JOIN public.permissions p ON p.id=rp.permission_id
                       WHERE r.code='TECHNICAL_SUPPORT' AND p.code=ANY(@codes))
                 """, connection, transaction);
             command.Parameters.AddWithValue("migration", "20261008080630_AddAssignmentMaintenance");
-            command.Parameters.AddWithValue("codes", new[] { "assignments.read", "assignments.assign", "assignments.return" });
+            command.Parameters.AddWithValue("codes", new[] { "assignments.read", "assignments.assign", "assignments.return", "assignments.transfer" });
             return Equals(await command.ExecuteScalarAsync(cancellationToken), true);
         }
         catch (Exception error) when (error is DbException or TimeoutException or IOException or InvalidOperationException)

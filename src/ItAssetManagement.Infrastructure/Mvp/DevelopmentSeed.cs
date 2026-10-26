@@ -20,6 +20,7 @@ public sealed class DevelopmentSeed(AppDbContext db, IRepository repo, IUnitOfWo
     public Task<int> RunMaintenancePermissionsAsync(CancellationToken ct = default) => uow.RunAsync(async () =>
     {
         await repo.LockAsync("development-seed", ct);
+        await repo.LockAsync("users-identity", ct);
         // A missing schema fails before any permission write; this command never migrates.
         await db.Set<MaintenanceHistory>().AnyAsync(ct);
         var roles = await db.Set<Role>().Where(x => Permissions.Roles.Contains(x.Code)).ToListAsync(ct);
@@ -50,6 +51,7 @@ public sealed class DevelopmentSeed(AppDbContext db, IRepository repo, IUnitOfWo
     private Task<int> SeedAssignmentPermissionsAsync(string[] codes, CancellationToken ct) => uow.RunAsync(async () =>
     {
         await repo.LockAsync("development-seed", ct);
+        await repo.LockAsync("users-identity", ct);
         if (codes.Length == 1 && codes[0] == Permissions.AssignmentTransfer)
         {
             string[] baseline = [Permissions.AssignmentRead, Permissions.AssignmentAssign, Permissions.AssignmentReturn];

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — 26/10/2026 — Public workflow rollout preparation
+
+- Added: production UI opt-in for Assignment/Maintenance, retaining permission checks and closed server defaults.
+- Added: workflow ingress rate/concurrency limits before readiness; full Assignment transfer grants and Maintenance sequence readiness gates.
+- Fixed: narrow permission seed coordinates with identity/role writes. No new migration or unrelated module activation.
+- Prepared: backup/restore and additive seed rehearsal; production verification remains pending in rollout runbook.
+
 ## Unreleased — 26/10/2026 — Recheck workflow authorization after lock waits
 
 - Fixed: Assignment/Maintenance commands recheck live account, JWT version and effective permissions under the identity coordinator after asset locks; deny revoked financial scope before returning costs.

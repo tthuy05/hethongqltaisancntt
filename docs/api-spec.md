@@ -4,6 +4,8 @@
 
 Update 26/10: không đổi DTO/routes; mutation còn kiểm tra lại account/token/effective grants sau lock wait, trước ghi. Nếu account/token đã thay đổi trả401 UNAUTHORIZED; grant đã thu hồi trả403 FORBIDDEN, toàn transaction không đổi dữ liệu. UI yêu cầu refresh/login, không tự replay. Local acceptance tại handoff; chưa bật production.
 
+Public rollout bổ sung: workflow paths đã bật có ngân sách chung120 request/phút và8 đồng thời mỗi process trước DB readiness. Vượt giới hạn trả429 RATE_LIMITED/Retry-After60, không queue hoặc chạm probe. Flagfalse vẫn404; flagtrue thiếu schema/sequence/grants vẫn503. Production UI entry opt-in nhưng vẫn yêu cầu effective permission; API factory/server mặc định giữfalse. Readiness Assignment mới cần cả transfer permission/grants, Maintenance cần BT sequence đã provision riêng.
+
 Addendum này cập nhật runtime nhánh `codex/assignment-completion`, không khẳng định API đã bật production; các đoạn kế hoạch/historical phía dưới giữ phạm vi checkpoint cũ. Hai server flags AssignmentApi/MaintenanceApi và client opt-in mặc định false. Flag false: 404; opt-in nhưng schema/grants chưa ready: 503; ready mới áp dụng JWT 401 và permission 403. Errors RFC7807 như API hiện tại, không tự retry mutation.
 
 ### Assignment

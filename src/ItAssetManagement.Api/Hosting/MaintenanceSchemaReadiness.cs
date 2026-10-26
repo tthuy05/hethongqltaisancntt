@@ -20,6 +20,7 @@ public sealed class MaintenanceSchemaReadiness(IConfiguration config) : IMainten
             await using (var mode = new NpgsqlCommand("SET TRANSACTION READ ONLY", connection, transaction)) await mode.ExecuteNonQueryAsync(ct);
             await using (var tables = new NpgsqlCommand("""
                 SELECT to_regclass('public.maintenance_tickets') IS NOT NULL AND to_regclass('public.maintenance_histories') IS NOT NULL
+                    AND to_regclass('public.maintenance_ticket_code_sequence') IS NOT NULL
                     AND to_regclass('public.asset_assignments') IS NOT NULL AND to_regclass('public.asset_status_histories') IS NOT NULL
                     AND to_regclass('public.permissions') IS NOT NULL AND to_regclass('public.roles') IS NOT NULL
                     AND to_regclass('public.role_permissions') IS NOT NULL

@@ -1,5 +1,17 @@
 # Triển khai Assignment an toàn theo ba giai đoạn — 09/10/2026
 
+## Addendum 26/10/2026 — Public workflow rollout / PREPARED
+
+Người dùng đã cho phép merge main và đưa Cấp phát/Bảo trì lên web. Code completion1f8b8db đã PASS CI40218001844, gồm Docker Linux. Các checkpoint A/B/S18 và phần lịch sử bên dưới giữ nguyên; kế hoạch hiện tại không tạo/apply migration mới hoặc suspend Render.
+
+- Render thực tế: main, Auto-Deploy **After CI Checks Pass**, live dbdba57; xác nhận qua Dashboard Settings, không chỉ dựa YAML. Publish UI entry opt-in Assignment/Maintenance; API factory defaults và server flags vẫn false cho đến cấu hình rollout được kiểm chứng. Reporting giữ đóng.
+- Hardening: WorkflowIngress chạy trước readiness/auth, ngân sách chung120 request/phút và8 request đồng thời mỗi process cho workflow đã bật; không queue, vượt trả429 RATE_LIMITED + Retry-After60. Health/API khác không tiêu budget; flagfalse vẫn404/no DB probe. Hai nguồn path canonical/legacy/history dùng cùng budget.
+- Readiness bản đầy đủ nay yêu cầu4 Assignment permissions +8 Admin/Manager links (kể transfer), không Support grant. Maintenance còn yêu cầu maintenance_ticket_code_sequence để không tự phát sinh DDL trong request đầu tiên. Sequence được provision riêng bằng generator advisory-lock hiện có, sau backup/rehearsal; không đổi EF migration.
+- Read-only Neon baseline:19 bảng nghiệp vụ + history table,44FK/85CHECK/100indexes; migration mới nhất AddUserPermissions,33permissions/59rolelinks,0user custom permissions,0assignment/maintenance rows. Không suy từ Baseline V1 cũ rằng DB hiện chỉ18 bảng.
+- Backup custom PostgreSQL18 lưu ngoài Git, SHA256/archive list PASS; snapshot pg_export_snapshot và restore drill khớp20 bảng public cả dữ liệu/schema/history. Chuẩn hóa timezone UTC khi so hash. Narrow seed rehearsal thêm1transfer permission+2links và8Maintenance permissions+21links, repeat0, business data17 bảng không đổi. Thực tế rollout phải verify42permissions/82rolelinks, Support chỉ5Maintenance grants, không tự cấp user override/reset passwords.
+- Seed dùng outer audited transaction với timeout, lấy development-seed → users-identity; chạy cùng code DevelopmentSeed nhưng runner riêng, không đổi Render sang Development. Chỉ chạy seed32 entities và canonical BT sequence đã rehearsal; không general bootstrap/demo seed, không reset business data.
+- Thứ tự: full checks → PR/CI đúng head → verify backup/baseline → narrow seed+sequence → readiness/data verify → lưu server flags cho lần deploy tiếp theo → merge main → main CI/Render deploy → artifactSHA/runtime checks → auth/assets/workflow permissions smoke. Nếu fail, đóng flags/rollback app về dbdba57; không Down/drop/reset DB. Production verification chưa được coi PASS tại thời điểm PREPARED này.
+
 **PREPARED / UNDER REVIEW. Chưa commit, push, deploy, apply migration hoặc seed shared.** Tiếp tục đúng [handoff đã review](assignment-maintenance-integration-handoff.md), không làm lại migration/service và không đổi Controller của Thiện. Kết quả464 PASS ngày08/10 giữ nguyên là checkpoint trước rollout; phần API đầy đủ ngoài bốn core endpoints vẫn chưa hoàn thành.
 
 ## 1. Trạng thái và bảo toàn
