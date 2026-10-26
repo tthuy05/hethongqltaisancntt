@@ -8,6 +8,7 @@ public sealed class PermissionAvailability(IConfiguration config) : IPermissionA
         (!code.StartsWith("assignments.", StringComparison.Ordinal) || AssignmentRollout.IsEnabled(config)) &&
         (!code.StartsWith("maintenance.", StringComparison.Ordinal) || MaintenanceRollout.IsEnabled(config)) &&
         (!SoftwarePermissions.All.Contains(code) || SoftwareRollout.IsEnabled(config)) &&
+        (!LicensePermissions.All.Contains(code) || LicenseRollout.IsEnabled(config)) &&
         (!IsImportExport(code) || IsImportExportEnabled(config));
 
     private static bool IsImportExport(string code) =>

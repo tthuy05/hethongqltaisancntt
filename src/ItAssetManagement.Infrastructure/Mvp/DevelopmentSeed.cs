@@ -24,6 +24,49 @@ public sealed class DevelopmentSeed(AppDbContext db, IRepository repo, IUnitOfWo
         return await RunSoftwarePermissionsAsync(ct);
     }
 
+    public async Task<int> PrepareLicenseCatalogAsync(CancellationToken ct = default)
+    {
+        if (db.Database.CurrentTransaction != null) throw new InvalidOperationException("Sequence preparation requires an independent transaction.");
+        await db.Database.OpenConnectionAsync(ct);
+        try
+        {
+            await BusinessCodeGeneratorEngine.EnsureSequenceAsync(db.Database.GetDbConnection(), null,
+                "license_code_sequence", "BQ", "software_licenses", "license_code", ct);
+        }
+        finally { await db.Database.CloseConnectionAsync(); }
+        return await RunLicensePermissionsAsync(ct);
+    }
+
+    public Task<int> RunLicensePermissionsAsync(CancellationToken ct = default) => uow.RunAsync(async () =>
+    {
+        await repo.LockAsync("development-seed", ct);
+        await repo.LockAsync("users-identity", ct);
+        await db.Set<SoftwareLicense>().AnyAsync(ct);
+        var roles = await db.Set<Role>().Where(x => Permissions.Roles.Contains(x.Code)).ToListAsync(ct);
+        if (roles.Count != 3 || roles.Any(x => !x.IsActive)) throw new InvalidOperationException("Existing active fixed roles required.");
+        if (await (from link in db.Set<RolePermission>() join role in db.Set<Role>() on link.RoleId equals role.Id
+            join permission in db.Set<Permission>() on link.PermissionId equals permission.Id
+            where role.Code == "TECHNICAL_SUPPORT" && LicensePermissions.All.Contains(permission.Code) select link.Id).AnyAsync(ct))
+            throw new InvalidOperationException("Support grants require independent review.");
+        var created = new List<object>();
+        foreach (var code in LicensePermissions.All)
+        {
+            var permission = await db.Set<Permission>().SingleOrDefaultAsync(x => x.Code == code, ct);
+            if (permission is { IsActive: false }) throw new InvalidOperationException("Inactive permission requires review.");
+            if (permission == null) { permission = new Permission { Code = code, Name = code, Module = "license" }; db.Add(permission); created.Add(permission); await db.SaveChangesAsync(ct); }
+            var targetRoles = code is Permissions.LicenseKeyManage or Permissions.LicenseKeyReveal ? roles.Where(x => x.Code == "ADMIN_IT") : roles.Where(x => x.Code != "TECHNICAL_SUPPORT");
+            foreach (var role in targetRoles)
+                if (!await db.Set<RolePermission>().AnyAsync(x => x.RoleId == role.Id && x.PermissionId == permission.Id, ct))
+                {
+                    var grant = new RolePermission { RoleId = role.Id, PermissionId = permission.Id, GrantedAtUtc = DateTime.UtcNow };
+                    db.Add(grant); created.Add(grant);
+                }
+        }
+        await db.SaveChangesAsync(ct);
+        foreach (var entity in created) audit.Record("development.license-permissions.seed", entity, null, "SYSTEM");
+        await db.SaveChangesAsync(ct); return created.Count;
+    }, ct);
+
     // Explicit additive catalog step; never migrates or changes users/existing grants.
     public Task<int> RunSoftwarePermissionsAsync(CancellationToken ct = default) => uow.RunAsync(async () =>
     {
