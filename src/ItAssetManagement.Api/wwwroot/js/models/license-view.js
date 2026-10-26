@@ -46,7 +46,8 @@ export function licenseView(value) {
     licenseType: value.licenseType, totalQuantity: value.totalQuantity, usedQuantity: used,
     availableQuantity: used == null ? null : value.totalQuantity - used, isActive: value.isActive,
     startsAt: timestamp(value.startsAt), expiresAt: timestamp(value.expiresAt), maskedKey,
-    vendor: text(value.vendor, 250, true), status: text(value.status, 50, true) });
+    vendor: text(value.vendor, 250, true), status: text(value.status, 50, true),
+    rowVersion: text(value.rowVersion, 100, true) });
 }
 export function licensePageView(value) {
   rejectLicenseSecrets(value);

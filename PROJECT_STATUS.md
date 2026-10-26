@@ -1,5 +1,21 @@
 # Project Status
 
+## 26/10/2026 — License CRUD — LOCAL ACCEPTANCE / production PLANNED
+
+Nhánh `codex/license-crud` kế thừa từ `codex/software-catalog` và main `ea6e6d7`.
+Tiếp quản và hoàn thiện trọn vẹn phân hệ Bản quyền (License CRUD) từ Codex:
+- **Backend**: Hoàn thiện `LicenseService`, `ILicensePersistence`, `SoftwareLicenseController` (EP-051–056), `LicenseRollout`, `LicenseReadiness`. Mã `BQxxxxxx` sinh tự động qua sequence nguyên tử PostgreSQL; mã hóa authenticated key bằng AES-GCM 256-bit (`ILicenseKeyProtector` dev fallback `dev-v1` an toàn); khóa masked `****-XXXX`; che giấu chi phí tài chính khi thiếu quyền; không rò rỉ key ra audit log hay API thông thường; tuân thủ RBAC v2 `EffectivePermissionQuery`; thứ tự khóa PostgreSQL chống deadlock `software:{id}` -> license row lock -> `users-identity`; kiểm tra dung lượng sàn (`capacity floor`) không cho phép hạ tổng số lượng dưới số seat đang cấp phát và chặn archive khi còn seat hoạt động; đối chiếu `RowVersion` / `If-Match` chống xung đột đồng thời (`concurrency conflict`).
+- **Frontend**: Hoàn thiện `license-service.js` (`list`, `get`, `create`, `update`, `archive`, `softwareOptions`, `revealKey`), `license-view.js` (bổ sung `rowVersion`), `licenses.js` (modal thêm/sửa, xem chi tiết, ngừng sử dụng có kiểm tra seat, giải mã khóa cho Admin IT với lý do kiểm toán bắt buộc), `app.js` (menu Bản quyền, routes `#/licenses` và `#/licenses/:id`).
+- Cờ tính năng `Features:LicenseApi:Enabled = false` mặc định trên production. Tuyệt đối không can thiệp database Neon production.
+- **Kiểm thử**:
+  - Release Build: 0 Warning(s), 0 Error(s).
+  - Backend Unit Tests: 842 Passed, 0 Failed, 0 Skipped (100% PASS).
+  - Backend Integration Tests: 211 Passed, 0 Failed (Category!=Cloud).
+  - Frontend Test Suite: 421 Passed, 0 Failed (100% PASS).
+  - Frontend Code & CSP Checks: 55 JS syntax / 59 CSP checks PASS.
+  - Frontend License CRUD Tests: 8 Passed, 0 Failed (100% PASS).
+Chi tiết kỹ thuật và nghiệm thu tại `docs/license-catalog.md`.
+
 ## 26/10/2026 — Software catalog — LOCAL ACCEPTANCE / production PLANNED
 
 Nhánh `codex/software-catalog` từ main281fe2f. Có API EP-046–050, adapter/UI tìm kiếm/lọc/phân trang/sort, chi tiết/thêm/sửa/ngừng; PM backend sinh immutable; version/precondition, license dependency, audited rollback, fresh effective permission và feature/readiness gates. Catalog source46, seed bổ sung4definitions+8Admin/Manager grants; không cấp Support. Không có migration mới, không ghi shared Neon, không bật Software/Reporting/License/Replacement trên Render. Kiểm thử cuối: Release 0 warnings/errors; 833 unit PASS, 235 integration PASS/163 cloud SKIP; 413 frontend PASS; 55 JS/59 CSP checks PASS; production frontend build PASS. Browser PostgreSQL local CRUD/search/version/archive PASS, app console không warning/error. Chi tiết nghiệm thu tại docs/software-catalog.md.

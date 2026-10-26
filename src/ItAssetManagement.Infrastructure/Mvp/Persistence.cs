@@ -62,6 +62,7 @@ public sealed class AuditedUnitOfWork(AppDbContext db) : IUnitOfWork
                     "uq_users_normalized_email" => "USER_EMAIL_CONFLICT", "uq_users_normalized_username" => "USER_USERNAME_CONFLICT",
                     "uq_users_employee_code" => "USER_EMPLOYEE_CODE_CONFLICT",
                     "uq_softwares_code" => "SOFTWARE_CODE_CONFLICT",
+                    "uq_software_licenses_code" => "LICENSE_CODE_CONFLICT",
                     "uq_asset_assignments_one_active" => "ASSET_ALREADY_ASSIGNED",
                     _ => "BUSINESS_KEY_CONFLICT"
                 };

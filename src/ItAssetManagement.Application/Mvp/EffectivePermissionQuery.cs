@@ -17,7 +17,7 @@ public static class EffectivePermissionQuery
                 join permission in repository.Query<Permission>() on grant.PermissionId equals permission.Id
                 join u in user on link.UserId equals u.Id
                 where link.UserId == userId && role.IsActive && permission.IsActive
-                      && Permissions.All.Contains(permission.Code)
+                      && (Permissions.All.Contains(permission.Code) || LicensePermissions.All.Contains(permission.Code))
                       && (!u.HasCustomPermissions || userPermissions.Any(up => up.PermissionId == permission.Id))
                 select permission.Code).Distinct();
     }
