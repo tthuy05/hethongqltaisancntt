@@ -1,5 +1,11 @@
 # Thiết kế cơ sở dữ liệu
 
+## Runtime 26/10/2026 — Software catalog
+
+Không đổi entity, mapping, index, migration hoặc physical schema. Tái sử dụng softwares/software_licenses và row_version16bytes hiện có; AppDbContext bổ sung guard code bất biến. Danh sách query entity trước paging, map DTO sau materialization để EF/Npgsql dịch filter/sort ở server.
+
+Software archive dùng coordinator software:{id}, FK/history được bảo toàn; chặn khi software_licenses.is_active=true. License writers tương lai phải cùng coordinator rồi khóa license, kiểm parent active. Canonical software_code_sequence (PM) được chuẩn bị qua explicit operator command, advisory lock; không consume code, không dùng Persist Security Info=true, không migrate/seed ở startup. Seed quyền có transaction riêng sau sequence DDL; nếu seed thất bại, sequence có thể còn nhưng module vẫn503/closed cho đến khi review/seed thành công. Không thay Neon trong task Software.
+
 ## Addendum 25/10/2026 — Assignment/Maintenance runtime — UNDER REVIEW
 
 Không thay Entity, mapping, index, sequence hoặc migration trong lượt hoàn thiện workflow. Baseline vật lý được giữ nguyên theo source hiện có, không suy từ counts Baseline V1 cũ rằng schema sau các migration email/RBAC vẫn chỉ 18 bảng. Không kiểm tra hoặc ghi shared Neon trong lượt này.

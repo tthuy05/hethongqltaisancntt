@@ -1,5 +1,13 @@
 # Business Rules
 
+## 26/10/2026 — Software catalog runtime addendum
+
+- Mã Software PMxxxxxx do ISoftwareCodeGenerator cấp, immutable trong API và AppDbContext; không nhận code từ client. Tên≤250, publisher≤250, version≤100, description≤2000; giữ semantic length và schema hiện có.
+- BR-039/040: DELETE là is_active=false, giữ FK/history. Còn bất kỳ SoftwareLicense is_active=true thì chặn409; không tự suy diễn license đã hết hạn là được archive. Software inactive chỉ được đọc, không sửa/reactivate trong scope này.
+- Update/archive kiểm rowVersion16bytes; parent coordinator `software:{id}` → users-identity → kiểm lại account/token/effective grants → mutation+audit cùng transaction. Create dùng software-catalog → users-identity; canonical sequence được khởi tạo bên ngoài transaction nghiệp vụ. Mã có thể có gap sau rollback, không được tái sử dụng.
+- Các License writers sau này phải khóa software:{id} trước license/capacity lock và kiểm parent active, để không race với archive. Chưa có License CRUD được mở bởi slice này.
+- Không có role bypass: read và action grant đều bắt buộc; thu hồi quyền trong lúc chờ parent lock phải chặn trước ghi. Frontend kiểm lại phiên/quyền, chặn submit lặp và yêu cầu refresh nếu kết quả chưa chắc chắn.
+
 ## Runtime addendum 25/10/2026 — UNDER REVIEW
 
 Update 26/10: quyền action/read và scope chi phí snapshot phải còn hiệu lực khi workflow ghi dữ liệu sau khi chờ asset lock. Recheck dưới users-identity trong transaction; account/token bị vô hiệu401, grant bị thu hồi403. Không commit tác động một phần. Đã rehearsal lock wait thật và các nhánh concurrent fail/resolve, reassign/start, cost/cost trên PostgreSQL local; không thay rule/code/schema nghiệp vụ.

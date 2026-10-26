@@ -1,5 +1,13 @@
 # Hệ thống Quản lý & Tối ưu Hạ tầng CNTT Doanh nghiệp
 
+## Trạng thái mới nhất — 26/10/2026
+
+- **Đã chạy trên Render:** đăng nhập/email kích hoạt, tài sản, danh mục, phân quyền, Import/Export Excel và các luồng Cấp phát/Bảo trì. Main/Render tại `281fe2f`; CI/Docker PASS, revision đã đối chiếu. [Kết quả rollout](docs/assignment-safe-rollout.md).
+- **Danh mục phần mềm:** API và giao diện đã nghiệm thu trên PostgreSQL local riêng; có mã PM tự sinh, tìm kiếm/lọc, thêm/sửa/ngừng sử dụng, kiểm tra quyền/version và audit. Nhánh `codex/software-catalog`, chưa merge hoặc bật production. [Hướng dẫn và bằng chứng](docs/software-catalog.md).
+- **Còn tiếp tục:** License CRUD/phân bổ, Replacement, nghiệm thu và mở Reports/Dashboard V2, kiểm thử phát hành toàn hệ thống. Các primitive/UI đã chuẩn bị không đồng nghĩa toàn module đã hoàn thành.
+
+Các cập nhật theo ngày bên dưới là lịch sử checkpoint; dùng mục này và [PROJECT_STATUS.md](PROJECT_STATUS.md) để xem tiến độ hiện tại.
+
 **Reports UI — 21/10/2026:** bổ sung bộ lọc/phân trang bảo hành–License, chọn năm dự toán và tab báo cáo đề xuất thay thế chỉ đọc. Có automated tests và QA trình duyệt bằng dữ liệu giả; chưa mở trên demo production. Đây là phần báo cáo của Thủy, không triển khai engine nghiệp vụ của Thiện. [Bàn giao](docs/reports-ui-handoff-2026-10-21.md).
 
 **Chuẩn bị trước tiến độ — 20/10/2026:** đang hoàn thiện và kiểm thử Import/Export Excel, Dashboard và Reports trên nhánh review. Các API mới mặc định đóng, chưa cấp quyền hay deploy; Dashboard M1 vẫn dùng API tài sản hiện có. Đây không phải nghiệm thu hoàn tất Tuần 6–8. [Phạm vi, kết quả và việc còn lại](docs/import-reporting-review-2026-10-20.md).
@@ -14,11 +22,11 @@ Nhóm tùy chỉnh được sửa metadata nhưng không có quyền chi phí s�
 
 Source bổ sung nhóm quyền tùy chỉnh/ma trận checkbox, mời tài khoản qua email, kích hoạt một lần trong 30 phút, mã tài sản do sequence cấp; hiển thị tên phòng ban và bỏ các mục “Đối tượng” trên Nhật ký. **Publication trên nhánh `codex/lecturer-feedback`, chưa merge/deploy/apply shared.** Không merge vào main trước khi duyệt migration và kế hoạch triển khai tương thích. [Báo cáo, kết quả kiểm thử và hướng dẫn demo](docs/lecturer-feedback-remediation-report.md).
 
-Baseline đọc thực tế: Git/Render `1bc276741875573e85784d5cb57cfead8930c045`, Neon **18 bảng/41 FK/83 CHECK/96 indexes/3 migrations**, 28 permissions/49 grants; Assignment API đóng. Các ghi chú ngày 08–09/10 phía dưới là lịch sử, không phải trạng thái database hiện tại. Có schema không đồng nghĩa nghiệp vụ cấp phát/bảo trì đã mở.
+Baseline tại checkpoint 11/10 (lịch sử): Git/Render `1bc276741875573e85784d5cb57cfead8930c045`, Neon **18 bảng/41 FK/83 CHECK/96 indexes/3 migrations**, 28 permissions/49 grants; Assignment API đóng. Các ghi chú ngày 08–09/10 phía dưới là lịch sử, không phải trạng thái database hiện tại. Có schema không đồng nghĩa nghiệp vụ cấp phát/bảo trì đã mở.
 
 Ứng dụng web giúp doanh nghiệp quản lý tập trung thiết bị và tài sản CNTT: có những thiết bị nào, thuộc phòng ban nào, đang ở trạng thái gì và đã thay đổi ra sao. Dự án hướng tới quản lý toàn bộ vòng đời tài sản, từ ghi nhận thông tin đến cấp phát, bảo trì và đề xuất thay thế.
 
-Hiện bản demo public đã có giao diện kết nối API và cơ sở dữ liệu PostgreSQL trên Neon cho đăng nhập, danh mục và quản lý tài sản. Core API cấp phát đang được tích hợp và đã kiểm thử trên DB test riêng, **chưa publish hoặc mở trên shared DB**; các phần cấp phát còn lại, bảo trì, bản quyền phần mềm và tối ưu ngân sách vẫn **DỰ KIẾN (PLANNED)**.
+Bản demo public dùng ASP.NET Core Web API và PostgreSQL trên Neon. Cấp phát, thu hồi, điều chuyển và Bảo trì đã được mở sau kiểm thử và rollout có backup. Danh mục phần mềm đã nghiệm thu local; License và tối ưu ngân sách vẫn **DỰ KIẾN (PLANNED)** cho production.
 
 Bản demo: [hethongqltaisancntt.onrender.com](https://hethongqltaisancntt.onrender.com/). Đã kiểm tra Login và luồng xem/tìm kiếm của Manager/Support ngày **08/10/2026**; đây là demo, không phải bản triển khai chính thức với dữ liệu doanh nghiệp. [Kết quả kiểm tra và checklist báo cáo M1 ngày 10/10](docs/m1-rehearsal.md).
 
@@ -253,8 +261,8 @@ Xem [Render runbook, secrets và checklist kiểm chứng](docs/render-deploymen
 |---|---|---|
 | 2 | 28/09–03/10 | Phân tích yêu cầu, thiết kế nghiệp vụ/DB/API/giao diện và lập kế hoạch cộng tác. |
 | 3 | 05–10/10 | Trình diễn M1 ngày **10/10/2026**: đăng nhập, tổng quan, danh mục và tài sản trên dữ liệu thật. |
-| 4 | 12–17/10 | Cấp phát, thu hồi, điều chuyển, bảo trì, lịch sử và giao diện tương ứng — **PLANNED**. |
-| 5 | 19–24/10 | Phần mềm/bản quyền, vòng đời, đề xuất thay thế và cảnh báo — **PLANNED**. |
+| 4 | 12–17/10 | Cấp phát, thu hồi, điều chuyển, bảo trì, lịch sử và giao diện — **đã rollout 26/10**. |
+| 5 | 19–24/10 | Danh mục phần mềm **nghiệm thu local**; bản quyền/vòng đời/đề xuất thay thế còn **PLANNED** cho production. |
 | 6 | 26–31/10 | Báo cáo, chi phí/ngân sách, biểu đồ và rà soát truy vấn — **PLANNED**. |
 | 7 | 02–07/11 | Nhập/xuất Excel, rà soát bảo mật/hiệu năng, kiểm thử tổng thể và trình diễn cuối — **PLANNED**. |
 

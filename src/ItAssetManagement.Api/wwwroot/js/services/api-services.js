@@ -3,6 +3,7 @@ import { validateActivation, validateAsset, validateLogin, validateMaster, valid
 import { ServiceError } from './service-error.js';
 import { createAssignmentService } from './assignment-service.js';
 import { createMaintenanceService } from './maintenance-service.js';
+import { createSoftwareService } from './software-service.js';
 import { createLicenseReadService } from './license-service.js';
 import { createAssetHistoryReader } from './asset-history-service.js';
 import { createDashboardV2Reader } from './dashboard-v2-service.js';
@@ -10,7 +11,7 @@ import { createReportsReader } from './reports-service.js';
 import { createImportExportService } from './import-export-service.js';
 
 /** Same-origin client for M1 backend APIs; no automatic mock fallback. */
-export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThis), baseUrl = '/api/v1', reportingEnabled = false, importExportEnabled = false, assignmentEnabled = false, maintenanceEnabled = false } = {}) {
+export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThis), baseUrl = '/api/v1', reportingEnabled = false, importExportEnabled = false, assignmentEnabled = false, maintenanceEnabled = false, softwareEnabled = false } = {}) {
   let token = null;
   let session = null;
   let expiresAt = null;
@@ -227,10 +228,11 @@ export function createApiServices({ fetchImpl = globalThis.fetch?.bind(globalThi
   };
   const assignments = createAssignmentService({ request, idPath });
   const maintenance = createMaintenanceService({ request, idPath });
+  const software = createSoftwareService({ request, idPath });
   const licenses = createLicenseReadService({ request, idPath });
   const dashboardV2 = createDashboardV2Reader({ request, queryString, getSession: currentSession });
   const reports = createReportsReader({ request, queryString, getSession: currentSession });
   const importExport = createImportExportService({ fetchImpl, baseUrl, getSession: currentSession, getToken: () => token,
     getRevision: () => sessionRevision, onUnauthorized: () => clearSession('unauthorized') });
-  return { mode: 'api', reportingEnabled: reportingEnabled === true, importExportEnabled: importExportEnabled === true, assignmentEnabled: assignmentEnabled === true, maintenanceEnabled: maintenanceEnabled === true, auth, assets, departments: masterService('department'), assetTypes: masterService('assetType'), users, roles, auditLogs, dashboard, dashboardV2, reports, assignments, maintenance, licenses, importExport };
+  return { mode: 'api', softwareEnabled: softwareEnabled === true, software, reportingEnabled: reportingEnabled === true, importExportEnabled: importExportEnabled === true, assignmentEnabled: assignmentEnabled === true, maintenanceEnabled: maintenanceEnabled === true, auth, assets, departments: masterService('department'), assetTypes: masterService('assetType'), users, roles, auditLogs, dashboard, dashboardV2, reports, assignments, maintenance, licenses, importExport };
 }

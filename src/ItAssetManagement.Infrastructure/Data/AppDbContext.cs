@@ -62,6 +62,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
                 throw new InvalidOperationException("Hard delete and append-only history mutation are forbidden.");
             if (e.State == EntityState.Modified && e.Entity is Asset && e.Property("AssetCode").IsModified)
                 throw new InvalidOperationException("Asset code is server-generated and immutable.");
+            if (e.State == EntityState.Modified && e.Entity is Software && e.Property("Code").IsModified)
+                throw new InvalidOperationException("Software code is server-generated and immutable.");
             if (e.State == EntityState.Modified && e.Entity is AssetAssignment)
             {
                 var immutable = new[] { "AssetId", "AssignedUserId", "AssignedDepartmentId", "AssignedAtUtc", "AssignedByUserId", "CreatedAtUtc" };

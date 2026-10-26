@@ -1,5 +1,13 @@
 # Permission Matrix
 
+## 26/10/2026 — Software runtime permission addendum
+
+Catalog source tăng42→46, thêm `software.read/create/update/archive`; không phải số quyền production đã seed. Mỗi action yêu cầu read; group ADMIN_IT/SYSTEM_MANAGER dự kiến4quyền/người, TECHNICAL_SUPPORT không có. Custom User grants vẫn giới hạn theo nhóm và EffectivePermissionQuery; không cộng ngầm quyền Admin. Role matrix không cho cấp software cho Support, không sửa quyền chưa available; client thêm nhãn và dependency read. Production Software vẫn đóng.
+
+Lệnh Development rõ ràng `--seed-software-permissions` chuẩn bị canonical PM sequence ngoài transaction nghiệp vụ, sau đó seed bổ sung4permission+8rolelinks trong audited transaction khóa development-seed→users-identity, chạy lại thêm0. Không reset user/password/custom grants, không remove quyền cũ, không tự migrate/seed khi khởi động. Inactive definitions/roles hoặc Support đã có software grants phải review, không tự sửa.
+
+Production Assignment/Maintenance đã được phê duyệt và rollout tại `281fe2f`:42permission/82rolelinks, Support chỉ5quyền Maintenance đã quy định. Đợt Software này không ghi shared Neon hoặc thay flag Render.
+
 ## Addendum 25/10/2026 — Catalog code / UNDER REVIEW
 
 Catalog biên dịch hiện 42 codes: catalog33 trước đây + assignments.transfer + 8 Maintenance. Không đồng nghĩa shared Neon đã có42 quyền; lượt này không đọc/seed production. EffectivePermissionQuery/RBAC v2 giữ nguyên, không tự cộng quyền theo Admin.

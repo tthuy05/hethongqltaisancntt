@@ -8,7 +8,8 @@ public static class WorkflowIngress
     public const int ConcurrentRequests = 8;
     private static bool Applies(HttpContext context, IConfiguration configuration) =>
         AssignmentRollout.IsEnabled(configuration) && AssignmentRollout.IsPath(context.Request.Path) ||
-        MaintenanceRollout.IsEnabled(configuration) && MaintenanceRollout.IsPath(context.Request.Path);
+        MaintenanceRollout.IsEnabled(configuration) && MaintenanceRollout.IsPath(context.Request.Path) ||
+        SoftwareRollout.IsEnabled(configuration) && SoftwareRollout.IsPath(context.Request.Path);
 
     public static PartitionedRateLimiter<HttpContext> CreateLimiter(IConfiguration configuration) =>
         PartitionedRateLimiter.CreateChained(

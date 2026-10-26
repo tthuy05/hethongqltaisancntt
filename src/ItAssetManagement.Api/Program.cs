@@ -27,8 +27,9 @@ var assignmentValidationOnly = args.Contains("--setup-assignment-validation", St
 var assignmentSetupOnly = args.Contains("--setup-assignment-maintenance", StringComparer.Ordinal);
 var assignmentTransferSeedOnly = args.Contains("--seed-assignment-transfer", StringComparer.Ordinal);
 var maintenancePermissionsOnly = args.Contains("--seed-maintenance-permissions", StringComparer.Ordinal);
+var softwarePermissionsOnly = args.Contains("--seed-software-permissions", StringComparer.Ordinal);
 string[] cliModes = ["--verify-neon", "--setup-neon-m1", "--inspect-neon-schema", "--seed-development", "--seed-m1-demo",
-    "--seed-role-catalog", "--seed-audit-read", "--setup-assignment-validation", "--setup-assignment-maintenance", "--seed-assignment-transfer", "--seed-maintenance-permissions"];
+    "--seed-role-catalog", "--seed-audit-read", "--setup-assignment-validation", "--setup-assignment-maintenance", "--seed-assignment-transfer", "--seed-maintenance-permissions", "--seed-software-permissions"];
 var modeCount = cliModes.Count(mode => args.Contains(mode, StringComparer.Ordinal));
 var builder = WebApplication.CreateBuilder(args.Where(argument => !cliModes.Contains(argument, StringComparer.Ordinal)).ToArray());
 if (modeCount > 0) builder.Logging.ClearProviders();
@@ -44,6 +45,7 @@ builder.Services.AddExceptionHandler<BusinessExceptionHandler>();
 builder.Services.AddControllers().ConfigureApplicationPartManager(parts =>
 {
     parts.FeatureProviders.Add(new AssignmentControllerFeatureProvider(builder.Configuration));
+    parts.FeatureProviders.Add(new SoftwareControllerFeatureProvider(builder.Configuration));
     parts.FeatureProviders.Add(new PreparedModuleControllerFeatureProvider(builder.Configuration));
 })
     .AddJsonOptions(options =>
@@ -86,6 +88,8 @@ builder.Services.AddScoped<ISoftwareCodeGenerator, SoftwareCodeGenerator>();
 builder.Services.AddScoped<ILicenseCodeGenerator, LicenseCodeGenerator>();
 builder.Services.AddScoped<AuditLogService>();
 builder.Services.AddScoped<MaintenanceService>();
+builder.Services.AddScoped<SoftwareService>();
+builder.Services.AddScoped<ISoftwareReadiness, SoftwareReadiness>();
 builder.Services.AddScoped<IMaintenanceSchemaReadiness, MaintenanceSchemaReadiness>();
 builder.Services.AddScoped(sp => new MaintenanceAccessPolicy(
     sp.GetRequiredService<IHttpContextAccessor>().HttpContext?.Items[typeof(CurrentUser)] as CurrentUser
@@ -123,16 +127,16 @@ if (modeCount > 1 || modeCount > 0 && !app.Environment.IsDevelopment())
 }
 _ = app.Services.GetRequiredService<JwtSettings>(); // Production fails closed; development uses a per-process key.
 DeploymentHosting.ValidateProductionDatabase(app.Configuration, app.Environment.IsDevelopment());
-if (assignmentTransferSeedOnly || maintenancePermissionsOnly)
+if (assignmentTransferSeedOnly || maintenancePermissionsOnly || softwarePermissionsOnly)
 {
     try
     {
         await using var scope = app.Services.CreateAsyncScope();
         var seed = scope.ServiceProvider.GetRequiredService<DevelopmentSeed>();
-        var added = maintenancePermissionsOnly ? await seed.RunMaintenancePermissionsAsync() : await seed.RunAssignmentTransferPermissionAsync();
-        Console.WriteLine(JsonSerializer.Serialize(new { status = maintenancePermissionsOnly ? "MaintenancePermissionsSeeded" : "AssignmentTransferSeeded", added }));
+        var added = softwarePermissionsOnly ? await seed.PrepareSoftwareCatalogAsync() : maintenancePermissionsOnly ? await seed.RunMaintenancePermissionsAsync() : await seed.RunAssignmentTransferPermissionAsync();
+        Console.WriteLine(JsonSerializer.Serialize(new { status = softwarePermissionsOnly ? "SoftwarePermissionsSeeded" : maintenancePermissionsOnly ? "MaintenancePermissionsSeeded" : "AssignmentTransferSeeded", added }));
     }
-    catch { Console.WriteLine(JsonSerializer.Serialize(new { status = maintenancePermissionsOnly ? "MaintenancePermissionsSeedFailed" : "AssignmentTransferSeedFailed" })); Environment.ExitCode = 2; }
+    catch { Console.WriteLine(JsonSerializer.Serialize(new { status = softwarePermissionsOnly ? "SoftwarePermissionsSeedFailed" : maintenancePermissionsOnly ? "MaintenancePermissionsSeedFailed" : "AssignmentTransferSeedFailed" })); Environment.ExitCode = 2; }
     await app.DisposeAsync(); return;
 }
 if (assignmentValidationOnly || assignmentSetupOnly)
@@ -307,6 +311,7 @@ app.UseRouting(); // Static middleware must run before endpoint selection (inclu
 app.UseRateLimiter(); // Bound anonymous workflow readiness probes before any database connection.
 app.UseMiddleware<AssignmentRolloutMiddleware>(); // Closed before auth/Controller/DB-dependent business code.
 app.UseMiddleware<MaintenanceRolloutMiddleware>(); // Prepared owner module stays absent by default.
+app.UseMiddleware<SoftwareRolloutMiddleware>(); // Closed until catalog rollout is reviewed.
 app.UseAuthentication(); app.UseAuthorization();
 app.MapControllers();
 app.MapMethods("/health/live", [HttpMethods.Get, HttpMethods.Head], () => Results.Ok(new { status = "Alive" })).AllowAnonymous();
