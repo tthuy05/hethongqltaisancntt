@@ -1,5 +1,15 @@
 # Thiết kế bảo mật
 
+## Runtime addendum 26/10/2026 — Workflow authorization / UNDER REVIEW
+
+Public rollout: WorkflowIngress giới hạn120 request/phút và8 đồng thời cho toàn bộ workflow đã bật trong mỗi process, trước readiness mở kết nối DB. Không queue; canonical/alias/history chia sẻ budget, không phân vùng theo user/IP nên không tạo partition không giới hạn. 429 có Retry-After60; health và API ngoài workflow giữ behavior hiện có. Đây là ingress protection tối thiểu cho public readiness, không thay permission hoặc firewall/load testing. Narrow permission seed còn lấy users-identity sau development-seed lock để không race Role editor; không reset quyền riêng.
+
+Assignment assign/return/transfer và Maintenance create/update/assign/start/resolve/fail/cancel gọi WorkflowAuthorization sau khi lấy khóa asset, trước mutation. Lock order vẫn Asset → master-data (nếu dùng) → users-identity. Kiểm tra lại User active/confirmed/not admin-locked/not automatically locked, tokenVersion; sau đó EffectivePermissionQuery kiểm quyền read + action. Nếu snapshot có Maintenance cost grant, cũng recheck grant đó để không trả cost dựa scope đã bị thu hồi. Identity lock giữ đến commit/rollback, cùng coordinator của thay đổi account/role/grants. Stale account/token trả401; revoke effective grant trả403, không retry mutation.
+
+HttpActor luôn có token_version qua JWT validation; service guard hiện có vẫn bắt buộc. Actor không có tokenVersion chỉ dành trusted in-process test/system callers, không nhận từ DTO/request; không đăng ký actor như vậy cho HTTP production. Không thay refresh-token/session contract, không log user secrets hoặc SQL/provider exceptions.
+
+Đã kiểm 5 case real JWT trên PostgreSQL local password/SCRAM: request thực sự bị row lock chặn (pg_blocking_pids), quyền/token bị thu hồi trong lúc chờ; release lock trả401/403 và giữ nguyên DTO/version/trạng thái asset. Bao gồm cost revocation dù command start không gửi cost field. Technical Support API và browser không hiển thị chi phí hay quyền toàn cục. Chi tiết log/counts tại handoff Assignment/Maintenance; shared Neon và production flags không đổi. Review/CI/rollout production vẫn cần hoàn tất riêng.
+
 ## Activation client safety — 15/10/2026, source chưa deploy
 
 Public activation client validate canonical32-byte token/allowlisted DTO, scrub URL, single-flight/readonly password inputs và clear own references/DOM values; invalid/expired/unknown outcome không tự replay. Không memory-zeroization guarantee, auto login/token persistence hoặc real-email proof. [Kiểm thử/giới hạn](activation-client-safety-handoff.md). Backend hash/TTL/single-use/audit và email sender owner không sửa.

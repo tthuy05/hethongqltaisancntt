@@ -10,13 +10,18 @@ public sealed class AssetAssignmentsController(AssignmentService service) : Cont
 {
     [HttpGet]
     [Authorize(Policy = Permissions.AssignmentRead)]
-    public Task<PagedResponse<AssignmentDto>> List(CancellationToken ct,
-        [FromQuery(Name = "page")] int page = 1, [FromQuery(Name = "pageSize")] int pageSize = 20,
-        [FromQuery(Name = "assetId")] long? assetId = null, [FromQuery(Name = "userId")] long? userId = null,
-        [FromQuery(Name = "departmentId")] long? departmentId = null, [FromQuery(Name = "active")] bool activeOnly = false)
+    public Task<PagedResponse<AssignmentDto>> List([FromQuery] AssignmentListQuery query, CancellationToken ct)
     {
-        Errors.Query(Request, "page", "pageSize", "assetId", "userId", "departmentId", "active");
-        return service.ListAsync(assetId, userId, departmentId, activeOnly, page, pageSize, ct);
+        Errors.Query(Request, "page", "pageSize", "assetId", "userId", "departmentId", "active", "status", "from", "to", "sortBy", "sortDirection");
+        return service.ListAsync(query, ct);
+    }
+
+    [HttpGet("/api/v1/assets/{assetId:long:min(1)}/assignments")]
+    [Authorize(Policy = Permissions.AssignmentRead)]
+    public Task<PagedResponse<AssignmentDto>> History(long assetId, [FromQuery] AssignmentListQuery query, CancellationToken ct)
+    {
+        Errors.Query(Request, "page", "pageSize", "status", "from", "to", "sortBy", "sortDirection");
+        return service.HistoryAsync(assetId, query, ct);
     }
 
     [HttpGet("{id:long:min(1)}")]
@@ -40,4 +45,9 @@ public sealed class AssetAssignmentsController(AssignmentService service) : Cont
     [Authorize(Policy = Permissions.AssignmentReturn)]
     public Task<AssignmentDto> Return(long id, ReturnAssetRequest request, CancellationToken ct) =>
         service.ReturnAsync(id, request, ct);
+
+    [HttpPost("{id:long:min(1)}/transfer")]
+    [Authorize(Policy = Permissions.AssignmentTransfer)]
+    public Task<AssignmentTransferDto> Transfer(long id, TransferAssetRequest request, CancellationToken ct) =>
+        service.TransferAsync(id, request, ct);
 }

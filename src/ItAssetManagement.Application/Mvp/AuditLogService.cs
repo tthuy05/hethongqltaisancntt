@@ -79,7 +79,7 @@ public sealed class AuditLogDetailDto : AuditLogSummaryDto
 // Revalidate historic JSON at the read boundary; never return the stored snapshot directly.
 public static class AuditSnapshot
 {
-    private static readonly string[] PositiveIds = ["assetTypeId", "owningDepartmentId", "userId", "roleId", "permissionId", "auditLogId", "assetId", "assignedByUserId", "maintenanceTicketId", "licenseId", "softwareId", "softwareLicenseId", "replacementRuleId", "recommendationId"];
+    private static readonly string[] PositiveIds = ["assetTypeId", "owningDepartmentId", "userId", "roleId", "permissionId", "auditLogId", "assetId", "assignedByUserId", "maintenanceTicketId", "licenseId", "softwareId", "softwareLicenseId", "replacementRuleId", "recommendationId", "previousAssignmentId", "currentAssignmentId"];
     private static readonly string[] NullableIds = ["parentDepartmentId", "departmentId", "assignedUserId", "assignedDepartmentId", "returnedByUserId", "technicianId", "assignedAssetId"];
     private static readonly string[] UtcTimes = ["assignedAtUtc", "returnedAtUtc", "performedAtUtc"];
     private static readonly string[] Flags = ["isActive", "isArchived", "isAdminLocked", "emailChanged", "usernameChanged", "displayNameChanged",

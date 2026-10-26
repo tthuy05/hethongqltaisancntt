@@ -115,6 +115,15 @@ export async function assetDetailPage(services, id) {
     statusHistory?.dispose(); statusHistory = null;
     for (const child of tabs.children) { const selected = child.dataset.key === key; child.classList.toggle('active', selected); child.setAttribute('aria-selected', String(selected)); child.tabIndex = selected ? 0 : -1; }
     panel.setAttribute('aria-labelledby', 'history-tab-' + key);
+    if (key === 'assignment' && services.assignmentEnabled === true && can(services, 'assignments.read')) {
+      panel.replaceChildren(h('p', { className: 'meta' }, 'Xem đầy đủ các lần cấp phát, thu hồi và điều chuyển của tài sản.'),
+        button('Xem lịch sử cấp phát', { kind: 'secondary', onClick: () => {
+          if (panel.isConnected && window.location.hash === pageHash && services.auth?.session?.id === actorId &&
+              can(services, 'assets.read') && can(services, 'assignments.read') && services.assignmentEnabled === true)
+            route('/assignments?assetId=' + id);
+        } }));
+      return;
+    }
     if (key !== 'status') { panel.textContent = history.find(item => item.key === key).note; return; }
     statusHistory = createAssetStatusHistory(services, id);
     panel.replaceChildren(statusHistory.element); void statusHistory.load();

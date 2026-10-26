@@ -1,5 +1,19 @@
 # Permission Matrix
 
+## Addendum 25/10/2026 — Catalog code / UNDER REVIEW
+
+Catalog biên dịch hiện 42 codes: catalog33 trước đây + assignments.transfer + 8 Maintenance. Không đồng nghĩa shared Neon đã có42 quyền; lượt này không đọc/seed production. EffectivePermissionQuery/RBAC v2 giữ nguyên, không tự cộng quyền theo Admin.
+
+| Quyền bổ sung | Admin/Manager dự kiến | Technical Support dự kiến |
+|---|---|---|
+| assignments.transfer | Có, cần assignments.read | Không |
+| maintenance.read/create/update/work/resolve | Có | Có, scope phiếu được giao; create không mở queue |
+| maintenance.assign/cancel/cost.write | Có | Không |
+
+Mọi Maintenance action phụ thuộc maintenance.read; transfer phụ thuộc assignments.read. Global Maintenance scope chỉ Admin/Manager nhưng vẫn phải có grant action. Cost read/write còn cần maintenance.cost.write; null cost request cũng bị kiểm quyền. Role editor chặn cấp assignments.* và ba quyền Maintenance global/finance cho Support; không dùng role label thay permission check.
+
+Development CLI explicit `--seed-assignment-transfer`: tối đa1 definition+2 grants. `--seed-maintenance-permissions`: tối đa8 definitions+21 grants (Admin/Manager16, Support5), khóa development-seed, không re-enable definition đã vô hiệu, repeat thêm0. Không dùng lệnh Development này trực tiếp trên production và không chạy tự động khi khởi động. Readiness/feature availability đóng quyền khi module chưa được duyệt; chưa bật flag source hoặc Render. Kiểm chứng local và release gates ở assignment-maintenance-integration-handoff.md.
+
 **Regression PR #6 (24/10):** Login/Me/JWT giữ `EffectivePermissionQuery.ForUser()`; không `Union` Reports/Excel cho ADMIN_IT. Admin tùy chỉnh chỉ assets.read không được dùng Excel; Reports prepared chưa tự thêm vào catalog/grants. Dashboard thiếu grant trả403, không xóa session hợp lệ. Xem [handoff Reports](reports-ui-handoff-2026-10-21.md).
 
 ## Cơ chế Phân quyền người dùng (Cập nhật 24/10/2026 — Single Role & Custom Permissions)

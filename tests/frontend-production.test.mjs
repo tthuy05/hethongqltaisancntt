@@ -33,6 +33,8 @@ test('production ignores localhost demo query and rejects explicit mock without 
     const { services, createServices } = await import(pathToFileURL(path.join(frontendProductionOutput, 'js/services/index.js')).href);
     assert.equal(services.mode, 'api');
     assert.equal(services.reportingEnabled, false);
+      assert.equal(services.assignmentEnabled, true);
+      assert.equal(services.maintenanceEnabled, true);
     assert.equal(services.importExportEnabled, true);
     assert.equal(createServices({ reportingEnabled: true }).reportingEnabled, true);
     assert.throws(() => createServices({ mode: 'mock', hostname: 'localhost' }), /Unsupported production service mode/u);

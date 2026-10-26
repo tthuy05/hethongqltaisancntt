@@ -1,5 +1,14 @@
 # Business Rules
 
+## Runtime addendum 25/10/2026 — UNDER REVIEW
+
+Update 26/10: quyền action/read và scope chi phí snapshot phải còn hiệu lực khi workflow ghi dữ liệu sau khi chờ asset lock. Recheck dưới users-identity trong transaction; account/token bị vô hiệu401, grant bị thu hồi403. Không commit tác động một phần. Đã rehearsal lock wait thật và các nhánh concurrent fail/resolve, reassign/start, cost/cost trên PostgreSQL local; không thay rule/code/schema nghiệp vụ.
+
+- Assignment transfer đóng cấp phát cũ và mở cấp phát mới nguyên tử với asset row lock và linked audit; không thay trạng thái IN_USE, không cho mục tiêu cũ hoặc tài sản archive/đang bảo trì. ExpectedReturnAt ≥assignedAt UTC; condition là free text ghép ReturnNote, không thêm enum/schema. Client không nhập mã nghiệp vụ.
+- Maintenance PENDING không đổi Asset; tạo cho IN_STOCK/IN_USE/BROKEN, chặn archive/retired và ticket PENDING/IN_PROGRESS khác trên cùng asset. Start cần technician active/confirmed/role hợp lệ, từ PENDING; start chuyển MAINTENANCE. Resolve dựa active assignment để trở IN_USE/IN_STOCK; fail về BROKEN. Cancel đang xử lý phục hồi trạng thái qua start history, thiếu evidence trả 409. Pending cancel không đổi Asset.
+- Phiếu terminal bất biến về metadata/trạng thái; chỉ cho hiệu chỉnh actualCost kèm lý do và event COST_UPDATED mới. Tiền không âm/hai chữ số lẻ; mọi cost field kể cả null kiểm tra quyền riêng. Technical Support chỉ xem/thao tác phiếu được giao; không tự nhận queue, không assign/cancel/cost. Tạo phiếu không đồng nghĩa có quyền xem toàn queue.
+- Các write ticket/history/audit/Asset chung transaction và RowVersion; double-click/stale session UI không tự replay. Catalog mới không tự cấp quyền trên shared, startup không migration/seed. Xem contract tại api-spec và release gates tại handoff; module production vẫn đóng.
+
 ## LF rules — 11/10/2026, source local / chưa deploy
 
 1. Nhóm mới không có grant; union permission active/known từ role active, refresh mỗi request. Admin membership bắt buộc khi quản lý matrix hoặc xem audit; delegated role assign không được cấp Admin/quyền vượt quyền hiện tại. Default groups protected, last confirmed/unlocked/active Admin protected; pending Admin không được tính là Admin dự phòng.

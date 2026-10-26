@@ -112,10 +112,10 @@ public sealed class AssignmentMappingTests
     }
 
     [Fact]
-    public void Assignment_permissions_extend_admin_and_manager_without_granting_support_or_future_transfer()
+    public void Assignment_permissions_extend_admin_and_manager_including_transfer_without_granting_support()
     {
-        var additions = new[] { "assignments.read", "assignments.assign", "assignments.return" };
-        Assert.Equal(33, Permissions.All.Length); Assert.Equal(33, Permissions.All.Distinct().Count());
+        var additions = new[] { "assignments.read", "assignments.assign", "assignments.return", "assignments.transfer" };
+        Assert.Equal(42, Permissions.All.Length); Assert.Equal(42, Permissions.All.Distinct().Count());
         Assert.Equal(additions.Order(), Permissions.All.Where(permission => permission.StartsWith("assignments.", StringComparison.Ordinal)).Order());
         foreach (var permission in additions)
         {
@@ -123,7 +123,7 @@ public sealed class AssignmentMappingTests
             Assert.Contains(permission, Permissions.Read.Concat(Permissions.Operate)); // SYSTEM_MANAGER
             Assert.DoesNotContain(permission, Permissions.Read); // TECHNICAL_SUPPORT has no unscoped assignment grant.
         }
-        Assert.DoesNotContain("assignments.transfer", Permissions.All);
+        Assert.Contains(Permissions.AssignmentTransfer, Permissions.All);
     }
 
     [Theory]

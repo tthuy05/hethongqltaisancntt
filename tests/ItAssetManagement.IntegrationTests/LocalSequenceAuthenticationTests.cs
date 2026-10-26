@@ -67,3 +67,12 @@ public sealed class LocalPostgresFactAttribute : FactAttribute
             Skip = "Explicit password-authenticated local isolated PostgreSQL required.";
     }
 }
+
+public sealed class LocalPostgresTheoryAttribute : TheoryAttribute
+{
+    public LocalPostgresTheoryAttribute()
+    {
+        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ITAM_LOCAL_POSTGRES_TEST_CONNECTION")))
+            Skip = "Explicit password-authenticated local isolated PostgreSQL required.";
+    }
+}

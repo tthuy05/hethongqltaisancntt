@@ -25,8 +25,10 @@ var roleCatalogOnly = args.Contains("--seed-role-catalog", StringComparer.Ordina
 var auditReadOnly = args.Contains("--seed-audit-read", StringComparer.Ordinal);
 var assignmentValidationOnly = args.Contains("--setup-assignment-validation", StringComparer.Ordinal);
 var assignmentSetupOnly = args.Contains("--setup-assignment-maintenance", StringComparer.Ordinal);
+var assignmentTransferSeedOnly = args.Contains("--seed-assignment-transfer", StringComparer.Ordinal);
+var maintenancePermissionsOnly = args.Contains("--seed-maintenance-permissions", StringComparer.Ordinal);
 string[] cliModes = ["--verify-neon", "--setup-neon-m1", "--inspect-neon-schema", "--seed-development", "--seed-m1-demo",
-    "--seed-role-catalog", "--seed-audit-read", "--setup-assignment-validation", "--setup-assignment-maintenance"];
+    "--seed-role-catalog", "--seed-audit-read", "--setup-assignment-validation", "--setup-assignment-maintenance", "--seed-assignment-transfer", "--seed-maintenance-permissions"];
 var modeCount = cliModes.Count(mode => args.Contains(mode, StringComparer.Ordinal));
 var builder = WebApplication.CreateBuilder(args.Where(argument => !cliModes.Contains(argument, StringComparer.Ordinal)).ToArray());
 if (modeCount > 0) builder.Logging.ClearProviders();
@@ -84,6 +86,7 @@ builder.Services.AddScoped<ISoftwareCodeGenerator, SoftwareCodeGenerator>();
 builder.Services.AddScoped<ILicenseCodeGenerator, LicenseCodeGenerator>();
 builder.Services.AddScoped<AuditLogService>();
 builder.Services.AddScoped<MaintenanceService>();
+builder.Services.AddScoped<IMaintenanceSchemaReadiness, MaintenanceSchemaReadiness>();
 builder.Services.AddScoped(sp => new MaintenanceAccessPolicy(
     sp.GetRequiredService<IHttpContextAccessor>().HttpContext?.Items[typeof(CurrentUser)] as CurrentUser
     ?? throw new BusinessException(403, "FORBIDDEN", "Yêu cầu tài khoản đã xác thực.")));
@@ -97,6 +100,7 @@ builder.Services.AddScoped<DevelopmentSeed>();
 builder.Services.AddScoped<DevelopmentDemoSeed>();
 builder.Services.AddRateLimiter(options =>
 {
+    options.GlobalLimiter = WorkflowIngress.CreateLimiter(builder.Configuration);
     options.AddPolicy("login", context => RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ =>
         new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
     options.OnRejected = async (context, _) =>
@@ -119,6 +123,18 @@ if (modeCount > 1 || modeCount > 0 && !app.Environment.IsDevelopment())
 }
 _ = app.Services.GetRequiredService<JwtSettings>(); // Production fails closed; development uses a per-process key.
 DeploymentHosting.ValidateProductionDatabase(app.Configuration, app.Environment.IsDevelopment());
+if (assignmentTransferSeedOnly || maintenancePermissionsOnly)
+{
+    try
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        var seed = scope.ServiceProvider.GetRequiredService<DevelopmentSeed>();
+        var added = maintenancePermissionsOnly ? await seed.RunMaintenancePermissionsAsync() : await seed.RunAssignmentTransferPermissionAsync();
+        Console.WriteLine(JsonSerializer.Serialize(new { status = maintenancePermissionsOnly ? "MaintenancePermissionsSeeded" : "AssignmentTransferSeeded", added }));
+    }
+    catch { Console.WriteLine(JsonSerializer.Serialize(new { status = maintenancePermissionsOnly ? "MaintenancePermissionsSeedFailed" : "AssignmentTransferSeedFailed" })); Environment.ExitCode = 2; }
+    await app.DisposeAsync(); return;
+}
 if (assignmentValidationOnly || assignmentSetupOnly)
 {
     var result = await NeonAssignmentMaintenanceSetup.RunAsync(builder.Configuration.GetConnectionString("DefaultConnection"),
@@ -288,9 +304,10 @@ if (app.Environment.IsDevelopment() && app.Configuration.GetValue("Swagger:Enabl
     else app.Logger.LogWarning("Development Swagger build missing. Run pnpm build from the repository root.");
 }
 app.UseRouting(); // Static middleware must run before endpoint selection (including fallback).
+app.UseRateLimiter(); // Bound anonymous workflow readiness probes before any database connection.
 app.UseMiddleware<AssignmentRolloutMiddleware>(); // Closed before auth/Controller/DB-dependent business code.
 app.UseMiddleware<MaintenanceRolloutMiddleware>(); // Prepared owner module stays absent by default.
-app.UseAuthentication(); app.UseAuthorization(); app.UseRateLimiter();
+app.UseAuthentication(); app.UseAuthorization();
 app.MapControllers();
 app.MapMethods("/health/live", [HttpMethods.Get, HttpMethods.Head], () => Results.Ok(new { status = "Alive" })).AllowAnonymous();
 app.MapMethods("/health/version", [HttpMethods.Get, HttpMethods.Head],

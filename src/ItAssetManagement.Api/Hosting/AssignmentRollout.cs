@@ -13,6 +13,10 @@ public static class AssignmentRollout
     public const string ConfigurationKey = "Features:AssignmentApi:Enabled";
     public static bool IsEnabled(IConfiguration configuration) =>
         bool.TryParse(configuration[ConfigurationKey], out var enabled) && enabled;
+    public static bool IsPath(PathString path) =>
+        path.StartsWithSegments("/api/v1/asset-assignments", StringComparison.OrdinalIgnoreCase) ||
+        System.Text.RegularExpressions.Regex.IsMatch(path.Value ?? "", @"^/api/v1/assets/[0-9]+/assignments/?$",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 }
 
 // Run after the framework's controller discovery. Disabled routes are also absent
@@ -60,17 +64,17 @@ public sealed class AssignmentSchemaReadiness(IConfiguration configuration) : IA
                 if (!Equals(await inventory.ExecuteScalarAsync(cancellationToken), true)) return false;
             await using var command = new NpgsqlCommand("""
                 SELECT EXISTS (SELECT 1 FROM public.ef_migrations_history WHERE "MigrationId"=@migration)
-                  AND (SELECT count(*) FROM public.permissions WHERE code=ANY(@codes) AND is_active)=3
+                  AND (SELECT count(*) FROM public.permissions WHERE code=ANY(@codes) AND is_active)=4
                   AND (SELECT count(*) FROM public.role_permissions rp
                       JOIN public.roles r ON r.id=rp.role_id
                       JOIN public.permissions p ON p.id=rp.permission_id
-                      WHERE r.code IN ('ADMIN_IT','SYSTEM_MANAGER') AND r.is_active AND p.is_active AND p.code=ANY(@codes))=6
+                      WHERE r.code IN ('ADMIN_IT','SYSTEM_MANAGER') AND r.is_active AND p.is_active AND p.code=ANY(@codes))=8
                   AND NOT EXISTS (SELECT 1 FROM public.role_permissions rp
                       JOIN public.roles r ON r.id=rp.role_id JOIN public.permissions p ON p.id=rp.permission_id
                       WHERE r.code='TECHNICAL_SUPPORT' AND p.code=ANY(@codes))
                 """, connection, transaction);
             command.Parameters.AddWithValue("migration", "20261008080630_AddAssignmentMaintenance");
-            command.Parameters.AddWithValue("codes", new[] { "assignments.read", "assignments.assign", "assignments.return" });
+            command.Parameters.AddWithValue("codes", new[] { "assignments.read", "assignments.assign", "assignments.return", "assignments.transfer" });
             return Equals(await command.ExecuteScalarAsync(cancellationToken), true);
         }
         catch (Exception error) when (error is DbException or TimeoutException or IOException or InvalidOperationException)
@@ -85,7 +89,7 @@ public sealed class AssignmentRolloutMiddleware(RequestDelegate next, IConfigura
 {
     public async Task InvokeAsync(HttpContext context)
     {
-        if (context.Request.Path.StartsWithSegments("/api/v1/asset-assignments", StringComparison.OrdinalIgnoreCase))
+        if (AssignmentRollout.IsPath(context.Request.Path))
         {
             if (!AssignmentRollout.IsEnabled(configuration)) { context.Response.StatusCode = StatusCodes.Status404NotFound; return; }
             // Before authentication/model binding/Controller activation. Even a stale

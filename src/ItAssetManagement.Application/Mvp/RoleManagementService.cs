@@ -26,7 +26,8 @@ public static class PermissionContract
         _ when code.StartsWith("assets.") && code != Permissions.AssetRead => Permissions.AssetRead,
         _ when code.StartsWith("departments.") && code != Permissions.DepartmentRead => Permissions.DepartmentRead,
         _ when code.StartsWith("asset-types.") && code != Permissions.TypeRead => Permissions.TypeRead,
-        Permissions.AssignmentAssign or Permissions.AssignmentReturn => Permissions.AssignmentRead,
+        Permissions.AssignmentAssign or Permissions.AssignmentReturn or Permissions.AssignmentTransfer => Permissions.AssignmentRead,
+        _ when code.StartsWith("maintenance.", StringComparison.Ordinal) && code != Permissions.MaintenanceRead => Permissions.MaintenanceRead,
         Permissions.ImportAssets or Permissions.ExportAssets => Permissions.AssetRead,
         _ => null
     };
@@ -35,7 +36,9 @@ public static class PermissionContract
         Permissions.AssetCost => "Xem chi phí", Permissions.AssetHistory => "Xem lịch sử",
         Permissions.UserLookup => "Tra cứu", Permissions.UserStatus or Permissions.AssetStatus => "Trạng thái",
         Permissions.RoleAssign => "Gán nhóm", Permissions.RolePermissionsRead => "Xem quyền",
-        Permissions.AssignmentAssign => "Cấp phát", Permissions.AssignmentReturn => "Thu hồi",
+        Permissions.AssignmentAssign => "Cấp phát", Permissions.AssignmentReturn => "Thu hồi", Permissions.AssignmentTransfer => "Điều chuyển",
+        Permissions.MaintenanceAssign => "Giao kỹ thuật viên", Permissions.MaintenanceWork => "Bắt đầu",
+        Permissions.MaintenanceResolve => "Kết thúc", Permissions.MaintenanceCancel => "Hủy", Permissions.MaintenanceCostWrite => "Chi phí",
         Permissions.ImportAssets => "Nhập Excel",
         Permissions.ExportAssets or Permissions.ExportMaintenance or Permissions.ExportAssignments or Permissions.ExportReplacement => "Xuất Excel",
         _ => code.Split('.').Last() switch { "read" => "Xem", "create" => "Thêm", "update" => "Sửa", "archive" => "Lưu trữ", _ => code }
@@ -128,11 +131,16 @@ public sealed class RoleManagementService(IRepository repo, IRoleGrantPersistenc
             var codes = definitions.Select(x => x.Code).ToHashSet();
             if (role.Code != "ADMIN_IT" && codes.Contains(Permissions.AuditRead))
                 throw Validation.Invalid("permissionIds", "Nhật ký thao tác chỉ dành cho nhóm Admin IT.");
+            if (role.Code == "TECHNICAL_SUPPORT" && codes.Any(code => code.StartsWith("assignments.", StringComparison.Ordinal) ||
+                    Permissions.Maintenance.Contains(code) && !Permissions.MaintenanceSupport.Contains(code)))
+                throw Validation.Invalid("permissionIds", "Technical Support chỉ được xử lý phiếu được giao, không được cấp quyền cấp phát, giao việc, hủy hoặc chi phí bảo trì.");
             if (definitions.Any(x => PermissionContract.Requires(x.Code) is { } parent && !codes.Contains(parent)))
                 throw Validation.Invalid("permissionIds", "Quyền thao tác yêu cầu quyền xem tương ứng.");
             // The protected Admin group retains the complete supported baseline. This
             // guards the ability to recover identities even when there is only one Admin.
-            if (role.Code == "ADMIN_IT" && Permissions.All.Any(code => !codes.Contains(code))) throw Protected();
+            // Preserve the existing Admin baseline when the new transfer feature is still closed/unseeded.
+            if (role.Code == "ADMIN_IT" && Permissions.All.Where(code =>
+                code != Permissions.AssignmentTransfer && !Permissions.Maintenance.Contains(code) || availability.IsAvailable(code)).Any(code => !codes.Contains(code))) throw Protected();
             var existing = await repo.ListAsync(repo.Query<RolePermission>(true).Where(x => x.RoleId == id), ct);
             var existingIds = existing.Select(x => x.PermissionId).ToHashSet();
             var unavailable = await repo.ListAsync(repo.Query<Permission>().Where(x => existingIds.Contains(x.Id)), ct);

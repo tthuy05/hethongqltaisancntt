@@ -56,7 +56,8 @@ public sealed class AssignmentRolloutTests
         foreach (var (method, path) in new[]
         {
             (HttpMethod.Get, "/api/v1/asset-assignments"), (HttpMethod.Get, "/api/v1/asset-assignments/1"),
-            (HttpMethod.Post, "/api/v1/asset-assignments"), (HttpMethod.Post, "/api/v1/asset-assignments/1/return")
+            (HttpMethod.Post, "/api/v1/asset-assignments"), (HttpMethod.Post, "/api/v1/asset-assignments/1/return"),
+            (HttpMethod.Post, "/api/v1/asset-assignments/1/transfer"), (HttpMethod.Get, "/api/v1/assets/1/assignments")
         })
         {
             using var request = new HttpRequestMessage(method, path) { Content = new StringContent("not-json") };
@@ -79,7 +80,7 @@ public sealed class AssignmentRolloutTests
         await using var factory = Factory(environment, "true", readiness);
         using var client = factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new("Bearer", "synthetic-invalid-token");
-        foreach (var path in new[] { "/api/v1/asset-assignments", "/api/v1/asset-assignments/1/return" })
+        foreach (var path in new[] { "/api/v1/asset-assignments", "/api/v1/asset-assignments/1/return", "/api/v1/asset-assignments/1/transfer", "/api/v1/assets/1/assignments" })
         {
             using var response = await client.PostAsync(path, new StringContent("not-json"));
             Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
@@ -90,7 +91,7 @@ public sealed class AssignmentRolloutTests
             var body = error.ToString();
             Assert.DoesNotContain("ep-fixture", body); Assert.DoesNotContain("synthetic-not-used", body);
         }
-        Assert.Equal(2, readiness.Calls);
+        Assert.Equal(4, readiness.Calls);
     }
 
     [Theory]
