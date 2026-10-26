@@ -103,7 +103,7 @@ public static class Permissions
     public static readonly string[] Read = [AssetRead, AssetHistory, DepartmentRead, TypeRead, DashboardRead, UserLookup];
     // Support assignment reads require a scoped support contract, not this unrestricted service.
     public static readonly string[] Operate = [AssetCreate, AssetUpdate, AssetArchive, AssetStatus, AssetCost, RoleRead,
-        AssignmentRead, AssignmentAssign, AssignmentReturn, AssignmentTransfer, .. ImportExport, .. Maintenance];
+        AssignmentRead, AssignmentAssign, AssignmentReturn, AssignmentTransfer, .. ImportExport, .. Maintenance, .. SoftwarePermissions.All];
     public static readonly string[] Admin = [DepartmentCreate, DepartmentUpdate, DepartmentArchive, TypeCreate, TypeUpdate, TypeArchive,
         UserRead, UserCreate, UserUpdate, UserStatus, RoleAssign, RolePermissionsRead, AuditRead];
     public static readonly string[] Reports = [ReportAssets, ReportAssignments, ReportMaintenance, ReportLicenses, ReportReplacement, ReportCost, DashboardCost];

@@ -22,7 +22,7 @@ public sealed class LocalAssignmentCompletionTests
     private const string Email = "excel-jwt@fixture.test";
     private const string Password = "Synthetic-test-password-2026!";
     private const string Path = "/api/v1/asset-assignments";
-    private sealed class Ready : IAssignmentSchemaReadiness, IMaintenanceSchemaReadiness
+    private sealed class Ready : IAssignmentSchemaReadiness, IMaintenanceSchemaReadiness, ISoftwareReadiness
     { public Task<bool> IsReadyAsync(CancellationToken cancellationToken) => Task.FromResult(true); }
     private sealed class FailingAudit(IAuditWriter inner) : IAuditWriter
     {
@@ -33,7 +33,7 @@ public sealed class LocalAssignmentCompletionTests
             if (action == "assignments.transfer" && ++count == 2) throw new InvalidOperationException("Synthetic transfer audit failure");
         }
     }
-    internal static WebApplicationFactory<Program> Factory(bool failingAudit = false, bool frontend = false, int? port = null, bool maintenance = false)
+    internal static WebApplicationFactory<Program> Factory(bool failingAudit = false, bool frontend = false, int? port = null, bool maintenance = false, bool software = false)
     {
         var factory = new WebApplicationFactory<Program>();
         if (port.HasValue) factory.UseKestrel(port.Value);
@@ -43,13 +43,14 @@ public sealed class LocalAssignmentCompletionTests
             builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?> {
                 ["ConnectionStrings:DefaultConnection"] = "", ["Frontend:Enabled"] = frontend.ToString(), ["Swagger:Enabled"] = "false",
                 ["Logging:LogLevel:Default"] = "None", ["Features:AssignmentApi:Enabled"] = "true",
-                ["Features:MaintenanceApi:Enabled"] = maintenance.ToString(), ["Features:ReportingApi:Enabled"] = "false", ["Features:ImportExportApi:Enabled"] = "true"
+                ["Features:MaintenanceApi:Enabled"] = maintenance.ToString(), ["Features:SoftwareApi:Enabled"] = software.ToString(), ["Features:ReportingApi:Enabled"] = "false", ["Features:ImportExportApi:Enabled"] = "true"
             }));
             builder.ConfigureServices(services => {
                 services.AddDbContext<AppDbContext>(options => options.UseNpgsql(Environment.GetEnvironmentVariable("ITAM_LOCAL_POSTGRES_TEST_CONNECTION"),
                     provider => provider.MigrationsHistoryTable("ef_migrations_history", "public")));
                 services.RemoveAll<IAssignmentSchemaReadiness>(); services.AddSingleton<IAssignmentSchemaReadiness, Ready>();
                 services.RemoveAll<IMaintenanceSchemaReadiness>(); services.AddSingleton<IMaintenanceSchemaReadiness, Ready>();
+                services.RemoveAll<ISoftwareReadiness>(); services.AddSingleton<ISoftwareReadiness, Ready>();
                 if (failingAudit) { services.RemoveAll<IAuditWriter>(); services.AddScoped<IAuditWriter>(sp => new FailingAudit(new AuditWriter(sp.GetRequiredService<AppDbContext>(), sp.GetRequiredService<IActor>()))); }
             });
         });

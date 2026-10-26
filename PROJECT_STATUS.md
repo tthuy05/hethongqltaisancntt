@@ -1,5 +1,13 @@
 # Project Status
 
+## 26/10/2026 — Software catalog — LOCAL ACCEPTANCE / production PLANNED
+
+Nhánh `codex/software-catalog` từ main281fe2f. Có API EP-046–050, adapter/UI tìm kiếm/lọc/phân trang/sort, chi tiết/thêm/sửa/ngừng; PM backend sinh immutable; version/precondition, license dependency, audited rollback, fresh effective permission và feature/readiness gates. Catalog source46, seed bổ sung4definitions+8Admin/Manager grants; không cấp Support. Không có migration mới, không ghi shared Neon, không bật Software/Reporting/License/Replacement trên Render. Kiểm thử cuối: Release 0 warnings/errors; 833 unit PASS, 235 integration PASS/163 cloud SKIP; 413 frontend PASS; 55 JS/59 CSP checks PASS; production frontend build PASS. Browser PostgreSQL local CRUD/search/version/archive PASS, app console không warning/error. Chi tiết nghiệm thu tại docs/software-catalog.md.
+
+## 26/10/2026 — Assignment/Maintenance — PRODUCTION DEPLOYED
+
+PR7 đã merge; main281fe2fc889fb492e3bfd798a0be31b3f50dd482, CI40261351423 gồm Docker Linux PASS, Render dep-dbfc2dc9v7es73dai49g Live và /health/version Matched cùng SHA. Backup snapshot+restore PostgreSQL local PASS trước seed; narrow seed tăng33→42permissions,59→82rolelinks; repeat0;17business tables unchanged trước/sau seed, không EF migration mới. Production Manager Auth/assets/catalog/Assignment/Maintenance/technician API200, audit403 đúng quyền; browser list/form lookups PASS, không tạo workflow thật để thử. Admin/Support production login chưa kiểm chứng do credential local không khớp; isolated JWT/grants/scope đã PASS. Các mục UNDER REVIEW bên dưới là evidence lịch sử trước phát hành.
+
 ## 26/10/2026 — Public Assignment/Maintenance rollout — PREPARED
 
 - Được phép merge main và đưa workflow lên web; chuẩn bị UI opt-in, giới hạn ingress120/phút +8đồng thời trước readiness, seed phối hợp identity lock. Server defaults vẫn đóng đến khi cấu hình Render được duyệt theo yêu cầu hiện tại.

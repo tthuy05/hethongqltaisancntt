@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased — 26/10/2026 — Software catalog
+
+- Added: Software list/detail/create/update/archive API and UI, backend-generated immutable PM codes, permission/version/active-license guards and atomic audit.
+- Added: closed-by-default Software rollout/readiness gate and explicit additive Development setup/permission seed; no new migration or production activation.
+- Fixed: EF query translates entity filters/sort before DTO mapping. Software tests exercise actual password-authenticated local PostgreSQL and browser CRUD.
+
+## Released — 26/10/2026 — Assignment/Maintenance
+
+- PR7 merged as281fe2f; main CI/Docker PASS, Render Live revision matched. Approved additive permissions and sequence preparation completed with real backup/restore verification. Manager production read/form smoke PASS; no business workflow fixture written on shared Neon. Historical preparation entries below remain scoped to their original checkpoints.
+
 ## Unreleased — 26/10/2026 — Public workflow rollout preparation
 
 - Added: production UI opt-in for Assignment/Maintenance, retaining permission checks and closed server defaults.

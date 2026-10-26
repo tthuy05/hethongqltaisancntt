@@ -9,6 +9,51 @@ public sealed record SeedCredentials(string Email, string Password);
 public sealed record SeedResult(int Roles, int Permissions, int RolePermissions, int Departments, int AssetTypes, int Users, int UserRoles, int Added);
 public sealed class DevelopmentSeed(AppDbContext db, IRepository repo, IUnitOfWork uow, IPasswordService passwords, IAuditWriter audit)
 {
+    public async Task<int> PrepareSoftwareCatalogAsync(CancellationToken ct = default)
+    {
+        if (db.Database.CurrentTransaction != null) throw new InvalidOperationException("Sequence preparation requires an independent transaction.");
+        await db.Database.OpenConnectionAsync(ct);
+        try
+        {
+            // Canonical, idempotent initialization under the generator's advisory lock;
+            // never consume a code or roll sequence DDL back with permission changes.
+            await BusinessCodeGeneratorEngine.EnsureSequenceAsync(db.Database.GetDbConnection(), null,
+                "software_code_sequence", "PM", "softwares", "code", ct);
+        }
+        finally { await db.Database.CloseConnectionAsync(); }
+        return await RunSoftwarePermissionsAsync(ct);
+    }
+
+    // Explicit additive catalog step; never migrates or changes users/existing grants.
+    public Task<int> RunSoftwarePermissionsAsync(CancellationToken ct = default) => uow.RunAsync(async () =>
+    {
+        await repo.LockAsync("development-seed", ct);
+        await repo.LockAsync("users-identity", ct);
+        await db.Set<Software>().AnyAsync(ct);
+        var roles = await db.Set<Role>().Where(x => Permissions.Roles.Contains(x.Code)).ToListAsync(ct);
+        if (roles.Count != 3 || roles.Any(x => !x.IsActive)) throw new InvalidOperationException("Existing active fixed roles required.");
+        if (await (from link in db.Set<RolePermission>() join role in db.Set<Role>() on link.RoleId equals role.Id
+            join permission in db.Set<Permission>() on link.PermissionId equals permission.Id
+            where role.Code == "TECHNICAL_SUPPORT" && SoftwarePermissions.All.Contains(permission.Code) select link.Id).AnyAsync(ct))
+            throw new InvalidOperationException("Support grants require independent review.");
+        var created = new List<object>();
+        foreach (var code in SoftwarePermissions.All)
+        {
+            var permission = await db.Set<Permission>().SingleOrDefaultAsync(x => x.Code == code, ct);
+            if (permission is { IsActive: false }) throw new InvalidOperationException("Inactive permission requires review.");
+            if (permission == null) { permission = new Permission { Code = code, Name = code, Module = "software" }; db.Add(permission); created.Add(permission); await db.SaveChangesAsync(ct); }
+            foreach (var role in roles.Where(x => x.Code != "TECHNICAL_SUPPORT"))
+                if (!await db.Set<RolePermission>().AnyAsync(x => x.RoleId == role.Id && x.PermissionId == permission.Id, ct))
+                {
+                    var grant = new RolePermission { RoleId = role.Id, PermissionId = permission.Id, GrantedAtUtc = DateTime.UtcNow };
+                    db.Add(grant); created.Add(grant);
+                }
+        }
+        await db.SaveChangesAsync(ct);
+        foreach (var entity in created) audit.Record("development.software-permissions.seed", entity, null, "SYSTEM");
+        await db.SaveChangesAsync(ct); return created.Count;
+    }, ct);
+
     // Explicit Week 4 catalog/grants only; never reset accounts or restore unrelated grants.
     public Task<int> RunAssignmentPermissionsAsync(CancellationToken ct = default) =>
         SeedAssignmentPermissionsAsync([Permissions.AssignmentRead, Permissions.AssignmentAssign, Permissions.AssignmentReturn], ct);

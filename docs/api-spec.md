@@ -1,5 +1,17 @@
 # API Specification
 
+## Runtime 26/10/2026 — Software catalog (local acceptance, production PLANNED)
+
+EP-046–050 có source trên `codex/software-catalog`; chưa phát hành. Base `/api/v1/software` (số ít). GET list nhận `page`≥1, `pageSize`1..100, `keyword`≤200 tìm code/name không phân biệt hoa thường, `vendor`≤250 tìm publisher, `status=Active|Inactive`, `sortBy=name|code|publisher|createdAt`, `sortDirection=asc|desc`; tie-break id cùng chiều, offset int32. Tham số lạ hoặc lặp trả400. List trả PagedResponse; GET detail200+ETag; POST201+Location; PUT200; DELETE204 ngừng hoạt động mềm.
+
+Create `SoftwareRequest`: `name` bắt buộc≤250, `publisher`≤250, `version`≤100, `description`≤2000; chuỗi trim, optional rỗng thành null. Update cùng fields và `rowVersion` Base64 đúng16bytes bắt buộc. Không nhận `code`, `isActive`, timestamps hoặc fields lạ; create không nhận rowVersion. DELETE cần strong If-Match chứa rowVersion; thiếu428, sai400. SoftwareDto: id/code/name/publisher/version/description/isActive/createdAt/updatedAt/rowVersion; không chứa license key, chi phí hay dữ liệu người dùng.
+
+Mỗi action cần `software.read` và quyền tương ứng `software.create|update|archive`; không tự cộng quyền theo role. Chưa có dữ liệu404 SOFTWARE_NOT_FOUND; phiên/quyền401/403; version cũ409 CONCURRENCY_CONFLICT; phần mềm inactive409 SOFTWARE_INACTIVE; còn bất kỳ license is_active=true409 SOFTWARE_ACTIVE_LICENSES; trùng code409 SOFTWARE_CODE_CONFLICT. Error RFC7807/traceId, không echo secret. Không có hard-delete/khôi phục hoặc License mutation API trong slice này.
+
+Server `Features:SoftwareApi:Enabled` mặc địnhfalse:404 trước DB/auth và ẩn discovery. True nhưng thiếu schema/PM sequence/4definitions+8Admin/Manager grants hoặc có Support software grant:503 SOFTWARE_NOT_READY, Retry-After30. Ready mới kiểm JWT/quyền. Cùng ingress120/phút,8đồng thời với workflow, vượt429. Client factory `softwareEnabled=false`; chỉ previewlocalhost `?software=1#/software`, không được bật bằng query trên production. Production entry vẫn đóng. Luồng frontend không tự retry write khi lỗi mạng/409; yêu cầu đọc lại.
+
+Assignment/Maintenance hiện đã rollout main `281fe2f`, Render matched revision; các addendum UNDER REVIEW phía dưới là lịch sử trước rollout. Software không làm thay đổi các route hiện có.
+
 ## Runtime addendum 25/10/2026 — Assignment/Maintenance — UNDER REVIEW
 
 Update 26/10: không đổi DTO/routes; mutation còn kiểm tra lại account/token/effective grants sau lock wait, trước ghi. Nếu account/token đã thay đổi trả401 UNAUTHORIZED; grant đã thu hồi trả403 FORBIDDEN, toàn transaction không đổi dữ liệu. UI yêu cầu refresh/login, không tự replay. Local acceptance tại handoff; chưa bật production.

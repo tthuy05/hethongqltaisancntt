@@ -1,5 +1,9 @@
 # Tài Liệu Kỹ Thuật: Hệ Thống Tự Động Sinh Mã Quản Lý Nghiệp Vụ
 
+## 26/10/2026 — Software catalog integration
+
+Software CRUD local sử dụng ISoftwareCodeGenerator hiện có; PM immutable, không nhận code trong request/form. Explicit Development `--seed-software-permissions` provision duy nhất PM sequence bằng EnsureSequenceAsync canonical bên ngoài business transaction, không consume code; sau đó seed additive. GET readiness không được tạo sequence. CRUD chạy trong audited transaction, khởi tạo độc lập qua cơ chế DI/Npgsql đã gia cố; không thiết kế lại generator, không thay sequence khác. Shared Neon/production rollout Software vẫn PLANNED.
+
 Tài liệu này chuẩn hóa và ghi nhận toàn diện cơ chế tự sinh mã quản lý nội bộ trong hệ thống IT Asset Management, tuân thủ nguyên tắc đồng bộ tài liệu kỹ thuật được thiết lập tại [AGENTS.md](../AGENTS.md).
 
 ---

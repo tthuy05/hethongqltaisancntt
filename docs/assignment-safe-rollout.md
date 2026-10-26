@@ -1,5 +1,13 @@
 # Triển khai Assignment an toàn theo ba giai đoạn — 09/10/2026
 
+## 26/10/2026 — Latest actual rollout result (supersedes PREPARED checkpoints below)
+
+PR7 merged main281fe2fc889fb492e3bfd798a0be31b3f50dd482. CI40261351423 PASS including Docker Linux; Render dep-dbfc2dc9v7es73dai49g Live, artifactRevision/renderRevision matched. Auto-Deploy After CI Checks Pass observed. Only AssignmentApi/MaintenanceApi flags added; existing secrets and downtime flag unchanged.
+
+Consistent pg_export_snapshot backup129298bytes, checksum/archive verification and independent restore20public tables PASS; external backup workflow-rollout-20261026-b7818a17 is not tracked. Logical recovery verified; PITR not claimed. Canonical BT sequence prepared, narrow atomic permissions33→42 and rolelinks59→82, secondseed0, Support exact5Maintenance and noAssignment/cost/global grants. Seventeen business tables unchanged before/after seed; auth smoke later legitimately updates login/audit metadata. No migration applied in this rollout.
+
+Manager production login/me/assets/departments/asset-types/assignments/maintenance/technicians200 and audit403; browser workflow lists and create-form lookups PASS then canceled. No assignment/ticket created on shared Neon for smoke. Admin/Support production credentials did not match private local files, no invalid login/reset attempted; their production login remains UNVERIFIED, isolated JWT/scope tests PASS. Software remains a separate closed module and is not part of this deployment.
+
 ## Addendum 26/10/2026 — Public workflow rollout / PREPARED
 
 Người dùng đã cho phép merge main và đưa Cấp phát/Bảo trì lên web. Code completion1f8b8db đã PASS CI40218001844, gồm Docker Linux. Các checkpoint A/B/S18 và phần lịch sử bên dưới giữ nguyên; kế hoạch hiện tại không tạo/apply migration mới hoặc suspend Render.
