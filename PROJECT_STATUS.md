@@ -1,5 +1,12 @@
 # Project Status
 
+## 27/10/2026 — Tiếp quản License allocation — LOCAL ACCEPTANCE / production PLANNED
+
+- Fetch/pull origin/main: đã ở mới nhất c8baff1, License CRUD đã merge PR9; không làm lại CRUD. Nhánh feature/license-allocation có WIP, đã lưu checkpoint ngoài Git trước sửa; sáu artifact cá nhân giữ nguyên.
+- Hoàn thiện cấp/thu hồi/điều chuyển/historical list và UI. Sửa audit chưa Save, capacity lock của revoke, stale tracked transfer, type/expiry/backdate, paging/filter/sort, If-Match/body mismatch, Notes overflow, trạng thái revoked không phụ thuộc archive, stale session/response và blind retry.
+- Catalog/policy56 thống nhất, narrow allocation seed4+8; thêm gate LicenseAllocationApi riêng mặc định đóng. Sửa AES zero-key Development fallback và effective grant check cho reveal. Không migration, seed shared, thay connection string hoặc deploy Render.
+- Browser JWT/PostgreSQL local PASS: assign1/1→transfer1/1→revoke0/1, lịch sử hai bản ghi giữ nguyên, console không warning/error. Final checks/log tại test-results/allocation-*; technical handoff bổ sung vào docs/license-catalog.md.
+
 ## 26/10/2026 — License CRUD — LOCAL ACCEPTANCE / production PLANNED
 
 Nhánh `codex/license-crud` kế thừa từ `codex/software-catalog` và main `ea6e6d7`.

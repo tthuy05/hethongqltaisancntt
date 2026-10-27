@@ -17,6 +17,6 @@ const localHost = ['localhost', '127.0.0.1'].includes(hostname);
 const demoRequested = new URLSearchParams(globalThis.location?.search ?? '').get('demo') === '1';
 const softwarePreview = localHost && !demoRequested && new URLSearchParams(globalThis.location?.search ?? '').get('software') === '1';
 const licensePreview = localHost && !demoRequested && (new URLSearchParams(globalThis.location?.search ?? '').get('license') === '1' || softwarePreview);
-export const services = createServices({ mode: localHost && demoRequested ? 'mock' : 'api', hostname, assignmentEnabled: true, maintenanceEnabled: true, importExportEnabled: true, softwareEnabled: softwarePreview, licenseEnabled: licensePreview });
+export const services = createServices({ mode: localHost && demoRequested ? 'mock' : 'api', hostname, assignmentEnabled: true, maintenanceEnabled: true, importExportEnabled: true, softwareEnabled: softwarePreview, licenseEnabled: licensePreview, licenseAllocationEnabled: licensePreview && new URLSearchParams(globalThis.location?.search ?? '').get('allocation') === '1' });
 export const { auth, assets, departments, assetTypes, dashboard, importExport } = services;
 export default services;

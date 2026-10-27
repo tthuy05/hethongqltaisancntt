@@ -1,5 +1,11 @@
 # Thiết kế bảo mật
 
+## 27/10/2026 — License rollout/security correction
+
+Bỏ fallback AES key cố định toàn0 ở Development; mọi runtime License key cần version/material256-bit cấu hình ngoài Git qua user-secrets/environment. Không sửa connection string/JWT/Brevo hoặc tự rotate ciphertext. QA dùng key ngẫu nhiên trong bộ nhớ và database mới. Nếu dữ liệu dev-v1 cũ tồn tại, chuẩn bị quy trình khôi phục/đổi khóa có kiểm soát trước rollout; không drop/reset để né lỗi. Source gate closed mặc định, thiếu config/schema/grants trả503 thay vì cho nghiệp vụ chạy.
+
+License catalog/policy registration thống nhất, key management/reveal giới hạn Admin+explicit grants; reveal đọc lại effective custom User grants dưới identity lock. Allocation có cờ riêng, kiểm quyền lại sau lock wait; DTO không key/ciphertext/cost, email chỉ khi có directory read. Mutations audit nguyên tử; lỗi hoặc chưa rõ commit buộc refresh, không retry mù. Chưa mở hoặc thay secrets trên production.
+
 ## Runtime addendum 26/10/2026 — Workflow authorization / UNDER REVIEW
 
 Public rollout: WorkflowIngress giới hạn120 request/phút và8 đồng thời cho toàn bộ workflow đã bật trong mỗi process, trước readiness mở kết nối DB. Không queue; canonical/alias/history chia sẻ budget, không phân vùng theo user/IP nên không tạo partition không giới hạn. 429 có Retry-After60; health và API ngoài workflow giữ behavior hiện có. Đây là ingress protection tối thiểu cho public readiness, không thay permission hoặc firewall/load testing. Narrow permission seed còn lấy users-identity sau development-seed lock để không race Role editor; không reset quyền riêng.

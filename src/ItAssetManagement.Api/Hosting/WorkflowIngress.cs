@@ -10,7 +10,8 @@ public static class WorkflowIngress
         AssignmentRollout.IsEnabled(configuration) && AssignmentRollout.IsPath(context.Request.Path) ||
         MaintenanceRollout.IsEnabled(configuration) && MaintenanceRollout.IsPath(context.Request.Path) ||
         SoftwareRollout.IsEnabled(configuration) && SoftwareRollout.IsPath(context.Request.Path) ||
-        LicenseRollout.IsEnabled(configuration) && LicenseRollout.IsPath(context.Request.Path);
+        LicenseRollout.IsEnabled(configuration) && LicenseRollout.IsPath(context.Request.Path) &&
+            (!LicenseRollout.IsAllocationPath(context.Request.Path) || LicenseRollout.IsAllocationEnabled(configuration));
 
     public static PartitionedRateLimiter<HttpContext> CreateLimiter(IConfiguration configuration) =>
         PartitionedRateLimiter.CreateChained(

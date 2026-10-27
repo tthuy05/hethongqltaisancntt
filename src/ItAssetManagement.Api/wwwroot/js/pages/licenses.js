@@ -5,6 +5,7 @@ import { licenseView, licensePageView } from '../models/license-view.js';
 import { ServiceError } from '../services/service-error.js';
 import { validateLicense } from '../services/license-service.js';
 import { licenseAllocationForm } from '../components/license-allocation-form.js';
+import { licenseAllocationPanel } from '../components/license-allocation-panel.js';
 
 const missing = value => value == null ? 'Chưa có dữ liệu' : String(value);
 const planned = () => h('div', {}, pageHeader('License phần mềm', 'Chuẩn bị giao diện theo kế hoạch Tuần5.'),
@@ -292,10 +293,10 @@ export async function licenseListPage(services, { enabled = false, query = { pag
 export async function licenseDetailPage(services, id, { enabled = false, allocationPreparation = null } = {}) {
   if (enabled !== true && services.licenseEnabled !== true) return planned();
   const actorId = requireRead(services);
-  const payload = await services.licenses.get(id);
+  let payload = await services.licenses.get(id);
   if (services.auth.session?.id !== actorId) throw new ServiceError(401, 'SESSION_CHANGED', 'Phiên đã thay đổi.');
   requireRead(services);
-  const value = licenseView(payload);
+  let value = licenseView(payload);
   const info = (label, content) => h('div', { className: 'detail-item' }, h('dt', {}, label), h('dd', {}, content));
 
   const draftForm = allocationPreparation?.enabled === true && can(services, 'license-assignments.assign') ?
@@ -342,19 +343,26 @@ export async function licenseDetailPage(services, id, { enabled = false, allocat
     actions.push(button('Xem khóa', { kind: 'ghost', iconName: 'key', onClick: () => openRevealDialog() }));
   }
 
+  const allocation = await licenseAllocationPanel(services, value);
+  if (services.auth.session?.id !== actorId) throw new ServiceError(401, 'SESSION_CHANGED', 'Phiên đã thay đổi.');
   const root = h('div', {}, pageHeader(value.licenseCode, 'Thông tin license — không reveal key từ trang metadata.',
     { actions }),
     h('section', { className: 'card' }, h('dl', { className: 'card-body detail-grid' },
       info('Phần mềm', value.software?.name || 'Chưa có dữ liệu'), info('Loại', licenseTypeLabels[value.licenseType] || value.licenseType),
-      info('Tổng seat', String(value.totalQuantity)), info('Đã dùng', missing(value.usedQuantity)),
-      info('Còn lại', missing(value.availableQuantity)), info('Key', value.maskedKey ?? 'Chưa có thông tin key'),
+      info('Tổng seat', String(value.totalQuantity)),
+      h('div', { className: 'detail-item' }, h('dt', {}, 'Đã dùng'), h('dd', { id: 'detail-used-quantity' }, missing(value.usedQuantity))),
+      h('div', { className: 'detail-item' }, h('dt', {}, 'Còn lại'), h('dd', { id: 'detail-available-quantity' }, missing(value.availableQuantity))),
+      info('Key', value.maskedKey ?? 'Chưa có thông tin key'),
       info('Hiệu lực', date(value.startsAt)), info('Hết hạn', date(value.expiresAt)),
       info('Trạng thái', statusBadge(value.status, value.isActive)))),
+    allocation?.element,
     draftForm?.element,
     allocationPreparation?.enabled === true && !can(services, 'license-assignments.assign') ?
       h('p', { className: 'info-note' }, 'Bạn có quyền xem metadata nhưng không có quyền chuẩn bị cấp license.') : null,
-    h('p', { className: 'info-note' }, 'Phân bổ/thu hồi/chuyển seat và reveal: PLANNED, chờ Allocation API/DTO của Thiện.'));
-  root.dispose = () => draftForm?.dispose();
+    (!allocation) ?
+      h('p', { className: 'info-note' }, 'Phân bổ/thu hồi/chuyển seat: PLANNED hoặc cần quyền license-assignments.read.') : null);
+
+  root.dispose = () => { draftForm?.dispose(); allocation?.dispose(); };
   return root;
 }
 

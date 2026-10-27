@@ -1,5 +1,7 @@
 # Hệ thống Quản lý & Tối ưu Hạ tầng CNTT Doanh nghiệp
 
+**Cập nhật 27/10/2026:** main `c8baff1` đã có source License CRUD (PR #9). Cấp/thu hồi/điều chuyển bản quyền đã nối và nghiệm thu local trên nhánh `feature/license-allocation`; chưa mở production. Có cờ cấp phát riêng và kiểm soát số seat/phiên bản/audit. [Phạm vi và nghiệm thu](docs/license-catalog.md), [tiến độ](PROJECT_STATUS.md). Các checkpoint phía dưới là lịch sử.
+
 ## Trạng thái mới nhất — 26/10/2026
 
 - **Đã chạy trên Render:** đăng nhập/email kích hoạt, tài sản, danh mục, phân quyền, Import/Export Excel và các luồng Cấp phát/Bảo trì. Main/Render tại `281fe2f`; CI/Docker PASS, revision đã đối chiếu. [Kết quả rollout](docs/assignment-safe-rollout.md).

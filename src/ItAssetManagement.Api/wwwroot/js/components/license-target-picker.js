@@ -12,7 +12,8 @@ const labels = { user: 'Người dùng', asset: 'Tài sản' };
 export function licenseTargetPicker(services, { enabled = false, licenseType, allowedTargets = [], onChange = () => {} } = {}) {
   if (enabled !== true) return { element: h('p', { className: 'info-note' }, 'Allocation target picker — PLANNED.'), dispose() {} };
   const session = services.auth?.session;
-  if (services.mode !== 'api' || !hasPermission(session, 'licenses.read') || !hasPermission(session, 'license-assignments.assign'))
+  if (services.mode !== 'api' || !hasPermission(session, 'licenses.read') ||
+      (!hasPermission(session, 'license-assignments.assign') && !hasPermission(session, 'license-assignments.transfer')))
     throw new ServiceError(403, 'FORBIDDEN', 'Bạn không có quyền chuẩn bị cấp license.');
   const types = licenseType === 'PER_USER' ? ['user'] : licenseType === 'PER_DEVICE' ? ['asset'] :
     ['VOLUME', 'SUBSCRIPTION', 'OTHER'].includes(licenseType) && Array.isArray(allowedTargets)
@@ -37,7 +38,8 @@ export function licenseTargetPicker(services, { enabled = false, licenseType, al
   const search = button('Tìm target', { type: 'button', kind: 'secondary', onClick: performSearch });
   const authorized = target => {
     const user = services.auth?.session;
-    return user?.id === actorId && hasPermission(user, 'licenses.read') && hasPermission(user, 'license-assignments.assign') &&
+    return user?.id === actorId && hasPermission(user, 'licenses.read') &&
+      (hasPermission(user, 'license-assignments.assign') || hasPermission(user, 'license-assignments.transfer')) &&
       hasPermission(user, target === 'user' ? 'users.lookup' : 'assets.read');
   };
   const alive = () => !disposed && root.isConnected && services.auth.session?.id === actorId;

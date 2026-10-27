@@ -115,7 +115,7 @@ public sealed class AssignmentMappingTests
     public void Assignment_permissions_extend_admin_and_manager_including_transfer_without_granting_support()
     {
         var additions = new[] { "assignments.read", "assignments.assign", "assignments.return", "assignments.transfer" };
-        Assert.Equal(46, Permissions.All.Length); Assert.Equal(46, Permissions.All.Distinct().Count());
+        Assert.Equal(56, Permissions.All.Length); Assert.Equal(56, Permissions.All.Distinct().Count());
         Assert.Equal(additions.Order(), Permissions.All.Where(permission => permission.StartsWith("assignments.", StringComparison.Ordinal)).Order());
         foreach (var permission in additions)
         {

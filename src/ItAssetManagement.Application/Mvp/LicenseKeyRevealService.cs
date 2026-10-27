@@ -34,10 +34,8 @@ public sealed class LicenseKeyRevealService(IRepository repo, IUnitOfWork uow,
             var roles = from link in repo.Query<UserRole>() join role in repo.Query<Role>() on link.RoleId equals role.Id
                         where link.UserId == user.Id && role.IsActive select role;
             if (!await repo.AnyAsync(roles.Where(role => role.Code == "ADMIN_IT"), ct)) throw Forbidden();
-            var grants = from role in roles join link in repo.Query<RolePermission>() on role.Id equals link.RoleId
-                         join permission in repo.Query<Permission>() on link.PermissionId equals permission.Id
-                         where permission.IsActive && (permission.Code == Permissions.LicenseRead ||
-                             permission.Code == Permissions.LicenseKeyReveal) select permission.Code;
+            var grants = EffectivePermissionQuery.ForUser(repo, user.Id).Where(code =>
+                code == Permissions.LicenseRead || code == Permissions.LicenseKeyReveal);
             if (await repo.CountAsync(grants.Distinct(), ct) != 2) throw Forbidden();
             Validation.Required(reason, 1000, "reason");
             var license = await repo.FirstAsync(repo.Query<SoftwareLicense>().Where(l => l.Id == licenseId), ct) ??

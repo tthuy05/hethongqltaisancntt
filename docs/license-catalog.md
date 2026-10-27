@@ -1,5 +1,51 @@
 # Phân hệ Quản lý Bản quyền (License Catalog) — Tài liệu kỹ thuật và Nghiệm thu
 
+## Cập nhật 27/10/2026 — Phân bổ bản quyền: nghiệm thu local, production PLANNED
+
+Tiếp quản WIP `feature/license-allocation` từ main `c8baff1` (License CRUD đã merge PR #9). Không làm lại CRUD hoặc sửa schema/migration. Checkpoint WIP đầu lượt được lưu ngoài Git trong thư mục local Checkpoints; các tài liệu cá nhân và backup không được stage.
+
+### 1. Chức năng và luồng xử lý
+
+Tab phân bổ trong chi tiết License: tìm người/thiết bị, cấp một seat, thu hồi, điều chuyển trong cùng license, xem lịch sử và lọc Active/Revoked/All có phân trang. UI → authenticated adapter → LicenseAssignmentController → LicenseAssignmentService → audited transaction/PostgreSQL. Write thành công làm app đọc lại metadata/capacity và danh sách; không giả lập tăng/giảm seat ở client.
+
+### 2. API và DTO
+
+EP-057–062: GET/POST `/api/v1/license-assignments`, GET `/{id}`, POST `/{id}/revoke`, POST `/{id}/transfer`, GET `/api/v1/software-licenses/{licenseId}/assignments`. Assign nhận `{softwareLicenseId,userId?,assetId?,assignedAt?,notes?}`; revoke `{rowVersion,revokedAt?,reason?}`; transfer `{rowVersion,userId?,assetId?,transferredAt?,reason?}`. Target XOR, không có quantity nhập tay. RowVersion Base64 16 bytes; If-Match được hỗ trợ, nếu đồng thời có body version thì phải khớp. Assign201+Location; detail/list/commands200, ETag trên detail; lỗi RFC7807.
+
+List nhận page≥1/pageSize1..100, offset int32; licenseId/userId/assetId dương, status Active|Revoked|All, targetType user|asset, from/to, sortBy assignedAt|revokedAt|id, sortDirection asc|desc; mặc định assignedAt desc và id tie-breaker. Tham số lạ/lặp/bộ lọc sai trả400; parent license không tồn tại404. HTTP query binder chuẩn hóa timezone offset sang UTC; timestamps ghi JSON phải UTC, không ở tương lai hoặc trước ngày cấp.
+
+DTO giữ id/licenseCode/softwareName, target IDs/names, actor IDs/names, assignedAtUtc/revokedAtUtc, notes/isArchived/createdAtUtc/rowVersion; không key/ciphertext/chi phí. Email người nhận chỉ trả nếu actor có users.lookup hoặc users.read. RevokedAtUtc khác null đã là thu hồi dù isArchived=false; UI không còn nút thao tác trên hàng đóng.
+
+### 3. Nghiệp vụ và transaction
+
+Mọi capacity writer dùng cùng thứ tự: target asset row nếu có → software:{id} → license row FOR UPDATE → assignment row nếu có → users-identity. Đọc lại state/version/grants sau khi chờ khóa. Assign/transfer kiểm license đang có hiệu lực tại clock hiện tại, không cho backdate để dùng license đã hết hạn. PER_USER chỉ User, PER_DEVICE chỉ Asset; các loại còn lại nhận một trong hai target. User phải active/confirmed/không admin-locked; asset không archived/retired; software active; chặn target trùng và hết seat.
+
+Transfer đóng row cũ và Save trước insert để giải phóng partial UNIQUE, kiểm capacity lại sau close; không tăng tổng seat, không chuyển cross-license. Revoke cũng khóa license nên phối hợp được với giảm totalQuantity/archive. Notes cũ không bị cắt: phần reason ghép vào Notes phải nằm trong giới hạn tổng 1000 ký tự, vượt trả400. Không xóa history. Mutation và audit phải Save/commit cùng transaction; audit lỗi rollback cả close/insert/số lượng/lịch sử. Không replay sau lỗi mạng hoặc trạng thái commit chưa rõ.
+
+### 4. Quyền và bảo mật
+
+Mọi endpoint cần licenses.read + license-assignments.read; write cần thêm assign/revoke/transfer tương ứng. Bốn quyền allocation dành cho Admin/Manager, không có Support. Custom grants qua EffectivePermissionQuery; quyền bị thu hồi trong lúc chờ capacity lock phải chặn trước ghi. Catalog biên dịch hiện56: metadata License4 + key manage/reveal2 + allocation4 được nối vào catalog46 trước đó; không phải số permission đã seed shared.
+
+Không dùng khóa AES toàn số0/dev fallback. Cấu hình LicenseKeyEncryption ActiveVersion và Keys phải đến từ user-secrets/environment bên ngoài Git, dùng khóa256-bit. Khi chưa cấu hình/schema/grants đủ, readiness trả503. Key manage/reveal chỉ Admin, không tự cấp theo vai trò; reveal kiểm lại effective User grants dưới identity lock. Các đoạn bên dưới nói dev-v1 fallback là lịch sử, không còn áp dụng. Nếu đã có ciphertext dev-v1 cũ, cần quy trình bảo toàn/đổi khóa có kiểm soát trước rollout; task này không rotate hoặc xóa dữ liệu.
+
+### 5. Phụ thuộc
+
+LicenseAssignmentService/Controller, ILicensePersistence/LicensePersistence, LicenseCapacityPolicy, WorkflowAuthorization, Role/Permission catalog, license-allocation-panel.js, license-assignment-service.js và target picker hiện có. Dùng bảng softwares/software_licenses/license_assignments/User/Asset/RBAC đã có; không migration mới. Bổ sung guard LicenseCode/SoftwareId bất biến trong persistence, không đổi EF model.
+
+### 6. Trạng thái rollout và vận hành
+
+Source local đã nối; production PLANNED, chưa seed Neon hoặc bật Render. Ngoài Features:LicenseApi:Enabled còn cần **Features:LicenseAllocationApi:Enabled=true**; mặc định false, License flag false luôn thắng. Closed allocation404 trước readiness và không dùng ingress budget; thiếu baseline trả503/Retry-After30; ready mới kiểm JWT401/quyền403. Hai routes allocation được gỡ khỏi API discovery khi đóng. Có thể mở CRUD riêng mà không mở allocation. Client mặc định licenseAllocationEnabled=false, preview chỉ localhost `?license=1&allocation=1#/licenses/{id}`; production entry không bật.
+
+Lệnh Development riêng `--seed-license-allocation-permissions`: chỉ thêm4definitions +8Admin/Manager grants trong audited transaction, khóa development-seed→users-identity, chạy lại thêm0; không sửa user/password/custom grants, không tự migrate/startup seed. Lệnh `--seed-license-permissions` vẫn chỉ metadata/key6, không lẫn allocation. Chưa chạy các lệnh này trên shared Neon.
+
+### 7. Nghiệm thu
+
+PostgreSQL18 local mới, SCRAM/password, không pooling/PersistSecurityInfo; prefix itam_local_verify_. Real JWT: assign→transfer tại capacity đầy→revoke/history, last-seat race một winner, quantity-decrease-vs-assign giữ used≤total, quyền revoke bị thu hồi trong lúc chờ row lock trả403, audit-failure rollback, target type/expiry/backdate, query validation và che email/cost/key. Model không có pending changes. Browser cùng API/PostgreSQL local: cấp1/1→chuyển giữ1/1→thu hồi0/1, hai hàng lịch sử đã đóng, không còn nút sửa hàng đóng; console không warning/error. Ảnh/log trong test-results/allocation-* (ignored). Kết quả final suite tại PROJECT_STATUS.md; cloud SKIP không tính PASS.
+
+### 8. Phần còn lại và tiếp quản
+
+PLANNED: review/CI, phê duyệt shared seed/key configuration/rollout và production E2E; Replacement/Reports nằm ngoài scope. Không tự mở module, merge main, deploy hoặc seed production. Các backend Asset/User writers hiện có không bị sửa; việc tự động thu hồi license khi target nghỉ việc/retire chưa nằm trong hợp đồng này. Khi mở thật cần backup/rehearsal, đủ catalog/grants/key material, enable CRUD rồi allocation và xác minh đúng revision; lỗi đóng flags/rollback app, không Down/drop/reset database.
+
 Ngày: 26/10/2026. Nhánh `codex/license-crud`.
 Trạng thái: Hoàn thiện Backend CRUD, Frontend UI/Client, Security, Concurrency và Kiểm thử 100% Local PASS; **Production rollout PLANNED (Feature Flag Disabled)**.
 
