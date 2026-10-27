@@ -124,6 +124,10 @@ software-accepted-dotnet.log, software-release-final.log,
 software-final-frontend.log, software-csp.log, software-production-build.log.
 Các cloud tests SKIP không được tính PASS.
 
+## Chuẩn bị rollout — 28/10/2026
+
+Neon read-only có bảng softwares nhưng0 dòng, chưa software sequence/quyền. Backup/restore drill và narrow seed trên bản phục hồi local PASS (4 definitions+8 Admin/Manager grants; repeat0, Support0), không ghi shared. Frontend production được chuẩn bị bật cùng License/Allocation trên nhánh riêng, chưa deploy. Điều kiện key/backup/grants, trình tự phối hợp, verification và rollback tập trung trong [license-catalog.md](license-catalog.md#chuẩn-bị-rollout-software--license--28102026), không tạo kế hoạch trùng lặp.
+
 ## 7. Những phần chưa hoàn thiện
 
 **PLANNED:** rollout Software lên shared Neon/Render, seed thật và nghiệm thu

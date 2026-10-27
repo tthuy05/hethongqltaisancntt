@@ -1,3 +1,9 @@
+## Software + License rollout — 28/10/2026
+
+**PREPARED / WAITING FOR PRODUCTION PREREQUISITES** trên `codex/software-license-rollout`. Main/Render Live `6e43bdf`. Neon read-only19business tables/44FK/5migrations,42permissions/82grants; Software/License/Allocation0rows, no ciphertext/sequence/module grants. Backup + local restore drill PASS, PITR UNVERIFIED. Seed rehearsal trên bản phục hồi56permissions/108grants, repeat0, Support0/nonAdmin key0, business data preserved. Chưa ghi shared hoặc bật flags/key trên Render.
+
+Chuẩn bị frontend Software/License/Allocation; giữ các module cũ và đóng Reporting. Release0warnings/errors;867unit/249integration/434frontend PASS,163cloudSKIP;57JS/61CSP PASS; production build56assets PASS. Docker/CI, key provisioning và production E2E còn PENDING. Chi tiết/sequence/recovery trong [license-catalog.md](docs/license-catalog.md). Các file cá nhân giữ nguyên; source rollout chuẩn bị review trên nhánh riêng, chưa merge/deploy.
+
 ## Nhật ký thao tác — 27/10/2026
 
 **IMPLEMENTED LOCALLY / UNDER REVIEW** trên `feature/audit-log-improvements`, base main `e4d1c35` (PR #10 License Allocation đã merge). Fetch và `pull --ff-only origin main`: Already up to date; bảo toàn WIP và artifact cá nhân.
