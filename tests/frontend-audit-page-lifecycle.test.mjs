@@ -102,3 +102,22 @@ test('an expired current audit session routes to login after its detail request 
     assert.doesNotMatch(dom.body.textContent, /expired-fixture/);
   } finally { dom.restore(); }
 });
+
+
+test('audit displays friendly actor/action as text and keeps action code and category', async () => {
+  const dom = installDom('/audit-logs'); try {
+    const services = source(); let query;
+    const item = { ...entry, actorFullName: '<b>Admin</b>', actionDescription: 'Cập nhật tài sản' };
+    services.auditLogs.list = async value => { query = value; return page([item]); };
+    services.auditLogs.get = async () => item;
+    const root = await auditLogPage(services); dom.body.append(root);
+    assert.equal(query.category, 'business');
+    assert.match(root.textContent, /<b>Admin<\/b>/);
+    assert.match(root.textContent, /Cập nhật tài sản/);
+    assert.match(root.textContent, /assets.update/);
+    assert.equal(descendants(root).some(node => node.tagName === 'B'), false);
+    view(root).fire('click'); await until(() => dialogs(dom).length === 1);
+    assert.match(dialogs(dom)[0].textContent, /Cập nhật tài sản/);
+    assert.match(dialogs(dom)[0].textContent, /assets.update/);
+  } finally { dom.restore(); }
+});

@@ -21,6 +21,7 @@ public sealed class AuditLogListQuery
     public string? To { get; set; }
     public string SortBy { get; set; } = "occurredAt";
     public string SortDirection { get; set; } = "desc";
+    public string? Category { get; set; }
     [JsonIgnore] public DateTime FromUtc { get; private set; }
     [JsonIgnore] public DateTime ToUtc { get; private set; }
 
@@ -40,6 +41,9 @@ public sealed class AuditLogListQuery
         if (CorrelationId == Guid.Empty) throw Validation.Invalid("correlationId", "GUID không được rỗng.");
         Action = Filter(Action, 150, "action"); EntityType = Filter(EntityType, 100, "entityType");
         EntityId = Filter(EntityId, 100, "entityId");
+        Category = Filter(Category, 20, "category")?.ToLowerInvariant();
+        if (Category is not (null or "business" or "technical" or "all"))
+            throw Validation.Invalid("category", "Chỉ chấp nhận business, technical hoặc all.");
         if (Outcome is not (null or "SUCCESS" or "FAILURE" or "DENIED"))
             throw Validation.Invalid("outcome", "SUCCESS, FAILURE hoặc DENIED.");
         if (SortBy is not ("occurredAt" or "id") || SortDirection is not ("asc" or "desc"))
@@ -62,8 +66,11 @@ public class AuditLogSummaryDto
     public long Id { get; set; }
     [JsonPropertyName("occurredAt")] public DateTime OccurredAtUtc { get; set; }
     public long? ActorUserId { get; set; }
+    public string? ActorFullName { get; set; }
+    public string? ActorUsername { get; set; }
     public string ActorType { get; set; } = "";
     public string Action { get; set; } = "";
+    public string? ActionDescription { get; set; }
     public string? EntityType { get; set; }
     public string? EntityId { get; set; }
     public string Outcome { get; set; } = "";
@@ -169,6 +176,13 @@ public sealed class AuditLogService(IRepository repo, IActor actor, IUnitOfWork 
         if (query.EntityId != null) logs = logs.Where(x => x.EntityId == query.EntityId);
         if (query.CorrelationId != null) logs = logs.Where(x => x.CorrelationId == query.CorrelationId);
         if (query.Outcome != null) logs = logs.Where(x => x.Outcome == query.Outcome);
+
+        var category = query.Category ?? "all";
+        if (category == "business")
+            logs = logs.Where(x => AuditActionCatalog.BusinessActions.Contains(x.Action));
+        else if (category == "technical")
+            logs = logs.Where(x => !AuditActionCatalog.BusinessActions.Contains(x.Action));
+
         var count = await repo.CountAsync(logs, ct);
         var order = (query.SortBy, query.SortDirection) switch
         {
@@ -176,11 +190,29 @@ public sealed class AuditLogService(IRepository repo, IActor actor, IUnitOfWork 
             ("occurredAt", "asc") => logs.OrderBy(x => x.OccurredAtUtc).ThenBy(x => x.Id),
             _ => logs.OrderByDescending(x => x.OccurredAtUtc).ThenByDescending(x => x.Id)
         };
-        var items = await repo.ListAsync(order.Skip((query.Page - 1) * query.PageSize).Take(query.PageSize).Select(x => new AuditLogSummaryDto
+        var pagedLogs = await repo.ListAsync(order.Skip((query.Page - 1) * query.PageSize).Take(query.PageSize), ct);
+        var userIds = pagedLogs.Where(x => x.ActorUserId.HasValue).Select(x => x.ActorUserId!.Value).Distinct().ToArray();
+        var userDict = userIds.Length > 0
+            ? (await repo.ListAsync(repo.Query<User>().Where(u => userIds.Contains(u.Id)), ct))
+                .ToDictionary(u => u.Id, u => (u.FullName, u.Username))
+            : [];
+        var items = pagedLogs.Select(x =>
         {
-            Id = x.Id, OccurredAtUtc = x.OccurredAtUtc, ActorUserId = x.ActorUserId, ActorType = x.ActorType,
-            Action = x.Action, EntityType = x.EntityType, EntityId = x.EntityId, Outcome = x.Outcome, CorrelationId = x.CorrelationId
-        }), ct);
+            string? actorFullName = null;
+            string? actorUsername = null;
+            if (x.ActorUserId.HasValue && userDict.TryGetValue(x.ActorUserId.Value, out var u))
+            {
+                actorFullName = u.FullName;
+                actorUsername = u.Username;
+            }
+            return new AuditLogSummaryDto
+            {
+                Id = x.Id, OccurredAtUtc = x.OccurredAtUtc, ActorUserId = x.ActorUserId,
+                ActorFullName = actorFullName, ActorUsername = actorUsername,
+                ActorType = x.ActorType, Action = x.Action, ActionDescription = AuditActionCatalog.GetDescription(x.Action),
+                EntityType = x.EntityType, EntityId = x.EntityId, Outcome = x.Outcome, CorrelationId = x.CorrelationId
+            };
+        }).ToList();
         await ViewedAsync(new { page = query.Page, pageSize = query.PageSize, returnedCount = items.Count }, ct);
         return new(items, query.Page, query.PageSize, count, (int)Math.Ceiling(count / (double)query.PageSize));
     }
@@ -192,10 +224,16 @@ public sealed class AuditLogService(IRepository repo, IActor actor, IUnitOfWork 
             ?? throw new BusinessException(404, "AUDIT_LOG_NOT_FOUND", "Không tìm thấy nhật ký thao tác.");
         var before = AuditSnapshot.Read(entry.OldValuesJson, actor.Has(Permissions.AssetCost));
         var after = AuditSnapshot.Read(entry.NewValuesJson, actor.Has(Permissions.AssetCost));
+        User? actorUser = null;
+        if (entry.ActorUserId.HasValue)
+            actorUser = await repo.FirstAsync(repo.Query<User>().Where(u => u.Id == entry.ActorUserId.Value), ct);
         var detail = new AuditLogDetailDto
         {
-            Id = entry.Id, OccurredAtUtc = entry.OccurredAtUtc, ActorUserId = entry.ActorUserId, ActorType = entry.ActorType,
-            Action = entry.Action, EntityType = entry.EntityType, EntityId = entry.EntityId, Outcome = entry.Outcome, CorrelationId = entry.CorrelationId,
+            Id = entry.Id, OccurredAtUtc = entry.OccurredAtUtc, ActorUserId = entry.ActorUserId,
+            ActorFullName = actorUser?.FullName, ActorUsername = actorUser?.Username,
+            ActorType = entry.ActorType,
+            Action = entry.Action, ActionDescription = AuditActionCatalog.GetDescription(entry.Action),
+            EntityType = entry.EntityType, EntityId = entry.EntityId, Outcome = entry.Outcome, CorrelationId = entry.CorrelationId,
             OldValues = before.Values, NewValues = after.Values, SnapshotsRedacted = before.Redacted || after.Redacted
         };
         await ViewedAsync(new { auditLogId = id }, ct); return detail;

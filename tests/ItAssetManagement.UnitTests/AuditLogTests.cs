@@ -104,8 +104,11 @@ public sealed class AuditLogTests
         query.EntityType = "Asset"; query.EntityId = "12"; query.Outcome = "SUCCESS"; query.CorrelationId = repo.Logs[1].CorrelationId;
         var summary = Assert.Single((await Service(repo, writer).ListAsync(query, default)).Items); Assert.Equal(2, summary.Id);
         var json = JsonSerializer.SerializeToElement(summary, new JsonSerializerOptions(JsonSerializerDefaults.Web));
-        Assert.Equal(new[] { "action", "actorType", "actorUserId", "correlationId", "entityId", "entityType", "id", "occurredAt", "outcome" },
+        Assert.Equal(new[] { "action", "actionDescription", "actorFullName", "actorType", "actorUserId", "actorUsername", "correlationId", "entityId", "entityType", "id", "occurredAt", "outcome" },
             json.EnumerateObject().Select(x => x.Name).Order());
+        Assert.Equal("Quản trị viên IT", summary.ActorFullName);
+        Assert.Equal("admin", summary.ActorUsername);
+        Assert.Equal("Cập nhật thông tin tài sản", summary.ActionDescription);
         query.Action = "Asset.Update"; Assert.Empty((await Service(repo, writer).ListAsync(query, default)).Items);
     }
     [Fact]
@@ -127,7 +130,10 @@ public sealed class AuditLogTests
         Assert.Equal(1, JsonSerializer.SerializeToElement(writer.After).GetProperty("auditLogId").GetInt64());
         var json = JsonSerializer.SerializeToElement(detail, new JsonSerializerOptions(JsonSerializerDefaults.Web));
         Assert.False(json.TryGetProperty("requestPath", out _)); Assert.False(json.TryGetProperty("metadataJson", out _));
-        Assert.False(json.TryGetProperty("failureReasonCode", out _)); Assert.Equal(12, json.EnumerateObject().Count());
+        Assert.False(json.TryGetProperty("failureReasonCode", out _)); Assert.Equal(15, json.EnumerateObject().Count());
+        Assert.Equal("Quản trị viên IT", detail.ActorFullName);
+        Assert.Equal("admin", detail.ActorUsername);
+        Assert.Equal("Tạo mới tài sản", detail.ActionDescription);
     }
     [Fact]
     public async Task Invalid_or_missing_detail_does_not_append_a_success_marker()
@@ -325,15 +331,77 @@ public sealed class AuditLogTests
                 ActorType = actorType, Outcome = outcome });
         }
     }
+
+    [Theory]
+    [InlineData("business")] [InlineData("technical")] [InlineData("all")]
+    [InlineData("BUSINESS")] [InlineData(null)]
+    public void Category_filter_valid_values(string? category)
+    {
+        var q = new AuditLogListQuery { Category = category };
+        q.Validate(Now);
+        Assert.Equal(category?.ToLowerInvariant(), q.Category);
+    }
+
+    [Theory]
+    [InlineData("invalid")] [InlineData("other")] [InlineData(" ")]
+    public void Category_filter_invalid_values_fail(string category)
+    {
+        var q = new AuditLogListQuery { Category = category };
+        Assert.Equal(400, Assert.Throws<BusinessException>(() => q.Validate(Now)).Status);
+    }
+
+    [Fact]
+    public async Task Category_filters_business_technical_and_all_before_paging()
+    {
+        var repo = Data();
+        repo.Logs.Add(new AuditLog
+        {
+            Id = 5, OccurredAtUtc = Now.AddHours(-2), ActorUserId = null, ActorType = "SYSTEM",
+            Action = "development.maintenance-permissions.seed", Outcome = "SUCCESS", CorrelationId = Guid.NewGuid()
+        });
+        repo.Logs.Add(new AuditLog
+        {
+            Id = 6, OccurredAtUtc = Now.AddHours(-3), ActorUserId = 1, ActorType = "USER",
+            Action = "unknown.custom.unverified", Outcome = "SUCCESS", CorrelationId = Guid.NewGuid()
+        });
+        var writer = new Writer(repo);
+        var service = Service(repo, writer);
+
+        // Explicit business view excludes technical and unverified actions
+        var businessQuery = Window(); businessQuery.Category = "business";
+        var businessPage = await service.ListAsync(businessQuery, default);
+        Assert.Equal(3, businessPage.TotalItems);
+        Assert.DoesNotContain(businessPage.Items, x => x.Action.StartsWith("development."));
+        Assert.DoesNotContain(businessPage.Items, x => x.Action == "unknown.custom.unverified");
+
+        // Technical view shows only technical and unverified actions
+        var technicalQuery = Window(); technicalQuery.Category = "technical";
+        var technicalPage = await service.ListAsync(technicalQuery, default);
+        Assert.Equal(2, technicalPage.TotalItems);
+        Assert.Contains(technicalPage.Items, x => x.Action == "development.maintenance-permissions.seed");
+        Assert.Contains(technicalPage.Items, x => x.Action == "unknown.custom.unverified");
+
+        // All view shows everything
+        var allQuery = Window(); allQuery.Category = "all";
+        var allPage = await service.ListAsync(allQuery, default);
+        Assert.Equal(5, allPage.TotalItems);
+    }
+
     private sealed class Repository(string roleCode = "ADMIN_IT", bool active = true) : IRepository
     {
         public List<AuditLog> Logs { get; } = []; public int Saves { get; private set; } public bool FailSave { get; set; }
+        public List<User> Users { get; } =
+        [
+            new() { Id = 1, Username = "admin", FullName = "Quản trị viên IT" },
+            new() { Id = 2, Username = "tech1", FullName = "Kỹ thuật viên 1" }
+        ];
         public IQueryable<T> Query<T>(bool tracking = false) where T : class
         {
             Assert.False(tracking);
             if (typeof(T) == typeof(AuditLog)) return (IQueryable<T>)Logs.AsQueryable();
             if (typeof(T) == typeof(UserRole)) return (IQueryable<T>)new[] { new UserRole { UserId = 1, RoleId = 1 } }.AsQueryable();
             if (typeof(T) == typeof(Role)) return (IQueryable<T>)new[] { new Role { Id = 1, Code = roleCode, IsActive = active } }.AsQueryable();
+            if (typeof(T) == typeof(User)) return (IQueryable<T>)Users.AsQueryable();
             throw new NotSupportedException();
         }
         public Task<List<T>> ListAsync<T>(IQueryable<T> query, CancellationToken ct) => Task.FromResult(query.ToList());
