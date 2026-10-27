@@ -1,3 +1,11 @@
+## Nhật ký thao tác — 27/10/2026
+
+**IMPLEMENTED LOCALLY / UNDER REVIEW** trên `feature/audit-log-improvements`, base main `e4d1c35` (PR #10 License Allocation đã merge). Fetch và `pull --ff-only origin main`: Already up to date; bảo toàn WIP và artifact cá nhân.
+
+- Hoàn thiện tên người thao tác/mô tả hành động tiếng Việt, filter business/technical/all trước count/paging; API không truyền category giữ all để tương thích. UI mặc định nghiệp vụ, có chọn kỹ thuật/khác/tất cả và fallback log cũ; không khôi phục các mục Đối tượng đã bỏ.
+- Release **0 warning / 0 error**; **867 unit PASS**, **249 integration PASS / 163 cloud SKIP**, **433 frontend PASS**, **57 JS / 61 CSP PASS**; production frontend build **56 assets PASS**. Regression cuối không có FAIL. PostgreSQL local thật đã kiểm tra category/count, actor labels/detail, validation và JWT/Admin audit access. Log local: `test-results/audit-release-final.log`, `audit-regression-final.log`, `audit-frontend.log`, `audit-csp.log`, `audit-production-build.log` (ignored, không commit).
+- Browser thật/production cho bản vá nhật ký **NOT VERIFIED**; cloud SKIP không được tính PASS. Không migration, không thay permission/flag/configuration, không ghi shared Neon; bản source được duyệt push lên nhánh riêng, chưa merge main hoặc deploy. Chi tiết tại [audit-log.md](docs/audit-log.md).
+
 # Project Status
 
 ## 27/10/2026 — Tiếp quản License allocation — LOCAL ACCEPTANCE / production PLANNED

@@ -60,8 +60,8 @@ public sealed class AuditLogHostTests
 public sealed class AuditLogApiTests(MvpFixture fixture)
 {
     private const string Path = "/api/v1/audit-logs";
-    internal static readonly string[] SummaryFields = ["action", "actorType", "actorUserId", "correlationId", "entityId", "entityType", "id", "occurredAt", "outcome"];
-    internal static readonly string[] DetailFields = ["action", "actorType", "actorUserId", "correlationId", "entityId", "entityType", "id", "newValues", "occurredAt", "oldValues", "outcome", "snapshotsRedacted"];
+    internal static readonly string[] SummaryFields = ["action", "actionDescription", "actorFullName", "actorType", "actorUserId", "actorUsername", "correlationId", "entityId", "entityType", "id", "occurredAt", "outcome"];
+    internal static readonly string[] DetailFields = ["action", "actionDescription", "actorFullName", "actorType", "actorUserId", "actorUsername", "correlationId", "entityId", "entityType", "id", "newValues", "occurredAt", "oldValues", "outcome", "snapshotsRedacted"];
     private string Marker() => fixture.Prefix + ".audit." + Guid.NewGuid().ToString("N")[..8];
     private static DateTime WholeSecond(DateTime value) => new(value.Ticks - value.Ticks % TimeSpan.TicksPerSecond, DateTimeKind.Utc);
     private static string Window(DateTime from, DateTime to) => "from=" + Uri.EscapeDataString(from.ToString("O")) + "&to=" + Uri.EscapeDataString(to.ToString("O"));

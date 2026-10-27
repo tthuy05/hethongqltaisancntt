@@ -512,3 +512,8 @@ Publication addendum: người dùng đã push frontend tại `cae3a31` (`push g
 ## Week 7 — Import/Export & Finalization
 
 - **PLANNED:** Excel import/export, hardening, full regression, documentation và demo preparation.
+
+
+### Changed — 27/10/2026, audit improvements (local / under review)
+
+- Thêm tên người thao tác, nhãn hành động tiếng Việt và bộ lọc nghiệp vụ/kỹ thuật/tất cả; API thiếu category giữ kết quả tương thích cũ. Không thay schema, permissions hoặc production configuration.

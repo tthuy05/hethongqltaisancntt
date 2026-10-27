@@ -66,3 +66,11 @@ test('logout prevents late sensitive audit responses from being consumed', async
   await services.auth.logout(); release({ id: 71, oldValues: {}, newValues: {} });
   await assert.rejects(pending, error => error.status === 401 && error.code === 'SESSION_CHANGED');
 });
+
+
+test('audit category is explicit, validated and survives pagination URLs', () => {
+  for (const category of ['all', 'business', 'technical'])
+    assert.equal(auditQuery('category=' + category + '&page=2').category, category);
+  assert.equal(auditQuery('').category, undefined);
+  assert.throws(() => auditQuery('category=hidden'), error => error.status === 400);
+});

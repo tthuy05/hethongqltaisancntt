@@ -514,3 +514,10 @@ Asset response M1:
 - Status sai/ID filter không dương/page hoặc sort sai trả 400; page vượt trang cuối trả 200 với items rỗng. Mặc định không lấy archived assets. Filter nâng cao `purchaseYear`, `warrantyState`, `userId` vẫn **PLANNED** sau M1, phải bổ sung semantics/test trước khi quảng bá trong generated contract.
 - Error code M1: `VALIDATION_ERROR` (400), `ASSET_NOT_FOUND` (404), `ASSET_CODE_CONFLICT`, `ASSET_SERIAL_CONFLICT`, `CONCURRENCY_CONFLICT`, `ASSET_ACTIVE_WORKFLOW` (409), `PRECONDITION_REQUIRED` (428). Unique race phải map đúng 409 và rollback, không trả SQL exception. Reference không hợp lệ trong POST/PUT trả 400 field error; GET ID không tồn tại/ngoài scope trả 404.
 - EP-028 nhận strong `If-Match: "<base64-rowVersion>"` lấy từ detail; thiếu trả 428, malformed trả 400, stale trả 409. Không chấp nhận wildcard `*` để bỏ version check. Thành công 204, đặt `is_archived`/thời điểm, giữ history và audit trong transaction; active assignment/ticket chưa terminal trả 409. Archive API là Must/M1, archive UI là Should sau M1.
+
+
+### Audit read addendum — 27/10/2026 (local / under review)
+
+`GET /api/v1/audit-logs` thêm query tùy chọn `category`: `business`, `technical`, `all` (không phân biệt hoa/thường ở backend); thiếu category tương đương `all` để tương thích client cũ. Giá trị khác/rỗng trả 400 `VALIDATION_ERROR` theo RFC7807. Phân loại thực hiện trước count/paging; `technical` bao gồm action chưa biết. Query/action/time/sort/permission cũ giữ nguyên.
+
+Summary và detail (`GET /api/v1/audit-logs/{id}`) thêm nullable strings `actorFullName`, `actorUsername`, `actionDescription`. Tên là hồ sơ hiện tại, không phải bằng chứng tên lịch sử; không thêm email hoặc secret. 401/403/404 và snapshot redaction không đổi. UI mặc định business và vẫn cho chọn all; mã action không bị thay thế trong response. Không migration. Chi tiết triển khai/giới hạn: [audit-log.md](audit-log.md).

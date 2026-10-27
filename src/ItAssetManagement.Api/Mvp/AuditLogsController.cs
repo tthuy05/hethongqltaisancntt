@@ -16,14 +16,15 @@ public sealed class AuditLogsController(AuditLogService logs) : ControllerBase
         [FromQuery(Name = "entityType")] string? entityType = null, [FromQuery(Name = "entityId")] string? entityId = null,
         [FromQuery(Name = "correlationId")] Guid? correlationId = null, [FromQuery(Name = "outcome")] string? outcome = null,
         [FromQuery(Name = "from")] string? from = null, [FromQuery(Name = "to")] string? to = null,
-        [FromQuery(Name = "sortBy")] string sortBy = "occurredAt", [FromQuery(Name = "sortDirection")] string sortDirection = "desc")
+        [FromQuery(Name = "sortBy")] string sortBy = "occurredAt", [FromQuery(Name = "sortDirection")] string sortDirection = "desc",
+        [FromQuery(Name = "category")] string? category = null)
     {
-        Errors.Query(Request, "page", "pageSize", "userId", "action", "entityType", "entityId", "correlationId", "outcome", "from", "to", "sortBy", "sortDirection");
+        Errors.Query(Request, "page", "pageSize", "userId", "action", "entityType", "entityId", "correlationId", "outcome", "from", "to", "sortBy", "sortDirection", "category");
         foreach (var item in Request.Query)
             if (string.IsNullOrWhiteSpace(item.Value.ToString())) throw Validation.Invalid(item.Key, "Query parameter đã cung cấp không được rỗng.");
         return logs.ListAsync(new() { Page = page, PageSize = pageSize, UserId = userId, Action = action,
             EntityType = entityType, EntityId = entityId, CorrelationId = correlationId, Outcome = outcome,
-            From = from, To = to, SortBy = sortBy, SortDirection = sortDirection }, ct);
+            From = from, To = to, SortBy = sortBy, SortDirection = sortDirection, Category = category }, ct);
     }
     [HttpGet("{auditLogId}")]
     [ProducesResponseType<AuditLogDetailDto>(200)]

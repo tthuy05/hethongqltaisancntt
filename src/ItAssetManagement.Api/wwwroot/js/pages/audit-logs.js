@@ -8,7 +8,7 @@ const timestamp = value => new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short'
 const labels = { assetTypeId: 'ID loại tài sản', owningDepartmentId: 'Phòng ban sở hữu', parentDepartmentId: 'Phòng ban cha', departmentId: 'Phòng ban', userId: 'ID người dùng', roleId: 'ID vai trò', roleCount: 'Số vai trò', defaultUsefulLifeMonths: 'Thời gian sử dụng (tháng)', currentStatus: 'Trạng thái tài sản', purchaseCost: 'Chi phí mua', isActive: 'Đang hoạt động', isArchived: 'Đã lưu trữ', isAdminLocked: 'Khóa bởi Admin', emailChanged: 'Email đã đổi', usernameChanged: 'Tên đăng nhập đã đổi', displayNameChanged: 'Tên hiển thị đã đổi', employeeCodeChanged: 'Mã nhân viên đã đổi', phoneChanged: 'Điện thoại đã đổi', adminRoleAssigned: 'Có vai trò Admin', reasonProvided: 'Có lý do', auditLogId: 'ID nhật ký được xem', page: 'Trang', pageSize: 'Số mục mỗi trang', returnedCount: 'Số mục trả về' };
 const dbStatuses = { IN_STOCK: 'InStock', IN_USE: 'InUse', MAINTENANCE: 'Maintenance', BROKEN: 'Broken', RETIRED: 'Retired' };
 function outcome(value) { const [label, tone] = outcomes[value] || ['Chưa xác định', 'neutral']; return h('span', { className: `badge ${tone}` }, label); }
-function actor(row) { return row.actorUserId ? `Người dùng #${row.actorUserId}` : row.actorType === 'SYSTEM' ? 'Hệ thống' : 'Chưa đăng nhập'; }
+function actor(row) { return row.actorFullName || row.actorUsername || (row.actorUserId ? `Người dùng #${row.actorUserId}` : row.actorType === 'SYSTEM' ? 'Hệ thống' : 'Chưa đăng nhập'); }
 function snapshotValue(key, value, departments = []) {
   if (value == null) return '—';
   if (['departmentId', 'owningDepartmentId', 'parentDepartmentId'].includes(key)) return departments.find(d => d.id === value)?.name || 'Phòng ban không còn khả dụng';
@@ -29,6 +29,7 @@ export async function auditLogPage(services) {
   };
   requireReader();
   const query = auditQuery(window.location.hash.split('?')[1] || '');
+  query.category ??= query.action ? 'all' : 'business';
   delete query.entityType;
   delete query.entityId;
   const result = await services.auditLogs.list(query);
@@ -63,6 +64,7 @@ export async function auditLogPage(services) {
   } },
   add({ name: 'from', label: 'Từ thời điểm', type: 'datetime-local', required: true, value: localDateInput(query.from) }),
   add({ name: 'to', label: 'Đến trước thời điểm', type: 'datetime-local', required: true, value: localDateInput(query.to) }),
+  add({ name: 'category', label: 'Nhóm nhật ký', value: query.category, options: [{ value: 'business', label: 'Nghiệp vụ' }, { value: 'technical', label: 'Kỹ thuật / khác' }, { value: 'all', label: 'Tất cả' }] }),
   add({ name: 'outcome', label: 'Kết quả', value: query.outcome, options: [{ value: '', label: 'Tất cả kết quả' }, ...Object.entries(outcomes).map(([value, [label]]) => ({ value, label }))] }),
   add({ name: 'userId', label: 'ID người thao tác', type: 'number', value: query.userId, hint: 'Để trống để xem tất cả.' }),
   add({ name: 'action', label: 'Mã hành động', maxLength: 150, value: query.action, hint: 'Khớp chính xác, ví dụ assets.create.' }),
@@ -84,7 +86,7 @@ export async function auditLogPage(services) {
           if (!active() || !currentReader()) return;
           if (!Number.isSafeInteger(item?.id) || item.id !== row.id)
             throw new Error('Invalid audit detail identity.');
-          const pairs = [['ID nhật ký', item.id], ['Thời gian', timestamp(item.occurredAt)], ['Người thao tác', actor(item)], ['Hành động', item.action], ['Kết quả', outcome(item.outcome)], ['Mã liên kết', item.correlationId]];
+          const pairs = [['ID nhật ký', item.id], ['Thời gian', timestamp(item.occurredAt)], ['Người thao tác', actor(item)], ['Hành động', item.actionDescription || item.action], ['Mã hành động', item.action], ['Kết quả', outcome(item.outcome)], ['Mã liên kết', item.correlationId]];
           const oldValues = item.oldValues || {}, newValues = item.newValues || {};
           const keys = Object.keys(labels).filter(key => (key !== 'purchaseCost' || can(services, 'assets.cost.read')) && (Object.hasOwn(oldValues, key) || Object.hasOwn(newValues, key)));
           const visibleDepartments = can(services, 'departments.read') ? departments : [];
@@ -107,7 +109,7 @@ export async function auditLogPage(services) {
     h('section', { className: 'card' }, dataTable({ label: 'Nhật ký thao tác', rows: result.items, columns: [
       { key: 'occurredAt', label: 'Thời gian', render: row => timestamp(row.occurredAt) },
       { key: 'actor', label: 'Người thao tác', render: actor },
-      { key: 'action', label: 'Hành động', className: 'audit-code' },
+      { key: 'action', label: 'Hành động', render: row => h('div', {}, h('span', {}, row.actionDescription || row.action), row.actionDescription ? h('small', { className: 'meta audit-code' }, row.action) : null) },
       { key: 'outcome', label: 'Kết quả', render: row => outcome(row.outcome) },
       { key: 'actions', label: 'Chi tiết', render: row => { const control = button('Xem', { kind: 'ghost', iconName: 'eye', onClick: () => detail(row, control) }); return control; } },
     ] }), pagination(result, page => setQuery('/audit-logs', { ...query, page }))));

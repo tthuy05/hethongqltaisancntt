@@ -1,7 +1,7 @@
 import { ServiceError } from '../services/service-error.js';
 
 const day = 86400000;
-const queryKeys = new Set(['page', 'pageSize', 'userId', 'action', 'entityType', 'entityId', 'correlationId', 'outcome', 'from', 'to', 'sortBy', 'sortDirection']);
+const queryKeys = new Set(['page', 'pageSize', 'userId', 'action', 'entityType', 'entityId', 'correlationId', 'outcome', 'from', 'to', 'sortBy', 'sortDirection', 'category']);
 export function auditQuery(search = '', now = new Date()) {
   const values = new URLSearchParams(search);
   const query = { page: 1, pageSize: 20, sortBy: 'occurredAt', sortDirection: 'desc' };
@@ -10,6 +10,8 @@ export function auditQuery(search = '', now = new Date()) {
       throw new ServiceError(400, 'VALIDATION_ERROR', 'Bộ lọc nhật ký không hợp lệ. Hãy đặt lại bộ lọc.');
     query[key] = value;
   }
+  if (query.category && !['business', 'technical', 'all'].includes(query.category))
+    throw new ServiceError(400, 'VALIDATION_ERROR', 'Nhóm nhật ký không hợp lệ.');
   // Freeze the time window before paging; the read itself appends an audit.view event.
   query.to ??= now.toISOString();
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,7})?)?(?:Z|[+-]\d{2}:\d{2})$/.test(query.to) || !Number.isFinite(Date.parse(query.to)))

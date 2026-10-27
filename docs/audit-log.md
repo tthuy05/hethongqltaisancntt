@@ -6,6 +6,19 @@
 
 > **Current implementation addendum — 05/10/2026:** các status PLANNED/NOT RUN bên dưới là snapshot thiết kế Week2, không phải phủ nhận M1 đã có audit table/writer/audited transactions và auth/user/Asset hooks. PostgreSQL/Neon M1 đã kết nối thật; logical18 tables/41 relationships và physical10 tables/19 FKs giữ nguyên. EP-093/094 +giao diện Admin **IMPLEMENTED / VERIFIED**,320 tests PASS trong [Audit-read handoff](audit-read-handoff.md); không tự nhận mọi scenario ở §12 đã PASS. Assignment/Maintenance hooks, retention/hash-chain/least-privilege runtime vẫn **PLANNED / PENDING**. Các đoạn thiết kế gốc được giữ để review.
 
+## Cập nhật Nhật ký thao tác — 27/10/2026
+
+Trạng thái: **IMPLEMENTED LOCALLY / UNDER REVIEW**, chưa publish hoặc xác minh production trong đợt này.
+
+- Luồng UI → `GET /api/v1/audit-logs` / `/{id}` → `AuditLogService` → PostgreSQL vẫn chỉ đọc dữ liệu nghiệp vụ; mỗi lần xem tiếp tục ghi `audit.view` theo transaction hiện có.
+- List nhận thêm `category=business|technical|all`, áp dụng trước count/paging. API bỏ trống category giữ `all` để tương thích client cũ. UI mặc định `business`; link tìm action cụ thể mặc định `all`. UI có lựa chọn **Kỹ thuật / khác** và **Tất cả** để không mất khả năng tra cứu seed/action chưa được phân loại.
+- Summary/detail thêm `actorFullName`, `actorUsername`, `actionDescription` (nullable). Tên lấy từ hồ sơ **hiện tại**, không phải snapshot tên tại lúc xảy ra sự kiện. Tài khoản không còn khả dụng dùng ID/actor type; action chưa có mô tả giữ nguyên mã. Danh sách đọc tên theo một truy vấn batch, không N+1.
+- `AuditActionCatalog` chỉ bổ sung nhãn/phân loại; không sửa action hoặc dữ liệu log đã lưu. UI dùng text node, giữ mã hành động để đối chiếu, không khôi phục cột/chi tiết/bộ lọc Đối tượng đã bỏ theo yêu cầu giảng viên.
+- Quyền giữ nguyên: Admin IT + `audit-logs.read`, kiểm tra phiên/quyền trước và sau request. Không thêm quyền danh bạ, không trả email/password/hash/token; snapshot và chi phí tiếp tục qua allowlist/redaction hiện có.
+- Không thay entity, mapping, index, migration, catalog quyền hay feature flags; không ảnh hưởng nghiệp vụ Asset/Assignment/Maintenance/License. Không ghi shared Neon hoặc tự deploy Render.
+- Kiểm thử cuối: Release 0 warnings/errors; 867 unit PASS; 249 integration PASS / 163 cloud SKIP (gồm PostgreSQL local thực tế); 433 frontend PASS; 57 JS / 61 CSP PASS; production frontend build 56 assets PASS. Bộ regression cuối không có FAIL. Không tính cloud SKIP là PASS.
+- Phát triển tiếp: action mới cần cập nhật catalog và kiểm thử category; unknown action vẫn truy xuất được qua `all`/`technical`. Browser thật và production cho thay đổi nhật ký lần này **NOT VERIFIED**; kiểm thử DOM không thay thế nghiệm thu trình duyệt.
+
 ## 1. Mục tiêu và ranh giới
 
 Audit log trả lời: **ai hoặc tiến trình nào, đã làm gì, với đối tượng nào, khi nào, từ đâu, kết quả ra sao và dữ liệu nghiệp vụ an toàn nào đã đổi**. Audit phục vụ truy cứu bảo mật, tuân thủ và điều tra; không thay thế:
