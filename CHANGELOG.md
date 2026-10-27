@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — 27/10/2026 — License allocation
+
+- Added: License assignment/read/history/revoke/transfer API and UI; separate closed rollout gate, permission catalog and additive4/8 seed.
+- Fixed: transactional audit persistence, capacity-lock coordination, stale transfer reads, target type/eligibility, current expiry and backdate checks, query/version validation, closed-row UI and unsafe retries.
+- Security: removed fixed zero AES development fallback; reveal rechecks effective User grants; allocation DTO masks directory data without grants. No new migrations, shared seed, secrets changes or production activation.
+
 ## Unreleased — 26/10/2026 — Software catalog
 
 - Added: Software list/detail/create/update/archive API and UI, backend-generated immutable PM codes, permission/version/active-license guards and atomic audit.

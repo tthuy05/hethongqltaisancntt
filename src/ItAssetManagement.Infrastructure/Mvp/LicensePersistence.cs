@@ -8,4 +8,7 @@ public sealed class LicensePersistence(AppDbContext db) : ILicensePersistence
 {
     public async Task LockAsync(long id, CancellationToken ct) =>
         await db.Database.ExecuteSqlInterpolatedAsync($"SELECT id FROM public.software_licenses WHERE id = {id} FOR UPDATE", ct);
+
+    public async Task LockAssignmentAsync(long id, CancellationToken ct) =>
+        await db.Database.ExecuteSqlInterpolatedAsync($"SELECT id FROM public.license_assignments WHERE id = {id} FOR UPDATE", ct);
 }

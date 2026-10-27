@@ -30,6 +30,8 @@ public static class PermissionContract
         _ when code.StartsWith("maintenance.", StringComparison.Ordinal) && code != Permissions.MaintenanceRead => Permissions.MaintenanceRead,
         _ when code.StartsWith("software.", StringComparison.Ordinal) && code != SoftwarePermissions.Read => SoftwarePermissions.Read,
         _ when code.StartsWith("licenses.", StringComparison.Ordinal) && code != Permissions.LicenseRead => Permissions.LicenseRead,
+        _ when code.StartsWith("license-assignments.", StringComparison.Ordinal) && code != LicensePermissions.AssignmentRead => LicensePermissions.AssignmentRead,
+        LicensePermissions.AssignmentRead => Permissions.LicenseRead,
         Permissions.ImportAssets or Permissions.ExportAssets => Permissions.AssetRead,
         _ => null
     };
@@ -39,6 +41,7 @@ public static class PermissionContract
         Permissions.UserLookup => "Tra cứu", Permissions.UserStatus or Permissions.AssetStatus => "Trạng thái",
         Permissions.RoleAssign => "Gán nhóm", Permissions.RolePermissionsRead => "Xem quyền",
         Permissions.AssignmentAssign => "Cấp phát", Permissions.AssignmentReturn => "Thu hồi", Permissions.AssignmentTransfer => "Điều chuyển",
+        LicensePermissions.AssignmentAssign => "Phân bổ", LicensePermissions.AssignmentRevoke => "Thu hồi", LicensePermissions.AssignmentTransfer => "Điều chuyển",
         Permissions.MaintenanceAssign => "Giao kỹ thuật viên", Permissions.MaintenanceWork => "Bắt đầu",
         Permissions.MaintenanceResolve => "Kết thúc", Permissions.MaintenanceCancel => "Hủy", Permissions.MaintenanceCostWrite => "Chi phí",
         Permissions.LicenseKeyManage => "Quản lý khóa", Permissions.LicenseKeyReveal => "Xem khóa",
@@ -132,7 +135,7 @@ public sealed class RoleManagementService(IRepository repo, IRoleGrantPersistenc
             var definitions = await repo.ListAsync(repo.Query<Permission>().Where(x => request.PermissionIds.Contains(x.Id) && x.IsActive && Permissions.All.Contains(x.Code)), ct);
             if (definitions.Count != request.PermissionIds.Length) throw Validation.Invalid("permissionIds", "Có quyền không tồn tại hoặc chưa được hệ thống hỗ trợ.");
             var codes = definitions.Select(x => x.Code).ToHashSet();
-            if (role.Code != "ADMIN_IT" && codes.Contains(Permissions.AuditRead))
+            if (role.Code != "ADMIN_IT" && codes.Any(code => code is Permissions.AuditRead or Permissions.LicenseKeyManage or Permissions.LicenseKeyReveal))
                 throw Validation.Invalid("permissionIds", "Nhật ký thao tác chỉ dành cho nhóm Admin IT.");
             if (role.Code == "TECHNICAL_SUPPORT" && codes.Any(code => SoftwarePermissions.All.Contains(code) || LicensePermissions.All.Contains(code) || code.StartsWith("assignments.", StringComparison.Ordinal) ||
                     Permissions.Maintenance.Contains(code) && !Permissions.MaintenanceSupport.Contains(code)))

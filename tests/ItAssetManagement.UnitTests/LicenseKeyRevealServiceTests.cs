@@ -36,6 +36,7 @@ public sealed class LicenseKeyRevealServiceTests
             IEnumerable<T> rows = typeof(T) == typeof(User) ? new[] { User }.Cast<T>() :
                 typeof(T) == typeof(Role) ? new[] { Role }.Cast<T>() :
                 typeof(T) == typeof(UserRole) ? new[] { new UserRole { UserId = 7, RoleId = 1 } }.Cast<T>() :
+                typeof(T) == typeof(UserPermission) ? Array.Empty<T>() :
                 typeof(T) == typeof(Permission) ? PermissionsList.Cast<T>() :
                 typeof(T) == typeof(RolePermission) ? new[] { new RolePermission { RoleId = 1, PermissionId = 1 },
                     new RolePermission { RoleId = 1, PermissionId = 2 } }.Cast<T>() :
@@ -76,12 +77,13 @@ public sealed class LicenseKeyRevealServiceTests
     }
     [Theory]
     [InlineData("manager")][InlineData("inactive-role")][InlineData("inactive-user")][InlineData("unconfirmed")]
-    [InlineData("admin-locked")][InlineData("lockout")][InlineData("stale-token")][InlineData("revoked-grant")]
+    [InlineData("custom-revoked")][InlineData("admin-locked")][InlineData("lockout")][InlineData("stale-token")][InlineData("revoked-grant")]
     public async Task Database_checks_under_identity_lock_reject_stale_or_misgranted_claims(string mode)
     {
         var repo = new Repository(); var protector = new Protector(); var audit = new Writer();
         switch (mode)
         {
+            case "custom-revoked": repo.User.HasCustomPermissions = true; break;
             case "manager": repo.Role.Code = "SYSTEM_MANAGER"; break;
             case "inactive-role": repo.Role.IsActive = false; break;
             case "inactive-user": repo.User.IsActive = false; break;

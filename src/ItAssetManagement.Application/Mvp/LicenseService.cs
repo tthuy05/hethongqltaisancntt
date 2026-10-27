@@ -7,10 +7,17 @@ namespace ItAssetManagement.Application.Mvp;
 public static class LicensePermissions
 {
     public const string Create = "licenses.create", Update = "licenses.update", Archive = "licenses.archive";
+    public const string AssignmentRead = "license-assignments.read", AssignmentAssign = "license-assignments.assign",
+        AssignmentRevoke = "license-assignments.revoke", AssignmentTransfer = "license-assignments.transfer";
+    public static readonly string[] Assignments = [AssignmentRead, AssignmentAssign, AssignmentRevoke, AssignmentTransfer];
     public static readonly string[] Metadata = [Permissions.LicenseRead, Create, Update, Archive];
-    public static readonly string[] All = [.. Metadata, Permissions.LicenseKeyManage];
+    public static readonly string[] All = [.. Metadata, Permissions.LicenseKeyManage, Permissions.LicenseKeyReveal, .. Assignments];
 }
-public interface ILicensePersistence { Task LockAsync(long id, CancellationToken ct); }
+public interface ILicensePersistence
+{
+    Task LockAsync(long id, CancellationToken ct);
+    Task LockAssignmentAsync(long id, CancellationToken ct);
+}
 public sealed class LicenseRequest
 {
     private string? key; private decimal? cost;

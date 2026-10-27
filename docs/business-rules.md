@@ -1,5 +1,9 @@
 # Business Rules
 
+## 27/10/2026 — License allocation runtime
+
+PER_USER→User, PER_DEVICE→Asset, các loại còn lại target XOR; mỗi row active dùng một seat. Check hiệu lực license tại clock hiện tại và ngày cấp, không dùng ngày backdate để vượt expiry; thời điểm đóng không trước assignedAt hoặc ở tương lai. User active/confirmed/không admin-locked; Asset không archived/retired, parent Software active. Lock asset→software→license→assignment→identity; reread state/version/grants sau wait. Assign/revoke/transfer/quantity/archive dùng cùng capacity lock. Transfer close trước insert trong cùng audited transaction; không hard delete, không mất history/audit, không replay mutation mù. RevokedAtUtc khác null là đã thu hồi, không phụ thuộc IsArchived. Reason ghép Notes tổng≤1000, không truncate. Catalog/gate và nghiệm thu chi tiết tại license-catalog.md.
+
 ## 26/10/2026 — Software catalog runtime addendum
 
 - Mã Software PMxxxxxx do ISoftwareCodeGenerator cấp, immutable trong API và AppDbContext; không nhận code từ client. Tên≤250, publisher≤250, version≤100, description≤2000; giữ semantic length và schema hiện có.

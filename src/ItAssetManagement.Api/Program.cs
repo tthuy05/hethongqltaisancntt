@@ -30,9 +30,10 @@ var assignmentSetupOnly = args.Contains("--setup-assignment-maintenance", String
 var assignmentTransferSeedOnly = args.Contains("--seed-assignment-transfer", StringComparer.Ordinal);
 var maintenancePermissionsOnly = args.Contains("--seed-maintenance-permissions", StringComparer.Ordinal);
 var softwarePermissionsOnly = args.Contains("--seed-software-permissions", StringComparer.Ordinal);
+var licenseAllocationPermissionsOnly = args.Contains("--seed-license-allocation-permissions", StringComparer.Ordinal);
 var licensePermissionsOnly = args.Contains("--seed-license-permissions", StringComparer.Ordinal);
 string[] cliModes = ["--verify-neon", "--setup-neon-m1", "--inspect-neon-schema", "--seed-development", "--seed-m1-demo",
-    "--seed-role-catalog", "--seed-audit-read", "--setup-assignment-validation", "--setup-assignment-maintenance", "--seed-assignment-transfer", "--seed-maintenance-permissions", "--seed-software-permissions", "--seed-license-permissions"];
+    "--seed-role-catalog", "--seed-audit-read", "--setup-assignment-validation", "--setup-assignment-maintenance", "--seed-assignment-transfer", "--seed-maintenance-permissions", "--seed-software-permissions", "--seed-license-permissions", "--seed-license-allocation-permissions"];
 var modeCount = cliModes.Count(mode => args.Contains(mode, StringComparer.Ordinal));
 var builder = WebApplication.CreateBuilder(args.Where(argument => !cliModes.Contains(argument, StringComparer.Ordinal)).ToArray());
 if (modeCount > 0) builder.Logging.ClearProviders();
@@ -92,26 +93,15 @@ builder.Services.AddScoped<ISoftwareCodeGenerator, SoftwareCodeGenerator>();
 builder.Services.AddScoped<ILicenseCodeGenerator, LicenseCodeGenerator>();
 builder.Services.AddScoped<ILicensePersistence, LicensePersistence>();
 builder.Services.AddScoped<LicenseService>();
+builder.Services.AddScoped<LicenseAssignmentService>();
 builder.Services.AddScoped<LicenseKeyRevealService>();
 builder.Services.AddScoped<ILicenseReadiness, LicenseReadiness>();
+builder.Services.AddScoped<ILicenseAllocationReadiness, LicenseAllocationReadiness>();
 builder.Services.AddScoped(sp => new LicenseKeyAccessPolicy(
     sp.GetRequiredService<IHttpContextAccessor>().HttpContext?.Items[typeof(CurrentUser)] as CurrentUser
     ?? throw new BusinessException(403, "FORBIDDEN", "Yêu cầu tài khoản đã xác thực.")));
-builder.Services.AddSingleton<ILicenseKeyProtector>(sp =>
-{
-    var config = sp.GetRequiredService<IConfiguration>();
-    var activeVersion = config["LicenseKeyEncryption:ActiveVersion"];
-    if (string.IsNullOrEmpty(activeVersion))
-    {
-        var env = sp.GetRequiredService<IHostEnvironment>();
-        if (env.IsDevelopment())
-        {
-            var devRing = new ConfiguredLicenseKeyRing("dev-v1", new Dictionary<string, byte[]> { ["dev-v1"] = new byte[32] });
-            return new AesGcmLicenseKeyProtector(devRing);
-        }
-    }
-    return new AesGcmLicenseKeyProtector(ConfiguredLicenseKeyRing.FromConfiguration(config));
-});
+builder.Services.AddSingleton<ILicenseEncryptionKeyRing>(sp => ConfiguredLicenseKeyRing.FromConfiguration(sp.GetRequiredService<IConfiguration>()));
+builder.Services.AddSingleton<ILicenseKeyProtector, AesGcmLicenseKeyProtector>();
 builder.Services.AddScoped<AuditLogService>();
 builder.Services.AddScoped<MaintenanceService>();
 builder.Services.AddScoped<SoftwareService>();
@@ -153,16 +143,16 @@ if (modeCount > 1 || modeCount > 0 && !app.Environment.IsDevelopment())
 }
 _ = app.Services.GetRequiredService<JwtSettings>(); // Production fails closed; development uses a per-process key.
 DeploymentHosting.ValidateProductionDatabase(app.Configuration, app.Environment.IsDevelopment());
-if (assignmentTransferSeedOnly || maintenancePermissionsOnly || softwarePermissionsOnly || licensePermissionsOnly)
+if (assignmentTransferSeedOnly || maintenancePermissionsOnly || softwarePermissionsOnly || licensePermissionsOnly || licenseAllocationPermissionsOnly)
 {
     try
     {
         await using var scope = app.Services.CreateAsyncScope();
         var seed = scope.ServiceProvider.GetRequiredService<DevelopmentSeed>();
-        var added = licensePermissionsOnly ? await seed.PrepareLicenseCatalogAsync() : softwarePermissionsOnly ? await seed.PrepareSoftwareCatalogAsync() : maintenancePermissionsOnly ? await seed.RunMaintenancePermissionsAsync() : await seed.RunAssignmentTransferPermissionAsync();
-        Console.WriteLine(JsonSerializer.Serialize(new { status = licensePermissionsOnly ? "LicensePermissionsSeeded" : softwarePermissionsOnly ? "SoftwarePermissionsSeeded" : maintenancePermissionsOnly ? "MaintenancePermissionsSeeded" : "AssignmentTransferSeeded", added }));
+        var added = licenseAllocationPermissionsOnly ? await seed.RunLicenseAllocationPermissionsAsync() : licensePermissionsOnly ? await seed.PrepareLicenseCatalogAsync() : softwarePermissionsOnly ? await seed.PrepareSoftwareCatalogAsync() : maintenancePermissionsOnly ? await seed.RunMaintenancePermissionsAsync() : await seed.RunAssignmentTransferPermissionAsync();
+        Console.WriteLine(JsonSerializer.Serialize(new { status = licenseAllocationPermissionsOnly ? "LicenseAllocationPermissionsSeeded" : licensePermissionsOnly ? "LicensePermissionsSeeded" : softwarePermissionsOnly ? "SoftwarePermissionsSeeded" : maintenancePermissionsOnly ? "MaintenancePermissionsSeeded" : "AssignmentTransferSeeded", added }));
     }
-    catch { Console.WriteLine(JsonSerializer.Serialize(new { status = licensePermissionsOnly ? "LicensePermissionsSeedFailed" : softwarePermissionsOnly ? "SoftwarePermissionsSeedFailed" : maintenancePermissionsOnly ? "MaintenancePermissionsSeedFailed" : "AssignmentTransferSeedFailed" })); Environment.ExitCode = 2; }
+    catch { Console.WriteLine(JsonSerializer.Serialize(new { status = licenseAllocationPermissionsOnly ? "LicenseAllocationPermissionsSeedFailed" : licensePermissionsOnly ? "LicensePermissionsSeedFailed" : softwarePermissionsOnly ? "SoftwarePermissionsSeedFailed" : maintenancePermissionsOnly ? "MaintenancePermissionsSeedFailed" : "AssignmentTransferSeedFailed" })); Environment.ExitCode = 2; }
     await app.DisposeAsync(); return;
 }
 if (assignmentValidationOnly || assignmentSetupOnly)

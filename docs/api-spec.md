@@ -1,5 +1,11 @@
 # API Specification
 
+## Runtime 27/10/2026 — License allocation (local acceptance; production PLANNED)
+
+EP-057–062 đã nối Controller/Service và tab allocation trong License detail. Contract, DTO, paging/sort, UTC, ETag/version, mã lỗi và rollout gates ở [license-catalog.md](license-catalog.md). Assign201; list/detail/revoke/transfer200. Chặn400 target XOR/type/time/filter/If-Match mismatch; 403 thiếu effective grants; 404 license/assignment không tồn tại; 409 LICENSE_CAPACITY_EXHAUSTED, DUPLICATE_ASSIGNMENT, USER_NOT_ELIGIBLE, ASSET_NOT_ELIGIBLE, SOFTWARE_INACTIVE, LICENSE_INACTIVE/EXPIRED/NOT_EFFECTIVE, ALREADY_REVOKED hoặc CONCURRENCY_CONFLICT. Quantity/archive tiếp tục các lỗi capacity hiện có.
+
+Metadata/key API và allocation có flags riêng. Allocation default404/không probe dù CRUD bật; opt-in nhưng chưa ready503; ready mới JWT401/grants403. Không có endpoint destructive delete allocation, tăng quantity bằng tay, cross-license transfer hoặc bulk import mới. Row email chỉ có quyền directory; không có chi phí/key trong allocation JSON. Nội dung snapshot pre-27/10 phía dưới giữ phạm vi lịch sử.
+
 ## Runtime 26/10/2026 — Software catalog (local acceptance, production PLANNED)
 
 EP-046–050 có source trên `codex/software-catalog`; chưa phát hành. Base `/api/v1/software` (số ít). GET list nhận `page`≥1, `pageSize`1..100, `keyword`≤200 tìm code/name không phân biệt hoa thường, `vendor`≤250 tìm publisher, `status=Active|Inactive`, `sortBy=name|code|publisher|createdAt`, `sortDirection=asc|desc`; tie-break id cùng chiều, offset int32. Tham số lạ hoặc lặp trả400. List trả PagedResponse; GET detail200+ETag; POST201+Location; PUT200; DELETE204 ngừng hoạt động mềm.

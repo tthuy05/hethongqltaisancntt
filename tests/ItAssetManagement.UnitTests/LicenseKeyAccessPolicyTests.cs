@@ -49,7 +49,9 @@ public sealed class LicenseKeyAccessPolicyTests
         var reveal = new LicenseKeyAccessPolicy(User("ADMIN_IT", Permissions.LicenseRead, Permissions.LicenseKeyReveal));
         Assert.False(reveal.CanManage); Assert.Equal("fixture reason", reveal.RequireReveal("  fixture reason  "));
         Denied(() => new LicenseKeyAccessPolicy(User("ADMIN_IT", Permissions.LicenseKeyReveal)).RequireReveal("fixture"));
-        Assert.DoesNotContain(Permissions.All, code => code.StartsWith("licenses.", StringComparison.Ordinal));
+        Assert.Contains(Permissions.LicenseRead, Permissions.All);
+        Assert.Contains(Permissions.LicenseKeyReveal, Permissions.Admin);
+        Assert.DoesNotContain(Permissions.LicenseKeyManage, Permissions.Operate);
     }
 
     [Fact]

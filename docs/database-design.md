@@ -1,5 +1,9 @@
 # Thiết kế cơ sở dữ liệu
 
+## 27/10/2026 — Allocation persistence protocol
+
+Không thay schema/index/EF mapping/migrations. LicenseCode/SoftwareId được chặn sửa ở AppDbContext. Tái sử dụng license row FOR UPDATE cho cả metadata quantity/archive và allocation; assignment row lock chỉ lấy sau parent license. Target asset row nếu có lấy trước software coordinator; identity coordinator cuối cùng, reread eligibility/quyền. Transfer lưu close trước insert để partial UNIQUE active-user/asset có hiệu lực; map23505 về DUPLICATE_ASSIGNMENT409. Mutation và audit cùng commit, không persist used_quantity cache. Isolated model check không có pending changes. Không thực hiện DDL hoặc migration trên Neon shared trong lượt này.
+
 ## Runtime 26/10/2026 — Software catalog
 
 Không đổi entity, mapping, index, migration hoặc physical schema. Tái sử dụng softwares/software_licenses và row_version16bytes hiện có; AppDbContext bổ sung guard code bất biến. Danh sách query entity trước paging, map DTO sau materialization để EF/Npgsql dịch filter/sort ở server.

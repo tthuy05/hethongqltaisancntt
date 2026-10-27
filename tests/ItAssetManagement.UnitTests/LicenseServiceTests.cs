@@ -59,7 +59,9 @@ public sealed class LicenseServiceTests
     private sealed class Persistence : ILicensePersistence
     {
         public List<long> Locked = [];
+        public List<long> LockedAssignments = [];
         public Task LockAsync(long id, CancellationToken ct) { Locked.Add(id); return Task.CompletedTask; }
+        public Task LockAssignmentAsync(long id, CancellationToken ct) { LockedAssignments.Add(id); return Task.CompletedTask; }
     }
 
     private sealed class Uow : IUnitOfWork

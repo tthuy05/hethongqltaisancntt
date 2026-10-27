@@ -1,5 +1,11 @@
 # Permission Matrix
 
+## 27/10/2026 — Catalog License/allocation
+
+Source catalog56 (không phải count shared): thêm licenses.read/create/update/archive vào Operate, key manage/reveal vào Admin, license-assignments.read/assign/revoke/transfer vào Operate. Support không có bất kỳ licenses.* / license-assignments.*. Role/User matrix có nhãn và dependency: allocation.read→licenses.read, các action allocation→allocation.read; key grants chỉ Admin, không cộng quyền theo tên role. Metadata/key và allocation chỉ available khi cờ tương ứng bật; protected Admin giữ baseline khi modules còn đóng. Reveal và write kiểm lại EffectivePermissionQuery dưới users-identity.
+
+Narrow metadata/key seed6definitions/10grants riêng; allocation seed4definitions/8grants riêng, additive/idempotent, không reset account. Source không có startup seed, chưa thay grants thật. Rollout đọc thêm crypto config/bảng/sequence và kiểm matrix trước khi mở. Chi tiết tại license-catalog.md.
+
 ## 26/10/2026 — Software runtime permission addendum
 
 Catalog source tăng42→46, thêm `software.read/create/update/archive`; không phải số quyền production đã seed. Mỗi action yêu cầu read; group ADMIN_IT/SYSTEM_MANAGER dự kiến4quyền/người, TECHNICAL_SUPPORT không có. Custom User grants vẫn giới hạn theo nhóm và EffectivePermissionQuery; không cộng ngầm quyền Admin. Role matrix không cho cấp software cho Support, không sửa quyền chưa available; client thêm nhãn và dependency read. Production Software vẫn đóng.

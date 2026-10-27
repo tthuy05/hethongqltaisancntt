@@ -22,7 +22,7 @@ public sealed class LocalAssignmentCompletionTests
     private const string Email = "excel-jwt@fixture.test";
     private const string Password = "Synthetic-test-password-2026!";
     private const string Path = "/api/v1/asset-assignments";
-    private sealed class Ready : IAssignmentSchemaReadiness, IMaintenanceSchemaReadiness, ISoftwareReadiness
+    private sealed class Ready : IAssignmentSchemaReadiness, IMaintenanceSchemaReadiness, ISoftwareReadiness, ILicenseReadiness, ILicenseAllocationReadiness
     { public Task<bool> IsReadyAsync(CancellationToken cancellationToken) => Task.FromResult(true); }
     private sealed class FailingAudit(IAuditWriter inner) : IAuditWriter
     {
@@ -33,7 +33,7 @@ public sealed class LocalAssignmentCompletionTests
             if (action == "assignments.transfer" && ++count == 2) throw new InvalidOperationException("Synthetic transfer audit failure");
         }
     }
-    internal static WebApplicationFactory<Program> Factory(bool failingAudit = false, bool frontend = false, int? port = null, bool maintenance = false, bool software = false)
+    internal static WebApplicationFactory<Program> Factory(bool failingAudit = false, bool frontend = false, int? port = null, bool maintenance = false, bool software = false, bool license = false, bool allocation = false)
     {
         var factory = new WebApplicationFactory<Program>();
         if (port.HasValue) factory.UseKestrel(port.Value);
@@ -43,6 +43,7 @@ public sealed class LocalAssignmentCompletionTests
             builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?> {
                 ["ConnectionStrings:DefaultConnection"] = "", ["Frontend:Enabled"] = frontend.ToString(), ["Swagger:Enabled"] = "false",
                 ["Logging:LogLevel:Default"] = "None", ["Features:AssignmentApi:Enabled"] = "true",
+                ["Features:LicenseApi:Enabled"] = license.ToString(), ["Features:LicenseAllocationApi:Enabled"] = allocation.ToString(),
                 ["Features:MaintenanceApi:Enabled"] = maintenance.ToString(), ["Features:SoftwareApi:Enabled"] = software.ToString(), ["Features:ReportingApi:Enabled"] = "false", ["Features:ImportExportApi:Enabled"] = "true"
             }));
             builder.ConfigureServices(services => {
@@ -51,6 +52,10 @@ public sealed class LocalAssignmentCompletionTests
                 services.RemoveAll<IAssignmentSchemaReadiness>(); services.AddSingleton<IAssignmentSchemaReadiness, Ready>();
                 services.RemoveAll<IMaintenanceSchemaReadiness>(); services.AddSingleton<IMaintenanceSchemaReadiness, Ready>();
                 services.RemoveAll<ISoftwareReadiness>(); services.AddSingleton<ISoftwareReadiness, Ready>();
+                services.RemoveAll<ILicenseReadiness>(); services.AddSingleton<ILicenseReadiness, Ready>();
+                services.RemoveAll<ILicenseAllocationReadiness>(); services.AddSingleton<ILicenseAllocationReadiness, Ready>();
+                services.RemoveAll<ItAssetManagement.Application.Contracts.Security.ILicenseEncryptionKeyRing>();
+                services.AddSingleton<ItAssetManagement.Application.Contracts.Security.ILicenseEncryptionKeyRing>(new ItAssetManagement.Infrastructure.Security.ConfiguredLicenseKeyRing("isolated", new Dictionary<string,byte[]> { ["isolated"] = System.Security.Cryptography.RandomNumberGenerator.GetBytes(32) }));
                 if (failingAudit) { services.RemoveAll<IAuditWriter>(); services.AddScoped<IAuditWriter>(sp => new FailingAudit(new AuditWriter(sp.GetRequiredService<AppDbContext>(), sp.GetRequiredService<IActor>()))); }
             });
         });

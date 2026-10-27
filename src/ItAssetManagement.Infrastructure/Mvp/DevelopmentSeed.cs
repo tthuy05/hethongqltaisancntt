@@ -9,6 +9,29 @@ public sealed record SeedCredentials(string Email, string Password);
 public sealed record SeedResult(int Roles, int Permissions, int RolePermissions, int Departments, int AssetTypes, int Users, int UserRoles, int Added);
 public sealed class DevelopmentSeed(AppDbContext db, IRepository repo, IUnitOfWork uow, IPasswordService passwords, IAuditWriter audit)
 {
+    public Task<int> RunLicenseAllocationPermissionsAsync(CancellationToken ct = default) => uow.RunAsync(async () => {
+        await repo.LockAsync("development-seed", ct); await repo.LockAsync("users-identity", ct);
+        await db.Set<LicenseAssignment>().AnyAsync(ct);
+        var roles = await db.Set<Role>().Where(x => Permissions.Roles.Contains(x.Code)).ToListAsync(ct);
+        if (roles.Count != 3 || roles.Any(x => !x.IsActive) || !await db.Set<Permission>().AnyAsync(x => x.Code == Permissions.LicenseRead && x.IsActive, ct))
+            throw new InvalidOperationException("Active license baseline and fixed roles required.");
+        if (await (from grant in db.Set<RolePermission>() join role in db.Set<Role>() on grant.RoleId equals role.Id join permission in db.Set<Permission>() on grant.PermissionId equals permission.Id
+            where role.Code == "TECHNICAL_SUPPORT" && LicensePermissions.Assignments.Contains(permission.Code) select grant.Id).AnyAsync(ct)) throw new InvalidOperationException("Support grants require review.");
+        var created = new List<object>();
+        foreach (var code in LicensePermissions.Assignments) {
+            var permission = await db.Set<Permission>().SingleOrDefaultAsync(x => x.Code == code, ct);
+            if (permission is { IsActive: false }) throw new InvalidOperationException("Inactive permission requires review.");
+            if (permission == null) { permission = new Permission { Code = code, Name = code, Module = "license-assignments" }; db.Add(permission); created.Add(permission); await db.SaveChangesAsync(ct); }
+            foreach (var role in roles.Where(x => x.Code != "TECHNICAL_SUPPORT"))
+                if (!await db.Set<RolePermission>().AnyAsync(x => x.RoleId == role.Id && x.PermissionId == permission.Id, ct)) {
+                    var grant = new RolePermission { RoleId = role.Id, PermissionId = permission.Id, GrantedAtUtc = DateTime.UtcNow }; db.Add(grant); created.Add(grant);
+                }
+        }
+        await db.SaveChangesAsync(ct);
+        foreach (var entity in created) audit.Record("development.license-allocation-permissions.seed", entity, null, "SYSTEM");
+        await db.SaveChangesAsync(ct); return created.Count;
+    }, ct);
+
     public async Task<int> PrepareSoftwareCatalogAsync(CancellationToken ct = default)
     {
         if (db.Database.CurrentTransaction != null) throw new InvalidOperationException("Sequence preparation requires an independent transaction.");
@@ -44,12 +67,15 @@ public sealed class DevelopmentSeed(AppDbContext db, IRepository repo, IUnitOfWo
         await db.Set<SoftwareLicense>().AnyAsync(ct);
         var roles = await db.Set<Role>().Where(x => Permissions.Roles.Contains(x.Code)).ToListAsync(ct);
         if (roles.Count != 3 || roles.Any(x => !x.IsActive)) throw new InvalidOperationException("Existing active fixed roles required.");
+        if (await (from link in db.Set<RolePermission>() join role in db.Set<Role>() on link.RoleId equals role.Id join permission in db.Set<Permission>() on link.PermissionId equals permission.Id
+            where role.Code != "ADMIN_IT" && (permission.Code == Permissions.LicenseKeyManage || permission.Code == Permissions.LicenseKeyReveal) select link.Id).AnyAsync(ct))
+            throw new InvalidOperationException("Sensitive key grants require review.");
         if (await (from link in db.Set<RolePermission>() join role in db.Set<Role>() on link.RoleId equals role.Id
             join permission in db.Set<Permission>() on link.PermissionId equals permission.Id
             where role.Code == "TECHNICAL_SUPPORT" && LicensePermissions.All.Contains(permission.Code) select link.Id).AnyAsync(ct))
             throw new InvalidOperationException("Support grants require independent review.");
         var created = new List<object>();
-        foreach (var code in LicensePermissions.All)
+        foreach (var code in LicensePermissions.All.Except(LicensePermissions.Assignments))
         {
             var permission = await db.Set<Permission>().SingleOrDefaultAsync(x => x.Code == code, ct);
             if (permission is { IsActive: false }) throw new InvalidOperationException("Inactive permission requires review.");
