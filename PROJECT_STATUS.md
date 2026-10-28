@@ -1,3 +1,7 @@
+## License edit data preservation — 28/10/2026
+
+Nhánh `codex/license-edit-data-preservation` từ main3e5d8c9. Đã đăng nhập lại bằng Manager credential lưu local theo ủy quyền người dùng. Production Software create/generatedPM/update/search và License create/generatedBQ PASS trên bản ghi QA riêng. Phát hiện adapter bỏnotes/purchasedAt/purchaseCost, đã đóng form trước submit; bản vá projection và end-to-end adapter/form regression **LOCAL PASS / PUBLICATION PENDING**. Frontend436PASS,57JS/61CSP và production build PASS; Release0warnings/errors. Backend regression cuối867unit/249integration PASS,163cloudSKIP sau khi khởi động PostgreSQL local; lần lỗi môi trường ban đầu giữ là FAIL, không cộng vào PASS. Production Manager allocationQA đã assign1/1→transfer1/1→revoke0/1, lịch sử giữ hai hàng; không sửa bản ghi nghiệp vụ cũ. Không migration/seed/config/credential mới. Chi tiết trong docs/license-catalog.md.
+
 ## Production publication — 28/10/2026
 
 PR12 merge **3e5d8c9**, CI PR40627280445/main40627505939 gồm Docker Linux PASS. Render `dep-dbgmrpqvcj2c73djvvtg` **Live**, Dashboard và health/version Matched đúng SHA; maintenance=false. Health200, các API mới và Asset/Assignment/Maintenance401 không JWT; không404/503. Frontend flags3 đúng, Reporting đóng; log quan sát chưa có runtime exception. Neon postflight19business tables/44FK/5migrations,56permissions/108grants/hai sequence. Không thêm migration hoặc dữ liệu nghiệp vụ module để thử.

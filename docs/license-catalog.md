@@ -1,5 +1,13 @@
 # Phân hệ Quản lý Bản quyền (License Catalog) — Tài liệu kỹ thuật và Nghiệm thu
 
+## Bản vá giữ dữ liệu form sửa License — 28/10/2026
+
+**FIXED LOCALLY / PENDING PUBLICATION.** Nghiệm thu production bằng System Manager phát hiện `licenseView` (dùng trong adapter và trang) bỏ `notes`, `purchasedAt`, `purchaseCost` đã được Backend trả về. Mở form sửa làm ghi chú/ngày mua trống; submit có thể xóa chúng ngoài ý muốn, giá không hiển thị đúng. Đã đóng form QA trước khi lưu; chưa sửa dữ liệu cũ để khắc phục.
+
+Bản vá chỉ giữ/validate ba field trong projection: notes≤2000, timestamp UTC, cost number hữu hạn không âm nếu server có trả. Không tự thêm cost khi response đã redact/không có property. Quyền field/form và kiểm soát Backend giữ nguyên; secret/key vẫn bị reject. Không đổi API/DTO, schema/migration, flags hoặc seed. Test adapter thật→page→form→PUT kiểm round-trip ba field, qua cả lần project dữ liệu thứ hai; malformed fields bị502, response financial redacted không tự xuất hiện. Test chờ submit đóng modal trước teardown, không tăng timeout/bỏ qua test.
+
+Software QA `PM000001` đã create/update1.0→1.1/search thành công; License QA `BQ000001` create1seat; cả hai thuộc `QA Rollout 20261028`, không phải dữ liệu thương mại. Manager allocation production đã assign1/1→transfer1/1→revoke0/1; hai history rows được giữ. QA License/Software sẽ archive sau kiểm thử bản vá. Release0warnings/errors;867unit/249integration/436frontend PASS,163cloudSKIP;57JS/61CSP và production frontend build PASS. Không nhận định Admin key reveal hoặc Support login PASS từ phiên Manager.
+
 ## Publication và vận hành — 28/10/2026
 
 **DEPLOYED / PUBLIC READINESS VERIFIED; AUTHENTICATED UI ACCEPTANCE PENDING.** PR12 đã merge tại `3e5d8c9798075e8ca3490246ce39baf97d38bad2`. CI PR40627280445 và main40627505939 PASS, gồm Docker Linux build/container smoke. Render Auto-Deploy `After CI Checks Pass`: `dep-dbgmrpqvcj2c73djvvtg`, Live; Dashboard SHA và health/version artifact/render đều khớp `3e5d8c9`, provenance Matched, maintenance=false.

@@ -301,3 +301,23 @@ test('license reveal key validates reason length, displays revealed key and expi
     dom.restore();
   }
 });
+
+
+test('real license adapter feeds edit form without clearing persisted notes, purchase date or price', async () => {
+  const dom = installDom('/licenses'); try {
+    const { services } = createFixture();
+    const dto = { ...sampleLicense(), purchasedAt: '2026-01-02T00:00:00Z' }; const writes = [];
+    services.licenses = createLicenseService({ idPath: String, request: async (url, options) => {
+      if (options?.method === 'PUT') writes.push(options.body);
+      return url.includes('?') ? { items: [dto], page: 1, pageSize: 20, totalItems: 1, totalPages: 1 } : dto;
+    } });
+    const root = await licensePage(services); dom.body.append(root); findBtn(root, 'Sửa').fire('click');
+    await until(() => Boolean(findDialog(dom.body)));
+    assert.equal(document.getElementById('field-license-notes').value, dto.notes);
+    assert.equal(document.getElementById('field-license-purchasedAt').value, '2026-01-02');
+    assert.equal(document.getElementById('field-license-purchaseCost').value, String(dto.purchaseCost));
+    findForm(dom.body).fire('submit'); await until(() => writes.length === 1 && !findDialog(dom.body));
+    assert.equal(writes[0].notes, dto.notes); assert.equal(Date.parse(writes[0].purchasedAt), Date.parse(dto.purchasedAt)); assert.equal(writes[0].purchaseCost, dto.purchaseCost);
+    assert.equal(writes[0].rowVersion, rowVersion);
+  } finally { dom.restore(); }
+});
