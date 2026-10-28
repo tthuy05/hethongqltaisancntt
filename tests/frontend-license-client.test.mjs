@@ -54,7 +54,7 @@ test('view uses unknown rather than fake zero capacity and rejects inconsistent/
     { expiresAt: '2026-10-14T00:00:00+07:00' }, { totalQuantity: 0 }]) assert.throws(() => licenseView({ ...license(), ...change }), error => error.status === 502);
   assert.throws(() => licensePageView({ ...page(license()), totalPages: 0 }), error => error.status === 502);
   const safe = licenseView({ ...license(), unexpected: 'not-retained', purchaseCost: 100 });
-  assert.ok(Object.isFrozen(safe)); assert.equal(safe.purchaseCost, undefined); assert.equal(safe.unexpected, undefined);
+  assert.ok(Object.isFrozen(safe)); assert.equal(safe.purchaseCost, 100); assert.equal(safe.unexpected, undefined);
 });
 test('wrong resource/page responses fail instead of rendering another record', async () => {
   const { services } = await client(url => Response.json(url.includes('?') ? { ...page(license()), page: 2 } : { ...license(), id: 5 }));
@@ -69,4 +69,16 @@ test('disabled backend/network errors have no fallback and 401 clears session wi
     assert.equal(calls.length, 2); assert.equal(services.auth.session === null, status === 401);
     await services.auth.logout();
   }
+});
+
+
+test('license view preserves edit metadata and validates optional cost without inventing redacted values', () => {
+  const dto = { ...license(), notes: '<b>Keep this note</b>', purchasedAt: '2026-01-02T00:00:00Z', purchaseCost: 1234.50 };
+  const projected = licenseView(licenseView(dto));
+  assert.equal(projected.notes, dto.notes);
+  assert.equal(projected.purchasedAt, dto.purchasedAt);
+  assert.equal(projected.purchaseCost, dto.purchaseCost);
+  assert.equal(Object.hasOwn(licenseView(license()), 'purchaseCost'), false);
+  for (const extra of [{ notes: 'a'.repeat(2001) }, { notes: {} }, { purchasedAt: 'invalid' }, { purchaseCost: -1 }, { purchaseCost: '123' }, { purchaseCost: Infinity }])
+    assert.throws(() => licenseView({ ...license(), ...extra }), error => error.status === 502);
 });

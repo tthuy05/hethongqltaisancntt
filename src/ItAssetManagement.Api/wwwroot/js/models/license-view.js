@@ -37,6 +37,7 @@ export function licenseView(value) {
   const used = value.usedQuantity ?? null;
   if (used != null && (!Number.isSafeInteger(used) || used < 0 || used > value.totalQuantity)) invalid();
   if (value.availableQuantity != null && (used == null || value.availableQuantity !== value.totalQuantity - used)) invalid();
+  if (value.purchaseCost != null && (typeof value.purchaseCost !== 'number' || !Number.isFinite(value.purchaseCost) || value.purchaseCost < 0)) invalid();
   const maskedKey = value.maskedKey ?? null;
   if (maskedKey != null && (typeof maskedKey !== 'string' || !/^\*{4}-[^\p{Cc}]{4}$/u.test(maskedKey))) invalid();
   const software = value.software == null ? null : Object.freeze({
@@ -46,7 +47,9 @@ export function licenseView(value) {
     licenseType: value.licenseType, totalQuantity: value.totalQuantity, usedQuantity: used,
     availableQuantity: used == null ? null : value.totalQuantity - used, isActive: value.isActive,
     startsAt: timestamp(value.startsAt), expiresAt: timestamp(value.expiresAt), maskedKey,
-    vendor: text(value.vendor, 250, true), status: text(value.status, 50, true),
+    vendor: text(value.vendor, 250, true), notes: text(value.notes, 2000, true),
+    purchasedAt: timestamp(value.purchasedAt),
+    ...(Object.hasOwn(value, 'purchaseCost') ? { purchaseCost: value.purchaseCost } : {}), status: text(value.status, 50, true),
     rowVersion: text(value.rowVersion, 100, true) });
 }
 export function licensePageView(value) {
