@@ -1,5 +1,13 @@
 # Phân hệ Quản lý Bản quyền (License Catalog) — Tài liệu kỹ thuật và Nghiệm thu
 
+## Publication và vận hành — 28/10/2026
+
+**DEPLOYED / PUBLIC READINESS VERIFIED; AUTHENTICATED UI ACCEPTANCE PENDING.** PR12 đã merge tại `3e5d8c9798075e8ca3490246ce39baf97d38bad2`. CI PR40627280445 và main40627505939 PASS, gồm Docker Linux build/container smoke. Render Auto-Deploy `After CI Checks Pass`: `dep-dbgmrpqvcj2c73djvvtg`, Live; Dashboard SHA và health/version artifact/render đều khớp `3e5d8c9`, provenance Matched, maintenance=false.
+
+Health/live200; Software, License, Allocation và Asset/Assignment/Maintenance trả401 khi không có JWT (gating/readiness đã qua, không404/503). Production frontend thực tế có ba flags đúng; Reporting giữ đóng. Log đang hiển thị không có Unhandled exception/fail/ERROR; đây không phải bằng chứng mọi tình huống production đã PASS. Postflight Neon chỉ đọc xác nhận19business tables/44FK/5migrations,56permissions/108grants, hai sequence; ba bảng module chưa có dữ liệu nghiệp vụ. Không chạy lại seed hoặc migration.
+
+Admin session cũ mất khi reload để nhận frontend mới do token chỉ lưu in-memory. Đang chờ người dùng đăng nhập lại để nghiệm thu UI CRUD/seat; chưa ghi nhận authenticated production CRUD/transfer/revoke hoặc Manager/Support login PASS. Evidence local ignored trong `test-results/software-license-rollout/production-anonymous-smoke.json`, `postflight-readonly.log`, `render-log-observation.json`, `render-live.png`. Tài liệu nghiệm thu được cập nhật trên nhánh rollout để gộp lần publication kế tiếp, không tự gây một đợt Render deploy chỉ từ tài liệu.
+
 ## Chuẩn bị rollout Software + License — 28/10/2026
 
 **SHARED PREPARATION VERIFIED / PUBLICATION IN PROGRESS** trên `codex/software-license-rollout`, từ main `6e43bdf`. Render Dashboard xác nhận Live commit này (deployment `dep-dbgdb9gae00c73d0d530`). Không thay connection string, JWT, Brevo hoặc module Reports.

@@ -1,3 +1,9 @@
+## Production publication — 28/10/2026
+
+PR12 merge **3e5d8c9**, CI PR40627280445/main40627505939 gồm Docker Linux PASS. Render `dep-dbgmrpqvcj2c73djvvtg` **Live**, Dashboard và health/version Matched đúng SHA; maintenance=false. Health200, các API mới và Asset/Assignment/Maintenance401 không JWT; không404/503. Frontend flags3 đúng, Reporting đóng; log quan sát chưa có runtime exception. Neon postflight19business tables/44FK/5migrations,56permissions/108grants/hai sequence. Không thêm migration hoặc dữ liệu nghiệp vụ module để thử.
+
+**Authenticated browser acceptance PENDING:** chờ Admin đăng nhập lại sau reload nhận frontend mới (JWT in-memory); chưa coi CRUD/seat/Manager/Support production là PASS. Backup+restore/seed rehearsal và regression local vẫn PASS như phần dưới. Chi tiết/evidence: [license-catalog.md](docs/license-catalog.md). Ghi chú nghiệm thu ở nhánh rollout, không tự deploy chỉ để cập nhật tài liệu.
+
 ## Software + License rollout — 28/10/2026
 
 **SHARED PREPARATION VERIFIED / PUBLICATION IN PROGRESS** trên `codex/software-license-rollout` (PR12), từ main/Render `6e43bdf`. Backup snapshot + restore PostgreSQL local PASS; PITR UNVERIFIED. Theo xác nhận phối hợp của người dùng, narrow prepare/seed trên Neon đã PASS:42→56permissions,82→108role grants; hai sequence mới; repeat `[0,0,0]`; Support module0/nonAdmin key0. Fingerprint toàn bộ dữ liệu nghiệp vụ/users/memberships/custom permissions/history trước/sau không đổi.19business tables/44FK/5migrations giữ nguyên; không migration và chưa tạo dữ liệu Software/License/Allocation.
