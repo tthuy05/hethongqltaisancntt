@@ -1,3 +1,9 @@
+## Software + License rollout — 28/10/2026
+
+**SHARED PREPARATION VERIFIED / PUBLICATION IN PROGRESS** trên `codex/software-license-rollout` (PR12), từ main/Render `6e43bdf`. Backup snapshot + restore PostgreSQL local PASS; PITR UNVERIFIED. Theo xác nhận phối hợp của người dùng, narrow prepare/seed trên Neon đã PASS:42→56permissions,82→108role grants; hai sequence mới; repeat `[0,0,0]`; Support module0/nonAdmin key0. Fingerprint toàn bộ dữ liệu nghiệp vụ/users/memberships/custom permissions/history trước/sau không đổi.19business tables/44FK/5migrations giữ nguyên; không migration và chưa tạo dữ liệu Software/License/Allocation.
+
+Key256-bit và ba flags Software/License/Allocation đã lưu Render bằng **Save only**, chưa deploy; recovery DPAPI local đọc lại PASS (giới hạn tài khoản Windows hiện tại). Không thay connection string/JWT/Brevo, giữ Assignment/Maintenance/Excel và Reporting đóng. Release0warnings/errors;867unit/249integration/434frontend PASS,163cloudSKIP;57JS/61CSP PASS; production build56assets PASS. CI40548922799 gồm Docker Linux PASS tại b825d03; commit cập nhật tài liệu cần CI riêng trước merge. Production E2E **PENDING**. Chi tiết và log receipt tại [license-catalog.md](docs/license-catalog.md). Các artifact cá nhân không commit.
+
 ## Nhật ký thao tác — 27/10/2026
 
 **IMPLEMENTED LOCALLY / UNDER REVIEW** trên `feature/audit-log-improvements`, base main `e4d1c35` (PR #10 License Allocation đã merge). Fetch và `pull --ff-only origin main`: Already up to date; bảo toàn WIP và artifact cá nhân.

@@ -517,3 +517,8 @@ Publication addendum: người dùng đã push frontend tại `cae3a31` (`push g
 ### Changed — 27/10/2026, audit improvements (local / under review)
 
 - Thêm tên người thao tác, nhãn hành động tiếng Việt và bộ lọc nghiệp vụ/kỹ thuật/tất cả; API thiếu category giữ kết quả tương thích cũ. Không thay schema, permissions hoặc production configuration.
+
+
+### Prepared — 28/10/2026, Software/License rollout
+
+- Chuẩn bị frontend production cho Software, License và Allocation; bổ sung script tạo key ngoài Git và hướng dẫn rollout/backup/rehearsal. Chưa bật production hoặc ghi Neon shared.
