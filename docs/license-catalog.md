@@ -1,5 +1,18 @@
 # Phân hệ Quản lý Bản quyền (License Catalog) — Tài liệu kỹ thuật và Nghiệm thu
 
+## Nghiệm thu production hoàn tất — 29/10/2026
+
+**DEPLOYED / MANAGER PRODUCTION ACCEPTANCE PASS.** PR13 đã merge; Render Live tại `bfb3657c3d6439ec1735994699f37dfaf881c28e`, deployment `dep-dbgubm6i0phs73csqueg`. `/health/version` trả artifactRevision/renderRevision trùng SHA, provenance Matched, maintenance=false. CI PR40684764512 và main40685227972 PASS, gồm Docker Linux build/container smoke.
+
+- Bản vá projection đã nghiệm thu trên web thật: mở lại BQ000001 thấy ghi chú gốc, ngày mua 2026-10-28 và giá QA 1.25; đổi riêng nhà cung cấp, lưu và mở lại vẫn giữ nguyên cả ba trường. Screenshot local ignored: `test-results/software-license-rollout/license-edit-production-verified.png`.
+- Software QA tạo mã PM tự sinh, sửa phiên bản, tìm kiếm/lọc PASS. License QA tạo mã BQ tự sinh PASS. Cấp seat 1/1 → điều chuyển vẫn 1/1 → thu hồi 0/1; lịch sử giữ hai dòng. Guard ngăn ngừng Software khi còn License hoạt động đã trả lỗi nghiệp vụ đúng.
+- Đã ngừng dùng riêng BQ000001 rồi PM000001 sau nghiệm thu. Truy vấn READ ONLY ngày29/10 xác nhận cả hai is_active=false; notes/date/cost giữ nguyên, hai allocation history và0 active allocation. Không hard-delete hoặc sửa bản ghi nghiệp vụ cũ. QA không có khóa bản quyền thương mại.
+- Neon postflight giữ19 bảng nghiệp vụ/44 FK/5 migrations,56 permissions/108 grants. Không migration/seed/config mới trong bản sửa. Receipt: `test-results/software-license-rollout/qa-final-readonly.log` và `preflight.json` (ignored).
+- Regression bản sửa: Release0 warnings/errors;867 unit PASS;249 integration PASS/163 cloud SKIP;436 frontend PASS;57 JavaScript/61 CSP PASS; frontend build56 assets PASS. Kết quả SKIP không được tính PASS.
+- Manager không có quyền quản lý/xem khóa. **Admin key reveal và Support production login UNVERIFIED**: không có credential Admin đã xác minh, credential Support lưu local không còn khớp; không reset hoặc retry. Các kiểm thử RBAC isolated PASS không thay thế nghiệm thu hai phiên production này. PITR vẫn UNVERIFIED, logical backup/restore drill đã PASS.
+
+Các mục ngày26–28/10 bên dưới là lịch sử theo checkpoint; trạng thái hiện tại lấy theo mục29/10 này. Biên bản bổ sung ở nhánh riêng để tránh deploy lại chỉ vì tài liệu.
+
 ## Bản vá giữ dữ liệu form sửa License — 28/10/2026
 
 **FIXED LOCALLY / PENDING PUBLICATION.** Nghiệm thu production bằng System Manager phát hiện `licenseView` (dùng trong adapter và trang) bỏ `notes`, `purchasedAt`, `purchaseCost` đã được Backend trả về. Mở form sửa làm ghi chú/ngày mua trống; submit có thể xóa chúng ngoài ý muốn, giá không hiển thị đúng. Đã đóng form QA trước khi lưu; chưa sửa dữ liệu cũ để khắc phục.

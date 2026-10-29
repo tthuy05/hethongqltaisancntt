@@ -1,5 +1,10 @@
 # Changelog
 
+## Released — 29/10/2026 — Software/License production acceptance
+
+- PR13/main bfb3657 deployed; CI and Docker smoke PASS. License edit preserves notes, purchase date and returned financial value.
+- Manager production CRUD/search and allocation lifecycle verified using separate QA records; QA Software/License archived with history retained. Admin reveal and Support login remain unverified. No new migration or seed in the edit fix.
+
 ## Unreleased — 27/10/2026 — License allocation
 
 - Added: License assignment/read/history/revoke/transfer API and UI; separate closed rollout gate, permission catalog and additive4/8 seed.
