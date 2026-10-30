@@ -80,6 +80,7 @@ public static class Permissions
     public const string LicenseRead = "licenses.read", LicenseKeyManage = "licenses.key.manage",
         LicenseKeyReveal = "licenses.key.reveal";
     public const string ReplacementEvaluate = "replacement-recommendations.evaluate";
+    public const string ReplacementRead = "replacement-recommendations.read", ReplacementUpdate = "replacement-recommendations.update";
     public const string ReplacementRuleRead = "replacement-rules.read", ReplacementRuleCreate = "replacement-rules.create",
         ReplacementRuleUpdate = "replacement-rules.update";
     // Week 6 reporting & dashboard contracts
@@ -103,9 +104,11 @@ public static class Permissions
     public static readonly string[] Read = [AssetRead, AssetHistory, DepartmentRead, TypeRead, DashboardRead, UserLookup];
     // Support assignment reads require a scoped support contract, not this unrestricted service.
     public static readonly string[] Operate = [AssetCreate, AssetUpdate, AssetArchive, AssetStatus, AssetCost, RoleRead,
-        AssignmentRead, AssignmentAssign, AssignmentReturn, AssignmentTransfer, .. ImportExport, .. Maintenance, .. SoftwarePermissions.All, .. LicensePermissions.Metadata, .. LicensePermissions.Assignments];
+        AssignmentRead, AssignmentAssign, AssignmentReturn, AssignmentTransfer, .. ImportExport, .. Maintenance, .. SoftwarePermissions.All, .. LicensePermissions.Metadata, .. LicensePermissions.Assignments, ReplacementRuleRead,
+        ReplacementRead, ReplacementUpdate, ReplacementEvaluate];
     public static readonly string[] Admin = [DepartmentCreate, DepartmentUpdate, DepartmentArchive, TypeCreate, TypeUpdate, TypeArchive,
-        UserRead, UserCreate, UserUpdate, UserStatus, RoleAssign, RolePermissionsRead, AuditRead, LicenseKeyManage, LicenseKeyReveal];
+        UserRead, UserCreate, UserUpdate, UserStatus, RoleAssign, RolePermissionsRead, AuditRead, LicenseKeyManage, LicenseKeyReveal,
+        ReplacementRuleCreate, ReplacementRuleUpdate];
     public static readonly string[] Reports = [ReportAssets, ReportAssignments, ReportMaintenance, ReportLicenses, ReportReplacement, ReportCost, DashboardCost];
     public static readonly string[] All = [.. Read, .. Operate, .. Admin];
     public static readonly string[] Roles = ["ADMIN_IT", "SYSTEM_MANAGER", "TECHNICAL_SUPPORT"];

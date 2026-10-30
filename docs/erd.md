@@ -184,6 +184,7 @@ erDiagram
     }
 
     replacement_rules {
+        string severity "nullable until configured"
         bigint id PK
         string code
         int version

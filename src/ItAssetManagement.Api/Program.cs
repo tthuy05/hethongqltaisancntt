@@ -50,6 +50,7 @@ builder.Services.AddControllers().ConfigureApplicationPartManager(parts =>
 {
     parts.FeatureProviders.Add(new AssignmentControllerFeatureProvider(builder.Configuration));
     parts.FeatureProviders.Add(new SoftwareControllerFeatureProvider(builder.Configuration));
+    parts.FeatureProviders.Add(new ReplacementRuleControllerFeatureProvider(builder.Configuration));
     parts.FeatureProviders.Add(new LicenseControllerFeatureProvider(builder.Configuration));
     parts.FeatureProviders.Add(new PreparedModuleControllerFeatureProvider(builder.Configuration));
 })
@@ -105,6 +106,12 @@ builder.Services.AddSingleton<ILicenseKeyProtector, AesGcmLicenseKeyProtector>()
 builder.Services.AddScoped<AuditLogService>();
 builder.Services.AddScoped<MaintenanceService>();
 builder.Services.AddScoped<SoftwareService>();
+builder.Services.AddScoped<ReplacementRuleQueryService>();
+builder.Services.AddScoped<ReplacementRuleCommandService>();
+builder.Services.AddScoped<AssetLifecycleMetricsReader>();
+builder.Services.AddScoped<ReplacementEvaluationService>();
+builder.Services.AddScoped<ReplacementRecommendationService>();
+builder.Services.AddScoped<IReplacementRuleReadiness, ReplacementRuleReadiness>();
 builder.Services.AddScoped<ISoftwareReadiness, SoftwareReadiness>();
 builder.Services.AddScoped<IMaintenanceSchemaReadiness, MaintenanceSchemaReadiness>();
 builder.Services.AddScoped(sp => new MaintenanceAccessPolicy(
@@ -328,6 +335,7 @@ app.UseRateLimiter(); // Bound anonymous workflow readiness probes before any da
 app.UseMiddleware<AssignmentRolloutMiddleware>(); // Closed before auth/Controller/DB-dependent business code.
 app.UseMiddleware<MaintenanceRolloutMiddleware>(); // Prepared owner module stays absent by default.
 app.UseMiddleware<SoftwareRolloutMiddleware>(); // Closed until catalog rollout is reviewed.
+app.UseMiddleware<ReplacementRuleRolloutMiddleware>(); // Rule catalog stays closed until rollout review.
 app.UseMiddleware<LicenseRolloutMiddleware>(); // Closed until license rollout is reviewed.
 app.UseAuthentication(); app.UseAuthorization();
 app.MapControllers();

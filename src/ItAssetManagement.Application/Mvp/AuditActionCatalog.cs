@@ -71,6 +71,15 @@ public static class AuditActionCatalog
         ["software.create"] = "Tạo phần mềm",
         ["software.update"] = "Cập nhật thông tin phần mềm",
         ["software.archive"] = "Lưu trữ phần mềm",
+        ["replacement-rules.create"] = "Tạo quy tắc thay thế",
+        ["replacement-rules.revise"] = "Phát hành phiên bản quy tắc thay thế",
+        ["replacement-rules.supersede"] = "Đóng phiên bản quy tắc thay thế",
+        ["replacement-rules.status"] = "Đổi trạng thái quy tắc thay thế",
+        ["replacement.evaluate"] = "Đánh giá đề xuất thay thế",
+        ["replacement.evaluate.no-match"] = "Đánh giá không có quy tắc khớp",
+        ["replacement.evaluate.insufficient"] = "Đánh giá chưa đủ dữ liệu",
+        ["replacement.supersede"] = "Thay thế đề xuất hiện hành",
+        ["replacement.disposition"] = "Ghi nhận kế hoạch hoặc bỏ qua đề xuất",
 
         // Licenses
         ["licenses.create"] = "Tạo bản quyền phần mềm",
@@ -116,6 +125,8 @@ public static class AuditActionCatalog
         "maintenance.comment", "maintenance.cost.update", "maintenance.resolve", "maintenance.fail",
         "maintenance.cancel", "maintenance.asset.status",
         "software.create", "software.update", "software.archive",
+        "replacement-rules.create", "replacement-rules.revise", "replacement-rules.supersede", "replacement-rules.status",
+        "replacement.evaluate", "replacement.evaluate.no-match", "replacement.evaluate.insufficient", "replacement.supersede", "replacement.disposition",
         "licenses.create", "licenses.update", "licenses.archive", "license.key.reveal",
         "license-assignments.assign", "license-assignments.revoke",
         "audit.view"

@@ -10,6 +10,7 @@ public static class WorkflowIngress
         AssignmentRollout.IsEnabled(configuration) && AssignmentRollout.IsPath(context.Request.Path) ||
         MaintenanceRollout.IsEnabled(configuration) && MaintenanceRollout.IsPath(context.Request.Path) ||
         SoftwareRollout.IsEnabled(configuration) && SoftwareRollout.IsPath(context.Request.Path) ||
+        ReplacementRuleRollout.IsEnabled(configuration) && ReplacementRuleRollout.IsPath(context.Request.Path) ||
         LicenseRollout.IsEnabled(configuration) && LicenseRollout.IsPath(context.Request.Path) &&
             (!LicenseRollout.IsAllocationPath(context.Request.Path) || LicenseRollout.IsAllocationEnabled(configuration));
 

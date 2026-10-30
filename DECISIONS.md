@@ -400,3 +400,13 @@ Exact files, run/check commands, reuse rationale và live-integration handoff: [
 **Consequences:** Development/demo local vẫn giữ; Production startup fail-closed nếu thiếu valid connection configuration/JWT/package marker. Build/package smoke dùng synthetic config, không gọi DB. Không suy CI/public connection/proxy/security VERIFIED từ YAML. Người dùng vẫn cần Render/secrets, xử lý owner credential đã lộ/runtime least privilege và demo isolation; public Manager không mặc định được phê duyệt cho dữ liệu thật. Free compute có cold-start tradeoff cho báo cáo. [Runbook và kết quả thực tế](docs/render-deployment.md).
 
 **Migration impact:** NONE — giữ18logical/41relationships,10physicalM1/19FK,InitialM1,ownership và M1 10/10/2026. Không tự seed/migrate/reset build/start/deploy, không chuyển database sang Render. Evidence30task/320PASS cũ giữ checkpoint ngày chạy, không thay lượt verify mới.
+
+
+## Quyết định29/10/2026 — Rule revision và mã họ quy tắc (UNDER REVIEW)
+
+Context: replacement_rules có sẵn code/version, unique family/version và recommendation FK; API quản lý đang phát triển local, không có schema change. Tạo họ quy tắc bằng RR-32hex từ Guid do Backend sinh, bất biến; không dùng MAX/COUNT, client không chỉ định mã và không cần sequence/migration mới. PUT append-new revision dưới coordinator replacement-rules, đóng bản trước cùng audited transaction; không ghi đè thresholds lịch sử. Phát hành có hiệu lực ngay UTC; scheduling chưa triển khai. Status chỉ tác động head còn mở, không tái sử dụng bản superseded. Giá omission giữ nguyên khi revise; explicit null cần financial grant để xóa. Consequences: client dùng ID mới sau PUT, evaluator sau này phải dùng cùng coordinator; API/feature còn UNDER REVIEW và production giữ đóng. Không thay đổi Neon, không chạy migration/seed.
+
+
+## Quyết định30/10/2026 — Severity riêng và completed maintenance count
+
+Người dùng xác nhận: cấu hình LOW/MEDIUM/HIGH/CRITICAL riêng mỗi rule; count=RESOLVED+FAILED gồm archived. Bổ sung nullable severity + CHECK bằng migration mới (không sửa migration cũ/không default legacy), đã rehearsal local. Evaluation dựa facts hiện tại, severity→order→id, lưu snapshot v1, không tự retire. Price thiếu để null, no fake score; insufficient-only giữ current. Production migration/seed/flags cần phê duyệt sau review/backup, chưa apply.

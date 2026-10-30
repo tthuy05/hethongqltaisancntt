@@ -252,3 +252,18 @@ Các `TC-BR-xxx` là **PLANNED test cases**, chưa có test project hoặc pass 
 | BR-054 | assignment/import/rule, audit | 031–034, 064–069, 087 | TC-BR-054: valid authorized action immediate + audit, no approval state |
 | BR-055 | users, assignments, license_assignments | 008 | TC-BR-055: deactivate user giữ allocation/history, cảnh báo |
 | BR-056 | archived roots and histories | 028, 037, 050, 055, 058, 087 | TC-BR-056: archived target không nhận transaction mới |
+
+
+### 29/10 — BR-020: rule catalog read boundary (UNDER REVIEW)
+
+EP-063/065 chỉ đọc cấu hình/version/effective period hiện có; không đánh giá condition, không ghi rule/recommendation và không thay trạng thái Asset. Lọc Active/Inactive phản ánh is_active, chưa phải tính rule đang effective. Giá estimatedUnitCost bị redact khi thiếu assets.cost.read và reports.cost.read; không cho sort/filter theo giá để suy đoán dữ liệu bị ẩn. Rule inactive vẫn đọc được để giữ khả năng tra cứu lịch sử. Mọi write/version/evaluate tiếp tục PLANNED; không seed threshold mặc định hoặc tự hard-code chúng vào Controller.
+
+
+### 29/10 — BR-020/021/035: rule publication local (UNDER REVIEW)
+
+Rule PUT append-new revision giữ code, tăng version, đóng bản trước atomic với audit. Ngưỡng/cost/identity cũ bất biến; status chỉ thay đổi head chưa đóng effectiveTo, không phục hồi bản superseded. Tạo mã RR-32hex Backend, client không tự chọn. Hiệu lực ngay UTC, chưa scheduling. WarrantyExpired và FailureCount là cặp AND phải đầy đủ. Thao tác ghi cần active Admin membership và fresh effective read/action grant; giá gửi explicit cần cost grant, omission giữ giá cũ. Coordinator replacement-rules phải được tái sử dụng khi viết evaluator sau này. Không tự retire Asset hoặc tạo Recommendation trong slice quản lý rule.
+
+
+### 30/10 — Quyết định nghiệp vụ được người dùng xác nhận
+
+Severity cấu hình riêng cho từng rule, không tính theo số condition. MaintenanceCount chỉ RESOLVED+FAILED kể cả archived, không tính pending/in-progress/cancelled. OR giữa các condition, warranty+failure là AND. Winner severity cao nhất → priority số nhỏ → id nhỏ; snapshot giữ mọi rule khớp, thiếu dữ liệu không suy đoán. No-match đóng current, insufficient-only giữ current và audit. Legacy rule thiếu severity phải revise, không tự gán MEDIUM. Đánh giá hiện tại, append-new và supersede atomic, không tự retire tài sản hoặc phát sinh chi phí. PLANNED còn current có thể sửa năm/note theo BR-051.

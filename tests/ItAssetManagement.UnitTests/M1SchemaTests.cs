@@ -86,7 +86,7 @@ public sealed class M1SchemaTests
         using var context = new AppDbContextFactory().CreateDbContext([]);
         Assert.Null(context.Database.GetConnectionString());
         Assert.False(context.Database.HasPendingModelChanges());
-        Assert.Equal(new[] { "20261002151601_InitialM1", "20261008080630_AddAssignmentMaintenance", FullSchemaBaseline.Migration, "20261011103054_LecturerFeedbackIdentityAndAssetCodes", "20261024043835_AddUserPermissions" }, context.Database.GetMigrations());
+        Assert.Equal(new[] { "20261002151601_InitialM1", "20261008080630_AddAssignmentMaintenance", FullSchemaBaseline.Migration, "20261011103054_LecturerFeedbackIdentityAndAssetCodes", "20261024043835_AddUserPermissions", "20261030024812_AddReplacementRuleSeverity" }, context.Database.GetMigrations());
         var target = new AddAssignmentMaintenance().TargetModel;
         Assert.Equal(12,target.GetEntityTypes().Count());
         Assert.Equal(27,target.GetEntityTypes().Sum(entity => entity.GetForeignKeys().Count()));

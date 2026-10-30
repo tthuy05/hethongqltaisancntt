@@ -102,8 +102,8 @@ public sealed class AssignmentSetupTests
     {
         string[] assignment = [Permissions.AssignmentRead, Permissions.AssignmentAssign, Permissions.AssignmentReturn];
         Assert.Equal(new[] { "assignments.read", "assignments.assign", "assignments.return" }, assignment);
-        Assert.Equal(56, Permissions.All.Length);
-        Assert.Equal(56, Permissions.All.Distinct().Count());
+        Assert.Equal(62, Permissions.All.Length);
+        Assert.Equal(62, Permissions.All.Distinct().Count());
         Assert.All(assignment, permission =>
         {
             Assert.Contains(permission, Permissions.All); // Admin receives the full fixed catalog.

@@ -42,8 +42,10 @@ public sealed class ReplacementRuleAccessPolicyTests
         Denied(wrongCase.RequireCreate); Denied(wrongCase.RequireUpdate);
     }
     [Fact]
-    public void Prepared_permissions_are_not_registered_in_active_catalog()
+    public void Catalog_separates_admin_writes_from_manager_and_support()
     {
-        foreach (var grant in Grants) Assert.DoesNotContain(grant, Permissions.All);
+        foreach (var grant in Grants) Assert.Contains(grant, Permissions.All);
+        foreach (var grant in Grants.Skip(1)) { Assert.Contains(grant, Permissions.Admin); Assert.DoesNotContain(grant, Permissions.Operate); }
+        Assert.DoesNotContain(Permissions.ReplacementRuleRead, Permissions.Read);
     }
 }

@@ -66,6 +66,8 @@ internal static class FullSchemaMapping
             .HasFilter("assigned_asset_id IS NOT NULL").HasDatabaseName("ix_license_assignments_asset_history");
 
         var r = Table<ReplacementRule>(model,"replacement_rules");
+        r.Property(x => x.Severity).HasMaxLength(20);
+        Check(r,"severity","severity IS NULL OR severity IN ('LOW','MEDIUM','HIGH','CRITICAL')");
         Strings(r,("Code",100),("Name",250),("Description",2000)); Mutable(r);
         Foreign<ReplacementRule,AssetType>(r,"AssetTypeId");
         r.Property(x => x.Version).HasDefaultValue(1);

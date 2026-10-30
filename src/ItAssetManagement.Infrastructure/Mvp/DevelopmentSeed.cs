@@ -9,6 +9,35 @@ public sealed record SeedCredentials(string Email, string Password);
 public sealed record SeedResult(int Roles, int Permissions, int RolePermissions, int Departments, int AssetTypes, int Users, int UserRoles, int Added);
 public sealed class DevelopmentSeed(AppDbContext db, IRepository repo, IUnitOfWork uow, IPasswordService passwords, IAuditWriter audit)
 {
+    // Explicit operator entry only. Never called from normal HTTP startup.
+    public Task<int> RunReplacementPermissionsAsync(CancellationToken ct = default) => uow.RunAsync(async () => {
+        await repo.LockAsync("development-seed", ct); await repo.LockAsync("replacement-rules", ct); await repo.LockAsync("users-identity", ct);
+        await db.Set<ReplacementRule>().Select(x => x.Severity).Take(1).ToListAsync(ct);
+        var roles = await db.Set<Role>().Where(x => Permissions.Roles.Contains(x.Code)).ToListAsync(ct);
+        if (roles.Count != 3 || roles.Any(x => !x.IsActive)) throw new InvalidOperationException("Active baseline roles required.");
+        var forbidden = from link in db.Set<RolePermission>() join role in db.Set<Role>() on link.RoleId equals role.Id
+            join permission in db.Set<Permission>() on link.PermissionId equals permission.Id
+            where ReplacementPermissions.All.Contains(permission.Code) && (role.Code == "TECHNICAL_SUPPORT" ||
+                role.Code != "ADMIN_IT" && (permission.Code == Permissions.ReplacementRuleCreate || permission.Code == Permissions.ReplacementRuleUpdate)) select link.Id;
+        if (await forbidden.AnyAsync(ct)) throw new InvalidOperationException("Unexpected replacement grants require review.");
+        var created = new List<object>();
+        foreach (var code in ReplacementPermissions.All) {
+            var definition = await db.Set<Permission>().SingleOrDefaultAsync(x => x.Code == code, ct);
+            if (definition is { IsActive: false }) throw new InvalidOperationException("Inactive permission requires review.");
+            if (definition == null) {
+                definition = new Permission { Code = code, Name = code, Module = code.Split('.')[0] };
+                db.Add(definition); created.Add(definition); await db.SaveChangesAsync(ct);
+            }
+            foreach (var role in roles.Where(x => x.Code == "ADMIN_IT" || x.Code == "SYSTEM_MANAGER" && code != Permissions.ReplacementRuleCreate && code != Permissions.ReplacementRuleUpdate))
+                if (!await db.Set<RolePermission>().AnyAsync(x => x.RoleId == role.Id && x.PermissionId == definition.Id, ct)) {
+                    var link = new RolePermission { RoleId = role.Id, PermissionId = definition.Id, GrantedAtUtc = DateTime.UtcNow };
+                    db.Add(link); created.Add(link);
+                }
+        }
+        await db.SaveChangesAsync(ct);
+        foreach (var entity in created) audit.Record("development.replacement-permissions.seed", entity, null, "SYSTEM");
+        await db.SaveChangesAsync(ct); return created.Count;
+    }, ct);
     public Task<int> RunLicenseAllocationPermissionsAsync(CancellationToken ct = default) => uow.RunAsync(async () => {
         await repo.LockAsync("development-seed", ct); await repo.LockAsync("users-identity", ct);
         await db.Set<LicenseAssignment>().AnyAsync(ct);

@@ -89,12 +89,12 @@ public static class ReplacementRecommendationPolicy
     {
         ArgumentNullException.ThrowIfNull(oldRecommendation);
         oldRecommendation.IsCurrent = false;
-        if (oldRecommendation.Disposition == "ACTIVE")
+        if (oldRecommendation.Disposition is "ACTIVE" or "PLANNED")
         {
             oldRecommendation.Disposition = "SUPERSEDED";
             oldRecommendation.DispositionAtUtc = nowUtc;
             oldRecommendation.DispositionByUserId = userId;
-            oldRecommendation.DispositionNote = reason;
+            oldRecommendation.DispositionNote ??= reason;
         }
     }
 }

@@ -71,6 +71,7 @@ public sealed class LicenseAssignment
 
 public sealed class ReplacementRule
 {
+    public string? Severity { get; set; }
     public long Id { get; set; }
     public string Code { get; set; } = null!;
     public int Version { get; set; } = 1;

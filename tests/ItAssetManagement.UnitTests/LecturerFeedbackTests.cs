@@ -26,7 +26,7 @@ public sealed class LecturerFeedbackTests
     [Fact] public void New_migration_preserves_baseline_tables_keys_and_defaults_for_old_accounts()
     {
         using var db=new AppDbContextFactory().CreateDbContext([]);var model=db.GetService<IDesignTimeModel>().Model;
-        Assert.Equal(19,model.GetEntityTypes().Count());Assert.Equal(44,model.GetEntityTypes().Sum(x=>x.GetForeignKeys().Count()));Assert.Equal(85,model.GetEntityTypes().Sum(x=>x.GetCheckConstraints().Count()));
+        Assert.Equal(19,model.GetEntityTypes().Count());Assert.Equal(44,model.GetEntityTypes().Sum(x=>x.GetForeignKeys().Count()));Assert.Equal(86,model.GetEntityTypes().Sum(x=>x.GetCheckConstraints().Count()));
         Assert.True((bool)model.FindEntityType(typeof(ItAssetManagement.Domain.Entities.User))!.FindProperty("IsEmailConfirmed")!.GetDefaultValue()!);
         var migration=new LecturerFeedbackIdentityAndAssetCodes();Assert.Empty(migration.UpOperations.OfType<CreateTableOperation>());Assert.Equal(4,migration.UpOperations.OfType<AddColumnOperation>().Count());
         Assert.All(migration.UpOperations.OfType<AddColumnOperation>(),x=>Assert.Equal("users",x.Table));

@@ -99,8 +99,8 @@ public sealed class ImportExportSecurityTests
     {
         Assert.Equal(5, Permissions.ImportExport.Length);
         Assert.Equal(5, Permissions.ImportExport.Distinct().Count());
-        Assert.Equal(56, Permissions.All.Length);
-        Assert.Equal(56, Permissions.All.Distinct().Count());
+        Assert.Equal(62, Permissions.All.Length);
+        Assert.Equal(62, Permissions.All.Distinct().Count());
 
         foreach (var p in Permissions.ImportExport)
         {
