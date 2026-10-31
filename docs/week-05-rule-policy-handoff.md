@@ -1,5 +1,15 @@
 # Quy tắc thay thế — policy, API và bàn giao
 
+## 31/10/2026 — Production source VERIFIED
+
+PR #14 đã merge tại main787e39cda31b41e5ff3cfe3230615cdb30e3fef4. CI main41165674315 PASS; Render Auto-Deploy dep-dbim98p5efls73d75q10 succeeded trong1m19s, Dashboard Live SHA và artifactRevision/renderRevision ở /health/version đều khớp787e39c (provenance Matched). Không tự chạy migration/seed lúc startup. Có các startup warnings DataProtection lưu key trong container và HTTP_PORTS bị URLS ghi đè; không thấy runtime/database/mapping exception trong log đã kiểm. Không coi cảnh báo DataProtection là đã được xử lý.
+
+Production smoke read-only: health200; anonymous rules/recommendations401 (đã qua schema readiness), Assets401; Reports404 vì chưa mở. Người dùng đăng nhập thực tế bằng SYSTEM_MANAGER, không phải Admin: đọc License/allocation history, menu Replacement, danh sách đề xuất/quy tắc, bộ chọn36tài sản nonarchived không tự chọn; không có nút tạo rule đúng policy Admin-only. Assets list/searchAST-000001/detail, danh mục trong bộ lọc, Assignment list và Maintenance list đều đọc bình thường; console browser không có warn/error. Không submit đánh giá/create/plan/retire/archive hoặc CRUD thật để thử. Admin create và cost-restricted/Support cases có evidence isolated, chưa tái nghiệm thu bằng các actor đó trên production.
+
+Neon đã verify19tables/44FK/86CHECK/6history/62permissions/118grants; old business hashes giữ nguyên qua migration/seed. Không có rule/recommendation nghiệp vụ được tạo trong rollout. Source docs/code WIP riêng và6private artifacts ở thư mục chính được giữ nguyên. Evidence ignored: production-replacement-verified.png,production-manager-rules.png,render-live-787e39c.png và operator/shared-result.json dưới test-results/replacement-rule/.
+
+CI log đúng PR head0895f21:916unit PASS,223offline integration PASS/199SKIP,444frontend PASS,59JS/63CSP; Docker32normal+36maintenance HTTP checks PASS. Khác với local có PostgreSQL:265integration PASS/163cloudSKIP, không cộng hai lần hoặc tính SKIP thành PASS. Phần tiếp theo là Reports/Dashboard V2 trên branch riêng; chưa bật Reporting hoặc cấp quyền Reports trên shared.
+
 ## 31/10/2026 — Neon rollout VERIFIED, source publication
 
 Đã fetch origin và pull fast-forward: không có code mới, main vẫn bfb3657; source Replacement ở PR #14. Người dùng đã phê duyệt migration severity, narrow seed và bật chức năng sau CI; xác nhận không có migration/seed/deploy/chỉnh ma trận quyền song song. Không áp dụng phê duyệt này cho module khác.

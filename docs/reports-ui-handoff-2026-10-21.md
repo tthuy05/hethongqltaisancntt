@@ -1,5 +1,13 @@
 # Thủy — Giao diện và Bộ lọc Reports (Hoàn thiện tiếp quản từ Codex), 21/10/2026
 
+## 31/10/2026 — Financial field scope regression, UNDER REVIEW
+
+Tiếp quản từ main787e39c sau Replacement rollout trên nhánh codex/reports-rollout-readiness. Phát hiện backend ReportQueryService cho assets.cost.read/dashboard.cost.read thay thế reports.cost.read trong6projection; không khớp frontend reader/contract riêng của Reports. Đã tái hiện bằng4case:3FAIL/1PASS trước sửa. Chỉnh đúng6điểm sang reports.cost.read, không đổi Asset/Dashboard/Replacement policy hoặc DTO/endpoint/schema.
+
+Các projection liên quan: inventory purchaseCost,3group values, maintenance history cost và replacement estimatedCost. Thiếu reports.cost.read thì null; sort purchaseCost403, maintenance-cost/budget403. Các quyền xem báo cáo theo module vẫn bắt buộc; có reports.cost.read mới trả giá. Không cộng quyền vào JWT hoặc source catalog, không seed grants. Unit kiểm cả no-cost/Asset-only/Dashboard-only/both và positive ReportCost; isolated PostgreSQL kiểm projection và sorting với cost grants khác module.
+
+Focused DashboardAndReporting33 PASS/0FAIL/0SKIP (subset). Full Release0warnings/errors;920unit PASS/0FAIL/0SKIP,265integration PASS/0FAIL/163cloudSKIP,444frontend PASS/0FAIL/0SKIP,59JS/63CSP PASS. Logs ignored: test-results/replacement-rule/reports-guard-release.log,reports-guard-regression.log,reports-guard-frontend.log. Không bật Reporting backend/client, không đổi shared Neon hoặc Render trong slice này. Remaining rollout gates vẫn gồm catalog/grants/readiness, JWT với dữ liệu nghiệp vụ đại diện, browser E2E và EXPLAIN/load; không coi production Reports hoàn thành từ việc sửa field scope.
+
 **LOCAL VERIFIED / UNDER REVIEW.** Tiếp quản và hoàn thiện toàn bộ công việc Reports từ Codex sau `5d84e87`, chỉ thực hiện Dashboard/Reports UI, query đọc báo cáo và regression test suites thuộc Thủy. Không sửa Department/AssetType, Assignment/Maintenance nghiệp vụ, License/allocation, evaluator/rules hoặc Import/Export page/service của Thiện.
 
 ## Phần đã hoàn thiện

@@ -536,3 +536,6 @@ EP-064/066/067 đã có source local sau read slice; chưa production. PUT appen
 ### 30/10 — Replacement API EP-063–071, local UNDER REVIEW
 
 Quy tắc thêm required severity (legacy GET nullable). Recommendation API list/filter/stable sort, evaluate batch≤100 current UTC facts, detail with redacted financial snapshot và disposition/năm đã có source local. PUT rule trả ID revision mới, không update cấu hình lịch sử. API shape/validation/error đầy đủ ở [handoff hiện tại](week-05-rule-policy-handoff.md). Gate vẫn false trên production; migrationSeverity và narrow permission seed chưa apply shared. Không coi cloud/browser/production PASS từ source.
+### 31/10/2026 — Reports financial projection scope
+
+EP-076 inventory.purchaseCost (kể cả sort), EP-077–079 group.Value, EP-081 history.Cost và EP-085 EstimatedCost dùng đúng reports.cost.read. Assets.cost.read hoặc dashboard.cost.read riêng lẻ không thay thế quyền này. Không có ReportCost thì projection null, sort giá403; EP-082/086 tiếp tục403. Endpoint/DTO không đổi, Reporting còn đóng production; xem reports-ui-handoff-2026-10-21.md.

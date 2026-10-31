@@ -1,3 +1,11 @@
+## 31/10/2026 — Reports financial scope: LOCAL VERIFIED / UNDER REVIEW
+
+Nhánh codex/reports-rollout-readiness đã sửa6projection backend để yêu cầu reports.cost.read đúng contract; Asset/Dashboard cost không tự mở giá báo cáo. Trước sửa3regression FAIL/1PASS; sau sửa full920unit/265integration/444frontend PASS,163cloudSKIP,Release0warnings/errors,59JS/63CSP PASS. Không mở Reporting, không thêm catalog/grants hoặc thay đổi shared/Render. Tiếp theo nghiệm thu JWT/fixtures/readiness; xem docs/reports-ui-handoff-2026-10-21.md.
+
+## 31/10/2026 — Replacement production VERIFIED
+
+PR #14 merged/main787e39c, CI main PASS, Render dep-dbim98p5efls73d75q10 succeeded1m19s; Dashboard Live SHA và /health/version khớp. Shared migration/seed PASS:19tables/44FK/86CHECK/6history,62permissions/118grants, old business hashes nguyên vẹn. Production read-only smoke bằng SYSTEM_MANAGER PASS: Replacement list/rules/asset picker, không có Create Rule; Assets search/detail, License/allocation history, Assignment/Maintenance lists hoạt động, browser console sạch. Chưa kiểm lại production write/Admin/Support actor; isolated end-to-end write và security suites đã PASS. Không tạo dữ liệu nghiệp vụ thử. Reports vẫn đóng, tiếp theo nghiệm thu riêng trên codex/reports-rollout-readiness. Chi tiết docs/week-05-rule-policy-handoff.md; các mục dưới là checkpoint lịch sử.
+
 ## 31/10/2026 — Replacement Neon rollout VERIFIED / source publication
 
 PR #14, source4b1d96b/e98a027 có CI/Docker PASS; e98a027 mở client production. Đã fetch/pull, origin/main không đổi bfb3657 trước publication. Backup/restore mới31/10 PASS; shared migration được phê duyệt đã apply10:40–10:41 UTC+7:19tables/44FK/86CHECK/6history,62permissions/118grants, seed16 rồi0, Admin6/Manager4/Support0 Replacement grants, business hashes không đổi. Backend flag lưu Save only, không đổi secrets hoặc Suspend Render. Source publication chờ CI đúng head cuối, merge PR rồi đối chiếu Live SHA/readiness/read-only UI; không mở Reporting. Backend916unit/265integration PASS,163cloudSKIP; frontend444 PASS,59JS/63CSP. Chi tiết docs/week-05-rule-policy-handoff.md.

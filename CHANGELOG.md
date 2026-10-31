@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — 31/10/2026 — Reports financial field scope
+
+- Fixed: Reports financial projections and price sorting require `reports.cost.read`; Asset/Dashboard cost grants no longer substitute for it. Reporting remains closed on production.
+
+## Released — 31/10/2026 — Replacement
+
+- Published PR #14 at main `787e39c`, CI and Render Live revision verified. Approved Neon severity migration and narrow permission seed completed, existing business data preserved. Production read-only smoke passed with System Manager; write flows were tested on isolated PostgreSQL.
+
 ## Unreleased — 30/10/2026 — Replacement evaluation and UI
 
 - Added: configured rule severity migration, deterministic evaluation with immutable evidence, recommendation/history/planning API and guarded UI.
