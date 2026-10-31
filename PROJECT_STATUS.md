@@ -1,3 +1,15 @@
+## 31/10/2026 — Reports & Dashboard V2 code merged to main (1753be3) & Render live (ROLLOUT PENDING APPROVAL)
+
+- Merge commit `1753be3` từ nhánh `codex/reports-rollout-readiness` vào `main`.
+- GitHub Actions CI run #41194084526 PASS 100% (frontend checks, regression tests, build:production, backend build, offline tests, publish, docker build).
+- Render deployment thành công: revision `1753be3945c76a0f72132301fbb6d154d48eae44` Live, Provenance "Matched", health/live 200.
+- ReportingV2 giữ tắt (`Features:ReportingV2:Enabled = false` trên Render): API `/api/v1/reports/*` trả 404 Not Found; các module cũ (Assets, Assignments, Maintenance, Software, Licenses, Replacement Rules/Recommendations, Excel) hoạt động ổn định 100%.
+- Frontend production package: kích hoạt `reportingEnabled: true`, giao diện bảo vệ theo quyền JWT (chỉ người dùng có quyền mới thấy menu/dữ liệu).
+- Các bước chờ phê duyệt trước khi kích hoạt chính thức:
+  1. Phê duyệt chạy seed hẹp 7 permissions / 14 role grants trên Neon shared (`RunReportingPermissionsAsync`).
+  2. Cấu hình biến môi trường `Features:ReportingV2:Enabled = true` trên Render Dashboard.
+  3. Nghiệm thu thực tế giao diện và API trên production với tài khoản có quyền (ADMIN_IT, SYSTEM_MANAGER) và không có quyền (TECHNICAL_SUPPORT).
+
 ## 31/10/2026 — Reports & Dashboard V2 readiness and RBAC v2: LOCAL VERIFIED / UNDER REVIEW
 
 Nhánh codex/reports-rollout-readiness đã hoàn thiện kiểm thử readiness, phân quyền RBAC v2, xử lý audit UserPermission links và kiểm tra toàn diện 11 báo cáo (EP-076 đến EP-086) và Dashboard V2.
