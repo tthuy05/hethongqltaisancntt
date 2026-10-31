@@ -1,6 +1,13 @@
-## 31/10/2026 — Reports financial scope: LOCAL VERIFIED / UNDER REVIEW
+## 31/10/2026 — Reports & Dashboard V2 readiness and RBAC v2: LOCAL VERIFIED / UNDER REVIEW
 
-Nhánh codex/reports-rollout-readiness đã sửa6projection backend để yêu cầu reports.cost.read đúng contract; Asset/Dashboard cost không tự mở giá báo cáo. Trước sửa3regression FAIL/1PASS; sau sửa full920unit/265integration/444frontend PASS,163cloudSKIP,Release0warnings/errors,59JS/63CSP PASS. Không mở Reporting, không thêm catalog/grants hoặc thay đổi shared/Render. Tiếp theo nghiệm thu JWT/fixtures/readiness; xem docs/reports-ui-handoff-2026-10-21.md.
+Nhánh codex/reports-rollout-readiness đã hoàn thiện kiểm thử readiness, phân quyền RBAC v2, xử lý audit UserPermission links và kiểm tra toàn diện 11 báo cáo (EP-076 đến EP-086) và Dashboard V2.
+- Chuẩn hóa canonical rollout key Features:ReportingV2:Enabled (mặc định false). Đóng 404, thiếu dependency trả 503 REPORTING_NOT_READY (Retry-After: 30).
+- Probe IReportingReadiness đọc kiểm tra 11 bảng, migration AddReplacementRuleSeverity, và 7 definitions active của Permissions.Reports.
+- Sửa lỗi audit khi PUT /users/{id}/roles gán quyền riêng (users.permissions.replace/reset) trong cùng transaction, đảm bảo rollback an toàn nếu audit lỗi.
+- Ma trận phân quyền tách riêng 6 dòng submodule cho reports.* tránh ghi đè ô Xem; cấm gán quyền báo cáo cho TECHNICAL_SUPPORT.
+- 6 financial projections yêu cầu chính xác reports.cost.read.
+- Kết quả kiểm thử: Build Release 0 warnings/0 errors; 921 unit tests PASS (100%); 229 integration tests PASS (100%, 203 Neon isolated skipped); 444 frontend tests PASS (100%); 59 JS checks / 63 CSP checks PASS; Production build 58 assets PASS.
+- Môi trường production Neon và Render vẫn giữ an toàn (chưa seed/chưa bật cờ). Handoff chi tiết: docs/reports-ui-handoff-2026-10-21.md.
 
 ## 31/10/2026 — Replacement production VERIFIED
 

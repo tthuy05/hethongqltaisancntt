@@ -19,6 +19,9 @@ public sealed class RolePermissionsRequest
 }
 public static class PermissionContract
 {
+    // Report categories need distinct matrix rows; six identical reports/read cells lose grants.
+    public static string Module(string code, string persisted) => code.StartsWith("reports.", StringComparison.Ordinal)
+        ? code[..code.LastIndexOf('.')] : persisted;
     public static string? Requires(string code) => code switch
     {
         Permissions.RoleAssign or Permissions.RolePermissionsRead => Permissions.RoleRead,
@@ -32,6 +35,8 @@ public static class PermissionContract
         _ when code.StartsWith("replacement-rules.", StringComparison.Ordinal) && code != Permissions.ReplacementRuleRead => Permissions.ReplacementRuleRead,
         Permissions.ReplacementEvaluate or Permissions.ReplacementUpdate => Permissions.ReplacementRead,
         Permissions.ReplacementRead => Permissions.AssetRead,
+        Permissions.ReportCost => Permissions.ReportAssets,
+        Permissions.DashboardCost => Permissions.DashboardRead,
         _ when code.StartsWith("licenses.", StringComparison.Ordinal) && code != Permissions.LicenseRead => Permissions.LicenseRead,
         _ when code.StartsWith("license-assignments.", StringComparison.Ordinal) && code != LicensePermissions.AssignmentRead => LicensePermissions.AssignmentRead,
         LicensePermissions.AssignmentRead => Permissions.LicenseRead,
@@ -40,7 +45,7 @@ public static class PermissionContract
     };
     public static string Action(string code) => code switch
     {
-        Permissions.AssetCost => "Xem chi phí", Permissions.AssetHistory => "Xem lịch sử",
+        Permissions.AssetCost or Permissions.DashboardCost => "Xem chi phí", Permissions.AssetHistory => "Xem lịch sử",
         Permissions.UserLookup => "Tra cứu", Permissions.UserStatus or Permissions.AssetStatus => "Trạng thái",
         Permissions.RoleAssign => "Gán nhóm", Permissions.RolePermissionsRead => "Xem quyền",
         Permissions.AssignmentAssign => "Cấp phát", Permissions.AssignmentReturn => "Thu hồi", Permissions.AssignmentTransfer => "Điều chuyển",
@@ -85,7 +90,7 @@ public sealed class RoleManagementService(IRepository repo, IRoleGrantPersistenc
                       where link.UserId == actor.UserId && role.Code == "ADMIN_IT" && role.IsActive select link.Id;
         if (!await repo.AnyAsync(isAdmin, ct)) throw Denied();
         var definitions = await repo.ListAsync(repo.Query<Permission>().Where(x => x.IsActive && Permissions.All.Contains(x.Code)).OrderBy(x => x.Code), ct);
-        return definitions.Select(x => new PermissionOption(x.Id, x.Code, x.Name, x.Module, PermissionContract.Action(x.Code),
+        return definitions.Select(x => new PermissionOption(x.Id, x.Code, x.Name, PermissionContract.Module(x.Code, x.Module), PermissionContract.Action(x.Code),
             availability.IsAvailable(x.Code), PermissionContract.Requires(x.Code))).ToList();
     }
     public Task<RoleDetailDto> CreateAsync(RoleWriteRequest request, CancellationToken ct)
@@ -141,16 +146,16 @@ public sealed class RoleManagementService(IRepository repo, IRoleGrantPersistenc
             var codes = definitions.Select(x => x.Code).ToHashSet();
             if (role.Code != "ADMIN_IT" && codes.Any(code => code is Permissions.AuditRead or Permissions.LicenseKeyManage or Permissions.LicenseKeyReveal or Permissions.ReplacementRuleCreate or Permissions.ReplacementRuleUpdate))
                 throw Validation.Invalid("permissionIds", "Quyền quản trị nhạy cảm chỉ dành cho nhóm Admin IT.");
-            if (role.Code == "TECHNICAL_SUPPORT" && codes.Any(code => SoftwarePermissions.All.Contains(code) || LicensePermissions.All.Contains(code) || code.StartsWith("assignments.", StringComparison.Ordinal) ||
+            if (role.Code == "TECHNICAL_SUPPORT" && codes.Any(code => Permissions.Reports.Contains(code) || SoftwarePermissions.All.Contains(code) || LicensePermissions.All.Contains(code) || code.StartsWith("assignments.", StringComparison.Ordinal) ||
                     Permissions.Maintenance.Contains(code) && !Permissions.MaintenanceSupport.Contains(code)))
-                throw Validation.Invalid("permissionIds", "Technical Support chỉ được xử lý phiếu được giao, không được cấp quyền phần mềm, bản quyền, cấp phát, giao việc, hủy hoặc chi phí bảo trì.");
+                throw Validation.Invalid("permissionIds", "Technical Support chỉ được xử lý phiếu được giao, không được cấp quyền báo cáo, chi phí tổng quan, phần mềm, bản quyền, cấp phát, giao việc, hủy hoặc chi phí bảo trì.");
             if (definitions.Any(x => PermissionContract.Requires(x.Code) is { } parent && !codes.Contains(parent)))
                 throw Validation.Invalid("permissionIds", "Quyền thao tác yêu cầu quyền xem tương ứng.");
             // The protected Admin group retains the complete supported baseline. This
             // guards the ability to recover identities even when there is only one Admin.
             // Preserve the existing Admin baseline when the new transfer feature is still closed/unseeded.
             if (role.Code == "ADMIN_IT" && Permissions.All.Where(code =>
-                code != Permissions.AssignmentTransfer && !Permissions.Maintenance.Contains(code) && !SoftwarePermissions.All.Contains(code) && !LicensePermissions.All.Contains(code) && !ReplacementPermissions.All.Contains(code) || availability.IsAvailable(code)).Any(code => !codes.Contains(code))) throw Protected();
+                code != Permissions.AssignmentTransfer && !Permissions.Reports.Contains(code) && !Permissions.Maintenance.Contains(code) && !SoftwarePermissions.All.Contains(code) && !LicensePermissions.All.Contains(code) && !ReplacementPermissions.All.Contains(code) || availability.IsAvailable(code)).Any(code => !codes.Contains(code))) throw Protected();
             var existing = await repo.ListAsync(repo.Query<RolePermission>(true).Where(x => x.RoleId == id), ct);
             var existingIds = existing.Select(x => x.PermissionId).ToHashSet();
             var unavailable = await repo.ListAsync(repo.Query<Permission>().Where(x => existingIds.Contains(x.Id)), ct);

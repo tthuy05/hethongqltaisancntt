@@ -1,5 +1,35 @@
 # Thủy — Giao diện và Bộ lọc Reports (Hoàn thiện tiếp quản từ Codex), 21/10/2026
 
+## 31/10/2026 — Catalog, readiness và real-JWT fixture, UNDER REVIEW
+
+### Luồng và trạng thái
+
+Tiếp tục trên codex/reports-rollout-readiness từ main787e39c và checkpoint4f696ce. Source catalog69 gồm7quyền Reports/Dashboard tài chính đã thiết kế; production vẫn62permissions/118grants, Reporting đóng. Không migration/schema change, không đổi6migration đã apply. Client preview chỉ localhost `?reports=1`, không demo; production client chưa bật Reporting.
+
+### API, gate và phụ thuộc
+
+11report API và4Dashboard V2 API giữ endpoint/DTO hiện có. Canonical rollout key mới `Features:ReportingV2:Enabled`, mặc địnhfalse, legacy ReportingApi:Enabled không tự mở module. Lý do: source787e39c đã hiểu legacy key; dùng key mới để Save-only sau phê duyệt không bật controllers cũ khi container khởi động lại. Khi false/invalid, hai controllers không discovery và request404 trước probe/auth/DB. Khi true, read-only readiness yêu cầu11bảng phụ thuộc, history AddReplacementRuleSeverity và7definitions active; thiếu503 REPORTING_NOT_READY/RetryAfter30, no-store. Timeout connect/command3s, lock2s; ingress chung120/min/8concurrent. Không seed/migrate lúc startup. M1 dashboard dùng Asset API vẫn độc lập.
+
+### Quyền và ma trận
+
+Narrow operator method RunReportingPermissionsAsync thêm7definitions/14Admin–Manager links (21→0), Support0, audited transaction và users-identity lock. Từ chối definition inactive hoặc Report grant ở Technical Support để operator review. Generic development seed không được dùng trên shared. Source bootstrap cho database mới có69definitions; đây không phải trạng thái Neon đã cấp thêm quyền.
+
+Dependency reports.cost.read→reports.assets.read và dashboard.cost.read→dashboard.read. `/roles/matrix` chuẩn hóa6report rows thành reports.assets/assignments/maintenance/licenses/replacement/cost, tránh6quyền read bị gộp cùng một ô. DashboardCost có action riêng Xem chi phí. `/roles/permissions` và persisted module vẫn dùng reports, không đổi filter/cấu trúc bảng. Quyền Reports unavailable khi gate đóng; protected Admin matrix không bắt buộc quyền chưa rollout; Support không được cấp Report/DashboardCost. Không cộng quyền theo tên role vào JWT.
+
+### Quyền riêng User và audit
+
+Real-JWT test phát hiện PUT /users/{id}/roles lưu custom permissions bị500 do UserPermission link chưa được audit, khiến VerifyAuditCoverage rollback. Đã audit từng link được tạo/xóa/reset/đổi vai trò, flush lấy ID trước audit trong cùng transaction, giữ aggregate event và tăng TokenVersion như cũ. Không thay DTO hoặc membership/financial business policy. Audit có userId/permissionId và ID link thực, không password/token/hash. Lỗi audit sau flush rollback cả links/custom flag/token version; token cũ bị401 sau thay đổi thành công. Reset và đổi vai trò xóa custom links có audit; không tự thu hồi license/asset workflow.
+
+### Verification hiện có
+
+Focused12integration PASS trước đổi canonical rollout key:6offline ingress/gates và real PostgreSQL/JWT fixture. Có4local cases: narrow seed/readiness/matrix/Support403;15read API có dữ liệu; user override/reset/reassign/token revocation/audit IDs; audit failure rollback; closed Admin matrix compatibility. Các assertion nằm trong4local test methods, không cộng chúng thành nhiều case. Full regression cuối đang chạy sau khi mock model-binding fixture được cấp readiness stub đúng phạm vi; không bỏ test hoặc đổi expected400/200 thành503 để che lỗi. Các FAIL cũ giữ trong ignored logs.
+
+Mỗi fixture tạo database mới trên loopback55439, SCRAM/password, nonpooled/PersistSecurityInfo=false; không dùng Neon. Dataset gồm2assets giá known/null, assignment đã trả,2maintenance actual cost known/null, encrypted license/active seat, rule và3recommendations current/history. Kiểm budget bỏ estimate superseded, missing-cost counters, license chỉlast4 và read-only probes. Chưa coi browser E2E hoặc EXPLAIN/load PASS trước khi chạy. Source tests69catalog là cập nhật expected catalog; Auth vẫn EffectivePermissionQuery và custom allow-list có thể bỏ Report grant.
+
+### Những phần còn lại và rollout
+
+Chốt full build/unit/integration/frontend/CSP, browser Admin/restricted Manager với7tabs và Dashboard, bounded query/plan evidence và CI/Docker đúng head. Sau đó mới chuẩn bị phê duyệt shared seed7definitions/14grants (baseline nếu không đổi:69/132), backend new flag và production client opt-in. Không cần migration mới, không mở legacy key. Giữ source/flag cũ tới khi review đủ; rollback app phải đóng new flag trước và giữ dữ liệu/quyền để review, không drop/reset. Các checkpoint dưới là bằng chứng theo thời điểm, không thay trạng thái production hiện tại.
+
 ## 31/10/2026 — Financial field scope regression, UNDER REVIEW
 
 Tiếp quản từ main787e39c sau Replacement rollout trên nhánh codex/reports-rollout-readiness. Phát hiện backend ReportQueryService cho assets.cost.read/dashboard.cost.read thay thế reports.cost.read trong6projection; không khớp frontend reader/contract riêng của Reports. Đã tái hiện bằng4case:3FAIL/1PASS trước sửa. Chỉnh đúng6điểm sang reports.cost.read, không đổi Asset/Dashboard/Replacement policy hoặc DTO/endpoint/schema.

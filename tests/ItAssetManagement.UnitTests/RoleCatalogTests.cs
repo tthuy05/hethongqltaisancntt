@@ -34,9 +34,19 @@ public sealed class RoleCatalogTests
         var current = await new AuthService(repo, null!, null!, null!, null!).ValidateAsync(8, 0, default);
         Assert.NotNull(current);
         Assert.Equal([roleCode], current.Roles);
-        Assert.Equal(custom ? [Permissions.AssetRead] : new[] { Permissions.AssetRead, Permissions.ImportAssets, Permissions.ExportAssets }.Order().ToArray(), current.Permissions);
+        Assert.Equal(custom ? [Permissions.AssetRead] : new[] { Permissions.AssetRead, Permissions.ImportAssets, Permissions.ExportAssets, Permissions.ReportAssets }.Order().ToArray(), current.Permissions);
         Assert.DoesNotContain(Permissions.UserCreate, current.Permissions); // User allow-list cannot exceed the role.
-        Assert.DoesNotContain(Permissions.ReportAssets, current.Permissions); // Prepared catalog is still closed.
+        Assert.Equal(!custom, current.Permissions.Contains(Permissions.ReportAssets)); // Only the explicit role grant survives; a user allow-list can remove it.
+    }
+
+    [Fact]
+    public void Report_matrix_cells_do_not_collapse_separate_grants_and_cost_dependencies_are_explicit()
+    {
+        var cells = Permissions.Reports.Select(code => (PermissionContract.Module(code, code.Split('.')[0]), PermissionContract.Action(code))).ToArray();
+        Assert.Equal(7, cells.Distinct().Count());
+        Assert.Equal(Permissions.ReportAssets, PermissionContract.Requires(Permissions.ReportCost));
+        Assert.Equal(Permissions.DashboardRead, PermissionContract.Requires(Permissions.DashboardCost));
+        Assert.DoesNotContain(("dashboard", PermissionContract.Action(Permissions.DashboardRead)), cells);
     }
 
     private static Repository Data() => new(
@@ -120,7 +130,7 @@ public sealed class RoleCatalogTests
     {
         Assert.Contains(Permissions.RoleRead, Permissions.Operate); Assert.DoesNotContain(Permissions.RoleRead, Permissions.Read);
         Assert.Contains(Permissions.RolePermissionsRead, Permissions.Admin); Assert.DoesNotContain(Permissions.RolePermissionsRead, Permissions.Operate);
-        Assert.Equal(62, Permissions.All.Distinct().Count()); Assert.Equal(Permissions.All.Length, Permissions.All.Distinct().Count());
+        Assert.Equal(69, Permissions.All.Distinct().Count()); Assert.Equal(Permissions.All.Length, Permissions.All.Distinct().Count());
     }
     private sealed class Actor(params string[] permissions) : IActor
     {

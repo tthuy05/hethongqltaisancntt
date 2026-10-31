@@ -1,8 +1,12 @@
 # Changelog
 
-## Unreleased — 31/10/2026 — Reports financial field scope
+## Unreleased — 31/10/2026 — Reports & Dashboard V2 readiness and RBAC v2
 
-- Fixed: Reports financial projections and price sorting require `reports.cost.read`; Asset/Dashboard cost grants no longer substitute for it. Reporting remains closed on production.
+- Added: canonical rollout key `Features:ReportingV2:Enabled`, read-only `IReportingReadiness` probe checking required dependencies (11 tables, replacement severity migration, 7 active report permission definitions), and bounded ingress throttling.
+- Added: individual `UserPermission` link audit recording (`users.permissions.replace` / `users.permissions.reset`) during user custom permissions replacement, default reset, and role change, preventing transaction rollback on audit coverage validation.
+- Added: distinct role matrix submodule rows for `reports.*` to prevent permission collisions in matrix UI.
+- Security: Technical Support is restricted from receiving report or dashboard cost permissions; user custom permissions cannot exceed role grants; token versions increment on permission modifications.
+- Fixed: Reports financial projections and price sorting require `reports.cost.read`; Asset/Dashboard cost grants no longer substitute for it. Reporting remains closed on production until formal review.
 
 ## Released — 31/10/2026 — Replacement
 

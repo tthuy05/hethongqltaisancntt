@@ -10,12 +10,16 @@ public sealed class PreparedModuleControllerFeatureProvider(IConfiguration confi
     {
         foreach (var controller in feature.Controllers.ToArray())
         {
+            if (controller.Name is "DashboardController" or "ReportsController")
+            {
+                if (!ReportingRollout.IsEnabled(configuration)) feature.Controllers.Remove(controller);
+                continue;
+            }
             if (controller.Name == "AssetMaintenanceController" && !MaintenanceRollout.IsEnabled(configuration))
             { feature.Controllers.Remove(controller); continue; }
             if (controller.Name == "SoftwareLicenseController" && !LicenseRollout.IsEnabled(configuration))
             { feature.Controllers.Remove(controller); continue; }
             var key = controller.Name switch {
-                "DashboardController" or "ReportsController" => "Features:ReportingApi:Enabled",
                 "ImportController" or "ExportController" => "Features:ImportExportApi:Enabled",
                 _ => null
             };

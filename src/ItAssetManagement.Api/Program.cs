@@ -112,6 +112,7 @@ builder.Services.AddScoped<AssetLifecycleMetricsReader>();
 builder.Services.AddScoped<ReplacementEvaluationService>();
 builder.Services.AddScoped<ReplacementRecommendationService>();
 builder.Services.AddScoped<IReplacementRuleReadiness, ReplacementRuleReadiness>();
+builder.Services.AddScoped<IReportingReadiness, ReportingReadiness>();
 builder.Services.AddScoped<ISoftwareReadiness, SoftwareReadiness>();
 builder.Services.AddScoped<IMaintenanceSchemaReadiness, MaintenanceSchemaReadiness>();
 builder.Services.AddScoped(sp => new MaintenanceAccessPolicy(
@@ -336,6 +337,7 @@ app.UseMiddleware<AssignmentRolloutMiddleware>(); // Closed before auth/Controll
 app.UseMiddleware<MaintenanceRolloutMiddleware>(); // Prepared owner module stays absent by default.
 app.UseMiddleware<SoftwareRolloutMiddleware>(); // Closed until catalog rollout is reviewed.
 app.UseMiddleware<ReplacementRuleRolloutMiddleware>(); // Rule catalog stays closed until rollout review.
+app.UseMiddleware<ReportingRolloutMiddleware>(); // Reports remain closed until schema/grant rehearsal and approval.
 app.UseMiddleware<LicenseRolloutMiddleware>(); // Closed until license rollout is reviewed.
 app.UseAuthentication(); app.UseAuthorization();
 app.MapControllers();

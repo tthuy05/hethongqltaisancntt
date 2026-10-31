@@ -1,4 +1,5 @@
 using System.Net;
+using ItAssetManagement.Api.Hosting;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using ItAssetManagement.Application.Mvp;
@@ -20,6 +21,8 @@ namespace ItAssetManagement.IntegrationTests;
 // Synthetic HTTP model-binding/query contract, not live JWT/grant rollout proof.
 public sealed class PreparedQueryContractTests
 {
+    private sealed class Ready : IReportingReadiness
+    { public Task<bool> IsReadyAsync(CancellationToken ct) => Task.FromResult(true); }
     public sealed class Handler(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder)
         : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
     {
@@ -55,9 +58,11 @@ public sealed class PreparedQueryContractTests
         b.UseEnvironment("Development");
         b.ConfigureAppConfiguration((_, c) => c.AddInMemoryCollection(new Dictionary<string,string?> {
             ["ConnectionStrings:DefaultConnection"]="", ["Frontend:Enabled"]="false", ["Swagger:Enabled"]="false",
-            ["Features:ReportingApi:Enabled"]=enabled.ToString(), ["Features:ImportExportApi:Enabled"]=enabled.ToString()
+            [ReportingRollout.Key]=enabled.ToString(), ["Features:ImportExportApi:Enabled"]=enabled.ToString()
         }));
         b.ConfigureServices(s => {
+            // This fixture tests query binding, not database readiness. Rollout/SQL probes have separate tests.
+            s.RemoveAll<IReportingReadiness>(); s.AddSingleton<IReportingReadiness, Ready>();
             s.RemoveAll<IRepository>(); s.AddSingleton<IRepository,Repository>(); s.RemoveAll<IActor>(); s.AddSingleton<IActor,Actor>();
             s.AddAuthentication("fixture").AddScheme<AuthenticationSchemeOptions,Handler>("fixture", _ => {});
         });

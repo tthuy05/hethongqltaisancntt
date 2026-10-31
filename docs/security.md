@@ -1,5 +1,11 @@
 # Thiết kế bảo mật
 
+## 31/10/2026 — Reporting rollout và UserPermission audit (UNDER REVIEW)
+
+Reporting chỉ mở bằng Features:ReportingV2:Enabled sau review/readiness, không kế thừa legacy prepared flag để tránh kích hoạt backend cũ. Source quyền được đăng ký69, production vẫn62; không tự cấp ReportCost/DashboardCost hoặc suy quyền theo role. Read-only readiness/ingress giới hạn truy cập trước business query; report financial projections đòi ReportCost riêng.
+
+PUT User roles/custom permissions audit từng UserPermission add/delete/reset/reassignment với linkID thật và userId/permissionId; không ghi credential/hash/token. Flush link nằm trong cùng audited transaction; lỗi audit rollback cả thay đổi quyền và TokenVersion. Không tắt VerifyAuditCoverage để xử lý500. Old JWT401 sau override/reset thành công, user allow-list không vượt role grant; workflows/license allocations không bị tự sửa. Kiểm thử trên loopback riêng, chưa deploy các sửa này lên Render.
+
 ## 27/10/2026 — License rollout/security correction
 
 Bỏ fallback AES key cố định toàn0 ở Development; mọi runtime License key cần version/material256-bit cấu hình ngoài Git qua user-secrets/environment. Không sửa connection string/JWT/Brevo hoặc tự rotate ciphertext. QA dùng key ngẫu nhiên trong bộ nhớ và database mới. Nếu dữ liệu dev-v1 cũ tồn tại, chuẩn bị quy trình khôi phục/đổi khóa có kiểm soát trước rollout; không drop/reset để né lỗi. Source gate closed mặc định, thiếu config/schema/grants trả503 thay vì cho nghiệp vụ chạy.
