@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased — 30/10/2026 — Replacement evaluation and UI
+
+- Added: configured rule severity migration, deterministic evaluation with immutable evidence, recommendation/history/planning API and guarded UI.
+- Added: narrow idempotent permission preparation and Vietnamese business audit actions. Migration rehearsed on new local databases; production stays closed, no shared changes or automatic seed/migration.
+
+## Unreleased — 29/10/2026 — Replacement rule commands
+
+- Added: Admin-only create/revision/status endpoints with fresh authorization, atomic audit, immutable historical configuration and concurrency guards.
+- Financial omission preserves hidden estimates; explicit values require financial grants. Source catalog59; production stays closed, no shared seed/migration.
+
+## Unreleased — 29/10/2026 — Replacement rule reads
+
+- Added: closed-by-default rule list/detail API with bounded paging/filter/sort, ETag, financial redaction and guarded readiness/ingress.
+- Source permission catalog adds read only; no production grant/configuration, migration, writes, evaluation or UI rollout.
+
 ## Unreleased — 27/10/2026 — License allocation
 
 - Added: License assignment/read/history/revoke/transfer API and UI; separate closed rollout gate, permission catalog and additive4/8 seed.

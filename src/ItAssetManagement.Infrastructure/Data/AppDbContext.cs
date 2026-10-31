@@ -66,6 +66,13 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
                 throw new InvalidOperationException("Software code is server-generated and immutable.");
             if (e.State == EntityState.Modified && e.Entity is SoftwareLicense && (e.Property("LicenseCode").IsModified || e.Property("SoftwareId").IsModified))
                 throw new InvalidOperationException("License code and software identity are immutable.");
+            if (e.State == EntityState.Modified && e.Entity is ReplacementRule &&
+                e.Properties.Any(p => p.IsModified && p.Metadata.Name is not ("IsActive" or "EffectiveToUtc" or "UpdatedAtUtc" or "RowVersion")))
+                throw new InvalidOperationException("Replacement rule configuration is immutable; create a revision instead.");
+            if (e.State == EntityState.Modified && e.Entity is ReplacementRecommendation &&
+                e.Properties.Any(p => p.IsModified && p.Metadata.Name is not ("Disposition" or "IsCurrent" or "PlannedReplacementYear" or
+                    "DispositionAtUtc" or "DispositionByUserId" or "DispositionNote" or "IsArchived" or "UpdatedAtUtc" or "RowVersion")))
+                throw new InvalidOperationException("Recommendation evidence is immutable; evaluate again instead.");
             if (e.State == EntityState.Modified && e.Entity is AssetAssignment)
             {
                 var immutable = new[] { "AssetId", "AssignedUserId", "AssignedDepartmentId", "AssignedAtUtc", "AssignedByUserId", "CreatedAtUtc" };

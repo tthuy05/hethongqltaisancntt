@@ -790,3 +790,13 @@ AssetStatus, AssignmentStatus, MaintenanceStatus, LicenseStatus, ReplacementPrio
 Provider plan dùng `UseNpgsql(...)` đọc `ConnectionStrings:DefaultConnection` từ user-secrets/env `ConnectionStrings__DefaultConnection`; code pattern ở architecture chỉ là PLANNED. Chưa chọn package patch version: verify dotnet --version/list-sdks (10.0.400), EF Core target và official Npgsql dependencies trước pin/restore/build. Giữ một provider; không cài package hoặc tạo AppDbContext trong task này. [Npgsql provider](https://www.npgsql.org/efcore/).
 
 Shared Neon development dùng runtime pooled endpoint/roles least privilege cho hai backend; migration owner Thủy dùng direct endpoint/identity riêng dưới lock. Automated tests/clean migrations dùng isolated PostgreSQL target và không fallback shared dev; không drop/schema/truncate shared database. Manual setup/runbook ở [deployment](deployment.md), lock ở [git collaboration](git-collaboration.md), isolation ở [testing strategy](testing-strategy.md). M1 10/10/2026 giữ nguyên; setup/access/secret cần sẵn trước 05/10, schema verification/migration dự kiến 06/10. **Không kết nối/tạo schema/migration/feature/commit/push trong phase đổi thiết kế này.**
+
+
+### Runtime addendum29/10 — replacement_rules, no schema change
+
+Local command service phát hành revision bằng insert cùng code/version+1 và đóng effective_to_utc/is_active bản trước, trong một audited transaction. EF runtime guard chỉ cho thay IsActive/EffectiveToUtc/UpdatedAtUtc/RowVersion trên hàng rule đã lưu, không ghi đè thresholds/code/version. Họ quy tắc mới dùng RR-32hex Backend-generated Guid (không MAX/COUNT/sequence mới); effective_from UTC server lúc publish. Constraint/index/schema/migrations không thay đổi, recommendation FK lịch sử giữ nguyên. Chưa apply/seed production. Contract chi tiết tại week-05-rule-policy-handoff.md.
+
+
+### 30/10 — Rule severity migration, LOCAL REHEARSAL
+
+Thêm replacement_rules.severity nullable varchar(20), CHECK NULL hoặc LOW/MEDIUM/HIGH/CRITICAL bằng migration20261030024812. Không backfill/default; legacy giữ nguyên và revise để cấu hình. Rehearsal từ5→6 migrations trên DBlocal mới, giữ rowlegacy, pendingmodel=false. Số bảng/FK/index giữ19/44/baseline; CHECK tăng85→86. Neon chưa apply, vẫn cần backup và phê duyệt. Recommendation snapshot v1 jsonb lưu matching rules + metrics + definition RESOLVED_PLUS_FAILED_INCLUDING_ARCHIVED; evidence immutable qua EF guard, current partial-unique index cũ được giữ. Không sửa migration đã apply trước đó.

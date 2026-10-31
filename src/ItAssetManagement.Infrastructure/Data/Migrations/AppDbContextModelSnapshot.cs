@@ -1325,6 +1325,11 @@ namespace ItAssetManagement.Infrastructure.Data.Migrations
                         .HasColumnType("bytea")
                         .HasColumnName("row_version");
 
+                    b.Property<string>("Severity")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("severity");
+
                     b.Property<DateTime?>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at_utc");
@@ -1363,6 +1368,8 @@ namespace ItAssetManagement.Infrastructure.Data.Migrations
                             t.HasCheckConstraint("ck_replacement_rules_ratio", "maximum_maintenance_cost_ratio IS NULL OR maximum_maintenance_cost_ratio BETWEEN 0 AND 1");
 
                             t.HasCheckConstraint("ck_replacement_rules_row_version_length", "octet_length(row_version) = 16");
+
+                            t.HasCheckConstraint("ck_replacement_rules_severity", "severity IS NULL OR severity IN ('LOW','MEDIUM','HIGH','CRITICAL')");
 
                             t.HasCheckConstraint("ck_replacement_rules_version_positive", "version > 0");
                         });

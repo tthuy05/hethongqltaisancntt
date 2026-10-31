@@ -10,7 +10,7 @@ namespace ItAssetManagement.IntegrationTests;
 
 public sealed class WorkflowIngressTests
 {
-    private sealed class Probe(bool block = false) : IAssignmentSchemaReadiness, IMaintenanceSchemaReadiness
+    private sealed class Probe(bool block = false) : IAssignmentSchemaReadiness, IMaintenanceSchemaReadiness, IReplacementRuleReadiness
     {
         private int calls;
         public int Calls => Volatile.Read(ref calls);
@@ -25,17 +25,19 @@ public sealed class WorkflowIngressTests
         builder.ConfigureAppConfiguration((_, c) => c.AddInMemoryCollection(new Dictionary<string, string?> {
             ["ConnectionStrings:DefaultConnection"] = "", ["Frontend:Enabled"] = "false", ["Swagger:Enabled"] = "false",
             [AssignmentRollout.ConfigurationKey] = enabled.ToString(), [MaintenanceRollout.ConfigurationKey] = enabled.ToString(),
+            [ReplacementRuleRollout.Key] = enabled.ToString(),
             ["Logging:LogLevel:Default"] = "None" }));
         builder.ConfigureServices(services => {
             services.RemoveAll<IAssignmentSchemaReadiness>(); services.AddSingleton<IAssignmentSchemaReadiness>(probe);
             services.RemoveAll<IMaintenanceSchemaReadiness>(); services.AddSingleton<IMaintenanceSchemaReadiness>(probe);
+            services.RemoveAll<IReplacementRuleReadiness>(); services.AddSingleton<IReplacementRuleReadiness>(probe);
         });
     });
     [Fact]
     public async Task Anonymous_workflow_paths_share_a_budget_before_readiness_and_do_not_limit_health()
     {
         var probe = new Probe(); await using var factory = Factory(probe); using var client = factory.CreateClient();
-        string[] paths = ["/api/v1/asset-assignments", "/api/v1/assets/1/assignments", "/api/v1/maintenance-tickets", "/api/v1/asset-maintenance"];
+        string[] paths = ["/api/v1/asset-assignments", "/api/v1/assets/1/assignments", "/api/v1/maintenance-tickets", "/api/v1/asset-maintenance", "/api/v1/replacement-rules"];
         for (var index = 0; index < WorkflowIngress.RequestsPerMinute; index++) {
             using var response = await client.GetAsync(paths[index % paths.Length]); Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
         }

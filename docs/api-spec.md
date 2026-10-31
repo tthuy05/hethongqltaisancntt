@@ -521,3 +521,18 @@ Asset response M1:
 `GET /api/v1/audit-logs` thêm query tùy chọn `category`: `business`, `technical`, `all` (không phân biệt hoa/thường ở backend); thiếu category tương đương `all` để tương thích client cũ. Giá trị khác/rỗng trả 400 `VALIDATION_ERROR` theo RFC7807. Phân loại thực hiện trước count/paging; `technical` bao gồm action chưa biết. Query/action/time/sort/permission cũ giữ nguyên.
 
 Summary và detail (`GET /api/v1/audit-logs/{id}`) thêm nullable strings `actorFullName`, `actorUsername`, `actionDescription`. Tên là hồ sơ hiện tại, không phải bằng chứng tên lịch sử; không thêm email hoặc secret. 401/403/404 và snapshot redaction không đổi. UI mặc định business và vẫn cho chọn all; mã action không bị thay thế trong response. Không migration. Chi tiết triển khai/giới hạn: [audit-log.md](audit-log.md).
+
+
+### Implementation addendum29/10 — Replacement rule reads (UNDER REVIEW)
+
+EP-063/065 được triển khai trên nhánh riêng, feature `Features:ReplacementRuleApi:Enabled` mặc định false, chưa rollout. Contract thực thi: [rule handoff](week-05-rule-policy-handoff.md#29102026--danh-sáchchi-tiết-quy-tắc-under-review). Status dùng Active/Inactive theo is_active; sort allowlist code/name/version/priority/createdAt; financial field estimatedUnitCost bị bỏ khỏi response khi không có assets.cost.read hoặc reports.cost.read. Không có write action, evaluator hoặc seed shared trong slice này. Các EP khác giữ PLANNED.
+
+
+### Implementation addendum29/10 — Replacement rule commands (UNDER REVIEW)
+
+EP-064/066/067 đã có source local sau read slice; chưa production. PUT append-new revision trả ID mới, không ghi đè cấu hình cũ; body token16byte, status latest-only. Code họ quy tắc do Backend sinh RR-32hex, version/effectiveFrom server quản lý (publish ngay, chưa scheduling). Payload/validation/error/financial omission tại [handoff mới nhất](week-05-rule-policy-handoff.md). Explicit estimatedUnitCost cần quyền cost; omission khi revise giữ giá, null có quyền để xóa. Source59permissions, gate defaultfalse; không seed/rollout shared.
+
+
+### 30/10 — Replacement API EP-063–071, local UNDER REVIEW
+
+Quy tắc thêm required severity (legacy GET nullable). Recommendation API list/filter/stable sort, evaluate batch≤100 current UTC facts, detail with redacted financial snapshot và disposition/năm đã có source local. PUT rule trả ID revision mới, không update cấu hình lịch sử. API shape/validation/error đầy đủ ở [handoff hiện tại](week-05-rule-policy-handoff.md). Gate vẫn false trên production; migrationSeverity và narrow permission seed chưa apply shared. Không coi cloud/browser/production PASS từ source.

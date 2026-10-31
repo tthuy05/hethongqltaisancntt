@@ -1,3 +1,4 @@
+import { replacementPage } from './pages/replacement.js';
 import services from './services/index.js';
 import { h } from './utils/dom.js';
 import { icon } from './icons.js';
@@ -29,6 +30,7 @@ const menuItems = [
   ['/reports', 'Báo cáo', 'chart'],
   ['/assignments', 'Cấp phát', 'assignment'],
   ['/maintenance', 'Bảo trì', 'wrench'],
+  ['/replacement', 'Thay thế tài sản', 'laptop'],
   ['/software', 'Phần mềm', 'laptop'],
   ['/licenses', 'Bản quyền', 'license'],
   ['/users', 'Người dùng', 'user'], ['/permissions', 'Phân quyền', 'key'], ['/audit-logs', 'Nhật ký thao tác', 'assignment']
@@ -42,7 +44,7 @@ function parsedRoute() {
 function shell(path) {
   const user = services.auth.session;
   const roleNames = { ADMIN_IT: 'Admin IT', SYSTEM_MANAGER: 'System Manager', TECHNICAL_SUPPORT: 'Technical Support' };
-  const visibleItems = menuItems.filter(([target]) => (target !== '/software' || (services.softwareEnabled === true && can(services, 'software.read'))) && (target !== '/licenses' || (services.licenseEnabled === true && can(services, 'licenses.read'))) && (target !== '/assignments' || (services.assignmentEnabled === true && can(services, 'assignments.read'))) &&
+  const visibleItems = menuItems.filter(([target]) => (target !== '/replacement' || (services.replacementEnabled === true && (can(services, 'replacement-rules.read') || (can(services, 'replacement-recommendations.read') && can(services, 'assets.read'))))) && (target !== '/software' || (services.softwareEnabled === true && can(services, 'software.read'))) && (target !== '/licenses' || (services.licenseEnabled === true && can(services, 'licenses.read'))) && (target !== '/assignments' || (services.assignmentEnabled === true && can(services, 'assignments.read'))) &&
     (target !== '/maintenance' || (services.maintenanceEnabled === true && can(services, 'maintenance.read'))));
   const nav = h('nav', { 'aria-label': 'Điều hướng chính' }, visibleItems.filter(([target]) => (target !== '/users' || can(services, 'users.read')) && (target !== '/permissions' || (user?.roles?.includes('ADMIN_IT') && can(services, 'roles.assign') && can(services, 'roles.permissions.read'))) && (target !== '/audit-logs' || (can(services, 'audit-logs.read') && user?.roles?.includes('ADMIN_IT'))) && (target !== '/reports' || (services.reportingEnabled === true && (can(services, 'reports.assets.read') || can(services, 'reports.cost.read') || can(services, 'reports.assignments.read') || can(services, 'reports.maintenance.read') || can(services, 'reports.licenses.read') || can(services, 'reports.replacement.read'))))).map(([target, label, iconName]) => h('a', { className: 'nav-link' + (path === target || (target === '/assets' && path.startsWith('/assets/')) ? ' active' : ''), href: '#' + target, ...(path === target || (target === '/assets' && path.startsWith('/assets/')) ? { 'aria-current': 'page' } : {}) }, icon(iconName), h('span', {}, label))));
   const sidebar = h('aside', { className: 'sidebar', id: 'main-sidebar' }, h('a', { className: 'brand', href: '#/dashboard' }, h('img', { src: './assets/logo.svg', alt: '', width: 40, height: 40 }), h('div', {}, h('span', { className: 'brand-title' }, 'Quản lý tài sản CNTT'), h('span', { className: 'brand-subtitle' }, 'Danh mục & hạ tầng'))), nav,
@@ -99,6 +101,7 @@ async function render() {
     else if (path === '/reports') page = await reportsPage(services);
     else if (path === '/assignments') page = await assignmentsPage(services);
     else if (/^\/assignments\/\d+$/.test(path)) page = await assignmentsPage(services, Number(path.split('/')[2]));
+    else if (path === '/replacement' || path === '/replacement/rules') page = await replacementPage(services, path === '/replacement/rules' || !can(services, 'replacement-recommendations.read'));
     else if (path === '/software') page = await softwarePage(services);
     else if (path === '/licenses') page = await licensePage(services);
     else if (/^\/licenses\/\d+$/.test(path)) page = await licensePage(services, Number(path.split('/')[2]));

@@ -335,3 +335,18 @@ Các code sau là permission dự kiến dùng trong `api-spec.md`; nhiều code
 | `audit-logs.read` | A | Read-only sanitized audit. |
 
 Endpoint có `Public` hoặc `Authenticated` không phải permission code. Policy/role grants trên chỉ được seed sau `APPROVED`; hiện chưa có runtime authorization.
+
+
+### 29/10 — Replacement rule read, UNDER REVIEW
+
+Source catalog57 thêm riêng replacement-rules.read; Development bootstrap Admin/Manager có quyền, Support không có. Tạo/cập nhật rule vẫn prepared, không đăng ký catalog/policy. Quyền read chỉ Available khi ReplacementRuleApi bật; không tự cấp shared grants, Neon hiện vẫn56permissions/108links. EstimatedUnitCost cần thêm assets.cost.read hoặc reports.cost.read; không có quyền thì bỏ property, không trả0 và không cho sort theo giá. EffectivePermissionQuery vẫn là nguồn quyết định quyền.
+
+
+### 29/10 — Replacement rule writes, UNDER REVIEW
+
+Source catalog59 gồm replacement-rules.read/create/update; create/update AdminOnly, có read dependency, chỉ cấp Admin trong bootstrap mới. Role matrix và command service chặn non-Admin kể cả misgrant. Command recheck membership/effective permissions sau coordinator lock; explicit estimate cần assets.cost.read hoặc reports.cost.read. Flags vẫn đóng, production catalog56/108 không đổi. Các ghi chú catalog57/read-only phía trên là checkpoint trước commands.
+
+
+### 30/10 — Replacement hoàn chỉnh, source62/production PENDING
+
+6definitions: rule read/create/update + recommendation read/evaluate/update. BaselineAdmin6/Manager4/Support0,10grants; narrow seed16→0 trên local mới, chưa apply shared. Evaluate cần thêm assets.read và assets.cost.read, các read/patch cần assets.read; financial snapshot/estimate cần assets.cost.read hoặc reports.cost.read. Admin membership + fresh effective grants vẫn bắt buộc cho rule commands; Role matrix không gán rule writes ngoài Admin. Backend/client flags đóng tới khi rollout được duyệt. Không tự mở Reporting.

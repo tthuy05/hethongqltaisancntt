@@ -63,7 +63,7 @@ public sealed class AssetLifecycleMetricsTests
         var reader = new AssetLifecycleMetricsReader(new EfRepository(db), new Actor(Permissions.ReplacementEvaluate, Permissions.AssetCost));
         var sql = reader.Query(1).ToQueryString(); Assert.Contains("maintenance_tickets", sql); Assert.Contains("actual_cost", sql);
         Assert.DoesNotContain("maintenance_histories", sql); Assert.DoesNotContain("license_key", sql);
-        Assert.DoesNotContain(Permissions.ReplacementEvaluate, Permissions.All);
+        Assert.Contains(Permissions.ReplacementEvaluate, Permissions.All);
     }
     [Theory]
     [InlineData(0)]

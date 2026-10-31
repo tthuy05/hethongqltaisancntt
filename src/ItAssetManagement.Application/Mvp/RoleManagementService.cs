@@ -5,7 +5,7 @@ namespace ItAssetManagement.Application.Mvp;
 public interface IRoleGrantPersistence { void RemoveGrant(RolePermission grant); }
 public interface IPermissionAvailability { bool IsAvailable(string code); }
 public sealed record PermissionOption(long Id, string Code, string Name, string Module, string Action, bool Available, string? Requires)
-{ public bool AdminOnly => Code == Permissions.AuditRead; }
+{ public bool AdminOnly => Code is Permissions.AuditRead or Permissions.ReplacementRuleCreate or Permissions.ReplacementRuleUpdate; }
 public sealed class RoleWriteRequest
 {
     public string Name { get; set; } = "";
@@ -29,6 +29,9 @@ public static class PermissionContract
         Permissions.AssignmentAssign or Permissions.AssignmentReturn or Permissions.AssignmentTransfer => Permissions.AssignmentRead,
         _ when code.StartsWith("maintenance.", StringComparison.Ordinal) && code != Permissions.MaintenanceRead => Permissions.MaintenanceRead,
         _ when code.StartsWith("software.", StringComparison.Ordinal) && code != SoftwarePermissions.Read => SoftwarePermissions.Read,
+        _ when code.StartsWith("replacement-rules.", StringComparison.Ordinal) && code != Permissions.ReplacementRuleRead => Permissions.ReplacementRuleRead,
+        Permissions.ReplacementEvaluate or Permissions.ReplacementUpdate => Permissions.ReplacementRead,
+        Permissions.ReplacementRead => Permissions.AssetRead,
         _ when code.StartsWith("licenses.", StringComparison.Ordinal) && code != Permissions.LicenseRead => Permissions.LicenseRead,
         _ when code.StartsWith("license-assignments.", StringComparison.Ordinal) && code != LicensePermissions.AssignmentRead => LicensePermissions.AssignmentRead,
         LicensePermissions.AssignmentRead => Permissions.LicenseRead,
@@ -45,6 +48,7 @@ public static class PermissionContract
         Permissions.MaintenanceAssign => "Giao kỹ thuật viên", Permissions.MaintenanceWork => "Bắt đầu",
         Permissions.MaintenanceResolve => "Kết thúc", Permissions.MaintenanceCancel => "Hủy", Permissions.MaintenanceCostWrite => "Chi phí",
         Permissions.LicenseKeyManage => "Quản lý khóa", Permissions.LicenseKeyReveal => "Xem khóa",
+        Permissions.ReplacementEvaluate => "Đánh giá",
         Permissions.ImportAssets => "Nhập Excel",
         Permissions.ExportAssets or Permissions.ExportMaintenance or Permissions.ExportAssignments or Permissions.ExportReplacement => "Xuất Excel",
         _ => code.Split('.').Last() switch { "read" => "Xem", "create" => "Thêm", "update" => "Sửa", "archive" => "Lưu trữ", _ => code }
@@ -135,8 +139,8 @@ public sealed class RoleManagementService(IRepository repo, IRoleGrantPersistenc
             var definitions = await repo.ListAsync(repo.Query<Permission>().Where(x => request.PermissionIds.Contains(x.Id) && x.IsActive && Permissions.All.Contains(x.Code)), ct);
             if (definitions.Count != request.PermissionIds.Length) throw Validation.Invalid("permissionIds", "Có quyền không tồn tại hoặc chưa được hệ thống hỗ trợ.");
             var codes = definitions.Select(x => x.Code).ToHashSet();
-            if (role.Code != "ADMIN_IT" && codes.Any(code => code is Permissions.AuditRead or Permissions.LicenseKeyManage or Permissions.LicenseKeyReveal))
-                throw Validation.Invalid("permissionIds", "Nhật ký thao tác chỉ dành cho nhóm Admin IT.");
+            if (role.Code != "ADMIN_IT" && codes.Any(code => code is Permissions.AuditRead or Permissions.LicenseKeyManage or Permissions.LicenseKeyReveal or Permissions.ReplacementRuleCreate or Permissions.ReplacementRuleUpdate))
+                throw Validation.Invalid("permissionIds", "Quyền quản trị nhạy cảm chỉ dành cho nhóm Admin IT.");
             if (role.Code == "TECHNICAL_SUPPORT" && codes.Any(code => SoftwarePermissions.All.Contains(code) || LicensePermissions.All.Contains(code) || code.StartsWith("assignments.", StringComparison.Ordinal) ||
                     Permissions.Maintenance.Contains(code) && !Permissions.MaintenanceSupport.Contains(code)))
                 throw Validation.Invalid("permissionIds", "Technical Support chỉ được xử lý phiếu được giao, không được cấp quyền phần mềm, bản quyền, cấp phát, giao việc, hủy hoặc chi phí bảo trì.");
@@ -146,7 +150,7 @@ public sealed class RoleManagementService(IRepository repo, IRoleGrantPersistenc
             // guards the ability to recover identities even when there is only one Admin.
             // Preserve the existing Admin baseline when the new transfer feature is still closed/unseeded.
             if (role.Code == "ADMIN_IT" && Permissions.All.Where(code =>
-                code != Permissions.AssignmentTransfer && !Permissions.Maintenance.Contains(code) && !SoftwarePermissions.All.Contains(code) && !LicensePermissions.All.Contains(code) || availability.IsAvailable(code)).Any(code => !codes.Contains(code))) throw Protected();
+                code != Permissions.AssignmentTransfer && !Permissions.Maintenance.Contains(code) && !SoftwarePermissions.All.Contains(code) && !LicensePermissions.All.Contains(code) && !ReplacementPermissions.All.Contains(code) || availability.IsAvailable(code)).Any(code => !codes.Contains(code))) throw Protected();
             var existing = await repo.ListAsync(repo.Query<RolePermission>(true).Where(x => x.RoleId == id), ct);
             var existingIds = existing.Select(x => x.PermissionId).ToHashSet();
             var unavailable = await repo.ListAsync(repo.Query<Permission>().Where(x => existingIds.Contains(x.Id)), ct);

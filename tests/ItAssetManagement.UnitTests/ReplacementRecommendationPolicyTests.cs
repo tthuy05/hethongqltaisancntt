@@ -145,11 +145,11 @@ public sealed class ReplacementRecommendationPolicyTests
         Assert.Equal(10L, active.DispositionByUserId);
         Assert.Equal(now, active.DispositionAtUtc);
 
-        // If it was already PLANNED, disposition is preserved but isCurrent becomes false
+        // A previous plan is superseded too; the original note remains.
         var planned = ValidRecommendation();
-        planned.Disposition = "PLANNED";
+        planned.Disposition = "PLANNED"; planned.DispositionNote = "Original plan";
         ReplacementRecommendationPolicy.Supersede(planned, now);
-        Assert.Equal("PLANNED", planned.Disposition);
+        Assert.Equal("SUPERSEDED", planned.Disposition); Assert.Equal("Original plan", planned.DispositionNote);
         Assert.False(planned.IsCurrent);
     }
 
