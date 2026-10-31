@@ -9,6 +9,34 @@ public sealed record SeedCredentials(string Email, string Password);
 public sealed record SeedResult(int Roles, int Permissions, int RolePermissions, int Departments, int AssetTypes, int Users, int UserRoles, int Added);
 public sealed class DevelopmentSeed(AppDbContext db, IRepository repo, IUnitOfWork uow, IPasswordService passwords, IAuditWriter audit)
 {
+    // Explicit operator entry only; publishing source never seeds a shared database.
+    public Task<int> RunReportingPermissionsAsync(CancellationToken ct = default) => uow.RunAsync(async () => {
+        await repo.LockAsync("development-seed", ct); await repo.LockAsync("users-identity", ct);
+        await db.Set<ReplacementRule>().Select(x => x.Severity).Take(1).ToListAsync(ct);
+        var roles = await db.Set<Role>().Where(x => Permissions.Roles.Contains(x.Code)).ToListAsync(ct);
+        if (roles.Count != 3 || roles.Any(x => !x.IsActive)) throw new InvalidOperationException("Active baseline roles required.");
+        var forbidden = from link in db.Set<RolePermission>() join role in db.Set<Role>() on link.RoleId equals role.Id
+            join permission in db.Set<Permission>() on link.PermissionId equals permission.Id
+            where role.Code == "TECHNICAL_SUPPORT" && Permissions.Reports.Contains(permission.Code) select link.Id;
+        if (await forbidden.AnyAsync(ct)) throw new InvalidOperationException("Unexpected Reporting grants require review.");
+        var created = new List<object>();
+        foreach (var code in Permissions.Reports) {
+            var permission = await db.Set<Permission>().SingleOrDefaultAsync(x => x.Code == code, ct);
+            if (permission is { IsActive: false }) throw new InvalidOperationException("Inactive permission requires review.");
+            if (permission == null) {
+                permission = new Permission { Code = code, Name = code, Module = code.Split('.')[0] };
+                db.Add(permission); created.Add(permission); await db.SaveChangesAsync(ct);
+            }
+            foreach (var role in roles.Where(x => x.Code is "ADMIN_IT" or "SYSTEM_MANAGER"))
+                if (!await db.Set<RolePermission>().AnyAsync(x => x.RoleId == role.Id && x.PermissionId == permission.Id, ct)) {
+                    var link = new RolePermission { RoleId = role.Id, PermissionId = permission.Id, GrantedAtUtc = DateTime.UtcNow };
+                    db.Add(link); created.Add(link);
+                }
+        }
+        await db.SaveChangesAsync(ct);
+        foreach (var entity in created) audit.Record("development.reporting-permissions.seed", entity, null, "SYSTEM");
+        await db.SaveChangesAsync(ct); return created.Count;
+    }, ct);
     // Explicit operator entry only. Never called from normal HTTP startup.
     public Task<int> RunReplacementPermissionsAsync(CancellationToken ct = default) => uow.RunAsync(async () => {
         await repo.LockAsync("development-seed", ct); await repo.LockAsync("replacement-rules", ct); await repo.LockAsync("users-identity", ct);

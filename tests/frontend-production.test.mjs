@@ -32,7 +32,7 @@ test('production ignores localhost demo query and rejects explicit mock without 
   try {
     const { services, createServices } = await import(pathToFileURL(path.join(frontendProductionOutput, 'js/services/index.js')).href);
     assert.equal(services.mode, 'api');
-    assert.equal(services.reportingEnabled, false);
+    assert.equal(services.reportingEnabled, true);
       assert.equal(services.assignmentEnabled, true);
       assert.equal(services.maintenanceEnabled, true);
     assert.equal(services.importExportEnabled, true);

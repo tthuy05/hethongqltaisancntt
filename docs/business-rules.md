@@ -267,3 +267,6 @@ Rule PUT append-new revision giữ code, tăng version, đóng bản trước at
 ### 30/10 — Quyết định nghiệp vụ được người dùng xác nhận
 
 Severity cấu hình riêng cho từng rule, không tính theo số condition. MaintenanceCount chỉ RESOLVED+FAILED kể cả archived, không tính pending/in-progress/cancelled. OR giữa các condition, warranty+failure là AND. Winner severity cao nhất → priority số nhỏ → id nhỏ; snapshot giữ mọi rule khớp, thiếu dữ liệu không suy đoán. No-match đóng current, insufficient-only giữ current và audit. Legacy rule thiếu severity phải revise, không tự gán MEDIUM. Đánh giá hiện tại, append-new và supersede atomic, không tự retire tài sản hoặc phát sinh chi phí. PLANNED còn current có thể sửa năm/note theo BR-051.
+### 31/10/2026 — Reports: tách phạm vi quyền tài chính
+
+ReportCost là quyền tài chính riêng của báo cáo, không suy từ AssetCost/DashboardCost. Các trường giá và tổng giá trong report projection phải null nếu thiếu reports.cost.read; không dùng0 thay cho giá bị che. Sort giá và các endpoint chi phí/ngân sách yêu cầu quyền riêng này. Chỉnh backend để khớp contract reader hiện có, không thay các policy chi phí của Asset/Dashboard/Replacement hoặc cấp quyền mới. Reporting chưa rollout production.

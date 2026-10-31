@@ -1,5 +1,9 @@
 # Architecture Decision Records
 
+## 31/10/2026 — Versioned Reporting rollout key (UNDER REVIEW)
+
+Context: deployed787e39c already recognizes the legacy prepared Features:ReportingApi:Enabled key, while the reviewed implementation adds catalog69, readiness and financial field-scope corrections. Saving the legacy flag before publishing could enable old prepared controllers on a restart. Decision: source uses only Features:ReportingV2:Enabled; legacy configuration remains untouched/closed and does not enable the new module. This allows a reviewed Save-only new flag and one source publication after explicit grant/rollout approval. Consequences: operator/test configuration uses the canonical new key; read-only readiness and normal RBAC remain mandatory. No endpoint/schema/migration changes and no automatic seed. Real shared seed/flag changes are a separate approval, not authorized by local verification.
+
 ## ADR-034 — Prepared Reporting/Excel, read-only preview và rollout riêng
 
 **Date:** 2026-10-20. **Status:** IMPLEMENTED LOCALLY / UNDER REVIEW; production rollout chưa phê duyệt.

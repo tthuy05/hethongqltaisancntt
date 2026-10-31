@@ -87,6 +87,40 @@ public sealed class DashboardAndReportingTests
         Assert.Equal(1, Assert.Single(rows).Count);
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task Report_financial_fields_require_report_cost_even_with_other_module_cost_grants(bool assetCost, bool dashboardCost)
+    {
+        var data = CreateSampleDataset();
+        var repo = new InMemoryRepo(data.depts, data.types, data.assets, data.tickets, data.rules, data.recs);
+        var grants = new List<string> { Permissions.ReportAssets, Permissions.ReportMaintenance, Permissions.ReportReplacement };
+        if (assetCost) grants.Add(Permissions.AssetCost);
+        if (dashboardCost) grants.Add(Permissions.DashboardCost);
+        var service = new ReportQueryService(repo, new TestActor(1, grants.ToArray()));
+        var inventory = await service.GetAssetInventoryReportAsync(new());
+        Assert.NotEmpty(inventory.Items);
+        Assert.All(inventory.Items, row => Assert.Null(row.PurchaseCost));
+        Assert.All(await service.GetAssetsByDepartmentReportAsync(new()), row => Assert.Null(row.Value));
+        Assert.All(await service.GetAssetsByTypeReportAsync(new()), row => Assert.Null(row.Value));
+        Assert.All(await service.GetAssetStatusReportAsync(new()), row => Assert.Null(row.Value));
+        var maintenance = await service.GetMaintenanceReportAsync(new());
+        Assert.NotEmpty(maintenance.Items);
+        Assert.All(maintenance.Items, row => Assert.Null(row.Cost));
+        var recommendations = await service.GetReplacementReportAsync(new());
+        Assert.NotEmpty(recommendations.Items);
+        Assert.All(recommendations.Items, row => Assert.Null(row.EstimatedCost));
+        Assert.Equal(403, (await Assert.ThrowsAsync<BusinessException>(() => service.GetAssetInventoryReportAsync(new() { SortBy = "purchaseCost" }))).Status);
+        Assert.Equal(403, (await Assert.ThrowsAsync<BusinessException>(() => service.GetMaintenanceCostReportAsync(new()))).Status);
+        Assert.Equal(403, (await Assert.ThrowsAsync<BusinessException>(() => service.GetReplacementBudgetReportAsync(new() { Year = 2027 }))).Status);
+        var financial = new ReportQueryService(repo, new TestActor(1, [..grants, Permissions.ReportCost]));
+        Assert.Contains((await financial.GetAssetInventoryReportAsync(new())).Items, row => row.PurchaseCost is > 0);
+        Assert.Contains((await financial.GetMaintenanceReportAsync(new())).Items, row => row.Cost is > 0);
+        Assert.Contains((await financial.GetReplacementReportAsync(new())).Items, row => row.EstimatedCost is > 0);
+    }
+
     private sealed class TestActor(long? userId, params string[] permissions) : IActor
     {
         public long? UserId => userId;

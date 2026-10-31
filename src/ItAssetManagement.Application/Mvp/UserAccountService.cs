@@ -194,6 +194,7 @@ public sealed class UserAccountService(IRepository repo, IAccountPersistence acc
                 user.HasCustomPermissions = false;
                 foreach (var up in currentUserPerms)
                 {
+                    audit.Record("users.permissions.reset", up, actor.UserId, "USER", before: new { up.UserId, up.PermissionId });
                     accounts.RemoveUserPermission(up);
                 }
                 audit.Record("users.permissions.reset", user, actor.UserId, "USER", after: new { user.Id, resetToDefaults = true });
@@ -203,8 +204,10 @@ public sealed class UserAccountService(IRepository repo, IAccountPersistence acc
                 user.HasCustomPermissions = true;
                 foreach (var up in currentUserPerms)
                 {
+                    audit.Record("users.permissions.replace", up, actor.UserId, "USER", before: new { up.UserId, up.PermissionId });
                     accounts.RemoveUserPermission(up);
                 }
+                var addedPermissions = new List<UserPermission>();
                 foreach (var code in request.PermissionCodes.Distinct())
                 {
                     var perm = rolePermissionList.First(p => p.Code == code);
@@ -216,7 +219,11 @@ public sealed class UserAccountService(IRepository repo, IAccountPersistence acc
                         GrantedAtUtc = DateTime.UtcNow
                     };
                     repo.Add(newUp);
+                    addedPermissions.Add(newUp);
                 }
+                await repo.SaveAsync(ct); // Allocate link IDs inside the same audited transaction.
+                foreach (var up in addedPermissions)
+                    audit.Record("users.permissions.replace", up, actor.UserId, "USER", after: new { up.UserId, up.PermissionId });
                 audit.Record("users.permissions.replace", user, actor.UserId, "USER", after: new { user.Id, permissionCount = request.PermissionCodes.Length });
             }
             else if (roleChanged)
@@ -224,6 +231,7 @@ public sealed class UserAccountService(IRepository repo, IAccountPersistence acc
                 user.HasCustomPermissions = false;
                 foreach (var up in currentUserPerms)
                 {
+                    audit.Record("users.permissions.reset", up, actor.UserId, "USER", before: new { up.UserId, up.PermissionId });
                     accounts.RemoveUserPermission(up);
                 }
             }

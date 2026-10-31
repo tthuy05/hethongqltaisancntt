@@ -2,7 +2,7 @@ import { h } from '../utils/dom.js';
 import { button, pageHeader, showToast } from '../components.js';
 import { allCatalog, busy, can, hasPermission, field, formAlert, openDialog, route } from './shared.js';
 
-const modules = { assets: 'Quản lý tài sản', departments: 'Phòng ban', 'asset-types': 'Loại tài sản', users: 'Người dùng', roles: 'Nhóm quyền', dashboard: 'Tổng quan', 'audit-logs': 'Nhật ký thao tác', assignments: 'Cấp phát tài sản', maintenance: 'Bảo trì tài sản', software: 'Danh mục phần mềm', licenses: 'Bản quyền phần mềm', 'license-assignments': 'Phân bổ bản quyền', 'replacement-rules': 'Quy tắc thay thế', 'replacement-recommendations': 'Đề xuất thay thế' };
+const modules = { 'reports.assets': 'Báo cáo tài sản', 'reports.assignments': 'Báo cáo cấp phát', 'reports.maintenance': 'Báo cáo bảo trì', 'reports.licenses': 'Báo cáo bản quyền', 'reports.replacement': 'Báo cáo thay thế', 'reports.cost': 'Báo cáo chi phí', assets: 'Quản lý tài sản', departments: 'Phòng ban', 'asset-types': 'Loại tài sản', users: 'Người dùng', roles: 'Nhóm quyền', dashboard: 'Tổng quan', 'audit-logs': 'Nhật ký thao tác', assignments: 'Cấp phát tài sản', maintenance: 'Bảo trì tài sản', software: 'Danh mục phần mềm', licenses: 'Bản quyền phần mềm', 'license-assignments': 'Phân bổ bản quyền', 'replacement-rules': 'Quy tắc thay thế', 'replacement-recommendations': 'Đề xuất thay thế' };
 
 export async function permissionPage(services) {
   if (services.mode !== 'api' || !services.auth.session?.roles?.includes('ADMIN_IT') || !can(services, 'roles.assign') || !can(services, 'roles.permissions.read')) throw Object.assign(new Error('Chỉ Admin IT được quản lý phân quyền.'), { status: 403 });
@@ -15,7 +15,7 @@ export async function permissionPage(services) {
   const active = () => root.isConnected && window.location.hash === pageHash;
   let selected = null, dirty = false, draft = new Set(), controls = new Map(), modal, selectionRequest = 0, loading = false, saving = false, blocked = false, groupEditorOpen = false, needsCatalogRefresh = false;
   const forbiddenSupport = permission => selected?.code === 'TECHNICAL_SUPPORT' &&
-    (permission.code.startsWith('licenses.') || permission.code.startsWith('license-assignments.') || permission.code.startsWith('software.') || permission.code.startsWith('assignments.') || ['maintenance.assign', 'maintenance.cancel', 'maintenance.cost.write'].includes(permission.code)) ||
+    (permission.code.startsWith('reports.') || permission.code === 'dashboard.cost.read' || permission.code.startsWith('licenses.') || permission.code.startsWith('license-assignments.') || permission.code.startsWith('software.') || permission.code.startsWith('assignments.') || ['maintenance.assign', 'maintenance.cancel', 'maintenance.cost.write'].includes(permission.code)) ||
     selected?.code !== 'ADMIN_IT' && ['licenses.key.manage','licenses.key.reveal'].includes(permission.code);
   const feedback = h('div', { 'aria-live': 'polite' });
   const notice = h('p', { className: 'meta', role: 'status' });

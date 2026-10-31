@@ -44,7 +44,7 @@ public sealed class LocalAssignmentCompletionTests
                 ["ConnectionStrings:DefaultConnection"] = "", ["Frontend:Enabled"] = frontend.ToString(), ["Swagger:Enabled"] = "false",
                 ["Logging:LogLevel:Default"] = "None", ["Features:AssignmentApi:Enabled"] = "true",
                 ["Features:LicenseApi:Enabled"] = license.ToString(), ["Features:LicenseAllocationApi:Enabled"] = allocation.ToString(),
-                ["Features:MaintenanceApi:Enabled"] = maintenance.ToString(), ["Features:SoftwareApi:Enabled"] = software.ToString(), ["Features:ReportingApi:Enabled"] = "false", ["Features:ImportExportApi:Enabled"] = "true"
+                ["Features:MaintenanceApi:Enabled"] = maintenance.ToString(), ["Features:SoftwareApi:Enabled"] = software.ToString(), [ReportingRollout.Key] = "false", ["Features:ImportExportApi:Enabled"] = "true"
             }));
             builder.ConfigureServices(services => {
                 services.AddDbContext<AppDbContext>(options => options.UseNpgsql(Environment.GetEnvironmentVariable("ITAM_LOCAL_POSTGRES_TEST_CONNECTION"),

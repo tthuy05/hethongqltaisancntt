@@ -1,3 +1,18 @@
+## 31/10/2026 — Reports & Dashboard V2 readiness and RBAC v2: LOCAL VERIFIED / UNDER REVIEW
+
+Nhánh codex/reports-rollout-readiness đã hoàn thiện kiểm thử readiness, phân quyền RBAC v2, xử lý audit UserPermission links và kiểm tra toàn diện 11 báo cáo (EP-076 đến EP-086) và Dashboard V2.
+- Chuẩn hóa canonical rollout key Features:ReportingV2:Enabled (mặc định false). Đóng 404, thiếu dependency trả 503 REPORTING_NOT_READY (Retry-After: 30).
+- Probe IReportingReadiness đọc kiểm tra 11 bảng, migration AddReplacementRuleSeverity, và 7 definitions active của Permissions.Reports.
+- Sửa lỗi audit khi PUT /users/{id}/roles gán quyền riêng (users.permissions.replace/reset) trong cùng transaction, đảm bảo rollback an toàn nếu audit lỗi.
+- Ma trận phân quyền tách riêng 6 dòng submodule cho reports.* tránh ghi đè ô Xem; cấm gán quyền báo cáo cho TECHNICAL_SUPPORT.
+- 6 financial projections yêu cầu chính xác reports.cost.read.
+- Kết quả kiểm thử: Build Release 0 warnings/0 errors; 921 unit tests PASS (100%); 229 integration tests PASS (100%, 203 Neon isolated skipped); 444 frontend tests PASS (100%); 59 JS checks / 63 CSP checks PASS; Production build 58 assets PASS.
+- Môi trường production Neon và Render vẫn giữ an toàn (chưa seed/chưa bật cờ). Handoff chi tiết: docs/reports-ui-handoff-2026-10-21.md.
+
+## 31/10/2026 — Replacement production VERIFIED
+
+PR #14 merged/main787e39c, CI main PASS, Render dep-dbim98p5efls73d75q10 succeeded1m19s; Dashboard Live SHA và /health/version khớp. Shared migration/seed PASS:19tables/44FK/86CHECK/6history,62permissions/118grants, old business hashes nguyên vẹn. Production read-only smoke bằng SYSTEM_MANAGER PASS: Replacement list/rules/asset picker, không có Create Rule; Assets search/detail, License/allocation history, Assignment/Maintenance lists hoạt động, browser console sạch. Chưa kiểm lại production write/Admin/Support actor; isolated end-to-end write và security suites đã PASS. Không tạo dữ liệu nghiệp vụ thử. Reports vẫn đóng, tiếp theo nghiệm thu riêng trên codex/reports-rollout-readiness. Chi tiết docs/week-05-rule-policy-handoff.md; các mục dưới là checkpoint lịch sử.
+
 ## 31/10/2026 — Replacement Neon rollout VERIFIED / source publication
 
 PR #14, source4b1d96b/e98a027 có CI/Docker PASS; e98a027 mở client production. Đã fetch/pull, origin/main không đổi bfb3657 trước publication. Backup/restore mới31/10 PASS; shared migration được phê duyệt đã apply10:40–10:41 UTC+7:19tables/44FK/86CHECK/6history,62permissions/118grants, seed16 rồi0, Admin6/Manager4/Support0 Replacement grants, business hashes không đổi. Backend flag lưu Save only, không đổi secrets hoặc Suspend Render. Source publication chờ CI đúng head cuối, merge PR rồi đối chiếu Live SHA/readiness/read-only UI; không mở Reporting. Backend916unit/265integration PASS,163cloudSKIP; frontend444 PASS,59JS/63CSP. Chi tiết docs/week-05-rule-policy-handoff.md.

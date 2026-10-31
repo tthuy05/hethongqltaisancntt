@@ -37,7 +37,7 @@ public sealed class ReportQueryService(IRepository repo, IActor actor, TimeProvi
         RequirePermission(Permissions.ReportAssets, "Yêu cầu quyền xem báo cáo tài sản (reports.assets.read).");
         query.Validate();
 
-        var canReadCost = actor.Has(Permissions.DashboardCost) || actor.Has(Permissions.AssetCost) || actor.Has(Permissions.ReportCost);
+        var canReadCost = actor.Has(Permissions.ReportCost);
         var q = repo.Query<Asset>();
 
         if (!query.IncludeArchived)
@@ -120,7 +120,7 @@ public sealed class ReportQueryService(IRepository repo, IActor actor, TimeProvi
         RequirePermission(Permissions.ReportAssets, "Yêu cầu quyền xem báo cáo tài sản (reports.assets.read).");
         query.Validate();
 
-        var canReadCost = actor.Has(Permissions.DashboardCost) || actor.Has(Permissions.AssetCost) || actor.Has(Permissions.ReportCost);
+        var canReadCost = actor.Has(Permissions.ReportCost);
         var q = repo.Query<Asset>().Where(a => !a.IsArchived);
 
         if (!string.IsNullOrWhiteSpace(query.Status))
@@ -158,7 +158,7 @@ public sealed class ReportQueryService(IRepository repo, IActor actor, TimeProvi
         RequirePermission(Permissions.ReportAssets, "Yêu cầu quyền xem báo cáo tài sản (reports.assets.read).");
         query.Validate();
 
-        var canReadCost = actor.Has(Permissions.DashboardCost) || actor.Has(Permissions.AssetCost) || actor.Has(Permissions.ReportCost);
+        var canReadCost = actor.Has(Permissions.ReportCost);
         var q = repo.Query<Asset>().Where(a => !a.IsArchived);
 
         if (!string.IsNullOrWhiteSpace(query.Status))
@@ -196,7 +196,7 @@ public sealed class ReportQueryService(IRepository repo, IActor actor, TimeProvi
         RequirePermission(Permissions.ReportAssets, "Yêu cầu quyền xem báo cáo tài sản (reports.assets.read).");
         query.Validate();
 
-        var canReadCost = actor.Has(Permissions.DashboardCost) || actor.Has(Permissions.AssetCost) || actor.Has(Permissions.ReportCost);
+        var canReadCost = actor.Has(Permissions.ReportCost);
         var q = repo.Query<Asset>().Where(a => !a.IsArchived);
         if (!string.IsNullOrWhiteSpace(query.Status))
             q = q.Where(a => a.CurrentStatus == query.Status);
@@ -299,7 +299,7 @@ public sealed class ReportQueryService(IRepository repo, IActor actor, TimeProvi
         RequirePermission(Permissions.ReportMaintenance, "Yêu cầu quyền xem báo cáo bảo trì (reports.maintenance.read).");
         query.Validate();
 
-        var canReadCost = actor.Has(Permissions.DashboardCost) || actor.Has(Permissions.AssetCost) || actor.Has(Permissions.ReportCost);
+        var canReadCost = actor.Has(Permissions.ReportCost);
         var q = repo.Query<MaintenanceTicket>();
 
         if (!query.IncludeArchived)
@@ -540,7 +540,7 @@ public sealed class ReportQueryService(IRepository repo, IActor actor, TimeProvi
         RequirePermission(Permissions.ReportReplacement, "Yêu cầu quyền xem báo cáo đề xuất thay thế (reports.replacement.read).");
         query.Validate();
 
-        var canReadCost = actor.Has(Permissions.DashboardCost) || actor.Has(Permissions.AssetCost) || actor.Has(Permissions.ReportCost);
+        var canReadCost = actor.Has(Permissions.ReportCost);
         var q = repo.Query<ReplacementRecommendation>().Where(r => !r.IsArchived);
 
         if (query.GeneratedFromUtc.HasValue)

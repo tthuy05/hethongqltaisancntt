@@ -87,6 +87,9 @@ const permissionLabels = {
   'software.archive': 'Ngừng sử dụng phần mềm',
   'reports.assets.read': 'Báo cáo tài sản',
   'reports.assignments.read': 'Báo cáo cấp phát',
+  'reports.maintenance.read': 'Báo cáo bảo trì',
+  'reports.licenses.read': 'Báo cáo bản quyền',
+  'reports.replacement.read': 'Báo cáo thay thế',
   'reports.cost.read': 'Báo cáo tài chính & chi phí',
 };
 

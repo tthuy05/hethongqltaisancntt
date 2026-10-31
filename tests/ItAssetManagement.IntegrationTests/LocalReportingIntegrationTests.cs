@@ -9,7 +9,7 @@ namespace ItAssetManagement.IntegrationTests;
 [Collection("isolated-neon")]
 public sealed class LocalReportingIntegrationTests
 {
-    private sealed class Reader(bool financial = false) : IActor
+    private sealed class Reader(bool financial = false, string? otherModuleCost = null) : IActor
     {
         public long? UserId => 1;
         public Guid CorrelationId => Guid.Empty;
@@ -17,7 +17,7 @@ public sealed class LocalReportingIntegrationTests
         public string? Path => "/isolated/reports";
         public bool Has(string permission) => permission is Permissions.DashboardRead or Permissions.ReportAssets or
             Permissions.ReportAssignments or Permissions.ReportMaintenance or Permissions.ReportLicenses or
-            Permissions.ReportReplacement || financial && permission is Permissions.ReportCost or Permissions.DashboardCost;
+            Permissions.ReportReplacement || financial && permission is Permissions.ReportCost or Permissions.DashboardCost || permission == otherModuleCost;
     }
 
     [LocalPostgresFact]
@@ -59,6 +59,13 @@ public sealed class LocalReportingIntegrationTests
         await report.GetReplacementBudgetReportAsync(new() { DepartmentId = department.Id, Year = 2027 }); // EP-086
         var masked = new ReportQueryService(repo, new Reader());
         Assert.Null(Assert.Single((await masked.GetAssetInventoryReportAsync(new() { DepartmentId = department.Id })).Items).PurchaseCost);
+        foreach (var otherModuleCost in new[] { Permissions.AssetCost, Permissions.DashboardCost })
+        {
+            var scoped = new ReportQueryService(repo, new Reader(otherModuleCost: otherModuleCost));
+            Assert.Null(Assert.Single((await scoped.GetAssetInventoryReportAsync(new() { DepartmentId = department.Id })).Items).PurchaseCost);
+            Assert.All(await scoped.GetAssetsByDepartmentReportAsync(new() { DepartmentId = department.Id }), row => Assert.Null(row.Value));
+            Assert.Equal(403, (await Assert.ThrowsAsync<BusinessException>(() => scoped.GetAssetInventoryReportAsync(new() { DepartmentId = department.Id, SortBy = "purchaseCost" }))).Status);
+        }
         Assert.Equal(403, (await Assert.ThrowsAsync<BusinessException>(() => masked.GetMaintenanceCostReportAsync(new()))).Status);
         var dashboard = new DashboardQueryService(repo, new Reader(true));
         Assert.Equal(1, (await dashboard.GetSummaryAsync(new() { DepartmentId = department.Id })).TotalAssets);

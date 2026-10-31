@@ -102,14 +102,14 @@ public static class Permissions
         MaintenanceWork, MaintenanceResolve, MaintenanceCancel, MaintenanceCostWrite];
     public static readonly string[] MaintenanceSupport = [MaintenanceRead, MaintenanceCreate, MaintenanceUpdate, MaintenanceWork, MaintenanceResolve];
     public static readonly string[] Read = [AssetRead, AssetHistory, DepartmentRead, TypeRead, DashboardRead, UserLookup];
+    public static readonly string[] Reports = [ReportAssets, ReportAssignments, ReportMaintenance, ReportLicenses, ReportReplacement, ReportCost, DashboardCost];
     // Support assignment reads require a scoped support contract, not this unrestricted service.
     public static readonly string[] Operate = [AssetCreate, AssetUpdate, AssetArchive, AssetStatus, AssetCost, RoleRead,
         AssignmentRead, AssignmentAssign, AssignmentReturn, AssignmentTransfer, .. ImportExport, .. Maintenance, .. SoftwarePermissions.All, .. LicensePermissions.Metadata, .. LicensePermissions.Assignments, ReplacementRuleRead,
-        ReplacementRead, ReplacementUpdate, ReplacementEvaluate];
+        ReplacementRead, ReplacementUpdate, ReplacementEvaluate, .. Reports];
     public static readonly string[] Admin = [DepartmentCreate, DepartmentUpdate, DepartmentArchive, TypeCreate, TypeUpdate, TypeArchive,
         UserRead, UserCreate, UserUpdate, UserStatus, RoleAssign, RolePermissionsRead, AuditRead, LicenseKeyManage, LicenseKeyReveal,
         ReplacementRuleCreate, ReplacementRuleUpdate];
-    public static readonly string[] Reports = [ReportAssets, ReportAssignments, ReportMaintenance, ReportLicenses, ReportReplacement, ReportCost, DashboardCost];
     public static readonly string[] All = [.. Read, .. Operate, .. Admin];
     public static readonly string[] Roles = ["ADMIN_IT", "SYSTEM_MANAGER", "TECHNICAL_SUPPORT"];
     // Compatibility name for Thien's prepared service, not a new permission/grant.
