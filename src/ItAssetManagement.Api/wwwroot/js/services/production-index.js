@@ -7,6 +7,6 @@ export function createServices({ mode = 'api', ...options } = {}) {
   return createApiServices(options);
 }
 
-export const services = createServices({ assignmentEnabled: true, maintenanceEnabled: true, importExportEnabled: true, softwareEnabled: true, licenseEnabled: true, licenseAllocationEnabled: true });
+export const services = createServices({ assignmentEnabled: true, maintenanceEnabled: true, importExportEnabled: true, softwareEnabled: true, licenseEnabled: true, licenseAllocationEnabled: true, replacementEnabled: true });
 export const { auth, assets, departments, assetTypes, dashboard, importExport } = services;
 export default services;
