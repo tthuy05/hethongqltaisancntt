@@ -1,5 +1,19 @@
 # Quy tắc thay thế — policy, API và bàn giao
 
+## 31/10/2026 — Neon rollout VERIFIED, source publication
+
+Đã fetch origin và pull fast-forward: không có code mới, main vẫn bfb3657; source Replacement ở PR #14. Người dùng đã phê duyệt migration severity, narrow seed và bật chức năng sau CI; xác nhận không có migration/seed/deploy/chỉnh ma trận quyền song song. Không áp dụng phê duyệt này cho module khác.
+
+CI commit4b1d96b và e98a027 PASS, gồm Docker Linux build/container smoke. Commit e98a027 bổ sung client production flag; backend flag đã lưu Save only trên Render, không sửa secrets/cấu hình khác và không deploy sớm. Source publication qua PR #14 phải chờ CI đúng head cuối PASS rồi merge; đối chiếu Dashboard Live SHA và /health/version, protected routes/readiness cùng UI sau deploy. Các ghi chú30/10 bên dưới mô tả trạng thái trước rollout.
+
+Backup mới31/10 snapshot10:38:03 UTC+7: dump135484bytes, SHA256725513C0C242ECF3AAD9AF39B8B479BD3C0724F7B7ED233E94BA72FFE7AF2DF8; backup/restore drill PASS, dữ liệu/schema/history khớp. File ngoàiGit: LocalAppData/ItAssetManagement/Backups/replacement-20261031_033803_54ab7e92. PITR UNVERIFIED; vẫn là logical recovery cần đối chiếu thay đổi sau snapshot. Lần đầu restore khi PostgreSQL local đang recovery bị FAIL, không coi PASS và không ghi shared.
+
+Runner riêng đã rehearsal trên bản clone mới của restore DB: baseline19tables/44FK/85CHECK/5history/56permissions/108grants →19/44/86/6/62/118. Migration190ms; seed16 rồi0; Admin6/Manager4/Support0 Replacement grants; business table hashes không đổi. Lần đầu runner thiếu EF history-table option bị dừng sau migration trên isolated; đã cấu hình đúng ef_migrations_history như ứng dụng và rehearsal lại trên clone mới PASS, không retry trên DB đã đổi. Log/report giữ ngoàiGit trong test-results/replacement-rule/operator/.
+
+Neon shared thực hiện10:40:47–10:41:02 UTC+7 ngày31/10, không Suspend Render. Baseline/transaction dài/lock guards PASS; đúng SQL đã rehearsal, apply một lần trong494ms. Sau migration/seed:19business tables/44FK/86CHECK/6history,62permissions/118role links. Seed16 rồi0, Admin6/Manager4/Support0; không tạo rule/recommendation hoặc backfill severity. Hash các bảng nghiệp vụ trước/sau migration và seed không đổi, model không pending changes/migration. Báo cáo ignored: test-results/replacement-rule/operator/shared-result.json; không chứa credentials hoặc dữ liệu hàng thực tế.
+
+Frontend rollout regression444 PASS/0FAIL/0SKIP,59JS/63CSP PASS, bundle58assets. Backend source không đổi so với916unit/265integration PASS/163cloudSKIP; migration, startup và model guard đã kiểm thực tế riêng. Neon rollout VERIFIED không đồng nghĩa mọi luồng write UI đã thử trên production: không tạo dữ liệu nghiệp vụ thật chỉ để nghiệm thu. Browser end-to-end write evidence là isolated local; production cần kiểm read-only và Live revision sau source publication. Nếu application rollout lỗi: đóng flag hoặc rollback app về bfb3657 tương thích nullable column; giữ migration đã apply, không Down/drop/reset.
+
 
 
 ## 30/10/2026 — Replacement end-to-end, UNDER REVIEW

@@ -296,3 +296,5 @@ Thiện/Mentor vẫn cần rà soát độc lập, nhóm cần chạy thử chun
 ### Replacement — đang review (30/10/2026)
 
 Đã có source/API/giao diện quy tắc, đánh giá tài sản, căn cứ và kế hoạch thay thế. Preview local `?replacement=1#/replacement`, backend cần flag ReplacementRuleApi và schemaSeverity trên database thử nghiệm riêng. Chưa bật trên production; không tự chạy migration/seed khi khởi động. [Contract, kiểm thử và rollout](docs/week-05-rule-policy-handoff.md).
+> Cập nhật31/10/2026: Replacement đã được rehearsal, backup/restore và rollout schema/quyền trên Neon. Source/UI publication qua PR #14 có gate CI trước Render; xem trạng thái và giới hạn nghiệm thu tại [bàn giao Replacement](docs/week-05-rule-policy-handoff.md).
+
