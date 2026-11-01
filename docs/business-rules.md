@@ -276,3 +276,6 @@ Export tài sản nhận purchasedFrom/purchasedTo là business date, bao gồm 
 
 ### 01/11/2026 — Quy tắc bộ lọc export bổ sung
 Tài sản lưu trữ chỉ xuất khi includeArchived=true. Sắp xếp giá cũng cần quyền đọc giá, không chỉ che ô giá. Khoảng ngày đánh giá replacement lọc RecommendedAtUtc, bao gồm hai đầu; chỉ xuất đề xuất hiện hành như hợp đồng cũ. Không thay đổi dữ liệu nghiệp vụ.
+
+## 01/11/2026 — Export Reports và xác nhận gia hạn
+Excel phải áp dụng đúng bộ lọc Reports, tối đa5000dòng, không tải một phần khi quá giới hạn; License chỉ last4, giá cần ReportCost; aggregate unknown counts không bị coi là chi phí0 đầy đủ. Gia hạn không tự động: người quản lý xác nhận với nhà cung cấp rồi nhập ngày mới, qua quyền/optimistic concurrency/audit hiện có.

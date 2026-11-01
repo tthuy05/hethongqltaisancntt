@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — 01/11/2026 — Report workbooks and confirmed renewal
+
+- Added: filtered License expiry, asset grouping, maintenance cost, replacement budget and full replacement-history Excel exports, reusing Report queries and existing grants.
+- Added: explicit manual License renewal form entry, preserving metadata update concurrency/audit; no automatic extension or purchase.
+- Security: both export and report permissions, masked keys, financial guards, row caps and safe workbook writer remain mandatory.
+
 ## Unreleased — 01/11/2026 — Export filter completion
 
 - Added: explicit archived-asset export and financial-permission-guarded price sorting.

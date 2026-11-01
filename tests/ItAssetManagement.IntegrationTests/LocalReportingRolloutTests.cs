@@ -239,4 +239,27 @@ public sealed class LocalReportingRolloutTests : IAsyncLifetime
         using var support=await LocalAssignmentCompletionTests.LoginAsync(app!,SupportEmail);
         Assert.Equal(HttpStatusCode.Forbidden,(await support.GetAsync("/api/v1/export/assets?"+dates)).StatusCode);
     }
+
+    [LocalPostgresFact]
+    public async Task Extended_report_exports_produce_safe_workbooks_and_enforce_both_permission_layers()
+    {
+        await SeedReportsAsync();using var admin=await LocalAssignmentCompletionTests.LoginAsync(app!,AdminEmail);
+        async Task<string> Sheet(string path) {
+            using var response=await admin.GetAsync("/api/v1/reports/export/"+path);
+            Assert.Equal(HttpStatusCode.OK,response.StatusCode);
+            Assert.Equal("no-store",response.Headers.CacheControl!.ToString());
+            using var zip=new System.IO.Compression.ZipArchive(new MemoryStream(await response.Content.ReadAsByteArrayAsync()));
+            using var reader=new StreamReader(zip.GetEntry("xl/worksheets/sheet1.xml")!.Open());
+            var xml=await reader.ReadToEndAsync();Assert.DoesNotContain("<f>",xml);return xml;
+        }
+        var license=await Sheet("license-expiration");Assert.Contains("9988",license);Assert.DoesNotContain("QA-LICENSE-SECRET",license);Assert.DoesNotContain("ciphertext",license,StringComparison.OrdinalIgnoreCase);
+        foreach(var group in new[]{"department","type","status"})Assert.Contains("2",await Sheet("asset-groups?groupBy="+group));
+        Assert.Contains("10.25",await Sheet("maintenance-cost"));
+        var budget=await Sheet("replacement-budget?year="+year);Assert.Contains("500",budget);Assert.DoesNotContain("999",budget);
+        var history=await Sheet("replacement-history");Assert.Contains("999",history);Assert.Contains("SUPERSEDED",history);
+        using var invalid=await admin.GetAsync("/api/v1/reports/export/asset-groups?groupBy=invalid");Assert.Equal(HttpStatusCode.BadRequest,invalid.StatusCode);
+        using var support=await LocalAssignmentCompletionTests.LoginAsync(app!,SupportEmail);
+        foreach(var path in new[]{"license-expiration","asset-groups","maintenance-cost","replacement-budget?year="+year,"replacement-history"})
+            Assert.Equal(HttpStatusCode.Forbidden,(await support.GetAsync("/api/v1/reports/export/"+path)).StatusCode);
+    }
 }

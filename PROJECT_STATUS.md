@@ -608,3 +608,6 @@ Bổ sung business-date filter/sort giữa Reports inventory và ExportAssets, g
 Nhánh codex/export-filter-completion: hoàn thiện archived/price-sort inventory và generated-date replacement export xuyên UI/adapter/API/query. Không migrations/Neon writes. Unit924PASS; full924unit/276integration/446frontend PASS,0FAIL,163cloudSKIP;Release0warnings/errors,59JS/63CSP,58assets production. Không tự bổ sung các tính năng ngoài MVP (gia hạn hợp đồng,SSO,procurement). Nghiệm thu thủ công do người dùng thực hiện.
 
 Verification export completion:924unit/276integration/446frontend PASS,0FAIL;163cloudSKIP;Release0warnings/errors,59JS/63CSP. Logs ignored test-results/replacement-rule/export-completion-*. CI/publication chờ đúng revision.
+
+## 01/11/2026 — Report Excel extensions + manual renewal, UNDER REVIEW
+Nhánh codex/report-export-extensions bổ sung5API export/readers/UI tương ứng và form xác nhận gia hạn theo quyết định người dùng. Không migration/seed/ghi Neon. Focused PostgreSQL/JWT và unit security/cap PASS;frontend448PASS;full925unit/277integration/448frontend PASS,0FAIL;163cloudSKIP. Không tự động gia hạn hoặc thanh toán nhà cung cấp.

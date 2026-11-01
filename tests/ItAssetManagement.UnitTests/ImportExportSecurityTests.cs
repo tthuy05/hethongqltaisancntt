@@ -11,6 +11,21 @@ namespace ItAssetManagement.UnitTests;
 public sealed class ImportExportSecurityTests
 {
     [Fact]
+    public async Task Report_export_requires_export_and_report_permissions_and_refuses_over_limit()
+    {
+        var actor=new FakeActor();var repo=new FakeRepository();
+        var service=new ReportExportService(new ItAssetManagement.Application.Reporting.ReportQueryService(repo,actor),actor);
+        Assert.Equal(403,(await Assert.ThrowsAsync<BusinessException>(()=>service.Licenses(new(),default))).Status);
+        actor.Grants.Add(Permissions.ExportAssets);
+        Assert.Equal(403,(await Assert.ThrowsAsync<BusinessException>(()=>service.Licenses(new(),default))).Status);
+        actor.Grants.Add(Permissions.ReportLicenses);
+        for(var i=1;i<=5001;i++)repo.Seed(new SoftwareLicense{Id=i,SoftwareId=1,LicenseCode="BQ"+i,IsActive=true});
+        Assert.Equal(413,(await Assert.ThrowsAsync<BusinessException>(()=>service.Licenses(new(),default))).Status);
+        actor.Grants.Add(Permissions.ExportMaintenance);
+        Assert.Equal(403,(await Assert.ThrowsAsync<BusinessException>(()=>service.Costs(new(),default))).Status);
+    }
+
+    [Fact]
     public async Task Export_archived_opt_in_and_price_sort_enforce_financial_permission()
     {
         var actor=new FakeActor();actor.Grants.Add(Permissions.ExportAssets);

@@ -7,6 +7,28 @@ export function reportExcelActions(services, tab, query, active) {
   if (!excelAvailable(services)) return null;
   const id = key => query[key] ? Number(query[key]) : undefined;
   const shared = { departmentId: id('departmentId') };
+  const multiple = specs => {
+    const controls = specs.map(spec => excelDownloadButton(services, { ...spec, active })).filter(Boolean);
+    return controls.length ? h('section', { className: 'card card-body', 'aria-label': 'Xuất báo cáo Excel' }, ...controls,
+      h('p', { className: 'meta' }, 'Xuất toàn bộ dữ liệu khớp bộ lọc, tối đa 5000 dòng; mỗi nút tải một tệp.')) : null;
+  };
+  if (tab === 'groups') return multiple(['department', 'type', 'status'].map((groupBy, i) => ({
+    label: ['Xuất theo phòng ban', 'Xuất theo loại', 'Xuất theo trạng thái'][i], method: 'exportAssetGroups', permission: 'export.assets.execute',
+    query: { ...shared, assetTypeId: id('assetTypeId'), status: query.status, groupBy }
+  })));
+  if (tab === 'cost') return multiple([
+    { label: 'Xuất chi phí bảo trì', method: 'exportMaintenanceCost', permission: 'export.maintenance.execute', query: {
+      ...shared, assetTypeId: id('assetTypeId'), groupBy: query.groupBy || 'month', fromUtc: reportUtc(query.costFrom), toUtc: reportUtc(query.costTo) } },
+    { label: 'Xuất dự toán thay thế', method: 'exportReplacementBudget', permission: 'export.replacement.execute', query: {
+      ...shared, year: id('year') || Math.min(2100, Math.max(2000, new Date().getUTCFullYear() + 1)), priority: query.priority } }
+  ]);
+  if (tab === 'expiry') return multiple([
+    ...(services.auth?.session?.permissions?.includes('reports.assets.read') ? [{ label: 'Xuất hạn bảo hành', method: 'exportWarranty', permission: 'export.assets.execute', query: {
+      ...shared, assetTypeId: id('assetTypeId'), fromUtc: query.warrantyFrom ? reportUtc(query.warrantyFrom + 'T00:00') : undefined,
+      toUtc: query.warrantyTo ? reportUtc(query.warrantyTo + 'T00:00') : undefined } }] : []),
+    ...(services.auth?.session?.permissions?.includes('reports.licenses.read') ? [{ label: 'Xuất thời hạn License', method: 'exportLicenseReport', permission: 'export.assets.execute', query: {
+      softwareId: id('softwareId'), status: query.licenseStatus, fromUtc: reportUtc(query.licenseFrom), toUtc: reportUtc(query.licenseTo) } }] : [])
+  ]);
   let spec, note = 'Xuất tất cả dòng khớp bộ lọc, không chỉ trang hiện tại; tối đa 5000 dòng.';
   if (tab === 'inventory') {
     if (query.sortBy === 'purchaseCost' && !services.auth?.session?.permissions?.some(p => ['assets.cost.read', 'reports.cost.read'].includes(p)))
@@ -18,16 +40,11 @@ export function reportExcelActions(services, tab, query, active) {
     ...shared, assetId: id('assetId'), userId: id('userId'), fromUtc: reportUtc(query.assignmentFrom), toUtc: reportUtc(query.assignmentTo) } };
   else if (tab === 'maintenance') spec = { method: 'exportMaintenance', permission: 'export.maintenance.execute', query: {
     assetId: id('assetId'), technicianId: id('technicianId'), status: query.maintenanceStatus, fromUtc: reportUtc(query.maintenanceFrom), toUtc: reportUtc(query.maintenanceTo) } };
-  else if (tab === 'expiry') {
-    spec = { label: 'Xuất hạn bảo hành', method: 'exportWarranty', permission: 'export.assets.execute', query: {
-      ...shared, assetTypeId: id('assetTypeId'), fromUtc: query.warrantyFrom ? reportUtc(query.warrantyFrom + 'T00:00') : undefined,
-      toUtc: query.warrantyTo ? reportUtc(query.warrantyTo + 'T00:00') : undefined } };
-    note += ' Chỉ hạn bảo hành; API xuất thời hạn License chưa có, không xuất bảng License.';
-  } else if (tab === 'replacement') {
-    spec = { label: 'Xuất đề xuất hiện hành', method: 'exportReplacement', permission: 'export.replacement.execute', query: {
-      ...shared, year: id('plannedYear'), priority: query.priority, status: query.disposition,
+  else if (tab === 'replacement') {
+    spec = { label: 'Xuất lịch sử đề xuất', method: 'exportReplacementHistory', permission: 'export.replacement.execute', query: {
+      ...shared, plannedYear: id('plannedYear'), priority: query.priority, disposition: query.disposition,
       generatedFromUtc: reportUtc(query.generatedFrom), generatedToUtc: reportUtc(query.generatedTo) } };
-    note += ' Chỉ đề xuất hiện hành, không bao gồm lịch sử; không phải báo cáo dự toán tổng hợp.';
+    note += ' Bao gồm lịch sử như bảng báo cáo; dự toán tổng hợp được xuất riêng ở tab Chi phí & Ngân sách.';
   }
   if (!spec) return null;
   const control = excelDownloadButton(services, { ...spec, active });

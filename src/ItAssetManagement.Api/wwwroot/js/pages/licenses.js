@@ -59,7 +59,7 @@ export async function licenseListPage(services, { enabled = false, query = { pag
   const current = () => services.auth.session?.id === actorId && can(services, 'licenses.read');
   const alive = () => root.isConnected && window.location.hash === hash && current();
 
-  async function openEditDialog(item = null) {
+  async function openEditDialog(item = null, renewal = false) {
     const grant = item ? 'licenses.update' : 'licenses.create';
     if (!can(services, grant)) return;
     let fresh = item;
@@ -95,7 +95,7 @@ export async function licenseListPage(services, { enabled = false, query = { pag
       return f.element;
     };
 
-    const confirm = button(item ? 'Cập nhật' : 'Tạo bản quyền', { type: 'submit' });
+    const confirm = button(renewal ? 'Xác nhận gia hạn' : item ? 'Cập nhật' : 'Tạo bản quyền', { type: 'submit' });
     const stop = text => {
       blocked = true; confirm.disabled = true;
       message.replaceChildren(formAlert(text), button('Đóng và tải lại', { kind: 'secondary', onClick: () => { modal.close(); window.dispatchEvent(new Event('frontend-refresh')); } }));
@@ -128,6 +128,7 @@ export async function licenseListPage(services, { enabled = false, query = { pag
       }
 
       const errors = validateLicense(dto, Boolean(item));
+      if (renewal && (!dto.expiresAt || new Date(dto.expiresAt) <= new Date(item.expiresAt) || new Date(dto.expiresAt) <= new Date())) errors.expiresAt = 'Nhập ngày hết hạn mới sau ngày cũ và sau thời điểm hiện tại.';
       displayErrors(fields, errors);
       if (Object.keys(errors).length) {
         message.replaceChildren(formAlert('Vui lòng kiểm tra lại thông tin nhập.'));
@@ -170,12 +171,13 @@ export async function licenseListPage(services, { enabled = false, query = { pag
       canCost ? addField('purchaseCost', 'Chi phí mua (VNĐ)', item?.purchaseCost != null ? String(item.purchaseCost) : '', 'number', 20) : null,
       canManageKey ? addField('licenseKey', item ? 'Cập nhật Key (để trống nếu giữ nguyên)' : 'Khóa bản quyền (Key)', '', 'text', 4096) : null,
       addField('notes', 'Ghi chú', item?.notes ?? '', 'textarea', 2000),
+      renewal ? h('p', { className: 'meta' }, 'Chỉ xác nhận sau khi đã gia hạn với nhà cung cấp. Hệ thống không tự mua hoặc tự kéo dài thời hạn; nhập ngày hết hạn mới và ghi chú xác nhận.') : null,
       message),
     h('div', { className: 'dialog-footer' },
       button('Hủy', { kind: 'secondary', onClick: () => modal.close() }),
       confirm));
 
-    modal = openDialog({ title: item ? 'Sửa bản quyền' : 'Thêm bản quyền', body: form, onClose: () => { closed = true; } });
+    modal = openDialog({ title: renewal ? 'Xác nhận gia hạn bản quyền' : item ? 'Sửa bản quyền' : 'Thêm bản quyền', body: form, onClose: () => { closed = true; } });
   }
 
   async function openArchiveDialog(item) {
@@ -212,6 +214,7 @@ export async function licenseListPage(services, { enabled = false, query = { pag
       h('p', {}, `Ngừng sử dụng bản quyền ${fresh.licenseCode} (${fresh.software?.name ?? ''})?`),
       h('p', { className: 'meta' }, 'Thông tin và lịch sử cấp phát sẽ được lưu trữ, không bị xóa khỏi hệ thống.'),
       hasActiveSeats ? h('p', { className: 'alert alert-warning' }, `Bản quyền hiện có ${fresh.usedQuantity} chỗ đang được cấp phát. Vui lòng thu hồi tất cả trước khi ngừng sử dụng.`) : null,
+
       message),
     h('div', { className: 'dialog-footer' },
       button('Hủy', { kind: 'secondary', onClick: () => modal.close() }),
@@ -273,6 +276,7 @@ export async function licenseListPage(services, { enabled = false, query = { pag
     { key: 'actions', label: 'Thao tác', className: 'actions-cell nowrap', render: item => h('div', { className: 'actions' },
       button('Chi tiết', { kind: 'ghost', onClick: () => openDetailDialog(item) }),
       item.isActive && can(services, 'licenses.update') ? button('Sửa', { kind: 'ghost', onClick: () => openEditDialog(item) }) : null,
+      item.isActive && item.expiresAt && can(services, 'licenses.update') ? button('Gia hạn', { kind: 'ghost', onClick: () => openEditDialog(item, true) }) : null,
       item.isActive && can(services, 'licenses.archive') ? button('Ngừng dùng', { kind: 'ghost', onClick: () => openArchiveDialog(item) }) : null
     ) }
   ];
@@ -332,6 +336,7 @@ export async function licenseDetailPage(services, id, { enabled = false, allocat
     h('div', { className: 'dialog-body form-grid' },
       h('p', {}, `Yêu cầu quyền Admin IT và ghi nhật ký kiểm toán cho thao tác giải mã khóa của bản quyền ${value.licenseCode}.`),
       h('div', { className: 'field' }, h('label', { className: 'label' }, 'Lý do truy cập *'), reasonInput),
+
       message),
     h('div', { className: 'dialog-footer' }, button('Hủy', { kind: 'secondary', onClick: () => modal.close() }), confirm));
     modal = openDialog({ title: 'Xác thực xem khóa bản quyền', body: form });

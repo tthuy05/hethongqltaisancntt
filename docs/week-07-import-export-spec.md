@@ -168,3 +168,25 @@ Replacement export thêm generatedFromUtc/generatedToUtc, UTC inclusive trên Re
 Các giới hạn ngoài hợp đồng export MVP vẫn được công khai: không xuất thời hạn License, không xuất aggregate groups/cost thành workbook; không phải endpoint giả hoặc chức năng được đánh dấu hoàn thành. Không tự thêm quyền/API ngoài EP-088–092 trong đợt này. Nghiệm thu thủ công do người dùng thực hiện.
 
 Verification export completion:924unit/276integration/446frontend PASS,0FAIL;163cloudSKIP;Release0warnings/errors,59JS/63CSP. Logs ignored test-results/replacement-rule/export-completion-*. CI/publication chờ đúng revision.
+
+## 01/11/2026 — Excel mở rộng và gia hạn có xác nhận (UNDER REVIEW)
+
+### Chức năng và luồng
+ReportExportsController → ReportExportService → ReportQueryService dùng lại cùng projection/filter với bảng Reports → SafeExcelWorkbookWriter. Năm endpoint GET dưới /api/v1/reports/export: license-expiration, asset-groups, maintenance-cost, replacement-budget, replacement-history. Backend chỉ mở khi cả ReportingV2 và ImportExportApi bật; readiness/ingress Reporting áp dụng như API đọc, no-store. Không thay năm endpoint /export cũ.
+
+### API/DTO và quyền
+- license-expiration: fromUtc/toUtc/softwareId/status; cần export.assets.execute + reports.licenses.read; chỉ last4, không ciphertext/full key.
+- asset-groups: departmentId/assetTypeId/status/groupBy=department|type|status; cần export.assets.execute + reports.assets.read; số lượng giống UI, không thêm cột giá.
+- maintenance-cost: fromUtc/toUtc/departmentId/assetTypeId/groupBy; cần export.maintenance.execute + reports.cost.read.
+- replacement-budget: year/departmentId/priority; cần export.replacement.execute + reports.cost.read; tổng đã biết và số chưa có dự toán riêng.
+- replacement-history: generatedFromUtc/generatedToUtc/departmentId/priority/disposition/plannedYear; cần export.replacement.execute + reports.replacement.read, dự toán chỉ khi reports.cost.read. Gồm historical/current như bảng Reports, khác export cũ current-only.
+Trường lạ hoặc bộ lọc sai400; thiếu đăng nhập401/quyền403; quá5000dòng413 EXPORT_TOO_LARGE; paging phát hiện count/ID thay đổi409 EXPORT_DATA_CHANGED, không tải tệp một phần. Không nhận page/pageSize từ client: xuất toàn bộ kết quả, fetch100/page, giới hạn50pages. Không hứa snapshot xuyên các truy vấn; khi dữ liệu thay đổi đồng thời có thể cần xuất lại. Formula injection/XML-invalid handling giữ writer hiện có.
+
+### Giao diện, phụ thuộc và trạng thái
+Groups có3nút, Cost2nút, Expiry2nút có quyền tương ứng; mỗi nút tải một workbook. History xuất toàn bộ bộ lọc đang chọn. Session/revision/financial grants được kiểm trước/sau download như adapter cũ. Không thêm permission catalog/grants, schema hoặc migrations. Controller gates, DI và query readers là phụ thuộc trực tiếp. Local PostgreSQL/JWT tập trung và unit cap/security PASS; Broad regression925unit/277integration/448frontend PASS,0FAIL;163cloudSKIP. Release0warnings/errors,59JS/63CSP,58assets production; CI/publication chờ đúng revision. Người dùng tự nghiệm thu thủ công, chưa coi Microsoft Excel Desktop đã kiểm chứng.
+
+### Gia hạn License
+Đã chốt chỉ cảnh báo, người quản lý xác nhận sau khi mua gia hạn với nhà cung cấp và nhập ngày mới. UI License có nút Gia hạn khi active/có expiry và licenses.update, mở form có hướng dẫn; ngày mới phải sau ngày cũ và thời điểm hiện tại. Dùng PUT metadata/rowVersion/audit hiện có, không tự thanh toán, không scheduler kéo dài hạn và không tạo hợp đồng mới. Sửa metadata thông thường vẫn giữ API cũ; không dùng nút gia hạn để thay chính sách nhà cung cấp. Cảnh báo Expiring/Expired và Reports/Dashboard có sẵn.
+
+### Lưu ý tiếp quản
+Không chạy development seed/migrate/ghi shared để bật chức năng này. Kiểm thử automated dùng DB isolated; kiểm renewal qua mock form và license update/audit regression, không gia hạn license thật để thử. Chỉ publish sau toàn bộ mandatory tests và CI/Docker PASS.

@@ -12,7 +12,7 @@ const controls = dom => ({
 });
 function source(handler = async (_file, { dryRun }) => ({ ...previewResult, dryRun, committed: !dryRun })) {
   const calls = [];
-  return { mode: 'api', importExportEnabled: true, auth: { session: { id: 7, permissions: ['assets.read', 'import.assets.execute', 'export.assets.execute'] } }, calls,
+  return { mode: 'api', importExportEnabled: true, auth: { session: { id: 7, permissions: ['assets.read', 'import.assets.execute', 'export.assets.execute', 'reports.assets.read', 'reports.licenses.read'] } }, calls,
     importExport: { importAssets: async (...args) => { calls.push(args); return handler(...args); }, template: async () => ({ blob: new Blob(['fixture']), filename: 'template.xlsx' }), exportAssets: async () => ({}) } };
 }
 function choose(dom, name = 'fixture.xlsx') {
@@ -132,11 +132,30 @@ test('report export forwards archived inventory and generated UTC replacement wi
     dom.body.append(inventory);descendants(inventory).find(n=>n.tagName==='BUTTON').fire('click');await until(()=>query);
     assert.equal(query.includeArchived,true);
     query=null;services.auth.session.permissions.push('export.replacement.execute');
-    services.importExport.exportReplacement=async q=>{query=q;throw Error('synthetic stop');};
+    services.importExport.exportReplacementHistory=async q=>{query=q;throw Error('synthetic stop');};
     const replacement=reportExcelActions(services,'replacement',{generatedFrom:'2026-11-01T00:00',generatedTo:'2026-11-02T00:00'},()=>true);
     dom.body.append(replacement);descendants(replacement).find(n=>n.tagName==='BUTTON').fire('click');await until(()=>query);
     assert.equal(query.generatedFromUtc,'2026-11-01T00:00:00.000Z');assert.equal(query.generatedToUtc,'2026-11-02T00:00:00.000Z');
   } finally {dom.restore();}
+});
+
+test('new report exports provide distinct controls and preserve independent filters', async () => {
+  const dom=installDom('/reports');try {
+    const services=source(),calls=[];
+    services.auth.session.permissions.push('export.maintenance.execute','export.replacement.execute');
+    for(const method of ['exportAssetGroups','exportMaintenanceCost','exportReplacementBudget','exportLicenseReport'])
+      services.importExport[method]=async query=>{calls.push([method,query]);throw Error('synthetic stop');};
+    for(const tab of ['groups','cost','expiry']) {
+      const root=reportExcelActions(services,tab,{year:'2028',departmentId:'3',licenseStatus:'Expiring'},()=>true);
+      dom.body.append(root);
+      for(const control of descendants(root).filter(n=>n.tagName==='BUTTON'))control.fire('click');
+    }
+    await until(()=>calls.length===6);
+    assert.deepEqual(calls.filter(c=>c[0]==='exportAssetGroups').map(c=>c[1].groupBy),['department','type','status']);
+    assert.equal(calls.find(c=>c[0]==='exportReplacementBudget')[1].year,2028);
+    assert.equal(calls.find(c=>c[0]==='exportLicenseReport')[1].status,'Expiring');
+    assert.equal(calls.find(c=>c[0]==='exportLicenseReport')[1].departmentId,undefined);
+  }finally{dom.restore();}
 });
 
 test('report exports use only real endpoints and map warranty dates to UTC', async () => {
@@ -146,7 +165,7 @@ test('report exports use only real endpoints and map warranty dates to UTC', asy
     const root = reportExcelActions(services, 'expiry', { warrantyFrom: '2026-10-01', warrantyTo: '2026-10-31', departmentId: '2' }, () => true);
     dom.body.append(root); descendants(root).find(n => n.tagName === 'BUTTON').fire('click'); await until(() => query);
     assert.equal(query.fromUtc, '2026-10-01T00:00:00.000Z'); assert.equal(query.toUtc, '2026-10-31T00:00:00.000Z');
-    assert.match(root.textContent, /API xuất thời hạn License chưa có/);
+    assert.match(root.textContent, /mỗi nút tải một tệp/);
     assert.equal(reportExcelActions(services, 'cost', {}, () => true), null);
     const unavailable = reportExcelActions(services, 'inventory', { sortBy: 'purchaseCost' }, () => true);
     assert.equal(descendants(unavailable).filter(n => n.tagName === 'BUTTON').length, 0);

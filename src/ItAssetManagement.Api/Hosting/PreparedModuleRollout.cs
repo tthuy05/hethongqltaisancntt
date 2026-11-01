@@ -10,7 +10,8 @@ public sealed class PreparedModuleControllerFeatureProvider(IConfiguration confi
     {
         foreach (var controller in feature.Controllers.ToArray())
         {
-            if (controller.Name is "DashboardController" or "ReportsController")
+            if (controller.Name == "ReportExportsController" && (!bool.TryParse(configuration["Features:ImportExportApi:Enabled"], out var exportEnabled) || !exportEnabled)) { feature.Controllers.Remove(controller); continue; }
+            if (controller.Name is "DashboardController" or "ReportsController" or "ReportExportsController")
             {
                 if (!ReportingRollout.IsEnabled(configuration)) feature.Controllers.Remove(controller);
                 continue;

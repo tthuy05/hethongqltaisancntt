@@ -242,3 +242,6 @@ Tái sử dụng và tuân thủ hợp đồng kỹ thuật EP-051 – EP-056 t�
 
 ---
 *Tài liệu được cập nhật và nghiệm thu bởi Antigravity Pair-Programming Agent theo quy định AGENTS.md.*
+
+## 01/11/2026 — Gia hạn có xác nhận (UNDER REVIEW)
+Theo quyết định người dùng: chỉ cảnh báo Expiring/Expired; Manager xác nhận gia hạn với nhà cung cấp và nhập ngày mới. Nút Gia hạn dùng licenses.update, form hiện có, rowVersion/audit giữ nguyên; yêu cầu ngày mới sau ngày cũ và hiện tại. Không scheduler hoặc tự mua/kéo dài license. Xuất License qua /api/v1/reports/export/license-expiration cần export.assets.execute + reports.licenses.read, masked last4. Không migration/grant mới.
