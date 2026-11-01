@@ -9,12 +9,12 @@ export function reportExcelActions(services, tab, query, active) {
   const shared = { departmentId: id('departmentId') };
   let spec, note = 'Xuất tất cả dòng khớp bộ lọc, không chỉ trang hiện tại; tối đa 5000 dòng.';
   if (tab === 'inventory') {
-    if (query.purchasedFrom || query.purchasedTo || query.includeArchived === 'true' ||
-        (query.sortBy && !['assetCode', 'name', 'createdAt'].includes(query.sortBy)))
-      return h('p', { className: 'meta' }, 'Chưa xuất được bộ lọc ngày mua/lưu trữ hoặc kiểu sắp xếp này. API Excel chỉ hỗ trợ mã, tên, ngày tạo; bỏ bộ lọc chưa hỗ trợ trước khi xuất.');
+    if (query.includeArchived === 'true' ||
+        (query.sortBy && !['assetCode', 'name', 'createdAt', 'purchaseDate'].includes(query.sortBy)))
+      return h('p', { className: 'meta' }, 'Chưa xuất được dữ liệu lưu trữ hoặc kiểu sắp xếp này. Bỏ bộ lọc chưa hỗ trợ trước khi xuất.');
     const statuses = { IN_STOCK: 'InStock', IN_USE: 'InUse', MAINTENANCE: 'Maintenance', BROKEN: 'Broken', RETIRED: 'Retired' };
     spec = { method: 'exportAssets', permission: 'export.assets.execute', query: { ...shared, keyword: query.keyword, status: statuses[query.status],
-      assetTypeId: id('assetTypeId'), sortBy: query.sortBy || 'createdAt', sortDirection: query.sortDirection || 'desc' } };
+      assetTypeId: id('assetTypeId'), purchasedFrom: query.purchasedFrom, purchasedTo: query.purchasedTo, sortBy: query.sortBy || 'createdAt', sortDirection: query.sortDirection || 'desc' } };
   } else if (tab === 'assignments') spec = { method: 'exportAssignments', permission: 'export.assignments.execute', query: {
     ...shared, assetId: id('assetId'), userId: id('userId'), fromUtc: reportUtc(query.assignmentFrom), toUtc: reportUtc(query.assignmentTo) } };
   else if (tab === 'maintenance') spec = { method: 'exportMaintenance', permission: 'export.maintenance.execute', query: {

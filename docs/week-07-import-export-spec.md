@@ -150,3 +150,11 @@ Feature flags backend `Features:ReportingApi:Enabled` / `Features:ImportExportAp
 ## Evidence & gate còn thiếu
 
 Xem [review](import-reporting-review-2026-10-20.md) cho counts thực tế, isolated rollback/race proof và giới hạn. Thiện review workbook compatibility/UI, report/export parity đầy đủ và production grant/rollout còn PENDING. Không apply migration, seed permissions hoặc đổi shared Neon trong scope này.
+
+## 01/11/2026 — Inventory export purchase-date parity (UNDER REVIEW)
+
+GET /api/v1/export/assets bổ sung purchasedFrom/purchasedTo dạng yyyy-MM-dd (DateOnly), giới hạn hai đầu inclusive trên PurchaseDate; null không khớp khi có khoảng ngày. Khoảng ngược400 INVALID_QUERY. fromUtc/toUtc vẫn lọc CreatedAtUtc như cũ; nếu truyền cả hai nhóm thì kết hợp AND, không đổi nghĩa client cũ. sortBy thêm purchaseDate, tie-break id tăng dần như ReportQueryService. Không thêm sort giá hoặc xuất archived trong slice này.
+
+Reports inventory không còn khóa nút Excel khi chọn ngày mua hoặc sort purchaseDate; adapter chuyển nguyên business date, không đổi thành UTC/created timestamp. Giữ export.assets.execute, financial masking assets.cost.read OR reports.cost.read, cap5000 và chống formula injection. Không đổi import/generator/schema/permissions hoặc ghi Neon. Các giới hạn export License/aggregate khác vẫn giữ nguyên.
+
+Focused ImportExportSecurity54PASS; bổ sung frontend regression kiểm forward ngày mua và không gửi fromUtc/toUtc. Full regression PASS:922unit/276integration/445frontend,0FAIL;163cloudSKIP;Release0warnings/errors,59JS/63CSP,58assets production. PostgreSQL/JWT thật kiểm binding, parity workbook, malformed/reversed dates và Support403. Publication chờ CI/Docker. Không bao gồm nghiệm thu thủ công production (người dùng tự thực hiện).

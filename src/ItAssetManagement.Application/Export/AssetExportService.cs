@@ -37,6 +37,8 @@ public sealed class AssetExportService(
         bool canReadCost = actor.Has(Permissions.ReportCost) || actor.Has(Permissions.AssetCost);
 
         var q = repo.Query<Asset>().Where(a => !a.IsArchived);
+        if (query.PurchasedFrom.HasValue) q = q.Where(a => a.PurchaseDate >= query.PurchasedFrom.Value);
+        if (query.PurchasedTo.HasValue) q = q.Where(a => a.PurchaseDate <= query.PurchasedTo.Value);
         if (query.FromUtc.HasValue) q = q.Where(a => a.CreatedAtUtc >= query.FromUtc.Value);
         if (query.ToUtc.HasValue) q = q.Where(a => a.CreatedAtUtc <= query.ToUtc.Value);
         if (query.DepartmentId.HasValue)
@@ -55,6 +57,8 @@ public sealed class AssetExportService(
 
         var desc = query.SortDirection == "desc";
         IOrderedQueryable<Asset> ordered = (query.SortBy, desc) switch {
+            ("purchaseDate", false) => q.OrderBy(a => a.PurchaseDate),
+            ("purchaseDate", true) => q.OrderByDescending(a => a.PurchaseDate),
             ("name", false) => q.OrderBy(a => a.Name), ("name", true) => q.OrderByDescending(a => a.Name),
             ("createdAt", false) => q.OrderBy(a => a.CreatedAtUtc), ("createdAt", true) => q.OrderByDescending(a => a.CreatedAtUtc),
             (_, false) => q.OrderBy(a => a.AssetCode), _ => q.OrderByDescending(a => a.AssetCode)

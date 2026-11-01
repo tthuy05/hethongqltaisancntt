@@ -109,7 +109,7 @@ export function createImportExportService({ fetchImpl = globalThis.fetch?.bind(g
       if (result.dryRun !== dryRun) throw new ServiceError(502, 'INVALID_API_RESPONSE', 'Chế độ nhập dữ liệu trả về không khớp yêu cầu.');
       return result;
     },
-    exportAssets(query = {}) { return download('/export/assets', 'export.assets.execute', query, ['keyword', 'status', 'assetTypeId', 'departmentId', 'fromUtc', 'toUtc', 'sortBy', 'sortDirection']); },
+    exportAssets(query = {}) { return download('/export/assets', 'export.assets.execute', query, ['keyword', 'status', 'assetTypeId', 'departmentId', 'fromUtc', 'toUtc', 'purchasedFrom', 'purchasedTo', 'sortBy', 'sortDirection']); },
     exportMaintenance(query = {}) { return download('/export/maintenance', 'export.maintenance.execute', query, ['fromUtc', 'toUtc', 'assetId', 'technicianId', 'status']); },
     exportAssignments(query = {}) { return download('/export/assignment-history', 'export.assignments.execute', query, ['fromUtc', 'toUtc', 'assetId', 'userId', 'departmentId']); },
     exportWarranty(query = {}) { return download('/export/warranty-expiration', 'export.assets.execute', query, ['fromUtc', 'toUtc', 'departmentId', 'assetTypeId']); },

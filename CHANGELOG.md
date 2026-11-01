@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — 01/11/2026 — Inventory Excel date filters
+
+- Added: inclusive purchase-date filters and purchase-date sorting for asset Excel exports, connected to Reports inventory filters.
+- Preserved: creation-time filtering, export authorization, cost masking, row limits and formula-injection protection.
+
 ## Unreleased — 01/11/2026 — Reports acceptance
 
 - Fixed: Excel JWT regression fixture follows the seeded Reports catalog while independently checking closed ReportingV2 routes and custom-user permission restrictions.

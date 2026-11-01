@@ -213,4 +213,30 @@ public sealed class LocalReportingRolloutTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK,response.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound,(await admin.GetAsync("/api/v1/reports/asset-inventory")).StatusCode);
     }
+
+    [LocalPostgresFact]
+    public async Task Excel_purchase_date_filters_bind_and_match_inventory_on_real_PostgreSql()
+    {
+        await SeedReportsAsync();
+        using var admin=await LocalAssignmentCompletionTests.LoginAsync(app!,AdminEmail);
+        await using var db=LocalSequenceAuthenticationTests.Database();
+        var purchased=(await db.Set<Asset>().SingleAsync(x=>x.AssetCode=="RPT-001")).PurchaseDate!.Value;
+        var dates=$"purchasedFrom={purchased:yyyy-MM-dd}&purchasedTo={purchased:yyyy-MM-dd}&sortBy=purchaseDate&sortDirection=desc";
+        using var report=await admin.GetAsync("/api/v1/reports/asset-inventory?"+dates);
+        Assert.Equal(HttpStatusCode.OK,report.StatusCode);
+        var reportJson=await report.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(1,reportJson.GetProperty("totalItems").GetInt32());
+        using var export=await admin.GetAsync("/api/v1/export/assets?"+dates);
+        Assert.Equal(HttpStatusCode.OK,export.StatusCode);
+        using var zip=new System.IO.Compression.ZipArchive(new MemoryStream(await export.Content.ReadAsByteArrayAsync()));
+        using var xmlReader=new StreamReader(zip.GetEntry("xl/worksheets/sheet1.xml")!.Open());
+        var xml=await xmlReader.ReadToEndAsync();
+        Assert.Contains("RPT-001",xml);Assert.DoesNotContain("RPT-002",xml);
+        using var reversed=await admin.GetAsync($"/api/v1/export/assets?purchasedFrom={purchased.AddDays(1):yyyy-MM-dd}&purchasedTo={purchased:yyyy-MM-dd}");
+        Assert.Equal(HttpStatusCode.BadRequest,reversed.StatusCode);
+        using var malformed=await admin.GetAsync("/api/v1/export/assets?purchasedFrom=not-a-date");
+        Assert.Equal(HttpStatusCode.BadRequest,malformed.StatusCode);
+        using var support=await LocalAssignmentCompletionTests.LoginAsync(app!,SupportEmail);
+        Assert.Equal(HttpStatusCode.Forbidden,(await support.GetAsync("/api/v1/export/assets?"+dates)).StatusCode);
+    }
 }

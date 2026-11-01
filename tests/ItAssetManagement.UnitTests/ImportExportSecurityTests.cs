@@ -11,6 +11,27 @@ namespace ItAssetManagement.UnitTests;
 public sealed class ImportExportSecurityTests
 {
     [Fact]
+    public async Task Inventory_export_purchase_window_is_inclusive_and_independent_of_creation_date()
+    {
+        var actor = new FakeActor(); actor.Grants.Add(Permissions.ExportAssets);
+        var repo = new FakeRepository();
+        repo.Seed(new Asset { Id=1, AssetCode="AST-000001", Name="First", PurchaseDate=new(2026,1,1) });
+        repo.Seed(new Asset { Id=2, AssetCode="AST-000002", Name="Last", PurchaseDate=new(2026,1,31) });
+        repo.Seed(new Asset { Id=3, AssetCode="AST-000003", Name="Outside", PurchaseDate=new(2026,2,1) });
+        repo.Seed(new Asset { Id=4, AssetCode="AST-000004", Name="Unknown" });
+        var query=new AssetExportQuery { PurchasedFrom=new(2026,1,1), PurchasedTo=new(2026,1,31), SortBy="purchaseDate", SortDirection="desc" };
+        var (bytes, _)=await new AssetExportService(repo,actor).ExportAssetsAsync(query);
+        using var zip=new ZipArchive(new MemoryStream(bytes));
+        using var reader=new StreamReader(zip.GetEntry("xl/worksheets/sheet1.xml")!.Open());
+        var xml=reader.ReadToEnd();
+        Assert.Contains("AST-000001",xml); Assert.Contains("AST-000002",xml);
+        Assert.DoesNotContain("AST-000003",xml); Assert.DoesNotContain("AST-000004",xml);
+        Assert.True(xml.IndexOf("AST-000002",StringComparison.Ordinal)<xml.IndexOf("AST-000001",StringComparison.Ordinal));
+        query.PurchasedFrom=new(2026,2,1);
+        Assert.Equal(400,Assert.Throws<BusinessException>(query.Validate).Status);
+    }
+
+    [Fact]
     public void Workbook_sizes_headers_and_values_without_changing_numeric_or_formula_safety()
     {
         var bytes = SafeExcelWorkbookWriter.CreateWorkbook(["WarrantyExpirationDate", "Name", "Price"],
