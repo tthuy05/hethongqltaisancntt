@@ -45,6 +45,7 @@ public sealed class AssetExportQuery
     public long? DepartmentId { get; set; }
     public DateTime? FromUtc { get; set; }
     public DateTime? ToUtc { get; set; }
+    public bool IncludeArchived { get; set; }
     public DateOnly? PurchasedFrom { get; set; }
     public DateOnly? PurchasedTo { get; set; }
     public string? SortBy { get; set; }
@@ -54,7 +55,7 @@ public sealed class AssetExportQuery
     {
         ReportingValidation.ValidateDateRange(FromUtc, ToUtc);
         ReportingValidation.Choice(Status, "InStock", "InUse", "Maintenance", "Broken", "Retired");
-        ReportingValidation.Choice(SortBy, "assetCode", "name", "createdAt", "purchaseDate");
+        ReportingValidation.Choice(SortBy, "assetCode", "name", "createdAt", "purchaseDate", "purchaseCost");
         if (PurchasedFrom.HasValue && PurchasedTo.HasValue && PurchasedFrom > PurchasedTo)
             throw new BusinessException(400, "INVALID_QUERY", "Ngày mua từ không được lớn hơn ngày mua đến.");
         ReportingValidation.Choice(SortDirection, "asc", "desc");
@@ -144,6 +145,8 @@ public sealed class WarrantyExportQuery
 /// </summary>
 public sealed class ReplacementExportQuery
 {
+    public DateTime? GeneratedFromUtc { get; set; }
+    public DateTime? GeneratedToUtc { get; set; }
     public int? Year { get; set; }
     public long? DepartmentId { get; set; }
     public string? Priority { get; set; }
@@ -151,6 +154,8 @@ public sealed class ReplacementExportQuery
 
     public void Validate()
     {
+        ReportingValidation.ValidateDateRange(GeneratedFromUtc, GeneratedToUtc);
+        if (GeneratedFromUtc > GeneratedToUtc) throw new BusinessException(400, "INVALID_QUERY", "Khoảng ngày đánh giá không hợp lệ.");
         ReportingValidation.Choice(Priority, "LOW", "MEDIUM", "HIGH", "CRITICAL");
         ReportingValidation.Choice(Status, "ACTIVE", "PLANNED", "DISMISSED", "SUPERSEDED");
         if (Year.HasValue && Year.Value is < 2000 or > 2100)

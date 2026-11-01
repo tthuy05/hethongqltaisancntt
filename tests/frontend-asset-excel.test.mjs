@@ -124,6 +124,21 @@ test('inventory export forwards purchase dates without converting them to creati
   } finally { dom.restore(); }
 });
 
+test('report export forwards archived inventory and generated UTC replacement windows', async () => {
+  const dom=installDom('/reports');try {
+    const services=source();let query;
+    services.importExport.exportAssets=async q=>{query=q;throw Error('synthetic stop');};
+    const inventory=reportExcelActions(services,'inventory',{includeArchived:'true'},()=>true);
+    dom.body.append(inventory);descendants(inventory).find(n=>n.tagName==='BUTTON').fire('click');await until(()=>query);
+    assert.equal(query.includeArchived,true);
+    query=null;services.auth.session.permissions.push('export.replacement.execute');
+    services.importExport.exportReplacement=async q=>{query=q;throw Error('synthetic stop');};
+    const replacement=reportExcelActions(services,'replacement',{generatedFrom:'2026-11-01T00:00',generatedTo:'2026-11-02T00:00'},()=>true);
+    dom.body.append(replacement);descendants(replacement).find(n=>n.tagName==='BUTTON').fire('click');await until(()=>query);
+    assert.equal(query.generatedFromUtc,'2026-11-01T00:00:00.000Z');assert.equal(query.generatedToUtc,'2026-11-02T00:00:00.000Z');
+  } finally {dom.restore();}
+});
+
 test('report exports use only real endpoints and map warranty dates to UTC', async () => {
   const dom = installDom('/reports'); try {
     const services = source(); let query;
@@ -133,7 +148,7 @@ test('report exports use only real endpoints and map warranty dates to UTC', asy
     assert.equal(query.fromUtc, '2026-10-01T00:00:00.000Z'); assert.equal(query.toUtc, '2026-10-31T00:00:00.000Z');
     assert.match(root.textContent, /API xuất thời hạn License chưa có/);
     assert.equal(reportExcelActions(services, 'cost', {}, () => true), null);
-    const unavailable = reportExcelActions(services, 'inventory', { includeArchived: 'true' }, () => true);
+    const unavailable = reportExcelActions(services, 'inventory', { sortBy: 'purchaseCost' }, () => true);
     assert.equal(descendants(unavailable).filter(n => n.tagName === 'BUTTON').length, 0);
   } finally { dom.restore(); }
 });

@@ -273,3 +273,6 @@ ReportCost là quyền tài chính riêng của báo cáo, không suy từ Asset
 
 ### 01/11/2026 — Xuất kiểm kê theo ngày mua
 Export tài sản nhận purchasedFrom/purchasedTo là business date, bao gồm hai đầu khoảng; không có ngày mua thì không khớp khoảng đã chọn. Khoảng ngược bị từ chối. Hai trường này độc lập fromUtc/toUtc (ngày tạo), kết hợp AND khi cùng có. Không đổi chính sách quyền xem chi phí, cap5000 hoặc archive. UNDER REVIEW.
+
+### 01/11/2026 — Quy tắc bộ lọc export bổ sung
+Tài sản lưu trữ chỉ xuất khi includeArchived=true. Sắp xếp giá cũng cần quyền đọc giá, không chỉ che ô giá. Khoảng ngày đánh giá replacement lọc RecommendedAtUtc, bao gồm hai đầu; chỉ xuất đề xuất hiện hành như hợp đồng cũ. Không thay đổi dữ liệu nghiệp vụ.

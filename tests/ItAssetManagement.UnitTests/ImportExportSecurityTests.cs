@@ -11,6 +11,38 @@ namespace ItAssetManagement.UnitTests;
 public sealed class ImportExportSecurityTests
 {
     [Fact]
+    public async Task Export_archived_opt_in_and_price_sort_enforce_financial_permission()
+    {
+        var actor=new FakeActor();actor.Grants.Add(Permissions.ExportAssets);
+        var repo=new FakeRepository();repo.Seed(new Asset{Id=1,AssetCode="ARCHIVED-FIXTURE",Name="Old",IsArchived=true,PurchaseCost=10});
+        var service=new AssetExportService(repo,actor);
+        async Task<string> Sheet(AssetExportQuery query) {
+            var (bytes,_)=await service.ExportAssetsAsync(query);
+            using var zip=new ZipArchive(new MemoryStream(bytes));using var reader=new StreamReader(zip.GetEntry("xl/worksheets/sheet1.xml")!.Open());return await reader.ReadToEndAsync();
+        }
+        Assert.DoesNotContain("ARCHIVED-FIXTURE",await Sheet(new()));
+        Assert.Contains("ARCHIVED-FIXTURE",await Sheet(new(){IncludeArchived=true}));
+        var denied=await Assert.ThrowsAsync<BusinessException>(()=>service.ExportAssetsAsync(new(){IncludeArchived=true,SortBy="purchaseCost"}));Assert.Equal(403,denied.Status);
+        actor.Grants.Add(Permissions.AssetCost);
+        Assert.Contains("ARCHIVED-FIXTURE",await Sheet(new(){IncludeArchived=true,SortBy="purchaseCost"}));
+    }
+
+    [Fact]
+    public async Task Replacement_export_generated_window_excludes_outside_and_validates_range()
+    {
+        var actor=new FakeActor();actor.Grants.Add(Permissions.ExportReplacement);
+        var repo=new FakeRepository();repo.Seed(new Asset{Id=1,AssetCode="IN-WINDOW"});repo.Seed(new Asset{Id=2,AssetCode="OUTSIDE-WINDOW"});
+        var day=new DateTime(2026,11,1,0,0,0,DateTimeKind.Utc);
+        repo.Seed(new ReplacementRecommendation{Id=1,AssetId=1,IsCurrent=true,RecommendedAtUtc=day,Priority="HIGH",Disposition="ACTIVE"});
+        repo.Seed(new ReplacementRecommendation{Id=2,AssetId=2,IsCurrent=true,RecommendedAtUtc=day.AddDays(-1),Priority="HIGH",Disposition="ACTIVE"});
+        var query=new ReplacementExportQuery{GeneratedFromUtc=day,GeneratedToUtc=day};
+        var (bytes,_)=await new AssetExportService(repo,actor).ExportReplacementAsync(query);
+        using var zip=new ZipArchive(new MemoryStream(bytes));using var reader=new StreamReader(zip.GetEntry("xl/worksheets/sheet1.xml")!.Open());var xml=await reader.ReadToEndAsync();
+        Assert.Contains("IN-WINDOW",xml);Assert.DoesNotContain("OUTSIDE-WINDOW",xml);
+        query.GeneratedFromUtc=day.AddDays(1);Assert.Equal(400,Assert.Throws<BusinessException>(query.Validate).Status);
+    }
+
+    [Fact]
     public async Task Inventory_export_purchase_window_is_inclusive_and_independent_of_creation_date()
     {
         var actor = new FakeActor(); actor.Grants.Add(Permissions.ExportAssets);

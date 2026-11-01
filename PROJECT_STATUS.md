@@ -603,3 +603,8 @@ M1 publication completed at `2c34671` on main; no new commit/push in this follow
 
 ## 01/11/2026 — Excel inventory purchase-date parity, UNDER REVIEW
 Bổ sung business-date filter/sort giữa Reports inventory và ExportAssets, giữ creation-time filters, quyền và masking. Không migration/shared writes. Focused54PASS; full922unit/276integration/445frontend PASS,0FAIL,163cloudSKIP;Release0warnings/errors,59JS/63CSP,58assets production. PostgreSQL API parity PASS. Nghiệm thu thủ công do người dùng thực hiện. Nhánh codex/excel-inventory-date-filters.
+
+## 01/11/2026 — Export filter completion, UNDER REVIEW
+Nhánh codex/export-filter-completion: hoàn thiện archived/price-sort inventory và generated-date replacement export xuyên UI/adapter/API/query. Không migrations/Neon writes. Unit924PASS; full924unit/276integration/446frontend PASS,0FAIL,163cloudSKIP;Release0warnings/errors,59JS/63CSP,58assets production. Không tự bổ sung các tính năng ngoài MVP (gia hạn hợp đồng,SSO,procurement). Nghiệm thu thủ công do người dùng thực hiện.
+
+Verification export completion:924unit/276integration/446frontend PASS,0FAIL;163cloudSKIP;Release0warnings/errors,59JS/63CSP. Logs ignored test-results/replacement-rule/export-completion-*. CI/publication chờ đúng revision.

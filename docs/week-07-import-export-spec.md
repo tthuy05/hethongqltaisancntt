@@ -158,3 +158,13 @@ GET /api/v1/export/assets bổ sung purchasedFrom/purchasedTo dạng yyyy-MM-dd 
 Reports inventory không còn khóa nút Excel khi chọn ngày mua hoặc sort purchaseDate; adapter chuyển nguyên business date, không đổi thành UTC/created timestamp. Giữ export.assets.execute, financial masking assets.cost.read OR reports.cost.read, cap5000 và chống formula injection. Không đổi import/generator/schema/permissions hoặc ghi Neon. Các giới hạn export License/aggregate khác vẫn giữ nguyên.
 
 Focused ImportExportSecurity54PASS; bổ sung frontend regression kiểm forward ngày mua và không gửi fromUtc/toUtc. Full regression PASS:922unit/276integration/445frontend,0FAIL;163cloudSKIP;Release0warnings/errors,59JS/63CSP,58assets production. PostgreSQL/JWT thật kiểm binding, parity workbook, malformed/reversed dates và Support403. Publication chờ CI/Docker. Không bao gồm nghiệm thu thủ công production (người dùng tự thực hiện).
+
+## 01/11/2026 — Hoàn thiện bộ lọc export (UNDER REVIEW)
+
+Asset export thêm includeArchived=false mặc định và sortBy=purchaseCost. Chỉ true mới gồm tài sản lưu trữ; giá vẫn chỉ có khi assets.cost.read OR reports.cost.read. Thiếu cả hai quyền mà sort giá trả403 trước đọc dữ liệu, tránh suy luận giá từ thứ tự. Reports UI chuyển bộ lọc tương ứng, không yêu cầu bỏ lọc để tải file.
+
+Replacement export thêm generatedFromUtc/generatedToUtc, UTC inclusive trên RecommendedAtUtc; khoảng ngược400 INVALID_QUERY. Giữ mặc định chỉ recommendation current/nonarchived và thông báo rõ không xuất lịch sử; không âm thầm đổi nghĩa endpoint cũ. Adapter dùng reportUtc, không gửi token/secret qua URL. Giữ cap5000, formula-injection protection và các quyền export hiện có. Không schema/migration/seed/production data changes.
+
+Các giới hạn ngoài hợp đồng export MVP vẫn được công khai: không xuất thời hạn License, không xuất aggregate groups/cost thành workbook; không phải endpoint giả hoặc chức năng được đánh dấu hoàn thành. Không tự thêm quyền/API ngoài EP-088–092 trong đợt này. Nghiệm thu thủ công do người dùng thực hiện.
+
+Verification export completion:924unit/276integration/446frontend PASS,0FAIL;163cloudSKIP;Release0warnings/errors,59JS/63CSP. Logs ignored test-results/replacement-rule/export-completion-*. CI/publication chờ đúng revision.
