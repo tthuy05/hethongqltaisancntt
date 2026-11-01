@@ -36,7 +36,9 @@ public sealed class AssetExportService(
         query.Validate();
         bool canReadCost = actor.Has(Permissions.ReportCost) || actor.Has(Permissions.AssetCost);
 
-        var q = repo.Query<Asset>().Where(a => !a.IsArchived);
+        if (query.SortBy == "purchaseCost" && !canReadCost) throw new BusinessException(403, "FORBIDDEN", "Không có quyền sắp xếp theo giá.");
+        var q = repo.Query<Asset>();
+        if (!query.IncludeArchived) q = q.Where(a => !a.IsArchived);
         if (query.PurchasedFrom.HasValue) q = q.Where(a => a.PurchaseDate >= query.PurchasedFrom.Value);
         if (query.PurchasedTo.HasValue) q = q.Where(a => a.PurchaseDate <= query.PurchasedTo.Value);
         if (query.FromUtc.HasValue) q = q.Where(a => a.CreatedAtUtc >= query.FromUtc.Value);
@@ -57,6 +59,8 @@ public sealed class AssetExportService(
 
         var desc = query.SortDirection == "desc";
         IOrderedQueryable<Asset> ordered = (query.SortBy, desc) switch {
+            ("purchaseCost", false) => q.OrderBy(a => a.PurchaseCost),
+            ("purchaseCost", true) => q.OrderByDescending(a => a.PurchaseCost),
             ("purchaseDate", false) => q.OrderBy(a => a.PurchaseDate),
             ("purchaseDate", true) => q.OrderByDescending(a => a.PurchaseDate),
             ("name", false) => q.OrderBy(a => a.Name), ("name", true) => q.OrderByDescending(a => a.Name),
@@ -265,6 +269,8 @@ public sealed class AssetExportService(
         bool canReadCost = actor.Has(Permissions.ReportCost);
 
         var q = repo.Query<ReplacementRecommendation>().Where(r => r.IsCurrent && !r.IsArchived);
+        if (query.GeneratedFromUtc.HasValue) q = q.Where(r => r.RecommendedAtUtc >= query.GeneratedFromUtc.Value);
+        if (query.GeneratedToUtc.HasValue) q = q.Where(r => r.RecommendedAtUtc <= query.GeneratedToUtc.Value);
         if (query.DepartmentId.HasValue) {
             var assetIdsInScope = repo.Query<Asset>().Where(a => !a.IsArchived && a.OwningDepartmentId == query.DepartmentId.Value).Select(a => a.Id);
             q = q.Where(r => assetIdsInScope.Contains(r.AssetId));

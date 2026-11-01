@@ -545,3 +545,6 @@ Report/Dashboard V2 endpoints vẫn giữ DTO/path. Gate canonical Features:Repo
 
 ### 01/11/2026 — Asset Excel purchase-date filters
 GET /api/v1/export/assets accepts optional purchasedFrom/purchasedTo (yyyy-MM-dd, inclusive PurchaseDate range), sortBy=purchaseDate. Reversed range400 INVALID_QUERY; fromUtc/toUtc retain creation-time semantics, combined with AND. Permissions/masking/cap remain unchanged. UNDER REVIEW.
+
+### 01/11/2026 — Export filter completion (UNDER REVIEW)
+GET /export/assets: includeArchived boolean defaultfalse; sortBy bổ sung purchaseCost (403 nếu thiếu assets.cost.read và reports.cost.read). GET /export/replacement-report: generatedFromUtc/generatedToUtc UTC inclusive, reversed400 INVALID_QUERY. Existing paths, grants, masking, caps and current-only default unchanged.

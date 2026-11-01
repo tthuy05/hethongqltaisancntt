@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — 01/11/2026 — Export filter completion
+
+- Added: explicit archived-asset export and financial-permission-guarded price sorting.
+- Added: inclusive generated-date filters for current replacement recommendation exports, connected to Reports UI.
+- Preserved: existing export defaults, authorization, masking, row limits and safe workbook generation.
+
 ## Unreleased — 01/11/2026 — Inventory Excel date filters
 
 - Added: inclusive purchase-date filters and purchase-date sorting for asset Excel exports, connected to Reports inventory filters.
