@@ -1,3 +1,7 @@
+## 01/11/2026 — Reports acceptance tiếp tục, UNDER REVIEW
+
+Đã fetch/fast-forward readiness tới main737ed3e, working tree ban đầu sạch. Production health/version xác minh đúng737ed3e/Matched, Reporting API404; không seed/shared write hoặc đổi Render. Cập nhật fixture Excel để kiểm JWT grant theo catalog69 và đóng endpoint theo canonical ReportingV2 key. Frontend444PASS,59JS/63CSP,58assets build,Release0warnings/errors; integration chạy lại sau PostgreSQL recovery đạt275PASS/0FAIL/163cloudSKIP,unit921PASS. Browser local7tabs/Admin–Manager và matrix6dòng Reports PASS; sửa nhãn cảnh báo sắp/đã hết hạn. Production Reporting vẫn đóng; EXPLAIN/load và rollout shared chưa nghiệm thu. Xem docs/reports-ui-handoff-2026-10-21.md để biết giới hạn và kết quả thực tế.
+
 ## 31/10/2026 — Reports & Dashboard V2 code merged to main (1753be3) & Render live (ROLLOUT PENDING APPROVAL)
 
 - Merge commit `1753be3` từ nhánh `codex/reports-rollout-readiness` vào `main`.

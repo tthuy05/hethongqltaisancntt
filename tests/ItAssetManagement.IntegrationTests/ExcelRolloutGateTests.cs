@@ -155,7 +155,7 @@ public sealed class ExcelRolloutGateTests
                 ["ConnectionStrings:DefaultConnection"] = "", ["Frontend:Enabled"] = "false", ["Swagger:Enabled"] = "false",
                 ["Logging:LogLevel:Default"] = "None", ["Features:ImportExportApi:Enabled"] = "true",
                 ["Features:AssignmentApi:Enabled"] = "false", ["Features:MaintenanceApi:Enabled"] = "false",
-                ["Features:ReportingApi:Enabled"] = "false"
+                [ItAssetManagement.Api.Hosting.ReportingRollout.Key] = "false"
             }));
             builder.ConfigureServices(services => services.AddDbContext<AppDbContext>(options => options.UseNpgsql(
                 Environment.GetEnvironmentVariable("ITAM_LOCAL_POSTGRES_TEST_CONNECTION"), p => p.MigrationsHistoryTable("ef_migrations_history", "public"))));
@@ -180,7 +180,9 @@ public sealed class ExcelRolloutGateTests
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", session.AccessToken);
             Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/assets")).StatusCode);
             Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/import/assets/template")).StatusCode);
-            Assert.DoesNotContain(Permissions.ReportAssets, session.User.Permissions);
+            // Seeded grants remain part of the effective JWT; the rollout gate closes routes,
+            // rather than silently changing the user's persisted permission allow-list.
+            Assert.Contains(Permissions.ReportAssets, session.User.Permissions);
             Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/v1/reports/asset-inventory")).StatusCode);
 
             // Fixture-only override: even ADMIN_IT must lose Excel access when its user allow-list excludes it.
