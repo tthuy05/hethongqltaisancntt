@@ -542,3 +542,6 @@ EP-076 inventory.purchaseCost (kể cả sort), EP-077–079 group.Value, EP-081
 ### 31/10/2026 — Reporting rollout và role matrix metadata (UNDER REVIEW)
 
 Report/Dashboard V2 endpoints vẫn giữ DTO/path. Gate canonical Features:ReportingV2:Enabled mặc địnhfalse; legacy ReportingApi:Enabled không kích hoạt source mới. Gate đóng404; thiếu schema/history/7definitions active503 REPORTING_NOT_READY, RetryAfter30, no-store. /roles/matrix tách6nhóm reports.* thành rows riêng và DashboardCost có action Xem chi phí; /roles/permissions vẫn module reports. User PUT roles giữ DTO, bổ sung audit từng UserPermission link để không rollback500 khi lưu quyền riêng. Chưa rollout production; xem reports-ui-handoff-2026-10-21.md.
+
+### 01/11/2026 — Asset Excel purchase-date filters
+GET /api/v1/export/assets accepts optional purchasedFrom/purchasedTo (yyyy-MM-dd, inclusive PurchaseDate range), sortBy=purchaseDate. Reversed range400 INVALID_QUERY; fromUtc/toUtc retain creation-time semantics, combined with AND. Permissions/masking/cap remain unchanged. UNDER REVIEW.

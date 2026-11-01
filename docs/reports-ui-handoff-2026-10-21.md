@@ -1,5 +1,13 @@
 # Thủy — Giao diện và Bộ lọc Reports (Hoàn thiện tiếp quản từ Codex), 21/10/2026
 
+## 01/11/2026 — Rollout production đã được phê duyệt, IN PROGRESS
+
+Người dùng phê duyệt tiếp tục và xác nhận phối hợp. Backup snapshot07:13:54UTC/14:13:54UTC+7, dump136490bytes SHA256 F65AB0A6F84359D535D385DB55B484D4A7DE91A48B2351CC987402977525366D, restore drill so toàn bộ table hashes/row counts, columns/constraints/indexes/history PASS trên database local mới. Lưu ngoàiGit tại LocalAppData/ItAssetManagement/Backups/reports-20261101_071353_bacbd242. PITR UNVERIFIED.
+
+Runner seed hẹp rehearsal trên clone bản restore PASS21→0. Shared thực hiện07:14:27–07:14:39UTC: baseline19tables/44FK/86CHECK/6history/62permissions/118grants; sau seed69permissions/132grants, Admin7/Manager7/Support0 Reports, rerun0. Business/user/custom-permission hashes không đổi; không migration. Receipt ignored: test-results/replacement-rule/reports-operator/shared-result.json. Không dùng generic development seed.
+
+Render lưu Features__ReportingV2__Enabled=true bằng Save only, không thay secrets/connection. PR15 đã merge tại ea2c05c0de3dd19143ac2ade50a05723f9a49ff1 sau CI41283679813/Docker PASS của sourcec33f6f4. CI main41284038488 PASS. Render dep-dbjeev6q1p3s73alq60g Auto-Deploy succeeded1m07s; Live SHA và health/version artifactRevision/renderRevision khớp ea2c05c, provenance Matched, health/live200. Reports inventory/maintenance/license/budget và Dashboard summary anonymous401 (không404/503), Assets/SoftwareLicense/Maintenance401. /health/ready là Development-only nên production404 đúng source, không dùng làm readiness bằng chứng. Login bằng form cũ điền sẵn bị treo; reload bản mới form trống, chưa nghiệm thu authenticated production UI. Không retry mật khẩu hoặc coi login/Reports200 đã PASS. Ảnh Render ở test-results/reporting/browser/render-live-ea2c05c.png.
+
 ## 01/11/2026 — Tiếp quản sau publication, UNDER REVIEW
 
 Đã fetch và fast-forward nhánh readiness tới origin/main `737ed3e`, không conflict hoặc ghi đè WIP. `/health/version` thực tế trả artifactRevision/renderRevision cùng `737ed3e6f9e2410c5226c75b4a68dd867a9c5103`, provenance Matched. Reports inventory vẫn HTTP404: chưa nghiệm thu Reporting production. Production client đã opt-in từ `5dcf437`; ghi chú client chưa bật phía dưới là checkpoint lịch sử.

@@ -45,6 +45,8 @@ public sealed class AssetExportQuery
     public long? DepartmentId { get; set; }
     public DateTime? FromUtc { get; set; }
     public DateTime? ToUtc { get; set; }
+    public DateOnly? PurchasedFrom { get; set; }
+    public DateOnly? PurchasedTo { get; set; }
     public string? SortBy { get; set; }
     public string SortDirection { get; set; } = "asc";
 
@@ -52,7 +54,9 @@ public sealed class AssetExportQuery
     {
         ReportingValidation.ValidateDateRange(FromUtc, ToUtc);
         ReportingValidation.Choice(Status, "InStock", "InUse", "Maintenance", "Broken", "Retired");
-        ReportingValidation.Choice(SortBy, "assetCode", "name", "createdAt");
+        ReportingValidation.Choice(SortBy, "assetCode", "name", "createdAt", "purchaseDate");
+        if (PurchasedFrom.HasValue && PurchasedTo.HasValue && PurchasedFrom > PurchasedTo)
+            throw new BusinessException(400, "INVALID_QUERY", "Ngày mua từ không được lớn hơn ngày mua đến.");
         ReportingValidation.Choice(SortDirection, "asc", "desc");
         if (Keyword?.Length > 200) throw new BusinessException(400, "INVALID_QUERY", "Từ khóa quá dài.");
         if (DepartmentId.HasValue && DepartmentId.Value <= 0)

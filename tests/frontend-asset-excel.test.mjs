@@ -112,6 +112,18 @@ test('asset export preserves supported filters without paging and disables unsup
   } finally { dom.restore(); }
 });
 
+test('inventory export forwards purchase dates without converting them to creation timestamps', async () => {
+  const dom = installDom('/reports'); try {
+    const services = source(); let query;
+    services.importExport.exportAssets = async q => { query = q; throw Error('synthetic stop'); };
+    const root = reportExcelActions(services, 'inventory', { purchasedFrom: '2026-01-01', purchasedTo: '2026-01-31', sortBy: 'purchaseDate', sortDirection: 'desc' }, () => true);
+    dom.body.append(root); descendants(root).find(n => n.tagName === 'BUTTON').fire('click'); await until(() => query);
+    assert.equal(query.purchasedFrom, '2026-01-01'); assert.equal(query.purchasedTo, '2026-01-31');
+    assert.equal(query.sortBy, 'purchaseDate'); assert.equal(query.sortDirection, 'desc');
+    assert.equal(query.fromUtc, undefined); assert.equal(query.toUtc, undefined);
+  } finally { dom.restore(); }
+});
+
 test('report exports use only real endpoints and map warranty dates to UTC', async () => {
   const dom = installDom('/reports'); try {
     const services = source(); let query;
@@ -121,7 +133,7 @@ test('report exports use only real endpoints and map warranty dates to UTC', asy
     assert.equal(query.fromUtc, '2026-10-01T00:00:00.000Z'); assert.equal(query.toUtc, '2026-10-31T00:00:00.000Z');
     assert.match(root.textContent, /API xuất thời hạn License chưa có/);
     assert.equal(reportExcelActions(services, 'cost', {}, () => true), null);
-    const unavailable = reportExcelActions(services, 'inventory', { purchasedFrom: '2026-10-01' }, () => true);
+    const unavailable = reportExcelActions(services, 'inventory', { includeArchived: 'true' }, () => true);
     assert.equal(descendants(unavailable).filter(n => n.tagName === 'BUTTON').length, 0);
   } finally { dom.restore(); }
 });

@@ -270,3 +270,6 @@ Severity cấu hình riêng cho từng rule, không tính theo số condition. M
 ### 31/10/2026 — Reports: tách phạm vi quyền tài chính
 
 ReportCost là quyền tài chính riêng của báo cáo, không suy từ AssetCost/DashboardCost. Các trường giá và tổng giá trong report projection phải null nếu thiếu reports.cost.read; không dùng0 thay cho giá bị che. Sort giá và các endpoint chi phí/ngân sách yêu cầu quyền riêng này. Chỉnh backend để khớp contract reader hiện có, không thay các policy chi phí của Asset/Dashboard/Replacement hoặc cấp quyền mới. Reporting chưa rollout production.
+
+### 01/11/2026 — Xuất kiểm kê theo ngày mua
+Export tài sản nhận purchasedFrom/purchasedTo là business date, bao gồm hai đầu khoảng; không có ngày mua thì không khớp khoảng đã chọn. Khoảng ngược bị từ chối. Hai trường này độc lập fromUtc/toUtc (ngày tạo), kết hợp AND khi cùng có. Không đổi chính sách quyền xem chi phí, cap5000 hoặc archive. UNDER REVIEW.
