@@ -1,5 +1,19 @@
 # Thủy — Giao diện và Bộ lọc Reports (Hoàn thiện tiếp quản từ Codex), 21/10/2026
 
+## 01/11/2026 — Tiếp quản sau publication, UNDER REVIEW
+
+Đã fetch và fast-forward nhánh readiness tới origin/main `737ed3e`, không conflict hoặc ghi đè WIP. `/health/version` thực tế trả artifactRevision/renderRevision cùng `737ed3e6f9e2410c5226c75b4a68dd867a9c5103`, provenance Matched. Reports inventory vẫn HTTP404: chưa nghiệm thu Reporting production. Production client đã opt-in từ `5dcf437`; ghi chú client chưa bật phía dưới là checkpoint lịch sử.
+
+Sửa regression fixture Excel: development seed hiện cấp Reports qua catalog69, vì vậy JWT Admin có grant reports.assets.read là đúng dù rollout đóng. Kiểm tra grant phải Contains; vẫn bắt buộc endpoint Reports404, Excel200, token cũ401 và custom allow-list loại Excel403. Dùng canonical ReportingV2 key trong fixture; không sửa Auth hoặc cộng quyền theo role.
+
+Lượt chạy đầu ngày gặp PostgreSQL local chưa phục hồi sau gián đoạn: 921unit PASS; integration229 PASS/46 FAIL kết nối/163 SKIP. Không coi lượt này PASS. Release0warnings/0errors, frontend444 PASS/0FAIL/0SKIP,59JS/63CSP PASS và production build58assets PASS. Lượt chạy lại sau recovery: **921unit PASS /275integration PASS /0FAIL /163cloud SKIP**. Frontend sau sửa nhãn vẫn444PASS,59JS/63CSP,production58assets. Log ignored: test-results/replacement-rule/reports-nov01-regression-ready.log và reports-nov01-final-*. Không chạy seed shared hoặc thay cấu hình Render trong lượt kiểm tra này.
+
+Browser local trực tiếp PASS bằng Admin/Manager fixture trên database riêng: đủ7tab, paging pageSize1 và trang2, ba bảng tổng hợp2tài sản, history1assignment/2tickets, maintenance10.25/1unknown, budget2027=500 và1unknown (không cộng999 từ recommendation superseded), license chỉlast4. Manager vẫn có assets.cost.read nhưng không có reports.cost.read/dashboard.cost.read: không có cột Giá mua, lựa chọn sort giá, tab Chi phí & Ngân sách hoặc financial cards Dashboard. Admin matrix có6dòng Reports độc lập; không save quyền khi nghiệm thu. Console không warn/error.
+
+Sửa nhãn Dashboard thành Bảo hành/License sắp/đã hết hạn vì truy vấn bao gồm cả tương lai trong daysAhead và mục đã quá hạn. Không đổi API/DTO/bộ lọc/schema. Đã rebuild frontend/reload/login lại và xác minh nhãn mới trên UI. Ảnh local nằm ở test-results/reporting/browser/admin-dashboard-nov01.png và manager-cost-hidden-nov01.png (ignored, dữ liệu giả lập).
+
+Chưa chạy EXPLAIN/load suite cloud (163SKIP không tính PASS), chưa seed7definitions/14grants hoặc bật ReportingV2 trên shared/Render. Không coi browser local là production acceptance. Bước rollout cần phê duyệt riêng và xác nhận không có thay đổi ma trận quyền/seed/deploy song song; backup/restore mới trước shared write. Không cần migration mới.
+
 ## 31/10/2026 — Catalog, readiness và real-JWT fixture, UNDER REVIEW
 
 ### Luồng và trạng thái
@@ -22,7 +36,7 @@ Real-JWT test phát hiện PUT /users/{id}/roles lưu custom permissions bị500
 
 ### Verification hiện có
 
-Focused12integration PASS trước đổi canonical rollout key:6offline ingress/gates và real PostgreSQL/JWT fixture. Có4local cases: narrow seed/readiness/matrix/Support403;15read API có dữ liệu; user override/reset/reassign/token revocation/audit IDs; audit failure rollback; closed Admin matrix compatibility. Các assertion nằm trong4local test methods, không cộng chúng thành nhiều case. Full regression cuối đang chạy sau khi mock model-binding fixture được cấp readiness stub đúng phạm vi; không bỏ test hoặc đổi expected400/200 thành503 để che lỗi. Các FAIL cũ giữ trong ignored logs.
+Focused12integration PASS trước đổi canonical rollout key:8offline ingress/gates và real PostgreSQL/JWT fixture. Có4local cases: narrow seed/readiness/matrix/Support403;15read API có dữ liệu; user override/reset/reassign/token revocation/audit IDs; audit failure rollback; closed Admin matrix compatibility. Các assertion nằm trong4local test methods, không cộng chúng thành nhiều case. Full regression cuối đang chạy sau khi mock model-binding fixture được cấp readiness stub đúng phạm vi; không bỏ test hoặc đổi expected400/200 thành503 để che lỗi. Các FAIL cũ giữ trong ignored logs.
 
 Mỗi fixture tạo database mới trên loopback55439, SCRAM/password, nonpooled/PersistSecurityInfo=false; không dùng Neon. Dataset gồm2assets giá known/null, assignment đã trả,2maintenance actual cost known/null, encrypted license/active seat, rule và3recommendations current/history. Kiểm budget bỏ estimate superseded, missing-cost counters, license chỉlast4 và read-only probes. Chưa coi browser E2E hoặc EXPLAIN/load PASS trước khi chạy. Source tests69catalog là cập nhật expected catalog; Auth vẫn EffectivePermissionQuery và custom allow-list có thể bỏ Report grant.
 

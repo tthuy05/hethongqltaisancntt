@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — 01/11/2026 — Reports acceptance
+
+- Fixed: Excel JWT regression fixture follows the seeded Reports catalog while independently checking closed ReportingV2 routes and custom-user permission restrictions.
+- Fixed: Dashboard warranty/license alert labels include upcoming expirations as well as expired items, matching the existing query window.
+- Verified: local browser acceptance for seven report tabs, Dashboard, paging and cost restrictions; no shared seed, schema or Render configuration changes.
+
 ## Unreleased — 31/10/2026 — Reports & Dashboard V2 readiness and RBAC v2
 
 - Added: canonical rollout key `Features:ReportingV2:Enabled`, read-only `IReportingReadiness` probe checking required dependencies (11 tables, replacement severity migration, 7 active report permission definitions), and bounded ingress throttling.

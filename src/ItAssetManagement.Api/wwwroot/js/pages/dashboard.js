@@ -98,14 +98,14 @@ export async function dashboardPage(services) {
     const alertItems = [];
     if (alerts.expiringWarrantiesCount > 0) {
       alertItems.push(h('div', { className: 'distribution-row' },
-        h('span', { className: 'badge amber' }, 'Hết hạn bảo hành'),
+        h('span', { className: 'badge amber' }, 'Bảo hành sắp/đã hết hạn'),
         h('strong', {}, `${alerts.expiringWarrantiesCount} thiết bị`),
         button('Xem chi tiết', { kind: 'ghost', iconName: 'arrow-right', onClick: () => route('/reports?tab=expiry') })
       ));
     }
     if (alerts.expiringLicensesCount > 0) {
       alertItems.push(h('div', { className: 'distribution-row' },
-        h('span', { className: 'badge amber' }, 'Hết hạn license'),
+        h('span', { className: 'badge amber' }, 'License sắp/đã hết hạn'),
         h('strong', {}, `${alerts.expiringLicensesCount} bản quyền`),
         button('Xem chi tiết', { kind: 'ghost', iconName: 'arrow-right', onClick: () => route('/reports?tab=expiry') })
       ));
