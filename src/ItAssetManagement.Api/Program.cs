@@ -32,8 +32,10 @@ var maintenancePermissionsOnly = args.Contains("--seed-maintenance-permissions",
 var softwarePermissionsOnly = args.Contains("--seed-software-permissions", StringComparer.Ordinal);
 var licenseAllocationPermissionsOnly = args.Contains("--seed-license-allocation-permissions", StringComparer.Ordinal);
 var licensePermissionsOnly = args.Contains("--seed-license-permissions", StringComparer.Ordinal);
+var reportingPermissionsOnly = args.Contains("--seed-reporting-permissions", StringComparer.Ordinal);
+var replacementPermissionsOnly = args.Contains("--seed-replacement-permissions", StringComparer.Ordinal);
 string[] cliModes = ["--verify-neon", "--setup-neon-m1", "--inspect-neon-schema", "--seed-development", "--seed-m1-demo",
-    "--seed-role-catalog", "--seed-audit-read", "--setup-assignment-validation", "--setup-assignment-maintenance", "--seed-assignment-transfer", "--seed-maintenance-permissions", "--seed-software-permissions", "--seed-license-permissions", "--seed-license-allocation-permissions"];
+    "--seed-role-catalog", "--seed-audit-read", "--setup-assignment-validation", "--setup-assignment-maintenance", "--seed-assignment-transfer", "--seed-maintenance-permissions", "--seed-software-permissions", "--seed-license-permissions", "--seed-license-allocation-permissions", "--seed-reporting-permissions", "--seed-replacement-permissions"];
 var modeCount = cliModes.Count(mode => args.Contains(mode, StringComparer.Ordinal));
 var builder = WebApplication.CreateBuilder(args.Where(argument => !cliModes.Contains(argument, StringComparer.Ordinal)).ToArray());
 if (modeCount > 0) builder.Logging.ClearProviders();
@@ -151,16 +153,16 @@ if (modeCount > 1 || modeCount > 0 && !app.Environment.IsDevelopment())
 }
 _ = app.Services.GetRequiredService<JwtSettings>(); // Production fails closed; development uses a per-process key.
 DeploymentHosting.ValidateProductionDatabase(app.Configuration, app.Environment.IsDevelopment());
-if (assignmentTransferSeedOnly || maintenancePermissionsOnly || softwarePermissionsOnly || licensePermissionsOnly || licenseAllocationPermissionsOnly)
+if (assignmentTransferSeedOnly || maintenancePermissionsOnly || softwarePermissionsOnly || licensePermissionsOnly || licenseAllocationPermissionsOnly || reportingPermissionsOnly || replacementPermissionsOnly)
 {
     try
     {
         await using var scope = app.Services.CreateAsyncScope();
         var seed = scope.ServiceProvider.GetRequiredService<DevelopmentSeed>();
-        var added = licenseAllocationPermissionsOnly ? await seed.RunLicenseAllocationPermissionsAsync() : licensePermissionsOnly ? await seed.PrepareLicenseCatalogAsync() : softwarePermissionsOnly ? await seed.PrepareSoftwareCatalogAsync() : maintenancePermissionsOnly ? await seed.RunMaintenancePermissionsAsync() : await seed.RunAssignmentTransferPermissionAsync();
-        Console.WriteLine(JsonSerializer.Serialize(new { status = licenseAllocationPermissionsOnly ? "LicenseAllocationPermissionsSeeded" : licensePermissionsOnly ? "LicensePermissionsSeeded" : softwarePermissionsOnly ? "SoftwarePermissionsSeeded" : maintenancePermissionsOnly ? "MaintenancePermissionsSeeded" : "AssignmentTransferSeeded", added }));
+        var added = replacementPermissionsOnly ? await seed.RunReplacementPermissionsAsync() : reportingPermissionsOnly ? await seed.RunReportingPermissionsAsync() : licenseAllocationPermissionsOnly ? await seed.RunLicenseAllocationPermissionsAsync() : licensePermissionsOnly ? await seed.PrepareLicenseCatalogAsync() : softwarePermissionsOnly ? await seed.PrepareSoftwareCatalogAsync() : maintenancePermissionsOnly ? await seed.RunMaintenancePermissionsAsync() : await seed.RunAssignmentTransferPermissionAsync();
+        Console.WriteLine(JsonSerializer.Serialize(new { status = replacementPermissionsOnly ? "ReplacementPermissionsSeeded" : reportingPermissionsOnly ? "ReportingPermissionsSeeded" : licenseAllocationPermissionsOnly ? "LicenseAllocationPermissionsSeeded" : licensePermissionsOnly ? "LicensePermissionsSeeded" : softwarePermissionsOnly ? "SoftwarePermissionsSeeded" : maintenancePermissionsOnly ? "MaintenancePermissionsSeeded" : "AssignmentTransferSeeded", added }));
     }
-    catch { Console.WriteLine(JsonSerializer.Serialize(new { status = licenseAllocationPermissionsOnly ? "LicenseAllocationPermissionsSeedFailed" : licensePermissionsOnly ? "LicensePermissionsSeedFailed" : softwarePermissionsOnly ? "SoftwarePermissionsSeedFailed" : maintenancePermissionsOnly ? "MaintenancePermissionsSeedFailed" : "AssignmentTransferSeedFailed" })); Environment.ExitCode = 2; }
+    catch { Console.WriteLine(JsonSerializer.Serialize(new { status = replacementPermissionsOnly ? "ReplacementPermissionsSeedFailed" : reportingPermissionsOnly ? "ReportingPermissionsSeedFailed" : licenseAllocationPermissionsOnly ? "LicenseAllocationPermissionsSeedFailed" : licensePermissionsOnly ? "LicensePermissionsSeedFailed" : softwarePermissionsOnly ? "SoftwarePermissionsSeedFailed" : maintenancePermissionsOnly ? "MaintenancePermissionsSeedFailed" : "AssignmentTransferSeedFailed" })); Environment.ExitCode = 2; }
     await app.DisposeAsync(); return;
 }
 if (assignmentValidationOnly || assignmentSetupOnly)
