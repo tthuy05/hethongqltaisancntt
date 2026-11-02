@@ -6,6 +6,7 @@ export class TestNode {
   set textContent(v){this.replaceChildren(new TestNode('#text',String(v)));}
   get isConnected(){let n=this;while(n.parentNode)n=n.parentNode;return n.tagName==='BODY';}
   get children(){return this.childNodes.filter(n=>n.tagName!=='#TEXT');}
+  get firstElementChild(){return this.children[0]??null;}
   append(...nodes){for(const n of nodes){n.remove();n.parentNode=this;this.childNodes.push(n);}}
   replaceChildren(...nodes){this.childNodes.forEach(n=>n.parentNode=null);this.childNodes=[];this.append(...nodes);}
   remove(){if(this.parentNode){this.parentNode.childNodes=this.parentNode.childNodes.filter(n=>n!==this);this.parentNode=null;}}

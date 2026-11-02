@@ -353,3 +353,6 @@ Source catalog59 gồm replacement-rules.read/create/update; create/update Admin
 ## 31/10/2026 — Reporting catalog preparation (UNDER REVIEW)
 
 Source69:7quyền mới được đăng ký từ contract sẵn có (6reports.*.read và dashboard.cost.read), baseline Admin7/Manager7/Support0, narrow seed21→0 trên isolated. Neon vẫn62/118, chưa chạy seed Reports. reports.cost.read phụ thuộc reports.assets.read; dashboard.cost.read phụ thuộc dashboard.read. Role matrix tách6reports submodule rows để các quyền không đè ô Xem; thông tin persisted/general catalog module reports không đổi. Quyền unavailable khi Features:ReportingV2:Enabled=false; không ép protected Admin nhận quyền chưa seed. User allow-list vẫn giao với role grant, không union theo ADMIN_IT. Các checkpoint dưới/khác là lịch sử trước rollout.
+
+## 01/11/2026 — Quyền xuất Reports mở rộng
+Không thêm grants. Các GET /reports/export cần đồng thời quyền export của loại dữ liệu và quyền đọc Report tương ứng: assets+licenses hoặc assets+assets; maintenance+cost; replacement+cost/budget hoặc replacement+replacement/history. License key chỉ last4, không dùng quyền reveal. Gia hạn có xác nhận dùng licenses.update như metadata edit, không cấp thêm quyền theo tên role.

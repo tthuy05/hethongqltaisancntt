@@ -109,6 +109,11 @@ export function createImportExportService({ fetchImpl = globalThis.fetch?.bind(g
       if (result.dryRun !== dryRun) throw new ServiceError(502, 'INVALID_API_RESPONSE', 'Chế độ nhập dữ liệu trả về không khớp yêu cầu.');
       return result;
     },
+    exportLicenseReport(query = {}) { return download('/reports/export/license-expiration', 'export.assets.execute', query, ['fromUtc', 'toUtc', 'softwareId', 'status']); },
+    exportAssetGroups(query = {}) { return download('/reports/export/asset-groups', 'export.assets.execute', query, ['status', 'assetTypeId', 'departmentId', 'groupBy']); },
+    exportMaintenanceCost(query = {}) { return download('/reports/export/maintenance-cost', 'export.maintenance.execute', query, ['fromUtc', 'toUtc', 'departmentId', 'assetTypeId', 'groupBy']); },
+    exportReplacementBudget(query = {}) { return download('/reports/export/replacement-budget', 'export.replacement.execute', query, ['year', 'departmentId', 'priority']); },
+    exportReplacementHistory(query = {}) { return download('/reports/export/replacement-history', 'export.replacement.execute', query, ['generatedFromUtc', 'generatedToUtc', 'departmentId', 'priority', 'disposition', 'plannedYear']); },
     exportAssets(query = {}) { return download('/export/assets', 'export.assets.execute', query, ['keyword', 'status', 'assetTypeId', 'departmentId', 'fromUtc', 'toUtc', 'purchasedFrom', 'purchasedTo', 'includeArchived', 'sortBy', 'sortDirection']); },
     exportMaintenance(query = {}) { return download('/export/maintenance', 'export.maintenance.execute', query, ['fromUtc', 'toUtc', 'assetId', 'technicianId', 'status']); },
     exportAssignments(query = {}) { return download('/export/assignment-history', 'export.assignments.execute', query, ['fromUtc', 'toUtc', 'assetId', 'userId', 'departmentId']); },

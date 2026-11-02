@@ -548,3 +548,6 @@ GET /api/v1/export/assets accepts optional purchasedFrom/purchasedTo (yyyy-MM-dd
 
 ### 01/11/2026 — Export filter completion (UNDER REVIEW)
 GET /export/assets: includeArchived boolean defaultfalse; sortBy bổ sung purchaseCost (403 nếu thiếu assets.cost.read và reports.cost.read). GET /export/replacement-report: generatedFromUtc/generatedToUtc UTC inclusive, reversed400 INVALID_QUERY. Existing paths, grants, masking, caps and current-only default unchanged.
+
+## 01/11/2026 — Report export API (UNDER REVIEW)
+GET /api/v1/reports/export/{license-expiration,asset-groups,maintenance-cost,replacement-budget,replacement-history}. Query fields match corresponding Reports endpoints; asset-groups additionally groupBy=department|type|status. Client paging parameters are not accepted; all matching rows up to5000. Requires both ReportingV2/ImportExport flags and export grant plus report read/cost grant. 400invalid/unknown query,401unauthenticated,403denied,413EXPORT_TOO_LARGE,409EXPORT_DATA_CHANGED. Workbook response XLSX/no-store, safe filename; no full License key or unauthorized financial column. No schema or permission catalog changes. See week-07-import-export-spec.md (01/11 extension section) for exact grants, fields, paging/concurrency limits and UI behavior.

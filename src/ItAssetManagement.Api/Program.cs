@@ -124,6 +124,7 @@ builder.Services.AddScoped<DashboardQueryService>();
 builder.Services.AddScoped<ReportQueryService>();
 builder.Services.AddScoped<AssetImportService>();
 builder.Services.AddScoped<AssetExportService>();
+builder.Services.AddScoped<ReportExportService>();
 builder.Services.AddScoped<DevelopmentSeed>();
 builder.Services.AddScoped<DevelopmentDemoSeed>();
 builder.Services.AddRateLimiter(options =>

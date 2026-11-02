@@ -170,6 +170,22 @@ test('license reader sees masked key, escaped HTML, and no unauthorized action b
   }
 });
 
+test('manual license renewal requires a later expiry and explicit confirmation', async () => {
+  const dom=installDom('/licenses');try {
+    const {services,calls}=createFixture();
+    const root=await licensePage(services);dom.body.append(root);
+    findBtn(root,'Gia hạn').fire('click');await until(()=>Boolean(findDialog(dom.body)));
+    assert.match(dom.body.textContent,/không tự mua hoặc tự kéo dài/);
+    const form=findForm(dom.body);form.fire('submit');
+    assert.equal(calls.filter(c=>c[0]==='update').length,0);
+    document.getElementById('field-license-expiresAt').value='2030-01-01';
+    form.fire('submit');await until(()=>calls.some(c=>c[0]==='update'));
+    const dto=calls.find(c=>c[0]==='update')[2];
+    assert.equal(dto.expiresAt,'2030-01-01T00:00:00.000Z');assert.equal(dto.rowVersion,rowVersion);
+    assert.equal(dto.notes,'Production DB license');
+  }finally{dom.restore();}
+});
+
 test('license create modal validates software, quantity and submits once', async () => {
   const dom = installDom('/licenses');
   try {
