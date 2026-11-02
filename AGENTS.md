@@ -36,7 +36,7 @@ Tài liệu này quy định các nguyên tắc làm việc, tiêu chuẩn kỹ 
    - Toàn bộ mã nghiệp vụ nội bộ (Tài sản `AST-xxxxxx`, Nhân viên `NVxxxxxx`, Phòng ban `PBxxxxxx`, Bảo trì `BTxxxxxx`, Phần mềm `PMxxxxxx`, Bản quyền `BQxxxxxx`) phải do Backend tự động sinh qua sequence/atomic generator.
    - Người dùng không được tự chỉ định mã qua API hoặc giao diện.
    - Mã là bất biến (`immutable`), không cho phép sửa sau khi đã cấp. Với tài khoản cũ chưa có mã, hệ thống tự động sinh khi cập nhật, không nhận mã tự đặt từ client.
-   - Mã phân loại danh mục (`AssetType.Code`) là mã cấu hình ngữ nghĩa thủ công có chủ đích, bất biến sau khi tạo.
+   - Theo quyết định ngày 02/11/2026, mã loại tài sản (`AssetType.Code`) do Backend tự sinh dạng `LTS000001`, bất biến sau khi cấp; thay thế quy tắc mã ngữ nghĩa thủ công trước đó.
    - Không sử dụng `COUNT(*) + 1` hoặc `MAX(id) + 1` thiếu kiểm soát concurrency. Khởi tạo sequence phải dùng advisory lock (`pg_advisory_xact_lock`) và bảo vệ cache trước transaction rollback.
 2. **Quy tắc phân quyền & bảo mật**:
    - Kiểm tra quyền ở cả Frontend (ẩn/hiện nút, vô hiệu hóa form) và Backend (`[Authorize(Policy = ...)]`).

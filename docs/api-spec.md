@@ -109,7 +109,7 @@ GET detail200+ETag; DTO có assetCode/assetName/assignedToName, title/priority/r
   - `POST /api/v1/masters/departments`: Client không cần gửi mã phòng ban; hệ thống tự động sinh mã chuẩn theo định dạng `PBxxxxxx`.
   - `PUT /api/v1/masters/departments/{id}`: Mã phòng ban là bất biến (400 khi thay đổi); có thể bỏ trống trong request cập nhật để giữ nguyên mã hiện tại.
 - **Loại tài sản (Asset Types):**
-  - `POST /api/v1/masters/asset-types`: Mã loại tài sản (`Code`, ví dụ: `LAPTOP`, `DESKTOP`) là mã phân loại danh mục ngữ nghĩa cấu hình thủ công bắt buộc.
+  - `POST /api/v1/masters/asset-types`: Mã loại tài sản (`Code`, ví dụ: `LTS000001`) do Backend tự sinh; không bắt buộc gửi `code`, giá trị client tự gửi bị bỏ qua khi tạo mới.
   - `PUT /api/v1/masters/asset-types/{id}`: Mã loại tài sản là bất biến (400 khi thay đổi); có thể bỏ trống trong request cập nhật để giữ nguyên mã hiện tại.
 - **Phiếu bảo trì (Maintenance):**
   - `POST /api/v1/asset-maintenance`: Mã phiếu được tự sinh chuẩn hóa theo định dạng `BTxxxxxx` (thay thế tiền tố `MT-<guid>`).

@@ -18,6 +18,8 @@ using ItAssetManagement.Application.Export;
 using ItAssetManagement.Application.Contracts.Security;
 using ItAssetManagement.Infrastructure.Security;
 
+var typeCodePreview = args.Contains("--preview-asset-type-codes", StringComparer.Ordinal);
+var typeCodeConvert = args.Contains("--convert-asset-type-codes", StringComparer.Ordinal);
 var probeOnly = args.Contains("--verify-neon", StringComparer.Ordinal);
 var setupOnly = args.Contains("--setup-neon-m1", StringComparer.Ordinal);
 var inspectOnly = args.Contains("--inspect-neon-schema", StringComparer.Ordinal);
@@ -32,7 +34,7 @@ var maintenancePermissionsOnly = args.Contains("--seed-maintenance-permissions",
 var softwarePermissionsOnly = args.Contains("--seed-software-permissions", StringComparer.Ordinal);
 var licenseAllocationPermissionsOnly = args.Contains("--seed-license-allocation-permissions", StringComparer.Ordinal);
 var licensePermissionsOnly = args.Contains("--seed-license-permissions", StringComparer.Ordinal);
-string[] cliModes = ["--verify-neon", "--setup-neon-m1", "--inspect-neon-schema", "--seed-development", "--seed-m1-demo",
+string[] cliModes = ["--preview-asset-type-codes", "--convert-asset-type-codes", "--verify-neon", "--setup-neon-m1", "--inspect-neon-schema", "--seed-development", "--seed-m1-demo",
     "--seed-role-catalog", "--seed-audit-read", "--setup-assignment-validation", "--setup-assignment-maintenance", "--seed-assignment-transfer", "--seed-maintenance-permissions", "--seed-software-permissions", "--seed-license-permissions", "--seed-license-allocation-permissions"];
 var modeCount = cliModes.Count(mode => args.Contains(mode, StringComparer.Ordinal));
 var builder = WebApplication.CreateBuilder(args.Where(argument => !cliModes.Contains(argument, StringComparer.Ordinal)).ToArray());
@@ -89,6 +91,7 @@ builder.Services.AddHttpClient<IInvitationEmailSender, InvitationEmailSender>(ht
 builder.Services.AddScoped<IAssetCodeGenerator, AssetCodeGenerator>();
 builder.Services.AddScoped<IEmployeeCodeGenerator, EmployeeCodeGenerator>();
 builder.Services.AddScoped<IDepartmentCodeGenerator, DepartmentCodeGenerator>();
+builder.Services.AddScoped<IAssetTypeCodeGenerator, AssetTypeCodeGenerator>();
 builder.Services.AddScoped<IMaintenanceTicketCodeGenerator, MaintenanceTicketCodeGenerator>();
 builder.Services.AddScoped<ISoftwareCodeGenerator, SoftwareCodeGenerator>();
 builder.Services.AddScoped<ILicenseCodeGenerator, LicenseCodeGenerator>();
@@ -127,6 +130,7 @@ builder.Services.AddScoped<AssetExportService>();
 builder.Services.AddScoped<ReportExportService>();
 builder.Services.AddScoped<DevelopmentSeed>();
 builder.Services.AddScoped<DevelopmentDemoSeed>();
+builder.Services.AddScoped<AssetTypeCodeConversion>();
 builder.Services.AddRateLimiter(options =>
 {
     options.GlobalLimiter = WorkflowIngress.CreateLimiter(builder.Configuration);
@@ -152,6 +156,39 @@ if (modeCount > 1 || modeCount > 0 && !app.Environment.IsDevelopment())
 }
 _ = app.Services.GetRequiredService<JwtSettings>(); // Production fails closed; development uses a per-process key.
 DeploymentHosting.ValidateProductionDatabase(app.Configuration, app.Environment.IsDevelopment());
+if (typeCodePreview || typeCodeConvert)
+{
+    try
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        if (typeCodePreview)
+        {
+            var rows = await db.Set<ItAssetManagement.Domain.Entities.AssetType>().AsNoTracking().OrderBy(x => x.Id)
+                .Select(x => new { x.Id, x.Code, x.Name, x.IsActive }).ToListAsync();
+            Console.WriteLine(JsonSerializer.Serialize(new { status = "PreviewReadOnly", rows }));
+        }
+        else
+        {
+            if (!builder.Configuration.GetValue<bool>("Database:AssetTypeCodeConversion:Approved"))
+                throw new InvalidOperationException("Explicit conversion approval required.");
+            var path = builder.Configuration["conversion-backup"] ?? throw new InvalidOperationException();
+            using var receipt = JsonDocument.Parse(await File.ReadAllTextAsync(path));
+            var root = receipt.RootElement;
+            if (root.GetProperty("status").GetString() != "PASS" || root.GetProperty("restore").GetString() != "PASS" ||
+                DateTime.UtcNow - root.GetProperty("snapshotUtc").GetDateTime() > TimeSpan.FromMinutes(30) ||
+                root.GetProperty("snapshotUtc").GetDateTime() > DateTime.UtcNow)
+                throw new InvalidOperationException("Fresh verified backup required.");
+            var archive = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path))!, "neondb.dump");
+            if (Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(await File.ReadAllBytesAsync(archive))) != root.GetProperty("archiveSha256").GetString())
+                throw new InvalidOperationException("Backup checksum mismatch.");
+            var changes = await scope.ServiceProvider.GetRequiredService<AssetTypeCodeConversion>().RunAsync();
+            Console.WriteLine(JsonSerializer.Serialize(new { status = "Converted", changes }));
+        }
+    }
+    catch { Console.WriteLine("{\"status\":\"AssetTypeCodeTaskFailed\"}"); Environment.ExitCode = 2; }
+    await app.DisposeAsync(); return;
+}
 if (assignmentTransferSeedOnly || maintenancePermissionsOnly || softwarePermissionsOnly || licensePermissionsOnly || licenseAllocationPermissionsOnly)
 {
     try

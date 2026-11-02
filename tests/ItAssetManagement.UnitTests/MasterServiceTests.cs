@@ -38,12 +38,13 @@ public sealed class MasterServiceTests
         public void Record(string a, object? e, long? u, string t, string o = "SUCCESS", object? before = null, object? after = null, string? failureCode = null) => Actions.Add(a);
     }
     private static MasterService Service(Repository? repo = null, Audit? audit = null) =>
-        new(repo ?? new(), new UnitOfWork(), audit ?? new(), new Actor());
+        new(repo ?? new(), new UnitOfWork(), audit ?? new(), new Actor(), assetTypeCodes: new TypeGenerator());
+    private sealed class TypeGenerator : IAssetTypeCodeGenerator
+    { public Task<string> NextAsync(CancellationToken ct) => Task.FromResult("LTS000001"); }
 
     [Theory]
     [InlineData(true, "", "IT")]
     [InlineData(true, "IT", " ")]
-    [InlineData(false, "", "Laptop")]
     [InlineData(false, "LAPTOP", "")]
     public async Task Master_code_and_name_are_required(bool department, string code, string name)
     { var e = await Assert.ThrowsAsync<BusinessException>(() => Service().WriteAsync(department, null, new() { Code = code, Name = name }, default)); Assert.Equal(400, e.Status); }
@@ -64,7 +65,7 @@ public sealed class MasterServiceTests
     {
         var repo = new Repository();
         if (department) repo.Departments.Add(new() { Id = 1, Code = "IT", Name = "IT", RowVersion = new byte[16] });
-        else repo.Types.Add(new() { Id = 1, Code = "IT", Name = "IT", RowVersion = new byte[16] });
+        else repo.Types.Add(new() { Id = 1, Code = "LTS000001", Name = "IT", RowVersion = new byte[16] });
         var e = await Assert.ThrowsAsync<BusinessException>(() => Service(repo).WriteAsync(department, null, new() { Code = "it", Name = "Duplicate" }, default));
         Assert.Equal(409, e.Status);
     }

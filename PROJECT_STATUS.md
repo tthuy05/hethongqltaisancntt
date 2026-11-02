@@ -1,3 +1,11 @@
+## 03/11/2026 — Asset type auto code: VERIFIED ISOLATED / ROLLOUT PENDING
+
+Backend cấp LTS qua sequence, UI không gửi mã; mã sau cấp bất biến. Release 0 warnings/errors; 927 unit, 280 integration và 460 frontend PASS, 163 opt-in SKIP; 59 JS/63 CSP checks PASS, production bundle 58 assets. PostgreSQL kiểm thử cả rollback audit, idempotency và giữ references. Backup/restore mới PASS; rehearsal trên bản phục hồi Neon đổi 8 loại sang LTS, chạy lại 0, hash 18 bảng khác nguyên vẹn. Chưa thay Neon hoặc deploy trong snapshot này. Không migration hoặc đổi bảng/cột/FK. Quy trình và CLI: docs/business-code-generation.md.
+
+## 02/11/2026 — Asset type auto code
+
+Mã loại tài sản tự sinh LTS: source UNDER REVIEW, đang chạy regression và rehearsal isolated. Neon/Render chưa đổi; chưa thực hiện chuyển mã shared. Không thay migration đã apply.
+
 ## 02/11/2026 — Chuẩn hóa tiền tệ, xử lý tài sản thiếu giá & gợi ý mã loại tài sản (bug.docx): HOÀN THIỆN KIỂM THỬ
 
 1. **Chuẩn hóa hiển thị tiền tệ toàn hệ thống**:

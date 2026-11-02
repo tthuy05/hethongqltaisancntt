@@ -1,6 +1,6 @@
 import { h } from '../utils/dom.js';
 import { button, pageHeader, badge, dataTable, pagination, showToast } from '../components.js';
-import { validateMaster, suggestAssetTypeCode, normalizeAssetTypeCode } from '../utils/validation.js';
+import { validateMaster } from '../utils/validation.js';
 import { can, route, queryFrom, setQuery, option, field, displayErrors, formAlert, busy, openDialog, allActive, allCatalog } from './shared.js';
 
 export async function masterPage(services, kind) {
@@ -16,7 +16,7 @@ export async function masterPage(services, kind) {
   const status = h('select', { className: 'select', 'aria-label': 'Lọc hoạt động' }, option('', 'Tất cả trạng thái'), option('Active', 'Đang hoạt động', query.status === 'Active'), option('Inactive', 'Ngừng hoạt động', query.status === 'Inactive'));
   async function editDialog(id) {
     try {
-      const [item, parents, existingItems] = await Promise.all([id ? service.get(id) : null, departmentMode ? allActive(service) : Promise.resolve([]), !departmentMode && !id ? allCatalog(service) : Promise.resolve([])]);
+      const [item, parents] = await Promise.all([id ? service.get(id) : null, departmentMode ? allActive(service) : Promise.resolve([])]);
       const fields = {};
       const add = config => { const fieldValue = field({ value: item?.[config.name] ?? '', ...config }); fields[config.name] = fieldValue; return fieldValue.element; };
       const feedback = h('div', { 'aria-live': 'polite' });
@@ -25,20 +25,10 @@ export async function masterPage(services, kind) {
       const form = h('form', { noValidate: true, onSubmit: event => {
         event.preventDefault(); if (save.disabled) return;
         const dto = Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, value.input.value.trim() || null]));
+        if (!item) delete dto.code;
         if (departmentMode) dto.parentDepartmentId = dto.parentDepartmentId ? Number(dto.parentDepartmentId) : null;
         else dto.defaultUsefulLifeMonths = dto.defaultUsefulLifeMonths ? Number(dto.defaultUsefulLifeMonths) : null;
         if (item) dto.rowVersion = item.rowVersion;
-        if (!item && !departmentMode && dto.code) {
-          const normalizedCode = normalizeAssetTypeCode(dto.code);
-          dto.code = normalizedCode;
-          fields.code.input.value = normalizedCode;
-          const duplicate = existingItems.find(x => x.code?.trim().toUpperCase() === normalizedCode);
-          if (duplicate) {
-            const errs = { code: [`Mã loại tài sản "${normalizedCode}" đã tồn tại. Vui lòng chọn mã khác.`] };
-            displayErrors(fields, errs); feedback.replaceChildren();
-            return;
-          }
-        }
         const errors = validateMaster(dto, kind);
         displayErrors(fields, errors); feedback.replaceChildren();
         if (Object.keys(errors).length) return;
@@ -52,23 +42,7 @@ export async function masterPage(services, kind) {
           }
           catch (error) { feedback.append(formAlert(error.message)); displayErrors(fields, error.errors || {}); }
         });
-      } }, h('div', { className: 'dialog-body form-grid' }, departmentMode && !item ? add({ name: 'code', label: 'Mã phòng ban', maxLength: 50, readOnly: true, placeholder: 'Mã sẽ được hệ thống tự động tạo khi lưu (PBxxxxxx)', hint: 'Mã sẽ được hệ thống tự động tạo khi lưu (PBxxxxxx).' }) : !departmentMode && !item ? add({ name: 'code', label: 'Mã loại tài sản', required: true, maxLength: 50, placeholder: 'Gợi ý tự động (ví dụ: LAPTOP)', hint: 'Mã được gợi ý tự động từ tên và có thể điều chỉnh trước khi lưu.' }) : add({ name: 'code', label: departmentMode ? 'Mã phòng ban' : 'Mã loại tài sản', required: true, maxLength: 50, readOnly: true, hint: (departmentMode ? 'Mã phòng ban' : 'Mã loại tài sản') + ' không thể thay đổi sau khi tạo.' }), add({ name: 'name', label: 'Tên', required: true, maxLength: 200 }), departmentMode ? add({ name: 'parentDepartmentId', label: 'Phòng ban cha', options: [{ value: '', label: 'Không có' }, ...parents.filter(parent => parent.id !== item?.id).map(parent => ({ value: parent.id, label: parent.name })), ...(item?.parentDepartmentId && !parents.some(parent => parent.id === item.parentDepartmentId) ? [{ value: item.parentDepartmentId, label: (departmentNames.find(d => d.id === item.parentDepartmentId)?.name || 'Phòng ban không còn khả dụng') + ' (tham chiếu cũ)' }] : [])] }) : add({ name: 'defaultUsefulLifeMonths', label: 'Thời gian sử dụng mặc định (tháng)', type: 'number', hint: 'Để trống hoặc số nguyên dương.' }), add({ name: 'description', label: 'Mô tả', type: 'textarea', maxLength: 1000 }), feedback), h('div', { className: 'dialog-footer' }, button('Hủy', { kind: 'secondary', onClick: () => modal.close() }), save));
-      if (!departmentMode && !item) {
-        let codeManuallyEdited = false;
-        fields.code.input.addEventListener('input', () => {
-          codeManuallyEdited = Boolean(fields.code.input.value.trim());
-        });
-        fields.code.input.addEventListener('blur', () => {
-          if (fields.code.input.value) {
-            fields.code.input.value = normalizeAssetTypeCode(fields.code.input.value);
-          }
-        });
-        fields.name.input.addEventListener('input', () => {
-          if (!codeManuallyEdited || !fields.code.input.value.trim()) {
-            fields.code.input.value = suggestAssetTypeCode(fields.name.input.value);
-          }
-        });
-      }
+      } }, h('div', { className: 'dialog-body form-grid' }, departmentMode && !item ? add({ name: 'code', label: 'Mã phòng ban', maxLength: 50, readOnly: true, placeholder: 'Mã sẽ được hệ thống tự động tạo khi lưu (PBxxxxxx)', hint: 'Mã sẽ được hệ thống tự động tạo khi lưu (PBxxxxxx).' }) : !departmentMode && !item ? add({ name: 'code', label: 'Mã loại tài sản', readOnly: true, hint: 'Mã sẽ được hệ thống tự động tạo khi lưu (LTSxxxxxx).' }) : add({ name: 'code', label: departmentMode ? 'Mã phòng ban' : 'Mã loại tài sản', required: true, maxLength: 50, readOnly: true, hint: (departmentMode ? 'Mã phòng ban' : 'Mã loại tài sản') + ' không thể thay đổi sau khi tạo.' }), add({ name: 'name', label: 'Tên', required: true, maxLength: 200 }), departmentMode ? add({ name: 'parentDepartmentId', label: 'Phòng ban cha', options: [{ value: '', label: 'Không có' }, ...parents.filter(parent => parent.id !== item?.id).map(parent => ({ value: parent.id, label: parent.name })), ...(item?.parentDepartmentId && !parents.some(parent => parent.id === item.parentDepartmentId) ? [{ value: item.parentDepartmentId, label: (departmentNames.find(d => d.id === item.parentDepartmentId)?.name || 'Phòng ban không còn khả dụng') + ' (tham chiếu cũ)' }] : [])] }) : add({ name: 'defaultUsefulLifeMonths', label: 'Thời gian sử dụng mặc định (tháng)', type: 'number', hint: 'Để trống hoặc số nguyên dương.' }), add({ name: 'description', label: 'Mô tả', type: 'textarea', maxLength: 1000 }), feedback), h('div', { className: 'dialog-footer' }, button('Hủy', { kind: 'secondary', onClick: () => modal.close() }), save));
       modal = openDialog({ title: (id ? 'Chỉnh sửa ' : 'Thêm ') + title.toLowerCase(), body: form });
     } catch (error) { showToast(error.message, 'error'); }
   }

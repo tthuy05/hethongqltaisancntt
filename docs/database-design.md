@@ -1,3 +1,7 @@
+## 02/11/2026 — Asset type auto code
+
+AssetType.Code dùng sequence `asset_type_code_sequence`, prefix LTS. Không thay bảng/cột/FK; chuyển mã cũ qua audited operator task, giữ Id và token concurrency. Xem business-code-generation.md.
+
 # Thiết kế cơ sở dữ liệu
 
 ## 27/10/2026 — Allocation persistence protocol
