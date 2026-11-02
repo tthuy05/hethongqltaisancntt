@@ -1,3 +1,9 @@
+# Tài Liệu Kỹ Thuật: Hệ Thống Tự Động Sinh Mã Quản Lý Nghiệp Vụ
+
+## Kết quả triển khai — 03/11/2026
+
+PR #20 đã merge main tại `e7f61b405c0efedf6f3f6f7724e59bd554d6a643`, CI/Docker PASS; Render xác minh cùng SHA, provenance Matched. Tác vụ chuyển mã đã chạy trên shared Neon sau khi backup/restore/rehearsal PASS: 8 loại từ mã ngữ nghĩa sang LTS000001–LTS000008. Có 8 audit asset-types.code.convert; giữ ID/tên/trạng thái, hash 18 bảng khác không đổi. Không chạy migration EF, không đổi FK. Không chạy lại tác vụ để tạo dữ liệu demo; mã mới tiếp tục do sequence cấp và bất biến. Kết quả 927unit/280integration/460frontend PASS,163opt-inSKIP; nghiệm thu UI toàn bộ do người dùng thực hiện. Phần Shared rollout PLANNED bên dưới là snapshot trước publication, đã được kết quả này thay thế.
+
 ## 02/11/2026 — Mã loại tài sản tự sinh (thay quyết định mã ngữ nghĩa)
 
 Theo yêu cầu mới, `AssetType.Code` do Backend cấp qua `asset_type_code_sequence`, dạng `LTS000001` (ít nhất 6 chữ số); client không quyết định mã. Tạo mới bỏ qua `code` client gửi; cập nhật vẫn bất biến. UI chỉ hiển thị thông báo tự sinh. Không đổi Id, tên, FK hoặc giá trị tài chính. Import Excel hiện dùng Id/tên nên không đổi contract.
@@ -7,8 +13,6 @@ Chuyển dữ liệu cũ là tác vụ operator riêng, không chạy khi khởi
 CLI Development: `--preview-asset-type-codes` chỉ đọc. `--convert-asset-type-codes` yêu cầu `Database__AssetTypeCodeConversion__Approved=true` và `--conversion-backup <result.json>`: receipt backup/restore PASS không quá 30 phút và checksum dump khớp. Không ghi credential vào lệnh/log. Chuẩn bị backup mới + restore drill; deploy Backend mới trước, xác minh revision rồi mới chuyển dữ liệu để tránh Backend cũ tiếp tục cấp mã thủ công. Không chạy seed/migration/deploy song song. Nếu lỗi, kiểm tra thực trạng/audit trước khi thử lại; không rollback database hoặc ghi đè bản sao lưu lên production.
 
 Trạng thái 03/11/2026: source và rehearsal isolated PASS (927 unit/280 integration/460 frontend; 163 opt-in SKIP). Backup/restore PASS; chuyển 8 loại trên bản phục hồi, chạy lại 0 và 18 bảng khác giữ nguyên hash. Shared rollout PLANNED; Neon/Render chưa đổi trong snapshot này. Các ghi chú mã ngữ nghĩa bên dưới là quyết định lịch sử đã được thay thế.
-
-# Tài Liệu Kỹ Thuật: Hệ Thống Tự Động Sinh Mã Quản Lý Nghiệp Vụ
 
 ## 26/10/2026 — Software catalog integration
 

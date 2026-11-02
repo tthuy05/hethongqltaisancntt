@@ -1,3 +1,27 @@
+## Trạng thái phát hành — 03/11/2026
+
+Bản ứng dụng đã xác minh trên Render là `e7f61b405c0efedf6f3f6f7724e59bd554d6a643` (PR #20), artifact/render revision Matched. CI main41488143321 và Docker Linux PASS; source: 927 unit, 280 integration, 460 frontend PASS, 163 integration opt-in SKIP; Release 0 warnings/errors, 59 JS/63 CSP, bundle 58 assets. Đây là kết quả lượt phát hành, không phải chạy lại toàn bộ suite khi chỉ sửa tài liệu.
+
+Neon: 19 bảng nghiệp vụ + lịch sử EF, 44 FK, 86 CHECK, 6 migrations. Mã loại tài sản tự sinh LTS đã deploy; 8 loại cũ chuyển thành LTS000001–LTS000008, 8 audit chuyển mã, hash 18 bảng khác nguyên vẹn. Không apply migration EF trong lần chuyển mã. Bốn tài sản demo thiếu giá đã có giá minh họa; kiểm tra chỉ đọc ngày02/11 xác nhận thiếu giá=0 ở các tài sản chưa lưu trữ.
+
+Phân biệt trạng thái:
+
+| Hạng mục | Trạng thái |
+|---|---|
+| Source MVP, CI và publication lên Render | Đã triển khai; không suy mọi luồng production đã nghiệm thu |
+| Email kích hoạt thật | Người dùng đã xác nhận nhận email, kích hoạt và đăng nhập thành công trong đợt rollout email |
+| Mã loại LTS và dữ liệu cũ | Đã chuyển trên shared, có audit và kiểm tra bảo toàn |
+| Nghiệm thu thủ công toàn bộ vai trò/luồng/Excel Desktop | Người dùng thực hiện; chưa có xác nhận hoàn tất toàn bộ |
+| Backup PostgreSQL + restore drill mới cho chuyển LTS | PASS; bản sao lưu ngoài Git |
+| PITR trên Neon Console | UNVERIFIED; không coi logical backup là PITR |
+| Các kiểm thử opt-in bị SKIP, hiệu năng/quy mô và security gates còn mở | Chưa thể chứng nhận hoàn tất chỉ từ automated PASS |
+
+Bằng chứng publication có thể đối chiếu tại PR #20, CI41488143321 và health/version; receipt/log operator lưu local ignored trong test-results/bug-doc. Không commit dump, tài khoản, token hoặc artifacts cá nhân. Không tự chạy lại seed/migration/chuyển mã vì đọc tài liệu này.
+
+## Checkpoint lịch sử
+
+Các mục theo ngày bên dưới giữ nguyên bằng chứng tại thời điểm thực hiện. Những dòng PLANNED/UNDER REVIEW/chưa deploy không mô tả ngược trạng thái phát hành ở đầu tài liệu.
+
 ## 03/11/2026 — Asset type auto code: VERIFIED ISOLATED / ROLLOUT PENDING
 
 Backend cấp LTS qua sequence, UI không gửi mã; mã sau cấp bất biến. Release 0 warnings/errors; 927 unit, 280 integration và 460 frontend PASS, 163 opt-in SKIP; 59 JS/63 CSP checks PASS, production bundle 58 assets. PostgreSQL kiểm thử cả rollback audit, idempotency và giữ references. Backup/restore mới PASS; rehearsal trên bản phục hồi Neon đổi 8 loại sang LTS, chạy lại 0, hash 18 bảng khác nguyên vẹn. Chưa thay Neon hoặc deploy trong snapshot này. Không migration hoặc đổi bảng/cột/FK. Quy trình và CLI: docs/business-code-generation.md.

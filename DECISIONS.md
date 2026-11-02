@@ -414,3 +414,13 @@ Context: replacement_rules có sẵn code/version, unique family/version và rec
 ## Quyết định30/10/2026 — Severity riêng và completed maintenance count
 
 Người dùng xác nhận: cấu hình LOW/MEDIUM/HIGH/CRITICAL riêng mỗi rule; count=RESOLVED+FAILED gồm archived. Bổ sung nullable severity + CHECK bằng migration mới (không sửa migration cũ/không default legacy), đã rehearsal local. Evaluation dựa facts hiện tại, severity→order→id, lưu snapshot v1, không tự retire. Price thiếu để null, no fake score; insufficient-only giữ current. Production migration/seed/flags cần phê duyệt sau review/backup, chưa apply.
+
+## ADR-032 — Mã loại tài sản do Backend cấp tự động
+
+- Date: quyết định02/11/2026, triển khai xác minh03/11/2026.
+- Status: ACCEPTED / DEPLOYED, PR #20, revision e7f61b405c0efedf6f3f6f7724e59bd554d6a643.
+- Previous decision: AssetType.Code là mã ngữ nghĩa thủ công LAPTOP/DESKTOP; UI gợi ý theo tên.
+- New decision: người dùng yêu cầu mã tự sinh LTS000001 và chuyển dữ liệu cũ. Dùng engine PostgreSQL sequence hiện có; mã sau cấp bất biến.
+- Consequences: UI không nhập mã; Backend bỏ qua mã client khi tạo. Giữ Id/tên/FK. Excel dùng Id/tên nên không đổi contract. Demo seed tra mapping từ audit chuyển đổi.
+- Migration impact: không sửa migration cũ hoặc thêm migration EF; tác vụ operator có backup guard, baseline/row locks, audited transaction và idempotency. Đã chuyển8loại,8audit; các bảng khác giữ hash.
+- Verification: rehearsal restore PostgreSQL và rollback/idempotency tests PASS; CI/Docker, SHA Render và shared postflight đã xác minh. Không coi là nghiệm thu thủ công toàn bộ sản phẩm.

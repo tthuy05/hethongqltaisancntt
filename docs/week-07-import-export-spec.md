@@ -1,5 +1,11 @@
 # Prepared Import/Export — contract sau security review
 
+## Trạng thái hiện tại — 03/11/2026
+
+Import/Export đã có trong source phát hành trên Render. Dry-run, lỗi theo dòng/trường, commit all-or-nothing, mã AST do Backend cấp và export theo bộ lọc/quyền đã có automated tests. Reports có thêm 5 workbook: license-expiration, asset-groups, maintenance-cost, replacement-budget, replacement-history. Bộ lọc năm mua/bảo hành/người sử dụng và sorting của Asset list/export dùng chung. Excel tham chiếu loại bằng ID/tên, nên chuyển mã LTS không đổi contract. Microsoft Excel Desktop/toàn bộ luồng thủ công chưa được xác nhận; không coi SKIP là PASS.
+
+Bản ứng dụng đối chiếu: `e7f61b405c0efedf6f3f6f7724e59bd554d6a643`; xem [README](../README.md) và [PROJECT_STATUS](../PROJECT_STATUS.md) cho evidence và các phần chưa kiểm chứng. Nội dung theo ngày bên dưới giữ làm lịch sử; không tự chạy lại các bước rollout cũ.
+
 Ngày cập nhật: 24/10/2026. **LOCAL IMPLEMENTATION / PRODUCTION ROLLOUT PENDING.** Theo yêu cầu tiếp quản, Thủy bổ sung UI Excel trên Backend/adapter hiện có; không mở rộng workflow Assignment/Maintenance của Thiện. Evidence 20/10 được giữ ở tài liệu review, không dùng làm kết quả của source mới.
 
 ## Nghiệm thu tích hợp 24/10/2026 — TIẾP QUẢN & HOÀN TẤT CATALOG / AUTHORIZATION

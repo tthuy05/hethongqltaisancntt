@@ -1,5 +1,11 @@
 # Chiến lược kiểm thử
 
+## Trạng thái hiện tại — 03/11/2026
+
+Snapshot source phát hành: 927 unit, 280 integration, 460 frontend PASS; 163 integration opt-in SKIP. Release 0 warnings/errors,59JS/63CSP; CI41488143321 gồm Docker Linux/container smoke PASS. Integration có PostgreSQL local isolated, không đại diện shared production hoặc toàn bộ browser/Excel Desktop. Khi chỉ sửa tài liệu không chạy lại business tests để tạo một kết quả giả mới. Còn nghiệm thu thủ công, test opt-in/hiệu năng và PITR chưa xác minh.
+
+Bản ứng dụng đối chiếu: `e7f61b405c0efedf6f3f6f7724e59bd554d6a643`; xem [README](../README.md) và [PROJECT_STATUS](../PROJECT_STATUS.md) cho evidence và các phần chưa kiểm chứng. Nội dung theo ngày bên dưới giữ làm lịch sử; không tự chạy lại các bước rollout cũ.
+
 ## LF regression 11/10/2026
 
 Database mới độc lập, không reuse old fixture/neondb. Synthetic legacy rows tạo ở S18 rồi migrate mới để kiểm giữ code/password hash/confirmed default. Unit kiểm token/hash/HTTPS email/sandbox/migration SQL. HTTP/EF integration kiểm custom roles, pending activation/resend/expiry/replay/concurrency, revocation và sequence/immutable trigger. Behavioral DOM tests chạy chính UI modules, không thay thế browser layout QA. Isolated fixture dùng IP giả riêng mỗi request để tránh limiter test nhiễu chéo, không nới policy production.

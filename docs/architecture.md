@@ -1,5 +1,11 @@
 # Kiến trúc hệ thống
 
+## Trạng thái hiện tại — 03/11/2026
+
+Kiến trúc đang triển khai là Controller/policy → Application Service → Repository/Audited UOW → EF Core/Npgsql → Neon; frontend production cùng origin với API. Source có các module MVP được liệt kê trong README, không còn giới hạn M1. Startup không migrate/seed; các tác vụ chuyển dữ liệu chỉ chạy bằng CLI operator có kiểm soát. JWT giữ trong bộ nhớ. RBAC v2 dùng quyền nhóm hoạt động; quyền riêng user là allow-list giới hạn nhóm, không tự cộng quyền theo tên ADMIN_IT.
+
+Bản ứng dụng đối chiếu: `e7f61b405c0efedf6f3f6f7724e59bd554d6a643`; xem [README](../README.md) và [PROJECT_STATUS](../PROJECT_STATUS.md) cho evidence và các phần chưa kiểm chứng. Nội dung theo ngày bên dưới giữ làm lịch sử; không tự chạy lại các bước rollout cũ.
+
 ## LF update 11/10/2026 — local source
 
 Giữ Controller → Application Service → Repository/audited UOW → EF Core/Npgsql → Neon. RoleManagementService dùng 4 bảng RBAC, identity lock/rowVersion; Auth refresh union quyền mỗi request. UserInvitationService commit pending identity/membership rồi gọi IInvitationEmailSender ngoài transaction qua HTTPS HttpClient hoặc Development sandbox; lỗi gửi không rollback user. Activation kiểm hash/UTC, đặt password/confirmed atomic. AssetCodeGenerator dùng nextval trong UOW; DB trigger giữ mã bất biến. DepartmentName chỉ read projection.

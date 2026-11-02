@@ -1,5 +1,9 @@
 # Quy tắc thay thế — policy, API và bàn giao
 
+## Trạng thái hiện tại — 03/11/2026
+
+Replacement có trong source phát hành e7f61b4 trên Render, gồm rule/version/severity, đánh giá, recommendations và kế hoạch/dự toán. Mức Low/Medium/High/Critical cấu hình riêng theo quy tắc; số lần bảo trì tính RESOLVED + FAILED theo quyết định nghiệp vụ. Schema severity và quyền đã rollout trong đợt PR #14; không chạy lại migration/seed từ checkpoint cũ. Nghiệm thu thủ công toàn bộ luồng vẫn do người dùng thực hiện; các mục evaluator/UI PLANNED hoặc API local-only theo ngày phía dưới là bằng chứng lịch sử, không phải thiếu code hiện tại. Xem PROJECT_STATUS và README cho snapshot phát hành và kết quả kiểm thử mới nhất.
+
 ## 31/10/2026 — Production source VERIFIED
 
 PR #14 đã merge tại main787e39cda31b41e5ff3cfe3230615cdb30e3fef4. CI main41165674315 PASS; Render Auto-Deploy dep-dbim98p5efls73d75q10 succeeded trong1m19s, Dashboard Live SHA và artifactRevision/renderRevision ở /health/version đều khớp787e39c (provenance Matched). Không tự chạy migration/seed lúc startup. Có các startup warnings DataProtection lưu key trong container và HTTP_PORTS bị URLS ghi đè; không thấy runtime/database/mapping exception trong log đã kiểm. Không coi cảnh báo DataProtection là đã được xử lý.
