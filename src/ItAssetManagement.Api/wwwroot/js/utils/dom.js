@@ -55,7 +55,39 @@ export function clear(node) {
 }
 
 export function money(value) {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 2 }).format(Number(value) || 0);
+  if (value === null || value === undefined || value === '' || !Number.isFinite(Number(value))) {
+    return 'Chưa có giá';
+  }
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(Number(value));
+}
+
+export function moneyExact(value) {
+  if (value === null || value === undefined || value === '' || !Number.isFinite(Number(value))) {
+    return 'Chưa có giá';
+  }
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(Number(value));
+}
+
+export function moneyCompact(value) {
+  if (value === null || value === undefined || value === '' || !Number.isFinite(Number(value))) {
+    return 'Chưa có giá';
+  }
+  const num = Number(value);
+  const abs = Math.abs(num);
+  const sign = num < 0 ? '-' : '';
+  const nf = n => new Intl.NumberFormat('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n);
+
+  if (abs >= 999995000) {
+    return `${sign}${nf(abs / 1e9)} tỷ ₫`;
+  }
+  if (abs >= 999950) {
+    return `${sign}${nf(abs / 1e6)} triệu ₫`;
+  }
+  return money(num);
+}
+
+export function moneyCell(value) {
+  return h('span', { title: moneyExact(value) }, money(value));
 }
 
 export function date(value) {

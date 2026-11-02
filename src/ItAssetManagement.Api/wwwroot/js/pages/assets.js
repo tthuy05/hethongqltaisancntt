@@ -1,6 +1,6 @@
 import { h } from '../utils/dom.js';
 import { button, pageHeader, badge, dataTable, pagination, showToast } from '../components.js';
-import { allCatalog, can, hasPermission, route, queryFrom, setQuery, option, date, money, statusLabels, archiveDialog } from './shared.js';
+import { allCatalog, can, hasPermission, route, queryFrom, setQuery, option, date, money, moneyExact, statusLabels, archiveDialog } from './shared.js';
 import { createAssetStatusHistory } from '../components/asset-status-history.js';
 import { assetRetireDialog, canRetireAsset } from '../components/asset-retire-dialog.js';
 import { assetExcelActions } from '../components/asset-excel.js';
@@ -141,10 +141,10 @@ export async function assetDetailPage(services, id) {
     tabs.children[next].focus();
   } })));
   choose('assignment');
-  const info = (label, value) => h('div', { className: 'detail-item' }, h('dt', {}, label), h('dd', {}, value || 'Chưa có thông tin'));
+  const info = (label, value, title) => h('div', { className: 'detail-item' }, h('dt', {}, label), h('dd', title ? { title } : {}, value || 'Chưa có thông tin'));
   return h('div', {}, pageHeader(asset.name, asset.assetCode + ' · Thông tin thiết bị', { eyebrow: 'Chi tiết tài sản', actions: [button('Danh sách', { kind: 'secondary', iconName: 'arrow-left', onClick: () => route('/assets') }), ...(can(services, 'assets.update') ? [button('Chỉnh sửa', { iconName: 'pencil', onClick: () => route('/assets/' + asset.id + '/edit') })] : []), ...(canRetireAsset(services, asset) ? [button('Ngừng sử dụng', { kind: 'danger', onClick: () => assetRetireDialog(services, asset, () => window.dispatchEvent(new Event('frontend-refresh'))) })] : [])] }),
     h('section', { className: 'card' }, h('div', { className: 'card-header' }, h('h2', {}, 'Thông tin chung'), badge(asset.status)), h('dl', { className: 'card-body detail-grid' }, info('Mã tài sản', asset.assetCode), info('Tên tài sản', asset.name), info('Loại tài sản', asset.assetType?.name), info('Serial Number', asset.serialNumber), info('Thương hiệu', asset.brand), info('Model', asset.model), info('Phòng ban sở hữu', asset.owningDepartment?.name), info('Vị trí', asset.location), info('Người sử dụng', asset.currentAssignment?.user?.displayName || (services.mode === 'mock' ? 'Chưa phân bổ' : 'Chưa có dữ liệu cấp phát')))),
-    h('div', { className: 'dashboard-grid' }, h('section', { className: 'card' }, h('div', { className: 'card-header' }, h('h2', {}, 'Thông tin kỹ thuật')), h('dl', { className: 'card-body detail-grid' }, info('Cấu hình', asset.specification), info('Hệ điều hành', asset.operatingSystem))), h('section', { className: 'card' }, h('div', { className: 'card-header' }, h('h2', {}, 'Mua sắm & bảo hành')), h('dl', { className: 'card-body detail-grid' }, info('Ngày mua', date(asset.purchaseDate)), can(services, 'assets.cost.read') ? info('Giá mua', money(asset.purchasePrice)) : null, info('Hết bảo hành', date(asset.warrantyExpirationDate)), info('Ngày cập nhật', date(asset.updatedAt))))),
+    h('div', { className: 'dashboard-grid' }, h('section', { className: 'card' }, h('div', { className: 'card-header' }, h('h2', {}, 'Thông tin kỹ thuật')), h('dl', { className: 'card-body detail-grid' }, info('Cấu hình', asset.specification), info('Hệ điều hành', asset.operatingSystem))), h('section', { className: 'card' }, h('div', { className: 'card-header' }, h('h2', {}, 'Mua sắm & bảo hành')), h('dl', { className: 'card-body detail-grid' }, info('Ngày mua', date(asset.purchaseDate)), can(services, 'assets.cost.read') ? info('Giá mua', money(asset.purchasePrice), moneyExact(asset.purchasePrice)) : null, info('Hết bảo hành', date(asset.warrantyExpirationDate)), info('Ngày cập nhật', date(asset.updatedAt))))),
     h('section', { className: 'card' }, h('div', { className: 'card-header' }, h('h2', {}, 'Ghi chú')), h('p', { className: 'card-body whitespace-pre-wrap' }, asset.note || 'Chưa có ghi chú.')),
     h('section', { className: 'card' }, h('div', { className: 'card-header' }, h('h2', {}, 'Lịch sử tài sản')), tabs, panel));
 }

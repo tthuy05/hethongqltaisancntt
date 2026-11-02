@@ -1,3 +1,37 @@
+## 02/11/2026 — Chuẩn hóa tiền tệ, xử lý tài sản thiếu giá & gợi ý mã loại tài sản (bug.docx): HOÀN THIỆN KIỂM THỬ
+
+1. **Chuẩn hóa hiển thị tiền tệ toàn hệ thống**:
+   - Thống nhất các hàm `money()`, `moneyExact()`, `moneyCompact()`, `moneyCell()` trong `dom.js` và re-export tại `shared.js`.
+   - Các thẻ thống kê (Dashboard, Reports) áp dụng định dạng rút gọn (`moneyCompact`): ví dụ `527,85 triệu ₫`, `1,25 tỷ ₫`, hover tooltip xem chi tiết chính xác (`moneyExact`).
+   - Bảng biểu và chi tiết tài sản dùng phân cách hàng nghìn, không số thập phân đối với VND (`money`), hover tooltip hiển thị số tiền đầy đủ (`moneyCell`).
+   - Giá trị null hiển thị rõ "Chưa có giá" (không ép về 0). Giá trị 0 hợp lệ hiển thị rõ "0 ₫".
+   - Thêm CSS chống tràn số (`overflow: hidden; text-overflow: ellipsis; white-space: nowrap`) trên `.stat-value`, responsive desktop/mobile.
+   - Excel exports trên Backend giữ nguyên số liệu gốc (raw numeric), không làm tròn trước khi tính toán.
+
+2. **Xác định 4 tài sản thiếu giá & chuẩn bị phương án demo**:
+   - Truy vấn đối soát cơ sở dữ liệu Neon: Xác định chính xác 4 tài sản thiếu giá đều thuộc namespace demo `M1-DEMO-20261003-xxx`:
+     + ID 9 (`M1-DEMO-20261003-006`): Demo Switch 06, loại SWITCH, Model M1 sample 06.
+     + ID 15 (`M1-DEMO-20261003-012`): Demo Printer 12, loại PRINTER, Model M1 sample 12.
+     + ID 21 (`M1-DEMO-20261003-018`): Demo Desktop 18, loại DESKTOP, Model M1 sample 18.
+     + ID 27 (`M1-DEMO-20261003-024`): Demo Other 24, loại OTHER, Model M1 sample 24 (RETIRED).
+   - Đề xuất giá minh họa theo quy luật cấp số cộng dataset demo (`i * 1.250.000 VND`): Switch 06: 7.500.000 VND, Printer 12: 15.000.000 VND, Desktop 18: 22.500.000 VND, Other 24: 30.000.000 VND. Tổng giá trị sau bổ sung: 602.845.683,25 VND (602,85 triệu ₫).
+   - Chuẩn bị script SQL idempotent cập nhật sau khi được phê duyệt; tuyệt đối không tự ý ghi vào Neon production.
+   - Dashboard hiển thị warning alert ngoài thẻ tổng giá trị khi có tài sản thiếu giá và tự động ẩn khi đủ giá.
+
+3. **Gợi ý tự động mã loại tài sản (`AssetType.Code`)**:
+   - Khi tạo mới loại tài sản: nhập tên tự động gợi ý mã ngữ nghĩa viết hoa chuẩn hóa (VD: "Laptop" -> "LAPTOP", "Máy in" -> "MAY_IN").
+   - Cho phép người dùng chỉnh sửa mã gợi ý; kiểm tra trùng mã trên catalog trước khi submit.
+   - Thêm chú thích hướng dẫn trong form; sau khi lưu mã là bất biến (immutable).
+   - Form "Thêm tài sản" giữ nguyên cơ chế Backend tự sinh sequence `AST-xxxxxx`, không cho nhập thủ công.
+
+4. **Kết quả kiểm thử**:
+   - Frontend Unit Tests: 460/460 PASS (thêm 10 tests mới trong `frontend-currency-assettype.test.mjs`).
+   - Frontend Syntax & CSP checks: 59 JS checks / 63 CSP checks PASS.
+   - Frontend Production build: 58 assets build sẵn sàng, 0 lỗi.
+   - Backend Release Build: 0 warnings, 0 errors.
+   - Backend Unit Tests: 926/926 PASS.
+   - Backend Integration Tests (offline): 229/229 PASS (206 opt-in local tests skipped).
+
 ## 01/11/2026 — Reporting production rollout: DEPLOYED / AUTHENTICATED ACCEPTANCE PENDING
 
 Backup/restore mới PASS; approved narrow seed21→0,69permissions/132grants,Admin7/Manager7/Support0, business hashes nguyên vẹn. Không migration. PR15 merged ea2c05c; CI main41284038488/Docker PASS; Render Live dep-dbjeev6q1p3s73alq60g/health-version Matched. ReportingV2 bật, anonymous Reports/Dashboard401 và health/live200. Còn kiểm UI/API sau đăng nhập production; không coi đã nghiệm thu end-to-end. Chi tiết docs/reports-ui-handoff-2026-10-21.md. Tài liệu rollout đang WIP, chưa commit để tránh thêm deployment chỉ vì docs.
