@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 using ItAssetManagement.Domain.Entities;
 
 namespace ItAssetManagement.Application.Mvp;
@@ -180,6 +180,9 @@ public sealed class ListQuery
     public string SortDirection { get; set; } = "asc";
     public long? AssetTypeId { get; set; }
     public long? DepartmentId { get; set; }
+    public int? PurchaseYear { get; set; }
+    public string? WarrantyStatus { get; set; }
+    public long? AssignedUserId { get; set; }
 }
 public sealed class AssetRequest
 {

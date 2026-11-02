@@ -1,5 +1,9 @@
 # Week 07 — Import/Export, Hardening & Finalization
 
+
+> 02/11/2026: source Import/Export và Reports mở rộng đã có, các task/status20/10 phía dưới là kế hoạch/checkpoint lịch sử. Không tự đổi task chưa có evidence thành COMPLETED. Kết quả thực tế mới nhất: PROJECT_STATUS.md và week-07-import-export-spec.md; người dùng tự nghiệm thu thủ công.
+
+
 > **IN PROGRESS / UNDER REVIEW — 20/10/2026.** Local preparation và focused PostgreSQL tests có evidence ở [review](../import-reporting-review-2026-10-20.md). Owner integration, production rollout, broad performance/browser acceptance và independent review chưa hoàn tất.
 
 **Database boundary — PLANNED:** development/manual integration/demo dùng shared Neon PostgreSQL; clean setup/migration, automated integration/rollback/regression fixture dùng PostgreSQL target isolated theo [testing strategy](../testing-strategy.md), fail-closed nếu trỏ shared dev. Không drop/reset schema/database hoặc truncate toàn bộ tables trên shared DB. Thủy review/test rồi điều phối apply migration qua direct endpoint; Thiện sync trước mọi EF migration command. Demo dùng synthetic records đã thống nhất, không reset dữ liệu/lịch sử của thành viên khác.

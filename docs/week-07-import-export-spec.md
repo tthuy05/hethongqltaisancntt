@@ -190,3 +190,6 @@ Groups có3nút, Cost2nút, Expiry2nút có quyền tương ứng; mỗi nút t�
 
 ### Lưu ý tiếp quản
 Không chạy development seed/migrate/ghi shared để bật chức năng này. Kiểm thử automated dùng DB isolated; kiểm renewal qua mock form và license update/audit regression, không gia hạn license thật để thử. Chỉ publish sau toàn bộ mandatory tests và CI/Docker PASS.
+
+## 02/11/2026 — Asset filters/Excel parity
+GET /api/v1/assets và /api/v1/export/assets nhận purchaseYear(1..9999), warrantyStatus(Expired|Expiring|Valid|Unknown), assignedUserId(>0). AND semantics;400invalid;UTC warranty30days inclusive; only current nonarchived/nonreturned user assignment. Export hỗ trợ status/updatedAt sort; tie-break idASC khớp list. Grants/masking/cap/schema giữ nguyên. Chi tiết và evidence: asset-list-access-handoff.md, mục02/11. UNDER REVIEW.

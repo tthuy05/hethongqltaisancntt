@@ -241,6 +241,34 @@ public sealed class LocalReportingRolloutTests : IAsyncLifetime
     }
 
     [LocalPostgresFact]
+    public async Task Asset_advanced_filters_and_export_sorts_match_real_database_and_current_assignment()
+    {
+        using var admin=await LocalAssignmentCompletionTests.LoginAsync(app!,AdminEmail);
+        await using var db=LocalSequenceAuthenticationTests.Database();
+        var known=await db.Set<Asset>().SingleAsync(x=>x.AssetCode=="RPT-001");
+        var target=await db.Set<Asset>().SingleAsync(x=>x.AssetCode=="RPT-002");
+        var filtered=await admin.GetFromJsonAsync<JsonElement>($"/api/v1/assets?purchaseYear={known.PurchaseDate!.Value.Year}&warrantyStatus=Expiring");
+        Assert.Equal("RPT-001",Assert.Single(filtered.GetProperty("items").EnumerateArray()).GetProperty("assetCode").GetString());
+        var old=await admin.GetFromJsonAsync<JsonElement>($"/api/v1/assets?assignedUserId={managerId}");Assert.Equal(0,old.GetProperty("totalItems").GetInt32());
+        using var assigned=await admin.PostAsJsonAsync("/api/v1/asset-assignments",new{assetId=target.Id,userId=managerId});Assert.Equal(HttpStatusCode.Created,assigned.StatusCode);
+        var current=await admin.GetFromJsonAsync<JsonElement>($"/api/v1/assets?assignedUserId={managerId}");
+        Assert.Equal("RPT-002",Assert.Single(current.GetProperty("items").EnumerateArray()).GetProperty("assetCode").GetString());
+        async Task<string> Sheet(string query) {
+            using var response=await admin.GetAsync("/api/v1/export/assets?"+query);Assert.Equal(HttpStatusCode.OK,response.StatusCode);
+            using var zip=new System.IO.Compression.ZipArchive(new MemoryStream(await response.Content.ReadAsByteArrayAsync()));
+            using var reader=new StreamReader(zip.GetEntry("xl/worksheets/sheet1.xml")!.Open());return await reader.ReadToEndAsync();
+        }
+        var file=await Sheet($"assignedUserId={managerId}&warrantyStatus=Expiring");Assert.Contains("RPT-002",file);Assert.DoesNotContain("RPT-001",file);
+        foreach(var sort in new[]{"status","updatedAt"})foreach(var direction in new[]{"asc","desc"}) {
+            var query=$"sortBy={sort}&sortDirection={direction}";var list=await admin.GetFromJsonAsync<JsonElement>("/api/v1/assets?"+query);
+            var codes=list.GetProperty("items").EnumerateArray().Select(x=>x.GetProperty("assetCode").GetString()!).ToArray();var xml=await Sheet(query);
+            Assert.True(xml.IndexOf(codes[0],StringComparison.Ordinal)<xml.IndexOf(codes[1],StringComparison.Ordinal));
+        }
+        foreach(var query in new[]{"purchaseYear=0","warrantyStatus=invalid","assignedUserId=0"})foreach(var path in new[]{"/api/v1/assets?","/api/v1/export/assets?"})
+            Assert.Equal(HttpStatusCode.BadRequest,(await admin.GetAsync(path+query)).StatusCode);
+    }
+
+    [LocalPostgresFact]
     public async Task Extended_report_exports_produce_safe_workbooks_and_enforce_both_permission_layers()
     {
         await SeedReportsAsync();using var admin=await LocalAssignmentCompletionTests.LoginAsync(app!,AdminEmail);

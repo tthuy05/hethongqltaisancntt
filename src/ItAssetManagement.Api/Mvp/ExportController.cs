@@ -12,7 +12,7 @@ public sealed class ExportController(AssetExportService exportService) : Control
     [HttpGet("assets"), Authorize(Policy = Permissions.ExportAssets)]
     public async Task<IActionResult> ExportAssets([FromQuery] AssetExportQuery query, CancellationToken ct)
     {
-        Errors.Query(Request, "keyword", "status", "assetTypeId", "departmentId", "fromUtc", "toUtc", "purchasedFrom", "purchasedTo", "includeArchived", "sortBy", "sortDirection");
+        Errors.Query(Request, "keyword", "status", "assetTypeId", "departmentId", "fromUtc", "toUtc", "purchasedFrom", "purchasedTo", "includeArchived", "purchaseYear", "warrantyStatus", "assignedUserId", "sortBy", "sortDirection");
         var (bytes, filename) = await exportService.ExportAssetsAsync(query, ct);
         return File(bytes, ExportSecurityLimits.ContentType, filename);
     }

@@ -18,7 +18,7 @@ export const ASSET_METADATA_FIELDS = Object.freeze([
 /** @typedef {{id:number, assetCode:string, name:string, serialNumber:string|null, assetType:ReferenceSummary, owningDepartment:ReferenceSummary, status:string, location:string|null, createdAt:string, updatedAt:string|null, purchasePrice?:number|null}} AssetSummary */
 /** @typedef {AssetSummary & CreateAssetRequest & {rowVersion:string, isArchived:boolean, currentAssignment:object|null}} AssetDetail */
 /** @template T @typedef {{items:T[], page:number, pageSize:number, totalItems:number, totalPages:number}} Paged */
-/** @typedef {{keyword?:string, departmentId?:number, assetTypeId?:number, status?:string, page?:number, pageSize?:number, sortBy?:string, sortDirection?:'asc'|'desc'}} AssetQuery */
+/** @typedef {{keyword?:string, departmentId?:number, assetTypeId?:number, status?:string, purchaseYear?:number, warrantyStatus?:string, assignedUserId?:number, page?:number, pageSize?:number, sortBy?:string, sortDirection?:'asc'|'desc'}} AssetQuery */
 /** Current Assignment API shapes; enriched DTO/transfer/history remain planned. */
 /** @typedef {{id:number, assetId:number, assignedUserId:number|null, assignedDepartmentId:number|null, assignedAt:string, returnedAt:string|null, assignmentNote:string|null, returnNote:string|null, rowVersion:string}} Assignment */
 /** @typedef {{assetId:number, userId?:number|null, departmentId?:number|null, assignedAt?:string|null, note?:string|null}} AssignAssetRequest */

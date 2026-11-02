@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — 02/11/2026 — Asset filter completion
+
+- Added: shared purchase-year, UTC warranty and current-user assignment filters for asset list and Excel exports.
+- Fixed: status/update-time Excel sorting matches the asset list, with stable ascending ID tie-breaks.
+- Updated: README and baseline-plan notes distinguish implemented source from historical PLANNED checkpoints and manual acceptance.
+
 ## Unreleased — 01/11/2026 — Report workbooks and confirmed renewal
 
 - Added: filtered License expiry, asset grouping, maintenance cost, replacement budget and full replacement-history Excel exports, reusing Report queries and existing grants.

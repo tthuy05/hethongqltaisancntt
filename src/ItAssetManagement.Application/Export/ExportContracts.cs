@@ -45,6 +45,9 @@ public sealed class AssetExportQuery
     public long? DepartmentId { get; set; }
     public DateTime? FromUtc { get; set; }
     public DateTime? ToUtc { get; set; }
+    public int? PurchaseYear { get; set; }
+    public string? WarrantyStatus { get; set; }
+    public long? AssignedUserId { get; set; }
     public bool IncludeArchived { get; set; }
     public DateOnly? PurchasedFrom { get; set; }
     public DateOnly? PurchasedTo { get; set; }
@@ -53,9 +56,10 @@ public sealed class AssetExportQuery
 
     public void Validate()
     {
+        AssetSearchFilters.Validate(PurchaseYear,WarrantyStatus,AssignedUserId);
         ReportingValidation.ValidateDateRange(FromUtc, ToUtc);
         ReportingValidation.Choice(Status, "InStock", "InUse", "Maintenance", "Broken", "Retired");
-        ReportingValidation.Choice(SortBy, "assetCode", "name", "createdAt", "purchaseDate", "purchaseCost");
+        ReportingValidation.Choice(SortBy, "assetCode", "name", "createdAt", "purchaseDate", "purchaseCost", "status", "updatedAt");
         if (PurchasedFrom.HasValue && PurchasedTo.HasValue && PurchasedFrom > PurchasedTo)
             throw new BusinessException(400, "INVALID_QUERY", "Ngày mua từ không được lớn hơn ngày mua đến.");
         ReportingValidation.Choice(SortDirection, "asc", "desc");
