@@ -1,8 +1,15 @@
 # Hệ thống Quản lý & Tối ưu Hạ tầng CNTT Doanh nghiệp
+## Trạng thái hiện tại — 02/11/2026
+
+Source đã có đầy đủ các module MVP: tài khoản/email kích hoạt/phân quyền, tài sản/danh mục, cấp phát/thu hồi/điều chuyển, bảo trì, phần mềm/bản quyền/phân bổ seat, thay thế, Dashboard/Reports và Excel. Reports gồm các mẫu xuất thời hạn License, tổng hợp, chi phí, ngân sách và lịch sử thay thế. Gia hạn license là thao tác xác nhận thủ công, không tự mua hoặc tự cộng thời hạn.
+
+Bổ sung trong source hiện tại: danh sách và Excel tài sản dùng chung bộ lọc năm mua, bảo hành và người đang sử dụng; Excel hỗ trợ mọi cách sắp xếp trên danh sách. Không cần migration/grant mới. Lọc người sử dụng bằng ID, chỉ tính cấp phát chưa thu hồi và chưa lưu trữ. Cảnh báo bảo hành dùng ngày UTC, mốc sắp hết hạn30ngày.
+
+Các module đã có code không đồng nghĩa đã được người dùng nghiệm thu mọi luồng trên production. Người dùng tự thực hiện kiểm thử thủ công; kết quả automated, CI, SHA phát hành và các giới hạn được ghi trong [PROJECT_STATUS.md](PROJECT_STATUS.md), [danh sách tài sản](docs/asset-list-access-handoff.md) và [Excel](docs/week-07-import-export-spec.md). Các ghi chú PLANNED/checkpoint bên dưới là lịch sử, không mô tả lại trạng thái hiện tại.
 
 **Cập nhật 27/10/2026:** main `c8baff1` đã có source License CRUD (PR #9). Cấp/thu hồi/điều chuyển bản quyền đã nối và nghiệm thu local trên nhánh `feature/license-allocation`; chưa mở production. Có cờ cấp phát riêng và kiểm soát số seat/phiên bản/audit. [Phạm vi và nghiệm thu](docs/license-catalog.md), [tiến độ](PROJECT_STATUS.md). Các checkpoint phía dưới là lịch sử.
 
-## Trạng thái mới nhất — 26/10/2026
+## Checkpoint lịch sử — 26/10/2026
 
 - **Đã chạy trên Render:** đăng nhập/email kích hoạt, tài sản, danh mục, phân quyền, Import/Export Excel và các luồng Cấp phát/Bảo trì. Main/Render tại `281fe2f`; CI/Docker PASS, revision đã đối chiếu. [Kết quả rollout](docs/assignment-safe-rollout.md).
 - **Danh mục phần mềm:** API và giao diện đã nghiệm thu trên PostgreSQL local riêng; có mã PM tự sinh, tìm kiếm/lọc, thêm/sửa/ngừng sử dụng, kiểm tra quyền/version và audit. Nhánh `codex/software-catalog`, chưa merge hoặc bật production. [Hướng dẫn và bằng chứng](docs/software-catalog.md).

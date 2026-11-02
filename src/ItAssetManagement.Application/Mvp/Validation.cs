@@ -36,6 +36,8 @@ public static class Validation
     {
         if (q.Page < 1 || q.PageSize is < 1 or > 100 || (long)(q.Page - 1) * q.PageSize > int.MaxValue)
             throw Invalid("page", "page >= 1, pageSize 1..100, offset hợp lệ.");
+        AssetSearchFilters.Validate(q.PurchaseYear, q.WarrantyStatus, q.AssignedUserId);
+        if (!asset && (q.PurchaseYear != null || q.WarrantyStatus != null || q.AssignedUserId != null)) throw Invalid("filter", "Filter không hỗ trợ.");
         q.Keyword = Optional(q.Keyword, 200, "keyword");
         q.SortBy ??= asset ? "assetCode" : "name";
         var sorts = asset ? new[] { "assetCode", "name", "status", "createdAt", "updatedAt" } : ["code", "name"];

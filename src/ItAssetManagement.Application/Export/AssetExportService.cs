@@ -39,6 +39,7 @@ public sealed class AssetExportService(
         if (query.SortBy == "purchaseCost" && !canReadCost) throw new BusinessException(403, "FORBIDDEN", "Không có quyền sắp xếp theo giá.");
         var q = repo.Query<Asset>();
         if (!query.IncludeArchived) q = q.Where(a => !a.IsArchived);
+        q = AssetSearchFilters.Apply(q,repo,query.PurchaseYear,query.WarrantyStatus,query.AssignedUserId);
         if (query.PurchasedFrom.HasValue) q = q.Where(a => a.PurchaseDate >= query.PurchasedFrom.Value);
         if (query.PurchasedTo.HasValue) q = q.Where(a => a.PurchaseDate <= query.PurchasedTo.Value);
         if (query.FromUtc.HasValue) q = q.Where(a => a.CreatedAtUtc >= query.FromUtc.Value);
@@ -59,6 +60,8 @@ public sealed class AssetExportService(
 
         var desc = query.SortDirection == "desc";
         IOrderedQueryable<Asset> ordered = (query.SortBy, desc) switch {
+            ("status", false) => q.OrderBy(a => a.CurrentStatus), ("status", true) => q.OrderByDescending(a => a.CurrentStatus),
+            ("updatedAt", false) => q.OrderBy(a => a.UpdatedAtUtc), ("updatedAt", true) => q.OrderByDescending(a => a.UpdatedAtUtc),
             ("purchaseCost", false) => q.OrderBy(a => a.PurchaseCost),
             ("purchaseCost", true) => q.OrderByDescending(a => a.PurchaseCost),
             ("purchaseDate", false) => q.OrderBy(a => a.PurchaseDate),

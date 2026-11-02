@@ -611,3 +611,6 @@ Verification export completion:924unit/276integration/446frontend PASS,0FAIL;163
 
 ## 01/11/2026 — Report Excel extensions + manual renewal, UNDER REVIEW
 Nhánh codex/report-export-extensions bổ sung5API export/readers/UI tương ứng và form xác nhận gia hạn theo quyết định người dùng. Không migration/seed/ghi Neon. Focused PostgreSQL/JWT và unit security/cap PASS;frontend448PASS;full925unit/277integration/448frontend PASS,0FAIL;163cloudSKIP. Không tự động gia hạn hoặc thanh toán nhà cung cấp.
+
+## 02/11/2026 — Asset filter completion, UNDER REVIEW
+Nhánh codex/asset-filter-completion: năm mua/bảo hành/người đang sử dụng xuyên list/API/Excel; status/updatedAt sort export; đồng bộ README/scope/plan theo code thay vì nhãn PLANNED lịch sử. Focused PostgreSQL/JWT PASS;full926unit/278integration/450frontend PASS,0FAIL,163cloudSKIP;Release0warnings/errors,59JS/63CSP,58assets production. Không Neon writes/migrations/grants.

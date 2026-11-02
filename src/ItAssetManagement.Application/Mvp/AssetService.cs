@@ -30,6 +30,7 @@ public sealed class AssetService(IRepository repo, IUnitOfWork uow, IAuditWriter
         if (q.AssetTypeId != null) query = query.Where(x => x.AssetTypeId == q.AssetTypeId);
         if (q.DepartmentId != null) query = query.Where(x => x.OwningDepartmentId == q.DepartmentId);
         if (q.Status != null) { var status = StatusMap.Api[q.Status]; query = query.Where(x => x.CurrentStatus == status); }
+        query = AssetSearchFilters.Apply(query, repo, q.PurchaseYear, q.WarrantyStatus, q.AssignedUserId);
         var total = await repo.CountAsync(query, ct);
         var asc = q.SortDirection == "asc";
         IOrderedQueryable<Asset> ordered = (q.SortBy, asc) switch
@@ -40,7 +41,7 @@ public sealed class AssetService(IRepository repo, IUnitOfWork uow, IAuditWriter
             ("updatedAt", true) => query.OrderBy(x => x.UpdatedAtUtc), ("updatedAt", false) => query.OrderByDescending(x => x.UpdatedAtUtc),
             (_, true) => query.OrderBy(x => x.AssetCode), _ => query.OrderByDescending(x => x.AssetCode)
         };
-        ordered = asc ? ordered.ThenBy(x => x.Id) : ordered.ThenByDescending(x => x.Id);
+        ordered = ordered.ThenBy(x => x.Id);
         var items = await repo.ListAsync(Project(ordered.Skip((q.Page - 1) * q.PageSize).Take(q.PageSize)), ct);
         foreach (var item in items) item.Status = StatusMap.ToApi(item.Status);
         return new(items, q.Page, q.PageSize, total, (int)Math.Ceiling(total / (double)q.PageSize));

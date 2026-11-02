@@ -551,3 +551,6 @@ GET /export/assets: includeArchived boolean defaultfalse; sortBy bổ sung purch
 
 ## 01/11/2026 — Report export API (UNDER REVIEW)
 GET /api/v1/reports/export/{license-expiration,asset-groups,maintenance-cost,replacement-budget,replacement-history}. Query fields match corresponding Reports endpoints; asset-groups additionally groupBy=department|type|status. Client paging parameters are not accepted; all matching rows up to5000. Requires both ReportingV2/ImportExport flags and export grant plus report read/cost grant. 400invalid/unknown query,401unauthenticated,403denied,413EXPORT_TOO_LARGE,409EXPORT_DATA_CHANGED. Workbook response XLSX/no-store, safe filename; no full License key or unauthorized financial column. No schema or permission catalog changes. See week-07-import-export-spec.md (01/11 extension section) for exact grants, fields, paging/concurrency limits and UI behavior.
+
+## 02/11/2026 — Asset filters/Excel parity
+GET /api/v1/assets và /api/v1/export/assets nhận purchaseYear(1..9999), warrantyStatus(Expired|Expiring|Valid|Unknown), assignedUserId(>0). AND semantics;400invalid;UTC warranty30days inclusive; only current nonarchived/nonreturned user assignment. Export hỗ trợ status/updatedAt sort; tie-break idASC khớp list. Grants/masking/cap/schema giữ nguyên. Chi tiết và evidence: asset-list-access-handoff.md, mục02/11. UNDER REVIEW.

@@ -22,7 +22,7 @@ public static class Errors
     public static void Query(HttpRequest request, bool asset, bool history = false)
     {
         var allowed = history ? new[] { "page", "pageSize" } : asset
-            ? ["page", "pageSize", "keyword", "status", "sortBy", "sortDirection", "assetTypeId", "departmentId"]
+            ? ["page", "pageSize", "keyword", "status", "sortBy", "sortDirection", "assetTypeId", "departmentId", "purchaseYear", "warrantyStatus", "assignedUserId"]
             : ["page", "pageSize", "keyword", "status", "sortBy", "sortDirection"];
         Query(request, allowed);
     }

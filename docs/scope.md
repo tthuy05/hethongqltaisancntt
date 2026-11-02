@@ -1,5 +1,9 @@
 # Phạm vi dự án
 
+
+> Cập nhật 02/11/2026: các nhãn PLANNED phía dưới là baseline phân tích Tuần2 được giữ làm lịch sử, không phải danh sách chức năng runtime còn thiếu. Source hiện có các module MVP, gồm bộ lọc Asset nâng cao và Excel tương ứng; xem README/PROJECT_STATUS và docs/asset-list-access-handoff.md để đối chiếu triển khai/kiểm thử. Nghiệm thu thủ công do người dùng thực hiện.
+
+
 > Trạng thái: **PLANNED — WEEK 2 ANALYSIS BASELINE**  
 > Week 2 chỉ thực hiện analysis, technical design và consistency review. Không có module nghiệp vụ, API, database migration hay test runtime nào được coi là đã triển khai.
 

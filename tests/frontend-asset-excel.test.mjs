@@ -108,8 +108,20 @@ test('asset export preserves supported filters without paging and disables unsup
     const nodes = assetExcelActions(services, { page: 4, pageSize: 10, keyword: 'laptop', departmentId: '2', status: 'InStock', sortBy: 'name', sortDirection: 'desc' }, () => true);
     dom.body.append(...nodes); nodes[1].fire('click'); await until(() => !nodes[1].getAttribute('aria-busy'));
     assert.equal(query.keyword, 'laptop'); assert.equal(query.departmentId, '2'); assert.equal(query.status, 'InStock'); assert.equal(query.page, undefined);
-    const unsupported = assetExcelActions(services, { sortBy: 'updatedAt' }, () => true); assert.equal(unsupported[1].disabled, true);
+    const unsupported = assetExcelActions(services, { sortBy: 'invalid' }, () => true); assert.equal(unsupported[1].disabled, true);
   } finally { dom.restore(); }
+});
+
+test('asset Excel accepts status/update sorts and forwards all advanced filters without paging', async () => {
+  const dom=installDom('/assets');try {
+    const services=source();let received;
+    services.importExport.exportAssets=async q=>{received=q;throw Error('synthetic stop');};
+    for(const sortBy of ['status','updatedAt']) {
+      const nodes=assetExcelActions(services,{sortBy,sortDirection:'desc',purchaseYear:'2024',warrantyStatus:'Expiring',assignedUserId:'7',page:3},()=>true);
+      dom.body.append(...nodes);const control=nodes[1];assert.equal(control.disabled,false);control.fire('click');await until(()=>!control.getAttribute('aria-busy'));
+      assert.equal(received.sortBy,sortBy);assert.equal(received.purchaseYear,'2024');assert.equal(received.warrantyStatus,'Expiring');assert.equal(received.assignedUserId,'7');assert.equal(received.page,undefined);
+    }
+  }finally{dom.restore();}
 });
 
 test('inventory export forwards purchase dates without converting them to creation timestamps', async () => {

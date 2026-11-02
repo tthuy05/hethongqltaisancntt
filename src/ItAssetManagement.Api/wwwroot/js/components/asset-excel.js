@@ -99,11 +99,11 @@ export function assetExcelActions(services, query, active) {
   if (can(services, 'import.assets.execute')) actions.push(button('Nhập Excel', { kind: 'secondary', iconName: 'upload', onClick: () => {
     if (active()) assetImportDialog(services, () => window.dispatchEvent(new Event('frontend-refresh')));
   } }));
-  const supportedSort = ['assetCode', 'name', 'createdAt'].includes(query.sortBy);
+  const supportedSort = ['assetCode', 'name', 'status', 'createdAt', 'updatedAt'].includes(query.sortBy);
   const exportButton = excelDownloadButton(services, { permission: 'export.assets.execute', method: 'exportAssets', active,
-    query: Object.fromEntries(['keyword', 'status', 'assetTypeId', 'departmentId', 'sortBy', 'sortDirection'].map(k => [k, query[k]])) });
+    query: Object.fromEntries(['keyword', 'status', 'assetTypeId', 'departmentId', 'purchaseYear', 'warrantyStatus', 'assignedUserId', 'sortBy', 'sortDirection'].map(k => [k, query[k]])) });
   if (exportButton) {
-    if (!supportedSort) { exportButton.disabled = true; exportButton.setAttribute('title', 'Chọn sắp xếp theo mã, tên hoặc ngày tạo trước khi xuất. API chưa hỗ trợ kiểu sắp xếp này.'); }
+    if (!supportedSort) { exportButton.disabled = true; exportButton.setAttribute('title', 'Kiểu sắp xếp không hợp lệ.'); }
     actions.push(exportButton);
   }
   return actions;

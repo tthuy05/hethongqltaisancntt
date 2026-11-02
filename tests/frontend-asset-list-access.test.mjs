@@ -13,6 +13,17 @@ function source(grants = ['assets.read']) {
 }
 const byName = (root, name) => descendants(root).find(n => n.getAttribute('name') === name);
 
+test('advanced asset filters round-trip through URL and reset pagination without requiring user lookup access', async () => {
+  const dom=installDom('/assets?purchaseYear=2024&warrantyStatus=Expired&assignedUserId=7&page=3');try {
+    const services=source(),root=await assetListPage(services);dom.body.append(root);
+    assert.equal(services.calls.list[0].purchaseYear,'2024');assert.equal(byName(root,'assignedUserId').value,'7');
+    byName(root,'purchaseYear').value='2025';byName(root,'warrantyStatus').value='Expiring';
+    descendants(root).find(n=>n.tagName==='FORM').fire('submit');
+    const query=new URLSearchParams(location.hash.split('?')[1]);
+    assert.equal(query.get('purchaseYear'),'2025');assert.equal(query.get('warrantyStatus'),'Expiring');assert.equal(query.get('assignedUserId'),'7');assert.equal(query.get('page'),'1');
+  }finally{dom.restore();}
+});
+
 test('asset-only reader sees Asset DTO reference names without requesting forbidden catalogs', async () => {
   const dom = installDom('/assets'); try {
     const services = source(); const root = await assetListPage(services);

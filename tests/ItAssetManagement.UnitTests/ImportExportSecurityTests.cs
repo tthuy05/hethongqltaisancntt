@@ -11,6 +11,24 @@ namespace ItAssetManagement.UnitTests;
 public sealed class ImportExportSecurityTests
 {
     [Fact]
+    public void Advanced_asset_filters_use_UTC_warranty_boundaries_and_only_active_user_assignments()
+    {
+        var today=DateOnly.FromDateTime(DateTime.UtcNow);var repo=new FakeRepository();
+        repo.Seed(new Asset{Id=1,PurchaseDate=new(2024,1,1),WarrantyEndDate=today},new Asset{Id=2,PurchaseDate=new(2024,12,31),WarrantyEndDate=today.AddDays(-1)},new Asset{Id=3},new Asset{Id=4,WarrantyEndDate=today.AddDays(30)},new Asset{Id=5,WarrantyEndDate=today.AddDays(31)});
+        repo.Seed(new AssetAssignment{Id=1,AssetId=1,AssignedUserId=7},new AssetAssignment{Id=2,AssetId=2,AssignedUserId=7,ReturnedAtUtc=DateTime.UtcNow},new AssetAssignment{Id=3,AssetId=4,AssignedUserId=7,IsArchived=true});
+        long[] Match(int? year,string? warranty,long? user)=>AssetSearchFilters.Apply(repo.Query<Asset>(),repo,year,warranty,user).Select(x=>x.Id).OrderBy(x=>x).ToArray();
+        Assert.Equal(new long[]{1},Match(2024,"Expiring",7));
+        Assert.Equal(new long[]{1,2},Match(2024,null,null));
+        Assert.Equal(new long[]{1,4},Match(null,"Expiring",null));
+        Assert.Equal(new long[]{2},Match(null,"Expired",null));
+        Assert.Equal(new long[]{3},Match(null,"Unknown",null));
+        Assert.Equal(new long[]{5},Match(null,"Valid",null));
+        Assert.Equal(400,Assert.Throws<BusinessException>(()=>AssetSearchFilters.Validate(0,null,null)).Status);
+        Assert.Equal(400,Assert.Throws<BusinessException>(()=>AssetSearchFilters.Validate(null,"invalid",null)).Status);
+        Assert.Equal(400,Assert.Throws<BusinessException>(()=>AssetSearchFilters.Validate(null,null,0)).Status);
+    }
+
+    [Fact]
     public async Task Report_export_requires_export_and_report_permissions_and_refuses_over_limit()
     {
         var actor=new FakeActor();var repo=new FakeRepository();
