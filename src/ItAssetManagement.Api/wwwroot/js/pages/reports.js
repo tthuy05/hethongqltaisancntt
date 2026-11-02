@@ -1,6 +1,6 @@
 import { h } from '../utils/dom.js';
 import { button, pageHeader, dataTable, pagination, statCard, badge } from '../components.js';
-import { can, date, money, route, setQuery } from './shared.js';
+import { can, date, money, moneyExact, moneyCompact, moneyCell, route, setQuery } from './shared.js';
 import { ServiceError } from '../services/service-error.js';
 import { readReportQuery, validateReportQuery, reportNumber, reportUtc } from './reports-query.js';
 import { reportExcelActions } from '../components/report-excel.js';
@@ -153,7 +153,7 @@ export async function reportsPage(services) {
       { key: 'departmentName', label: 'Phòng ban' },
       { key: 'currentStatus', label: 'Trạng thái', render: row => badge(row.currentStatus) },
       { key: 'purchaseDate', label: 'Ngày mua', render: row => date(row.purchaseDate) },
-      ...(canCost ? [{ key: 'purchaseCost', label: 'Giá mua', render: row => money(row.purchaseCost) }] : []),
+      ...(canCost ? [{ key: 'purchaseCost', label: 'Giá mua', render: row => moneyCell(row.purchaseCost) }] : []),
       { key: 'warrantyEndDate', label: 'Hết bảo hành', render: row => date(row.warrantyEndDate) }
     ];
 
@@ -223,7 +223,7 @@ export async function reportsPage(services) {
       { key: 'technicianName', label: 'Kỹ thuật viên', render: row => row.technicianName || '—' },
       { key: 'openedAtUtc', label: 'Ngày tạo', render: row => date(row.openedAtUtc) },
       { key: 'resolvedAtUtc', label: 'Hoàn tất', render: row => date(row.resolvedAtUtc) },
-      ...(canCost ? [{ key: 'cost', label: 'Chi phí', render: row => money(row.cost) }] : [])
+      ...(canCost ? [{ key: 'cost', label: 'Chi phí', render: row => moneyCell(row.cost) }] : [])
     ];
 
     tabContent = h('section', { className: 'card' },
@@ -306,7 +306,7 @@ export async function reportsPage(services) {
       { key: 'groupLabel', label: 'Khoảng thời gian / Nhóm' },
       { key: 'ticketCount', label: 'Số lượt sửa chữa' },
       { key: 'missingCostCount', label: 'Chưa có chi phí', render: row => row.missingCostCount ?? '—' },
-      { key: 'totalCost', label: 'Tổng chi phí', render: row => money(row.totalCost) }
+      { key: 'totalCost', label: 'Tổng chi phí', render: row => moneyCell(row.totalCost) }
     ];
 
     tabContent = h('div', { className: 'report-sections' },
@@ -319,8 +319,8 @@ export async function reportsPage(services) {
       ], { ...query, tab: 'cost', year, groupBy })),
       h('p', { className: 'meta' }, 'Năm và mức ưu tiên chỉ lọc dự toán thay thế. Khoảng hoàn tất (UTC) và loại tài sản chỉ lọc chi phí bảo trì; bỏ trống thời gian sẽ tổng hợp tất cả. Phòng ban áp dụng cho cả hai. Nhóm “Chưa có ngày hoàn thành” chỉ có khi không lọc thời gian.'),
       h('div', { className: 'grid-kpis' },
-        statCard({ label: 'Tổng chi phí bảo trì', value: money(maintenanceCost?.totalCost), detail: `${maintenanceCost?.missingCostCount ?? '—'}/${maintenanceCost?.ticketCount ?? '—'} phiếu chưa có chi phí; tổng phần đã biết`, iconName: 'wrench', tone: 'amber' }),
-        statCard({ label: `Dự toán thay thế năm ${year}`, value: money(budget?.totalBudget), detail: `${budget?.totalRecommendations ?? '—'} khuyến nghị; ${budget?.missingEstimateCount ?? '—'} chưa có dự toán`, iconName: 'chart', tone: 'green' })
+        statCard({ label: 'Tổng chi phí bảo trì', value: moneyCompact(maintenanceCost?.totalCost), title: moneyExact(maintenanceCost?.totalCost), detail: `${maintenanceCost?.missingCostCount ?? '—'}/${maintenanceCost?.ticketCount ?? '—'} phiếu chưa có chi phí; tổng phần đã biết`, iconName: 'wrench', tone: 'amber' }),
+        statCard({ label: `Dự toán thay thế năm ${year}`, value: moneyCompact(budget?.totalBudget), title: moneyExact(budget?.totalBudget), detail: `${budget?.totalRecommendations ?? '—'} khuyến nghị; ${budget?.missingEstimateCount ?? '—'} chưa có dự toán`, iconName: 'chart', tone: 'green' })
       ),
       h('section', { className: 'card' },
         h('div', { className: 'card-header' }, h('h2', {}, `Tổng hợp chi phí bảo trì ${groupBy === 'month' ? 'theo tháng' : groupBy === 'type' ? 'theo loại tài sản' : 'theo phòng ban'}`)),
@@ -345,7 +345,7 @@ export async function reportsPage(services) {
         const value = row.recommendedAtUtc ? new Date(row.recommendedAtUtc) : null;
         return value && Number.isFinite(value.getTime()) ? value.toISOString().replace('T', ' ').replace('Z', '') : '—';
       } },
-      ...(canCost ? [{ key: 'estimatedCost', label: 'Chi phí dự kiến', render: row => money(row.estimatedCost) }] : [])
+      ...(canCost ? [{ key: 'estimatedCost', label: 'Chi phí dự kiến', render: row => moneyCell(row.estimatedCost) }] : [])
     ];
     tabContent = h('section', { className: 'card' },
       filters('Lọc báo cáo đề xuất thay thế', [departmentFilter, { name: 'priority', label: 'Ưu tiên', options: priorities },

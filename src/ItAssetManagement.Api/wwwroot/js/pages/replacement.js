@@ -1,6 +1,6 @@
 import { h } from '../utils/dom.js';
 import { button, pageHeader, dataTable, pagination, showToast } from '../components.js';
-import { can, route, queryFrom, setQuery, option, field, displayErrors, formAlert, openDialog, money, date } from './shared.js';
+import { can, route, queryFrom, setQuery, option, field, displayErrors, formAlert, openDialog, money, moneyCell, date } from './shared.js';
 import { severities, validateRule } from '../services/replacement-service.js';
 
 const labels = { LOW: 'Thấp', MEDIUM: 'Trung bình', HIGH: 'Cao', CRITICAL: 'Khẩn cấp', ACTIVE: 'Đang xem xét', PLANNED: 'Đã lập kế hoạch', DISMISSED: 'Đã bỏ qua', SUPERSEDED: 'Đã được thay thế' };
@@ -173,7 +173,7 @@ export async function replacementPage(services, rules = false) {
     ] : [
       { label: 'Tài sản', render: row => h('a', { href: '#/assets/' + row.assetId }, 'Tài sản #' + row.assetId) }, { label: 'Ưu tiên', render: row => labels[row.priority] || row.priority },
       { label: 'Trạng thái', render: row => labels[row.disposition] || row.disposition }, { key: 'plannedReplacementYear', label: 'Năm kế hoạch' },
-      ...(financial() ? [{ label: 'Ước tính', render: row => money(row.estimatedReplacementCost) }] : []),
+      ...(financial() ? [{ label: 'Ước tính', render: row => moneyCell(row.estimatedReplacementCost) }] : []),
       { label: 'Ngày đánh giá', render: row => date(row.recommendedAt) },
       { label: 'Thao tác', render: row => h('div', { className: 'actions' }, button('Căn cứ', { kind: 'ghost', onClick: () => detail(row) }), row.isCurrent && ['ACTIVE', 'PLANNED'].includes(row.disposition) && can(services, 'replacement-recommendations.update') ? button(row.disposition === 'PLANNED' ? 'Điều chỉnh kế hoạch' : 'Lập kế hoạch / bỏ qua', { kind: 'ghost', onClick: () => disposition(row) }) : null) }
     ] }), pagination(result, page => { if (alive()) setQuery(path, { ...query, page }); })));

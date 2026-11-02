@@ -15,11 +15,13 @@ export function pageHeader(title, description, { actions = [], eyebrow = '' } = 
     actions.length ? h('div', { className: 'actions' }, actions) : null);
 }
 
-export function statCard({ label, value, detail, iconName = 'devices', tone = 'blue' }) {
+export function statCard({ label, value, detail, iconName = 'devices', tone = 'blue', title }) {
+  const valueProps = { className: 'stat-value' };
+  if (title) valueProps.title = title;
   return h('section', { className: `card stat-card ${tone}` },
     h('div', { className: 'stat-heading' }, h('span', { className: 'stat-label' }, label),
       h('span', { className: `stat-icon ${tone}` }, icon(iconName, 21))),
-    h('p', { className: 'stat-value' }, value),
+    h('p', valueProps, value),
     detail ? h('p', { className: 'stat-detail' }, detail) : null);
 }
 

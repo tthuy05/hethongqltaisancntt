@@ -1,6 +1,6 @@
 import { h } from '../utils/dom.js';
 import { button, pageHeader, statCard, badge, dataTable } from '../components.js';
-import { can, route, statusLabels, money } from './shared.js';
+import { can, route, statusLabels, money, moneyExact, moneyCompact } from './shared.js';
 import { ServiceError } from '../services/service-error.js';
 
 export async function dashboardPage(services) {
@@ -69,10 +69,47 @@ export async function dashboardPage(services) {
   // Financial KPI row (Least privilege: only shown when dashboard.cost.read is present and cost data loaded)
   let financialSection = null;
   if (canReadCost && costs) {
-    financialSection = h('div', { className: 'grid-kpis financial-kpis', style: 'margin-top: 1rem;' },
-      statCard({ label: 'Tổng giá trị tài sản', value: money(costs.totalAssetValue), detail: `${costs.missingPurchaseCostCount ?? '—'}/${costs.assetCount ?? '—'} tài sản chưa có giá; tổng phần đã biết`, iconName: 'chart', tone: 'blue' }),
-      statCard({ label: 'Chi phí bảo trì (YTD)', value: money(costs.maintenanceCostYtd), detail: `${costs.missingMaintenanceCostCountYtd ?? '—'}/${costs.maintenanceTicketCountYtd ?? '—'} phiếu chưa có chi phí; từ đầu năm đến hiện tại`, iconName: 'wrench', tone: 'amber' }),
-      statCard({ label: 'Dự toán thay thế', value: money(costs.totalBudgetForecast), detail: `${costs.missingEstimateCount ?? 0} tài sản chưa có ước tính`, iconName: 'devices', tone: 'green' })
+    const missingAssetCount = Number(costs.missingPurchaseCostCount) || 0;
+    const totalAssetCount = Number(costs.assetCount) || 0;
+    const assetDetail = missingAssetCount > 0
+      ? `${missingAssetCount}/${totalAssetCount} tài sản chưa có giá; tổng phần đã biết`
+      : `Tổng giá trị ${totalAssetCount} tài sản`;
+
+    const warningBanner = missingAssetCount > 0
+      ? h('div', { className: 'missing-price-alert', role: 'status' },
+          h('span', { 'aria-hidden': 'true' }, '⚠️'),
+          h('span', {}, `Lưu ý: Có ${missingAssetCount}/${totalAssetCount} tài sản chưa có giá mua. Tổng giá trị tài sản chỉ tính trên các tài sản đã có giá.`)
+        )
+      : null;
+
+    financialSection = h('div', { className: 'financial-section', style: 'margin-top: 1rem;' },
+      h('div', { className: 'grid-kpis financial-kpis' },
+        statCard({
+          label: 'Tổng giá trị tài sản',
+          value: moneyCompact(costs.totalAssetValue),
+          title: moneyExact(costs.totalAssetValue),
+          detail: assetDetail,
+          iconName: 'chart',
+          tone: 'blue'
+        }),
+        statCard({
+          label: 'Chi phí bảo trì (YTD)',
+          value: moneyCompact(costs.maintenanceCostYtd),
+          title: moneyExact(costs.maintenanceCostYtd),
+          detail: `${costs.missingMaintenanceCostCountYtd ?? '—'}/${costs.maintenanceTicketCountYtd ?? '—'} phiếu chưa có chi phí; từ đầu năm đến hiện tại`,
+          iconName: 'wrench',
+          tone: 'amber'
+        }),
+        statCard({
+          label: 'Dự toán thay thế',
+          value: moneyCompact(costs.totalBudgetForecast),
+          title: moneyExact(costs.totalBudgetForecast),
+          detail: `${costs.missingEstimateCount ?? 0} tài sản chưa có ước tính`,
+          iconName: 'devices',
+          tone: 'green'
+        })
+      ),
+      warningBanner
     );
   }
 

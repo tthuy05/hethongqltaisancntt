@@ -1,7 +1,7 @@
 import { h } from '../utils/dom.js';
 import { button, pageHeader, dataTable, pagination, showToast } from '../components.js';
 import { ServiceError } from '../services/service-error.js';
-import { can, route, queryFrom, setQuery, field, formAlert, openDialog, modulePermissions } from './shared.js';
+import { can, route, queryFrom, setQuery, field, formAlert, openDialog, modulePermissions, money, moneyCell } from './shared.js';
 
 const states = { PENDING: 'Chờ xử lý', IN_PROGRESS: 'Đang xử lý', RESOLVED: 'Đã sửa xong', FAILED: 'Không sửa được', CANCELLED: 'Đã hủy' };
 const priorities = { LOW: 'Thấp', MEDIUM: 'Trung bình', HIGH: 'Cao', CRITICAL: 'Khẩn cấp' };
@@ -9,7 +9,7 @@ const names = { create: 'Mở phiếu bảo trì', update: 'Cập nhật phiếu
 const grants = { create: 'maintenance.create', update: 'maintenance.update', assign: 'maintenance.assign', start: 'maintenance.work', resolve: 'maintenance.resolve', fail: 'maintenance.resolve', cancel: 'maintenance.cancel', cost: 'maintenance.update' };
 const terminal = item => ['RESOLVED', 'FAILED', 'CANCELLED'].includes(item.status);
 const time = value => value ? new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(value)) : '—';
-const money = value => value == null ? 'Chưa xác định' : new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
+
 const options = object => Object.entries(object).map(([value, label]) => ({ value, label }));
 const localTime = value => { const date = new Date(value); return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };
 
@@ -67,7 +67,7 @@ export async function maintenancePage(services, id = null) {
     root.append(h('h2', {}, 'Lịch sử xử lý'), dataTable({ label: 'Lịch sử bảo trì', rows: data.items, columns: [
       { label: 'Thời điểm', render: row => time(row.performedAtUtc) }, { key: 'eventType', label: 'Sự kiện' },
       { label: 'Trạng thái', render: row => states[row.toStatus] || '—' }, { key: 'comment', label: 'Nội dung' },
-      ...(policy().readCost ? [{ label: 'Chi phí', render: row => money(row.cost) }] : [])
+      ...(policy().readCost ? [{ label: 'Chi phí', render: row => moneyCell(row.cost) }] : [])
     ] }), pagination(data, page => navigate({ historyPage: page })));
   } else {
     const keyword = field({ name: 'maintenanceKeyword', label: 'Tìm phiếu', type: 'search', maxLength: 200, value: query.keyword || '' });

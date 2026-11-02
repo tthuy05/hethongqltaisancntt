@@ -141,3 +141,29 @@ export function validateUserRoles(dto = {}) {
   for (const key of Object.keys(dto)) if (!allowed.includes(key)) error(errors, key, 'Trường không thuộc lệnh gán vai trò.');
   return errors;
 }
+
+export function suggestAssetTypeCode(name) {
+  if (!name || typeof name !== 'string') return '';
+  return name
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 50);
+}
+
+export function normalizeAssetTypeCode(code) {
+  if (!code || typeof code !== 'string') return '';
+  return code
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toUpperCase()
+    .replace(/[^A-Z0-9_]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 50);
+}

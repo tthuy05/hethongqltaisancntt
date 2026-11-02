@@ -24,7 +24,7 @@ Tài liệu này chuẩn hóa và ghi nhận toàn diện cơ chế tự sinh m�
 > [!NOTE]
 > **Quy tắc phân định mã định danh:**
 > - Các mã quản lý nội bộ (`AST-xxxxxx`, `NVxxxxxx`, `PBxxxxxx`, `BTxxxxxx`, `PMxxxxxx`, `BQxxxxxx`) là các mã đại diện nghiệp vụ do hệ thống sinh tự động.
-> - `AssetType.Code` là **mã phân loại danh mục ngữ nghĩa cấu hình thủ công** (semantic category code như `LAPTOP`, `DESKTOP`, `SERVER`, `MONITOR`, `PRINTER`), được thiết kế để phân loại thiết bị, tính khấu hao và phục vụ nhập liệu Excel. Không thay đổi trường này thành sequence tuần tự. Tuy nhiên, sau khi tạo, `AssetType.Code` là bất biến (`Immutable(t.Code, x.Code)`), không cho phép chỉnh sửa đè khi cập nhật.
+> - `AssetType.Code` là **mã phân loại danh mục ngữ nghĩa cấu hình thủ công** (semantic category code như `LAPTOP`, `DESKTOP`, `SERVER`, `MONITOR`, `PRINTER`), được thiết kế để phân loại thiết bị, tính khấu hao và phục vụ nhập liệu Excel. Không thay đổi trường này thành sequence tuần tự. Khi tạo mới trên giao diện, hệ thống tự động gợi ý mã ngữ nghĩa viết hoa chuẩn hóa từ tên loại tài sản (VD: 'Laptop' -> `LAPTOP`, 'Máy in' -> `MAY_IN`), cho phép người dùng điều chỉnh trước khi lưu và kiểm tra trùng lặp trước khi gửi API. Tuy nhiên, sau khi tạo, `AssetType.Code` là bất biến (`Immutable(t.Code, x.Code)`), không cho phép chỉnh sửa đè khi cập nhật.
 > - Tuyệt đối không thay đổi Primary Key (`Id`), Foreign Key, Serial Number nhà sản xuất, License Key/Ciphertext của nhà cung cấp, Username, Email hoặc mã từ hệ thống bên ngoài.
 
 ---

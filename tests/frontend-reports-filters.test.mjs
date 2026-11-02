@@ -121,7 +121,7 @@ test('replacement estimated cost is shown only with the report cost grant', asyn
   try {
     const { services } = fixture(['reports.replacement.read', 'reports.cost.read']);
     services.reports.replacementRecommendations = async query => pageOf(query, [{ assetCode: 'AST-2', estimatedCost: null }]);
-    const root = await reportsPage(services); assert.match(root.textContent, /Chi phí dự kiến/); assert.match(root.textContent, /Chưa có thông tin/);
+    const root = await reportsPage(services); assert.match(root.textContent, /Chi phí dự kiến/); assert.match(root.textContent, /Chưa có giá/);
   } finally { dom.restore(); }
 });
 
