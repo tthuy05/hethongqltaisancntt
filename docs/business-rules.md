@@ -1,3 +1,7 @@
+## 02/11/2026 — Asset type auto code
+
+Mã loại tài sản nay do Backend tự sinh LTS000001, không cho nhập/sửa. Quyết định mới thay thế ngoại lệ mã ngữ nghĩa cũ. Chuyển mã cũ giữ Id/tên/FK và lưu audit; Excel nhận Id/tên không đổi.
+
 # Business Rules
 
 ## 27/10/2026 — License allocation runtime

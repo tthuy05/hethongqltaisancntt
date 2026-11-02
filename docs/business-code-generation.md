@@ -1,3 +1,13 @@
+## 02/11/2026 — Mã loại tài sản tự sinh (thay quyết định mã ngữ nghĩa)
+
+Theo yêu cầu mới, `AssetType.Code` do Backend cấp qua `asset_type_code_sequence`, dạng `LTS000001` (ít nhất 6 chữ số); client không quyết định mã. Tạo mới bỏ qua `code` client gửi; cập nhật vẫn bất biến. UI chỉ hiển thị thông báo tự sinh. Không đổi Id, tên, FK hoặc giá trị tài chính. Import Excel hiện dùng Id/tên nên không đổi contract.
+
+Chuyển dữ liệu cũ là tác vụ operator riêng, không chạy khi khởi động HTTP: `AssetTypeCodeConversion` cấp mã ngoài transaction rồi khóa `master-data`, khóa các dòng loại, kiểm tra snapshot/token và cập nhật all-or-nothing cùng audit `asset-types.code.convert`. Token được EF đổi để ngăn client cũ ghi đè. Bảng đối chiếu mã cũ/mới nằm trong audit; chạy lại không đổi mã chuẩn. Sequence có thể có khoảng trống khi rollback, không tái sử dụng mã. Demo seed tra mã cũ qua audit và giữ liên kết bằng Id. Không thêm bảng/cột/FK hoặc chỉnh migration đã apply.
+
+CLI Development: `--preview-asset-type-codes` chỉ đọc. `--convert-asset-type-codes` yêu cầu `Database__AssetTypeCodeConversion__Approved=true` và `--conversion-backup <result.json>`: receipt backup/restore PASS không quá 30 phút và checksum dump khớp. Không ghi credential vào lệnh/log. Chuẩn bị backup mới + restore drill; deploy Backend mới trước, xác minh revision rồi mới chuyển dữ liệu để tránh Backend cũ tiếp tục cấp mã thủ công. Không chạy seed/migration/deploy song song. Nếu lỗi, kiểm tra thực trạng/audit trước khi thử lại; không rollback database hoặc ghi đè bản sao lưu lên production.
+
+Trạng thái 03/11/2026: source và rehearsal isolated PASS (927 unit/280 integration/460 frontend; 163 opt-in SKIP). Backup/restore PASS; chuyển 8 loại trên bản phục hồi, chạy lại 0 và 18 bảng khác giữ nguyên hash. Shared rollout PLANNED; Neon/Render chưa đổi trong snapshot này. Các ghi chú mã ngữ nghĩa bên dưới là quyết định lịch sử đã được thay thế.
+
 # Tài Liệu Kỹ Thuật: Hệ Thống Tự Động Sinh Mã Quản Lý Nghiệp Vụ
 
 ## 26/10/2026 — Software catalog integration
@@ -19,12 +29,12 @@ Tài liệu này chuẩn hóa và ghi nhận toàn diện cơ chế tự sinh m�
 | **Phần mềm (Software)** | `Software` | `softwares` | `Code` | `code` | `PM000001` (PM + 6 số) | PostgreSQL Sequence `software_code_sequence` | Sẵn sàng cho module Full Schema |
 | **Bản quyền nội bộ (License)** | `SoftwareLicense` | `software_licenses` | `LicenseCode` | `license_code` | `BQ000001` (BQ + 6 số) | PostgreSQL Sequence `license_code_sequence` | Sẵn sàng cho module Full Schema |
 | **Cấp phát (Assignment)** | `AssetAssignment` | `asset_assignments` | *(Không có)* | *(Không có)* | *(Không áp dụng)* | Khóa chính `Id` (BIGINT IDENTITY) | Không thêm trường/cột mới theo giới hạn |
-| **Loại tài sản (AssetType)** | `AssetType` | `asset_types` | `Code` | `code` | Mã phân loại ngữ nghĩa (VD: `LAPTOP`) | Cấu hình thủ công có chủ đích | Giữ nguyên thủ công; bất biến khi sửa |
+| **Loại tài sản (AssetType)** | `AssetType` | `asset_types` | `Code` | `code` | `LTS000001` | `asset_type_code_sequence` | Backend tự sinh; bất biến sau cấp |
 
 > [!NOTE]
 > **Quy tắc phân định mã định danh:**
 > - Các mã quản lý nội bộ (`AST-xxxxxx`, `NVxxxxxx`, `PBxxxxxx`, `BTxxxxxx`, `PMxxxxxx`, `BQxxxxxx`) là các mã đại diện nghiệp vụ do hệ thống sinh tự động.
-> - `AssetType.Code` là **mã phân loại danh mục ngữ nghĩa cấu hình thủ công** (semantic category code như `LAPTOP`, `DESKTOP`, `SERVER`, `MONITOR`, `PRINTER`), được thiết kế để phân loại thiết bị, tính khấu hao và phục vụ nhập liệu Excel. Không thay đổi trường này thành sequence tuần tự. Khi tạo mới trên giao diện, hệ thống tự động gợi ý mã ngữ nghĩa viết hoa chuẩn hóa từ tên loại tài sản (VD: 'Laptop' -> `LAPTOP`, 'Máy in' -> `MAY_IN`), cho phép người dùng điều chỉnh trước khi lưu và kiểm tra trùng lặp trước khi gửi API. Tuy nhiên, sau khi tạo, `AssetType.Code` là bất biến (`Immutable(t.Code, x.Code)`), không cho phép chỉnh sửa đè khi cập nhật.
+> - `AssetType.Code` nay do Backend tự sinh `LTSxxxxxx`, bất biến sau khi cấp. Xem quyết định mới ở đầu tài liệu; thay thế ngoại lệ mã ngữ nghĩa trước đây.
 > - Tuyệt đối không thay đổi Primary Key (`Id`), Foreign Key, Serial Number nhà sản xuất, License Key/Ciphertext của nhà cung cấp, Username, Email hoặc mã từ hệ thống bên ngoài.
 
 ---

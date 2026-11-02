@@ -1,3 +1,4 @@
+using System.Text.Json;
 using ItAssetManagement.Application.Mvp;
 using ItAssetManagement.Domain.Entities;
 using ItAssetManagement.Infrastructure.Data;
@@ -23,8 +24,27 @@ public sealed class DevelopmentDemoSeed(AppDbContext db, IRepository repo, IUnit
             var types = await db.Set<AssetType>().Where(x => x.IsActive).ToListAsync(ct);
             var deptCodes = new[] { "IT", "ACCOUNTING", "HR", "SALES" };
             var typeCodes = new[] { "LAPTOP", "DESKTOP", "MONITOR", "PRINTER", "ROUTER", "SWITCH", "SERVER", "OTHER" };
+            var legacyTypes = new Dictionary<string, long>();
+            if (typeCodes.Any(code => types.All(t => t.Code != code)))
+            {
+                var conversions = await db.Set<AuditLog>().AsNoTracking()
+                    .Where(x => x.Action == "asset-types.code.convert" && x.EntityType == "AssetType" && x.Outcome == "SUCCESS")
+                    .ToListAsync(ct);
+                foreach (var entry in conversions)
+                {
+                    if (!long.TryParse(entry.EntityId, out var typeId) || entry.OldValuesJson == null) continue;
+                    using var old = JsonDocument.Parse(entry.OldValuesJson);
+                    if (old.RootElement.TryGetProperty("Code", out var code) && code.GetString() is { } oldCode)
+                    {
+                        if (legacyTypes.TryGetValue(oldCode, out var existing) && existing != typeId)
+                            throw new InvalidOperationException("Ambiguous historical asset type mapping.");
+                        legacyTypes[oldCode] = typeId;
+                    }
+                }
+            }
+            bool Matches(AssetType type, string code) => type.Code == code || legacyTypes.TryGetValue(code, out var id) && type.Id == id;
             if (deptCodes.Any(code => departments.Count(x => x.Code == code) != 1) ||
-                typeCodes.Any(code => types.Count(x => x.Code == code) != 1)) throw new InvalidOperationException("Active baseline masters required.");
+                typeCodes.Any(code => types.Count(x => Matches(x, code)) != 1)) throw new InvalidOperationException("Active baseline masters required.");
             var users = 0; var links = 0; var assets = 0;
             foreach (var (email, roleCode, password, name) in new[] {
                 (ManagerEmail, "SYSTEM_MANAGER", credentials.ManagerPassword, "Demo System Manager"),
@@ -53,13 +73,14 @@ public sealed class DevelopmentDemoSeed(AppDbContext db, IRepository repo, IUnit
             {
                 var code = Prefix + i.ToString("D3");
                 if (await db.Set<Asset>().AnyAsync(x => x.AssetCode.ToLower() == code.ToLower(), ct)) continue;
-                var type = types.Single(x => x.Code == typeCodes[(i - 1) % 8]);
+                var typeCode = typeCodes[(i - 1) % 8];
+                var type = types.Single(x => Matches(x, typeCode));
                 var dept = departments.Single(x => x.Code == deptCodes[((i - 1) / 8 + i - 1) % 4]);
                 var purchase = new DateOnly(2026, 10, 3).AddDays(-45 - i * 25);
                 var asset = new Asset { AssetCode = code, Name = $"Demo {type.Name} {i:D2}", AssetTypeId = type.Id,
                     OwningDepartmentId = dept.Id, SerialNumber = $"M1-DEMO-SERIAL-{i:D3}", Manufacturer = "Demo vendor",
                     Model = $"M1 sample {i:D2}", Specification = "Dữ liệu minh họa để diễn tập M1, không phải tài sản doanh nghiệp thật.",
-                    OperatingSystem = type.Code is "LAPTOP" or "DESKTOP" ? "Windows 11 (demo)" : null,
+                    OperatingSystem = typeCode is "LAPTOP" or "DESKTOP" ? "Windows 11 (demo)" : null,
                     Location = $"Phòng {dept.Name} — vị trí demo {i:D2}", PurchaseDate = purchase,
                     PurchaseCost = i % 6 == 0 ? null : i * 1250000m + .25m, WarrantyEndDate = purchase.AddMonths(i % 2 == 0 ? 12 : 36),
                     Notes = "M1-DEMO namespace; retained between runs. Không cấp phát hoặc bảo trì giả." };

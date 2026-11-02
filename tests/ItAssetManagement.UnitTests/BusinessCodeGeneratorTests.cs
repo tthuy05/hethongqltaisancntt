@@ -280,15 +280,16 @@ public sealed class BusinessCodeGeneratorTests
     }
 
     [Fact]
-    public void ControlledSequences_registry_contains_all_six_business_entities()
+    public void ControlledSequences_registry_contains_all_seven_business_entities()
     {
         var sequences = BusinessCodeGeneratorEngine.ControlledSequences;
-        Assert.Equal(6, sequences.Count);
+        Assert.Equal(7, sequences.Count);
 
         var names = sequences.Select(s => s.SequenceName).ToHashSet();
         Assert.Contains("asset_code_sequence", names);
         Assert.Contains("employee_code_sequence", names);
         Assert.Contains("department_code_sequence", names);
+        Assert.Contains("asset_type_code_sequence", names);
         Assert.Contains("maintenance_ticket_code_sequence", names);
         Assert.Contains("software_code_sequence", names);
         Assert.Contains("license_code_sequence", names);
@@ -297,6 +298,7 @@ public sealed class BusinessCodeGeneratorTests
         Assert.Contains("AST-", prefixes);
         Assert.Contains("NV", prefixes);
         Assert.Contains("PB", prefixes);
+        Assert.Contains("LTS", prefixes);
         Assert.Contains("BT", prefixes);
         Assert.Contains("PM", prefixes);
         Assert.Contains("BQ", prefixes);
@@ -319,6 +321,19 @@ public sealed class BusinessCodeGeneratorTests
     {
         public Task<string> NextAsync(CancellationToken ct) => Task.FromResult(code);
     }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("FORGED")]
+    public async Task Asset_type_creation_ignores_client_code_and_uses_generator(string? suppliedCode)
+    {
+        var repo = new StubMasterRepo();
+        var service = new MasterService(repo, new DirectUnitOfWork(), new NoOpAudit(), new AdminActor(), assetTypeCodes: new StubTypeGenerator());
+        var result = await service.WriteAsync(false, null, new MasterRequest { Code = suppliedCode, Name = "Printer" }, default);
+        Assert.Equal("LTS000123", result.Code);
+    }
+    private sealed class StubTypeGenerator : IAssetTypeCodeGenerator
+    { public Task<string> NextAsync(CancellationToken ct) => Task.FromResult("LTS000123"); }
 
     private sealed class DirectUnitOfWork : IUnitOfWork
     {
@@ -354,6 +369,7 @@ public sealed class BusinessCodeGeneratorTests
 
         public void Add<T>(T entity) where T : class
         {
+            if (entity is AssetType t) { t.Id = Types.Count + 1; t.RowVersion = new byte[16]; Types.Add(t); }
             if (entity is Department d)
             {
                 d.Id = Departments.Count + 1;

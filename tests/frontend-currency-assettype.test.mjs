@@ -259,90 +259,24 @@ test('dashboardPage does not render warning banner when all assets have purchase
   }
 });
 
-test('masterPage asset-types form auto-suggests semantic code and checks duplicates', async () => {
+test('asset type create leaves code to the backend', async () => {
   const dom = installDom('/asset-types');
   try {
-    const existing = [
-      { id: 1, code: 'LAPTOP', name: 'Laptop', isActive: true, defaultUsefulLifeMonths: 36 },
-      { id: 2, code: 'DESKTOP', name: 'Desktop', isActive: true, defaultUsefulLifeMonths: 48 }
-    ];
-
-    let createdDto = null;
-    const services = {
-      mode: 'api',
-      auth: {
-        session: {
-          id: 1,
-          displayName: 'Admin User',
-          permissions: ['asset-types.read', 'asset-types.create', 'asset-types.update']
-        }
-      },
-      assetTypes: {
-        list: async () => ({ items: [...existing], totalPages: 1 }),
-        get: async id => existing.find(x => x.id === id),
-        create: async dto => {
-          createdDto = dto;
-          return { id: 3, ...dto };
-        }
-      }
-    };
-
-    const page = await masterPage(services, 'assetTypes');
-    dom.body.append(page);
-
-    // Click "Thêm loại tài sản"
-    const addBtn = findButton(page, 'Thêm loại tài sản');
-    assert.ok(addBtn, 'Add button should exist');
-    addBtn.fire('click');
-
-    // Wait for dialog to open
-    await until(() => descendants(dom.body).some(n => n.tagName === 'DIALOG'));
-    const dialog = descendants(dom.body).find(n => n.tagName === 'DIALOG');
-    assert.ok(dialog, 'Dialog should be open');
-
-    const nameInput = descendants(dialog).find(n => n.tagName === 'INPUT' && n.getAttribute('name') === 'name');
-    const codeInput = descendants(dialog).find(n => n.tagName === 'INPUT' && n.getAttribute('name') === 'code');
-    assert.ok(nameInput, 'Name input should exist');
-    assert.ok(codeInput, 'Code input should exist');
-
-    // 1. Verify hint text on code field
-    assert.match(dialog.textContent, /Mã được gợi ý tự động từ tên và có thể điều chỉnh trước khi lưu/);
-
-    // 2. Type "Màn hình Dell" in name input -> triggers auto-suggest to "MAN_HINH_DELL"
-    nameInput.value = 'Màn hình Dell';
-    nameInput.fire('input');
-    assert.equal(codeInput.value, 'MAN_HINH_DELL');
-
-    // 3. User manually edits code input -> codeManuallyEdited becomes true
-    codeInput.value = 'DELL_MONITOR';
-    codeInput.fire('input');
-
-    // Type further in name input -> does not overwrite user's custom code
-    nameInput.value = 'Màn hình Dell Ultrasharp';
-    nameInput.fire('input');
-    assert.equal(codeInput.value, 'DELL_MONITOR');
-
-    // 4. Test duplicate check: set code to existing code 'LAPTOP'
-    codeInput.value = 'LAPTOP';
-    codeInput.fire('input');
-
-    const form = descendants(dialog).find(n => n.tagName === 'FORM');
-    form.fire('submit');
-
-    // Should display duplicate error and NOT call create
-    assert.equal(createdDto, null, 'create() must not be called when duplicate code exists');
-    assert.match(dialog.textContent, /đã tồn tại/);
-
-    // 5. Change to a non-duplicate code and submit
-    codeInput.value = 'MONITOR_DELL';
-    codeInput.fire('input');
-    form.fire('submit');
-
-    await until(() => createdDto !== null);
-    assert.ok(createdDto, 'create() should be called with valid non-duplicate code');
-    assert.equal(createdDto.code, 'MONITOR_DELL');
-    assert.equal(createdDto.name, 'Màn hình Dell Ultrasharp');
-  } finally {
-    dom.restore();
-  }
+    let created;
+    const services = { mode: 'api', auth: { session: { id: 1, permissions: ['asset-types.create'] } },
+      assetTypes: { list: async () => ({items:[],totalPages:1}), create: async dto => { created=dto;return {id:1,code:'LTS000001',...dto}; } } };
+    const page=await masterPage(services,'assetTypes');dom.body.append(page);
+    findButton(page,'Thêm loại tài sản').fire('click');
+    await until(()=>descendants(dom.body).some(n=>n.tagName==='DIALOG'));
+    const dialog=descendants(dom.body).find(n=>n.tagName==='DIALOG');
+    const inputs=descendants(dialog);
+    const code=inputs.find(n=>n.tagName==='INPUT'&&n.getAttribute('name')==='code');
+    assert.equal(code.readOnly,true);
+    assert.match(dialog.textContent,/LTSxxxxxx/);
+    inputs.find(n=>n.tagName==='INPUT'&&n.getAttribute('name')==='name').value='Máy in';
+    code.value='FORGED'; // Even a DOM edit is not sent.
+    inputs.find(n=>n.tagName==='FORM').fire('submit');
+    await until(()=>created);
+    assert.equal(created.name,'Máy in');assert.equal(Object.hasOwn(created,'code'),false);
+  } finally {dom.restore();}
 });

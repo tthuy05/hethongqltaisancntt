@@ -48,6 +48,7 @@ public static class BusinessCodeGeneratorEngine
     {
         new("asset_code_sequence", "AST-", "assets", "asset_code"),
         new("employee_code_sequence", "NV", "users", "employee_code"),
+        new("asset_type_code_sequence", "LTS", "asset_types", "code"),
         new("department_code_sequence", "PB", "departments", "code"),
         new("maintenance_ticket_code_sequence", "BT", "maintenance_tickets", "ticket_code"),
         new("software_code_sequence", "PM", "softwares", "code"),
@@ -264,4 +265,11 @@ public sealed class LicenseCodeGenerator(AppDbContext db) : ILicenseCodeGenerato
             "license_code",
             code => x => x.LicenseCode.ToLower() == code.ToLower(),
             ct);
+}
+
+public sealed class AssetTypeCodeGenerator(AppDbContext db) : IAssetTypeCodeGenerator
+{
+    public Task<string> NextAsync(CancellationToken ct) =>
+        BusinessCodeGeneratorEngine.NextCodeAsync<AssetType>(db, "asset_type_code_sequence", "LTS", "asset_types", "code",
+            code => x => x.Code.ToLower() == code.ToLower(), ct);
 }

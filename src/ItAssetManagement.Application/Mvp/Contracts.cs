@@ -53,6 +53,7 @@ public interface IPasswordService
 public interface ITokenIssuer { LoginResponse Issue(CurrentUser user, int tokenVersion); }
 public interface IAssetCodeGenerator { Task<string> NextAsync(CancellationToken ct); }
 public interface IEmployeeCodeGenerator { Task<string> NextAsync(CancellationToken ct); }
+public interface IAssetTypeCodeGenerator { Task<string> NextAsync(CancellationToken ct); }
 public interface IDepartmentCodeGenerator { Task<string> NextAsync(CancellationToken ct); }
 public interface IMaintenanceTicketCodeGenerator { Task<string> NextAsync(CancellationToken ct); }
 public interface ISoftwareCodeGenerator { Task<string> NextAsync(CancellationToken ct); }

@@ -2,7 +2,7 @@ using ItAssetManagement.Domain.Entities;
 
 namespace ItAssetManagement.Application.Mvp;
 
-public sealed class MasterService(IRepository repo, IUnitOfWork uow, IAuditWriter audit, IActor actor, IDepartmentCodeGenerator? departmentCodes = null)
+public sealed class MasterService(IRepository repo, IUnitOfWork uow, IAuditWriter audit, IActor actor, IDepartmentCodeGenerator? departmentCodes = null, IAssetTypeCodeGenerator? assetTypeCodes = null)
 {
     private IQueryable<MasterDto> Query(bool department)
     {
@@ -33,6 +33,10 @@ public sealed class MasterService(IRepository repo, IUnitOfWork uow, IAuditWrite
         if (department && id == null && departmentCodes != null)
         {
             x.Code = await departmentCodes.NextAsync(ct);
+        }
+        else if (!department && id == null)
+        {
+            x.Code = await (assetTypeCodes ?? throw new InvalidOperationException("Asset type generator is not configured.")).NextAsync(ct);
         }
         else if (id != null && string.IsNullOrWhiteSpace(x.Code))
         {
