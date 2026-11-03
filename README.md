@@ -2,6 +2,45 @@
 
 **Cập nhật 27/10/2026:** main `c8baff1` đã có source License CRUD (PR #9). Cấp/thu hồi/điều chuyển bản quyền đã nối và nghiệm thu local trên nhánh `feature/license-allocation`; chưa mở production. Có cờ cấp phát riêng và kiểm soát số seat/phiên bản/audit. [Phạm vi và nghiệm thu](docs/license-catalog.md), [tiến độ](PROJECT_STATUS.md). Các checkpoint phía dưới là lịch sử.
 
+## Cập nhật 03/11/2026 — Nghiệm thu giao diện vòng 1 (Thiện)
+
+Nhánh `feat/thien-continue` (từ `main`), **chưa merge, chưa deploy Render**. Sửa theo kết quả tự nghiệm thu trên trình duyệt và góp ý mentor về Báo cáo:
+
+- **Báo cáo:** gộp 7 tab thành **4 nhóm**: *Tài sản* (Kiểm kê, Tổng hợp) · *Cấp phát & Bảo trì* (Lịch sử phân bổ, Lịch sử bảo trì) · *Hạn bảo hành & License* · *Chi phí & Thay thế* (Chi phí & Ngân sách, Đề xuất thay thế). Giá trị `?tab=` trên URL giữ nguyên, nên link cũ và Xuất Excel vẫn chạy. **Bấm vào một dòng** sẽ mở chi tiết tài sản (người đang dùng, lịch sử cấp phát, lịch sử bảo trì) hoặc chi tiết phiếu bảo trì. Phòng ban và loại tài sản được chọn theo tên thay vì nhập ID.
+- **Form dùng chung:**
+  - Ô tìm kiếm lọc ngay khi gõ và khi bấm Enter. Kết quả hiện thành danh sách mở sẵn; chỉ có một kết quả thì tự chọn.
+  - Lỗi nhập hiện màu đỏ ngay dưới ô bị sai.
+  - Ô tiền hiển thị `20.000.000 ₫` nhưng vẫn gửi số thường lên API.
+  - Ô số không nhận số âm.
+  - Bôi đen chữ rồi thả chuột ra ngoài không còn làm đóng hộp thoại.
+- **Từng trang:**
+  - Chi tiết tài sản hiện thẳng lịch sử phân bổ và bảo trì.
+  - Trang chi tiết cấp phát được làm lại.
+  - Bảo trì ẩn nút *Hiệu chỉnh chi phí* với phiếu đã hủy.
+  - Chi tiết phần mềm liệt kê các bản quyền của phần mềm đó.
+  - Chi tiết bản quyền có phần phân bổ seat.
+  - Đề xuất thay thế hiện mã và tên tài sản, kèm cột *Hiện hành / Lịch sử*.
+  - Tổng quan bỏ inline style vi phạm CSP, sửa lỗi đỏ trong Console.
+- **CLI chỉ dành cho Development:** thêm `--seed-reporting-permissions` và `--seed-replacement-permissions`. Mỗi lần chạy chỉ dùng một cờ, và chỉ chạy ở môi trường Development.
+- **Kiểm thử:** 446/446 test Node frontend PASS và `frontend-check` PASS (61 syntax, 65 CSP). Vẫn cần kiểm tra lại trên trình duyệt sau mỗi lần build.
+
+Chạy local với đủ module đang thử nghiệm (PowerShell, tại thư mục gốc repo):
+
+```powershell
+pnpm build
+$env:ASPNETCORE_ENVIRONMENT='Development'
+$env:Features__ReportingV2__Enabled='true'
+$env:Features__AssignmentApi__Enabled='true'
+$env:Features__MaintenanceApi__Enabled='true'
+$env:Features__SoftwareApi__Enabled='true'
+$env:Features__LicenseApi__Enabled='true'
+$env:Features__LicenseAllocationApi__Enabled='true'
+$env:Features__ReplacementRuleApi__Enabled='true'
+dotnet run --project src/ItAssetManagement.Api
+```
+
+Sau đó mở `http://localhost:5080/?reports=1&software=1&license=1&allocation=1&replacement=1`. Các tham số trên URL chỉ có tác dụng ở localhost và dùng để hiện menu đang thử nghiệm. Module Bản quyền cần khoá mã hoá license key trong user-secrets: chạy `scripts/prepare-license-encryption.ps1` một lần, **không** đổi khoá trên Render. Giao diện được phục vụ từ `artifacts/frontend`, nên sau khi sửa JS/CSS phải chạy lại `pnpm build` rồi bấm Ctrl+F5.
+
 ## Trạng thái mới nhất — 26/10/2026
 
 - **Đã chạy trên Render:** đăng nhập/email kích hoạt, tài sản, danh mục, phân quyền, Import/Export Excel và các luồng Cấp phát/Bảo trì. Main/Render tại `281fe2f`; CI/Docker PASS, revision đã đối chiếu. [Kết quả rollout](docs/assignment-safe-rollout.md).

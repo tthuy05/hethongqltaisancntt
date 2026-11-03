@@ -1,3 +1,5 @@
+// Detail dialogs opened from report rows: one asset or one maintenance ticket.
+// Read-only; cost fields follow the same grants as the full pages.
 import { h } from '../utils/dom.js';
 import { badge, button, dataTable, loadingState } from '../components.js';
 import { can, date, money, formAlert, openDialog, route, modulePermissions } from '../pages/shared.js';

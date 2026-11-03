@@ -1,3 +1,6 @@
+// Read-only activity of one asset (assignments, maintenance, current holder).
+// Shared by the asset detail tabs and the report detail dialog; each part is
+// shown only when its module flag is on and the viewer has the read grant.
 import { h } from '../utils/dom.js';
 import { badge, dataTable, pagination, loadingState } from '../components.js';
 import { can, formAlert, modulePermissions } from '../pages/shared.js';
