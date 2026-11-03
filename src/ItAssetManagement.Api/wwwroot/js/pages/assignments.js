@@ -105,14 +105,19 @@ function assignmentDialog(services, mode, row, ownerAlive) {
   const body = h('div', { className: 'dialog-body' }, row ? h('p', {}, `${row.assetCode || ''} — ${row.assetName || ''} · ${target(row)}`) : null);
   const empty = label => [{ value: '', label }];
   let asset, kind, recipient, search, expected;
+  const assetStatus = h('p', { className: 'field-hint', 'aria-live': 'polite' }), recipientStatus = h('p', { className: 'field-hint', 'aria-live': 'polite' });
+  const found = (node, count, keyword, none) => node.replaceChildren(count ? `Tìm thấy ${count} kết quả${keyword ? ` cho «${keyword}»` : ''}. Bấm vào ô bên dưới để chọn.` : none(keyword));
   const replaceOptions = (input, values, label) => { input.replaceChildren(...[...empty(label), ...values].map(item => h('option', { value: item.value }, item.label))); input.value = ''; };
   async function lookupAssets() {
     if (!current() || !can(services, 'assets.read')) return;
     const sequence = ++assetSequence;
     try {
-      const result = await services.assets.list({ keyword: fields.assetSearch.input.value.trim(), status: 'InStock', page: 1, pageSize: 20 });
+      const keyword = fields.assetSearch.input.value.trim();
+      const result = await services.assets.list({ keyword, status: 'InStock', page: 1, pageSize: 20 });
       if (!current() || !can(services, 'assets.read') || sequence !== assetSequence) return;
-      replaceOptions(asset.input, result.items.filter(item => !item.isArchived).map(item => ({ value: item.id, label: `${item.assetCode} — ${item.name}` })), 'Chọn tài sản trong kho');
+      const items = result.items.filter(item => !item.isArchived);
+      replaceOptions(asset.input, items.map(item => ({ value: item.id, label: `${item.assetCode} — ${item.name}` })), 'Chọn tài sản trong kho');
+      found(assetStatus, items.length, keyword, text => text ? `Không có tài sản Trong kho khớp «${text}». Kiểm tra tài sản đã được tạo chưa, hoặc tài sản đang được cấp phát / bảo trì / đã ngừng sử dụng.` : 'Kho hiện không có tài sản nào ở trạng thái Trong kho.');
     } catch (error) { if (current() && sequence === assetSequence && error.code !== 'SESSION_CHANGED') feedback.replaceChildren(formAlert(error.message)); }
   }
   async function lookupRecipients() {
@@ -125,23 +130,25 @@ function assignmentDialog(services, mode, row, ownerAlive) {
       const result = type === 'user' ? await services.users.lookup({ keyword: search.input.value.trim(), page: 1, pageSize: 20 }) :
         await services.departments.list({ keyword: search.input.value.trim(), status: 'Active', page: 1, pageSize: 20 });
       if (!current() || sequence !== searchSequence || kind.input.value !== type || !can(services, grant)) return;
-      replaceOptions(recipient.input, result.items.map(item => ({ value: item.id, label: item.displayName || item.name })), 'Chọn người/phòng ban nhận');
+      const keyword = search.input.value.trim();
+      replaceOptions(recipient.input, result.items.map(item => ({ value: item.id, label: [item.displayName || item.name, item.departmentName || item.code].filter(Boolean).join(' — ') })), 'Chọn người/phòng ban nhận');
+      found(recipientStatus, result.items.length, keyword, text => type === 'user' ? `Không có nhân viên đang hoạt động${text ? ` khớp «${text}»` : ''}. Tài khoản mới chỉ hiện sau khi đã kích hoạt.` : `Không có phòng ban đang hoạt động${text ? ` khớp «${text}»` : ''}.`);
     } catch (error) { if (current() && sequence === searchSequence && error.code !== 'SESSION_CHANGED') feedback.replaceChildren(formAlert(error.message)); }
   }
   if (mode === 'assign') {
-    fields.assetSearch = field({ name: 'assetSearch', label: 'Tìm tài sản trong kho', type: 'search', maxLength: 200 });
+    fields.assetSearch = field({ name: 'assetSearch', label: 'Tìm tài sản trong kho', type: 'search', maxLength: 200, hint: 'Gõ một phần mã, tên hoặc serial rồi bấm Tìm tài sản. Để trống để xem tài sản Trong kho.' });
     asset = field({ name: 'assignmentAsset', label: 'Tài sản', required: true, options: empty('Chọn tài sản trong kho') });
-    body.append(fields.assetSearch.element, button('Tìm tài sản', { kind: 'secondary', onClick: lookupAssets }), asset.element);
+    body.append(fields.assetSearch.element, button('Tìm tài sản', { kind: 'secondary', onClick: lookupAssets }), asset.element, assetStatus);
   }
   if (mode !== 'return') {
     const choices = [can(services, 'users.lookup') ? { value: 'user', label: 'Nhân viên' } : null,
       can(services, 'departments.read') ? { value: 'department', label: 'Phòng ban' } : null].filter(Boolean);
     kind = field({ name: 'assignmentTargetType', label: 'Cấp cho', value: choices[0]?.value || '', options: choices });
     recipient = field({ name: 'assignmentRecipient', label: 'Người/phòng ban nhận', required: true, options: empty('Chọn người/phòng ban nhận') });
-    search = field({ name: 'recipientSearch', label: 'Tìm người/phòng ban nhận', type: 'search', maxLength: 200 });
+    search = field({ name: 'recipientSearch', label: 'Tìm người/phòng ban nhận', type: 'search', maxLength: 200, hint: 'Gõ một phần tên rồi bấm Tìm người nhận. Để trống để xem danh sách.' });
     kind.input.addEventListener('change', () => { search.input.value = ''; void lookupRecipients(); });
     expected = field({ name: 'expectedReturnAt', label: 'Hạn trả dự kiến', type: 'datetime-local' });
-    body.append(kind.element, search.element, button('Tìm người nhận', { kind: 'secondary', onClick: lookupRecipients }), recipient.element, expected.element);
+    body.append(kind.element, search.element, button('Tìm người nhận', { kind: 'secondary', onClick: lookupRecipients }), recipient.element, recipientStatus, expected.element);
   }
   if (mode !== 'assign') {
     fields.condition = field({ name: 'returnCondition', label: 'Tình trạng khi bàn giao / thu hồi', maxLength: 200 });
