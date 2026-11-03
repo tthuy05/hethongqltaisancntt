@@ -4,6 +4,7 @@ import { allCatalog, can, hasPermission, route, queryFrom, setQuery, option, dat
 import { createAssetStatusHistory } from '../components/asset-status-history.js';
 import { assetRetireDialog, canRetireAsset } from '../components/asset-retire-dialog.js';
 import { assetExcelActions } from '../components/asset-excel.js';
+import { assetAssignmentHistory, assetMaintenanceHistory, canReadAssignments, canReadMaintenance, currentHolder } from '../components/asset-activity.js';
 
 export async function assetListPage(services) {
   const actorId = services.auth?.session?.id;
@@ -110,18 +111,15 @@ export async function assetDetailPage(services, id) {
   const tabs = h('div', { className: 'tab-list', role: 'tablist', 'aria-label': 'Lịch sử tài sản' });
   const panel = h('div', { className: 'card-body', role: 'tabpanel', id: 'history-panel', tabindex: 0, 'aria-live': 'polite' });
   const history = [{ key: 'assignment', label: 'Phân bổ', note: 'Assignment History — PLANNED. Chưa kết nối API lịch sử phân bổ.' }, { key: 'maintenance', label: 'Bảo trì', note: 'Maintenance History — PLANNED. Chưa kết nối API bảo trì.' }, { key: 'status', label: 'Trạng thái' }];
-  let statusHistory = null;
+  let statusHistory = null, activity = null;
   const choose = key => {
-    statusHistory?.dispose(); statusHistory = null;
+    statusHistory?.dispose(); statusHistory = null; activity?.dispose(); activity = null;
     for (const child of tabs.children) { const selected = child.dataset.key === key; child.classList.toggle('active', selected); child.setAttribute('aria-selected', String(selected)); child.tabIndex = selected ? 0 : -1; }
     panel.setAttribute('aria-labelledby', 'history-tab-' + key);
-    if (key === 'assignment' && services.assignmentEnabled === true && can(services, 'assignments.read')) {
-      panel.replaceChildren(h('p', { className: 'meta' }, 'Xem đầy đủ các lần cấp phát, thu hồi và điều chuyển của tài sản.'),
-        button('Xem lịch sử cấp phát', { kind: 'secondary', onClick: () => {
-          if (panel.isConnected && window.location.hash === pageHash && services.auth?.session?.id === actorId &&
-              can(services, 'assets.read') && can(services, 'assignments.read') && services.assignmentEnabled === true)
-            route('/assignments?assetId=' + id);
-        } }));
+    if (key === 'assignment' && canReadAssignments(services) || key === 'maintenance' && canReadMaintenance(services)) {
+      activity = key === 'assignment' ? assetAssignmentHistory(services, id) : assetMaintenanceHistory(services, id);
+      panel.replaceChildren(h('p', { className: 'meta tab-panel-note' }, key === 'assignment' ? 'Các lần cấp phát, thu hồi và điều chuyển của tài sản, mới nhất trước.' : 'Các phiếu bảo trì của tài sản, mới nhất trước. Bấm mã phiếu để xem chi tiết.'), activity.element);
+      void activity.load();
       return;
     }
     if (key !== 'status') { panel.textContent = history.find(item => item.key === key).note; return; }
@@ -137,8 +135,10 @@ export async function assetDetailPage(services, id) {
   } })));
   choose('assignment');
   const info = (label, value) => h('div', { className: 'detail-item' }, h('dt', {}, label), h('dd', {}, value || 'Chưa có thông tin'));
+  const holder = h('dd', {}, asset.currentAssignment?.user?.displayName || (services.mode === 'mock' ? 'Chưa phân bổ' : 'Chưa có dữ liệu cấp phát'));
+  if (!asset.currentAssignment) void currentHolder(services, id).then(text => { if (text && holder.isConnected) holder.textContent = text; });
   return h('div', {}, pageHeader(asset.name, asset.assetCode + ' · Thông tin thiết bị', { eyebrow: 'Chi tiết tài sản', actions: [button('Danh sách', { kind: 'secondary', iconName: 'arrow-left', onClick: () => route('/assets') }), ...(can(services, 'assets.update') ? [button('Chỉnh sửa', { iconName: 'pencil', onClick: () => route('/assets/' + asset.id + '/edit') })] : []), ...(canRetireAsset(services, asset) ? [button('Ngừng sử dụng', { kind: 'danger', onClick: () => assetRetireDialog(services, asset, () => window.dispatchEvent(new Event('frontend-refresh'))) })] : [])] }),
-    h('section', { className: 'card' }, h('div', { className: 'card-header' }, h('h2', {}, 'Thông tin chung'), badge(asset.status)), h('dl', { className: 'card-body detail-grid' }, info('Mã tài sản', asset.assetCode), info('Tên tài sản', asset.name), info('Loại tài sản', asset.assetType?.name), info('Serial Number', asset.serialNumber), info('Thương hiệu', asset.brand), info('Model', asset.model), info('Phòng ban sở hữu', asset.owningDepartment?.name), info('Vị trí', asset.location), info('Người sử dụng', asset.currentAssignment?.user?.displayName || (services.mode === 'mock' ? 'Chưa phân bổ' : 'Chưa có dữ liệu cấp phát')))),
+    h('section', { className: 'card' }, h('div', { className: 'card-header' }, h('h2', {}, 'Thông tin chung'), badge(asset.status)), h('dl', { className: 'card-body detail-grid' }, info('Mã tài sản', asset.assetCode), info('Tên tài sản', asset.name), info('Loại tài sản', asset.assetType?.name), info('Serial Number', asset.serialNumber), info('Thương hiệu', asset.brand), info('Model', asset.model), info('Phòng ban sở hữu', asset.owningDepartment?.name), info('Vị trí', asset.location), h('div', { className: 'detail-item' }, h('dt', {}, 'Người sử dụng'), holder))),
     h('div', { className: 'dashboard-grid' }, h('section', { className: 'card' }, h('div', { className: 'card-header' }, h('h2', {}, 'Thông tin kỹ thuật')), h('dl', { className: 'card-body detail-grid' }, info('Cấu hình', asset.specification), info('Hệ điều hành', asset.operatingSystem))), h('section', { className: 'card' }, h('div', { className: 'card-header' }, h('h2', {}, 'Mua sắm & bảo hành')), h('dl', { className: 'card-body detail-grid' }, info('Ngày mua', date(asset.purchaseDate)), can(services, 'assets.cost.read') ? info('Giá mua', money(asset.purchasePrice)) : null, info('Hết bảo hành', date(asset.warrantyExpirationDate)), info('Ngày cập nhật', date(asset.updatedAt))))),
     h('section', { className: 'card' }, h('div', { className: 'card-header' }, h('h2', {}, 'Ghi chú')), h('p', { className: 'card-body whitespace-pre-wrap' }, asset.note || 'Chưa có ghi chú.')),
     h('section', { className: 'card' }, h('div', { className: 'card-header' }, h('h2', {}, 'Lịch sử tài sản')), tabs, panel));

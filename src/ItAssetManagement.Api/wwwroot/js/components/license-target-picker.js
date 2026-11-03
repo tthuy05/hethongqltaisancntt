@@ -1,6 +1,6 @@
 import { h } from '../utils/dom.js';
 import { button } from '../components.js';
-import { hasPermission, option, busy } from '../pages/shared.js';
+import { hasPermission, option, busy, showChoices } from '../pages/shared.js';
 import { ServiceError } from '../services/service-error.js';
 
 let serial = 0;
@@ -29,12 +29,15 @@ export function licenseTargetPicker(services, { enabled = false, licenseType, al
     if (!selected || loadedTarget !== type.value || !types.includes(type.value) || !alive() || !authorized(type.value)) { selection.value = ''; onChange(null); return; }
     onChange(Object.freeze({ userId: type.value === 'user' ? id : null, assetId: type.value === 'asset' ? id : null }));
   } }, option('', 'Chưa chọn target'));
-  const clear = () => { generation++; loadedTarget = null; choices = new Map(); selection.replaceChildren(option('', 'Chưa chọn target')); selection.value = ''; selection.disabled = true; onChange(null); };
+  const clear = () => { generation++; loadedTarget = null; choices = new Map(); selection.replaceChildren(option('', 'Chưa chọn target')); selection.value = ''; selection.disabled = true; showChoices(selection, 0); onChange(null); };
   const type = h('select', { id: prefix + '-type', className: 'select', onChange: () => { clear(); feedback.textContent = 'Tìm lại target cho loại đã chọn.'; } },
     types.map(value => option(value, labels[value])));
   type.value = types[0];
   const keyword = h('input', { id: prefix + '-keyword', className: 'input', maxLength: 200, placeholder: 'Tên, mã người dùng hoặc tài sản…',
-    onKeyDown: event => { if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); performSearch(event); } } });
+    onKeyDown: event => { if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); window.clearTimeout?.(typing); performSearch(event); } },
+    // Search while typing, after a short pause.
+    onInput: () => { window.clearTimeout?.(typing); typing = window.setTimeout(() => { if (alive()) performSearch({ preventDefault() {} }); }, 350); } });
+  let typing = 0;
   const search = button('Tìm target', { type: 'button', kind: 'secondary', onClick: performSearch });
   const authorized = target => {
     const user = services.auth?.session;
@@ -69,7 +72,9 @@ export function licenseTargetPicker(services, { enabled = false, licenseType, al
         }
         choices = candidates; loadedTarget = target; selection.replaceChildren(option('', 'Chọn ' + labels[target].toLowerCase()),
           ...[...choices].map(([id, label]) => option(id, label))); selection.value = ''; selection.disabled = !choices.size;
-        feedback.textContent = choices.size ? 'Chọn target từ kết quả; backend còn phải kiểm eligibility/capacity.' : 'Không tìm thấy target phù hợp.';
+        showChoices(selection, choices.size);
+        if (choices.size === 1) { const [id] = choices.keys(); selection.value = String(id); onChange(Object.freeze({ userId: target === 'user' ? id : null, assetId: target === 'asset' ? id : null })); }
+        feedback.textContent = choices.size === 1 ? 'Tìm thấy 1 kết quả — đã tự chọn.' : choices.size ? `Tìm thấy ${choices.size} kết quả. Bấm để chọn.` : 'Không tìm thấy người/tài sản phù hợp.';
       } catch {
         if (revision === generation && alive()) { clear(); feedback.textContent = 'Không tải được target. Kiểm tra quyền/kết nối và thử lại.'; }
       }

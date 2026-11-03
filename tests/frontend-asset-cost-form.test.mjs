@@ -39,9 +39,10 @@ test('nonfinancial create omits price rather than inventing zero or requesting a
 test('financial editor retains price validation and can explicitly clear unknown cost', async () => {
   const dom = installDom('/assets/5/edit'); try {
     const services = source(['assets.read', 'assets.update', 'assets.cost.read']); const root = await assetFormPage(services, 5); dom.body.append(root);
-    assert.equal(field(root, 'purchasePrice').value, 1200.25);
-    field(root, 'purchasePrice').value = '1200.251'; descendants(root).find(n => n.tagName === 'FORM').fire('submit');
-    assert.equal(services.writes.length, 0); assert.match(root.textContent, /tối đa 2 chữ số/);
+    // Money input keeps the machine value readable while showing "1.200,25" to the user.
+    assert.equal(field(root, 'purchasePrice').value, '1200.25');
+    // A third decimal cannot be entered: the formatter keeps at most 2 digits after the comma.
+    field(root, 'purchasePrice').value = '1200.251'; assert.equal(field(root, 'purchasePrice').value, '1200.25');
     field(root, 'purchasePrice').value = ''; descendants(root).find(n => n.tagName === 'FORM').fire('submit');
     await until(() => !submit(root).disabled); assert.equal(services.writes.length, 1); assert.equal(services.writes[0].dto.purchasePrice, null);
   } finally { dom.restore(); }
