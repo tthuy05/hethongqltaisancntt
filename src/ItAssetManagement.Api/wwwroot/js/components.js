@@ -41,12 +41,14 @@ export function badge(status) {
   return h('span', { className: `badge ${tone}` }, h('span', { className: 'badge-dot' }), label);
 }
 
-export function dataTable({ columns, rows, emptyMessage = 'Không có dữ liệu phù hợp.', label = 'Danh sách dữ liệu' }) {
+export function dataTable({ columns, rows, emptyMessage = 'Không có dữ liệu phù hợp.', label = 'Danh sách dữ liệu', onRowClick = null }) {
+  // A clickable row opens details; clicks on its own buttons/links keep their meaning.
+  const rowClick = row => onRowClick ? event => { if (!event?.target?.closest?.('button, a, input, select, label')) onRowClick(row); } : null;
   const table = h('table', { className: 'data-table', 'aria-label': label },
     h('thead', {}, h('tr', {}, columns.map(column => h('th', {
       scope: 'col', className: column.className || '',
     }, column.label)))),
-    h('tbody', {}, rows.length ? rows.map((row, index) => h('tr', { dataset: { id: row.id ?? index } },
+    h('tbody', {}, rows.length ? rows.map((row, index) => h('tr', { dataset: { id: row.id ?? index }, className: onRowClick ? 'clickable-row' : null, onClick: rowClick(row), title: onRowClick ? 'Bấm để xem chi tiết' : null },
       columns.map(column => h('td', { className: column.className || '' },
         column.render ? column.render(row, index) : row[column.key] ?? '—'))))
       : h('tr', {}, h('td', { colSpan: columns.length, className: 'table-empty' }, emptyMessage))));

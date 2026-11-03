@@ -69,7 +69,7 @@ export async function dashboardPage(services) {
   // Financial KPI row (Least privilege: only shown when dashboard.cost.read is present and cost data loaded)
   let financialSection = null;
   if (canReadCost && costs) {
-    financialSection = h('div', { className: 'grid-kpis financial-kpis', style: 'margin-top: 1rem;' },
+    financialSection = h('div', { className: 'grid-kpis financial-kpis' },
       statCard({ label: 'Tổng giá trị tài sản', value: money(costs.totalAssetValue), detail: `${costs.missingPurchaseCostCount ?? '—'}/${costs.assetCount ?? '—'} tài sản chưa có giá; tổng phần đã biết`, iconName: 'chart', tone: 'blue' }),
       statCard({ label: 'Chi phí bảo trì (YTD)', value: money(costs.maintenanceCostYtd), detail: `${costs.missingMaintenanceCostCountYtd ?? '—'}/${costs.maintenanceTicketCountYtd ?? '—'} phiếu chưa có chi phí; từ đầu năm đến hiện tại`, iconName: 'wrench', tone: 'amber' }),
       statCard({ label: 'Dự toán thay thế', value: money(costs.totalBudgetForecast), detail: `${costs.missingEstimateCount ?? 0} tài sản chưa có ước tính`, iconName: 'devices', tone: 'green' })
@@ -97,24 +97,24 @@ export async function dashboardPage(services) {
   if (alerts) {
     const alertItems = [];
     if (alerts.expiringWarrantiesCount > 0) {
-      alertItems.push(h('div', { className: 'distribution-row' },
+      alertItems.push(h('div', { className: 'alert-row' },
         h('span', { className: 'badge amber' }, 'Bảo hành sắp/đã hết hạn'),
         h('strong', {}, `${alerts.expiringWarrantiesCount} thiết bị`),
         button('Xem chi tiết', { kind: 'ghost', iconName: 'arrow-right', onClick: () => route('/reports?tab=expiry') })
       ));
     }
     if (alerts.expiringLicensesCount > 0) {
-      alertItems.push(h('div', { className: 'distribution-row' },
+      alertItems.push(h('div', { className: 'alert-row' },
         h('span', { className: 'badge amber' }, 'License sắp/đã hết hạn'),
         h('strong', {}, `${alerts.expiringLicensesCount} bản quyền`),
         button('Xem chi tiết', { kind: 'ghost', iconName: 'arrow-right', onClick: () => route('/reports?tab=expiry') })
       ));
     }
     if (alerts.openTicketsCount > 0) {
-      alertItems.push(h('div', { className: 'distribution-row' },
+      alertItems.push(h('div', { className: 'alert-row' },
         h('span', { className: 'badge blue' }, 'Phiếu bảo trì mở'),
         h('strong', {}, `${alerts.openTicketsCount} phiếu (${alerts.highPriorityTicketsCount ?? 0} ưu tiên cao)`),
-        button('Xem bảo trì', { kind: 'ghost', iconName: 'arrow-right', onClick: () => route('/reports?tab=maintenance') })
+        button('Xem bảo trì', { kind: 'ghost', iconName: 'arrow-right', onClick: () => route(services.maintenanceEnabled === true && can(services, 'maintenance.read') ? '/maintenance?status=PENDING' : '/reports?tab=maintenance') })
       ));
     }
     if (alertItems.length === 0) {
@@ -127,7 +127,7 @@ export async function dashboardPage(services) {
           h('p', { className: 'meta' }, 'Bảo hành, bản quyền và phiếu bảo trì cần lưu ý')
         )
       ),
-      h('div', { className: 'card-body quick-links' }, alertItems)
+      h('div', { className: 'card-body alert-list' }, alertItems)
     );
   } else {
     // Quick links fallback
@@ -172,7 +172,7 @@ export async function dashboardPage(services) {
     header,
     h('div', { className: 'grid-kpis' }, ...kpiCards),
     financialSection,
-    h('div', { className: 'dashboard-grid', style: 'margin-top: 1.5rem;' }, distributionCard, alertsCard),
+    h('div', { className: 'dashboard-grid' }, distributionCard, alertsCard),
     recentAssetsCard
   );
 }
