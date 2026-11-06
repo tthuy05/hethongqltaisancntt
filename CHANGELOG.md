@@ -1,5 +1,11 @@
 # Changelog
 
+## 03/11/2026 — Đồng bộ trạng thái tài liệu
+
+- Updated: README, trạng thái module, kiến trúc, kiểm thử và roadmap phân biệt bản phát hành với checkpoint lịch sử.
+- Updated: schema/ERD hiện tại 19 bảng/44 FK, RBAC v2 và rollout mã loại LTS đã hoàn tất.
+- Documentation only: không sửa runtime/configuration, không chạy migration/seed/deploy hoặc ghi shared database trong đợt này.
+
 ## Unreleased — 02/11/2026 — Asset filter completion
 
 - Added: shared purchase-year, UTC warranty and current-user assignment filters for asset list and Excel exports.

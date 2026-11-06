@@ -1,5 +1,11 @@
 # Roadmap 28/09–07/11/2026 — PLANNED
 
+## Trạng thái hiện tại — 03/11/2026
+
+Lịch Tuần2–7 và MVP10/10/2026 bên dưới là kế hoạch gốc, giữ nguyên ownership/milestone/evidence. Source MVP hiện đã phát hành: Identity/email/RBAC, Assets/Masters, Assignment/Maintenance, Software/License/seat, Replacement, Reports/Dashboard và Excel. Công việc tiếp theo là nghiệm thu thủ công, sửa lỗi phát hiện, hoàn tất kiểm chứng vận hành/bảo mật và bàn giao; không coi nhãn PLANNED trong lịch cũ là module hiện chưa có code.
+
+Bản ứng dụng đối chiếu: `e7f61b405c0efedf6f3f6f7724e59bd554d6a643`; xem [README](../README.md) và [PROJECT_STATUS](../PROJECT_STATUS.md) cho evidence và các phần chưa kiểm chứng. Nội dung theo ngày bên dưới giữ làm lịch sử; không tự chạy lại các bước rollout cũ.
+
 > Original 2-person plan/milestones/owners/dependencies preserved. Update 03/10: authorized M1 runtime/seed/Auth/JWT/masters/Asset/tests/real UI implemented; execution addendum in [Week 3](weekly/week-03.md), evidence at [handoff](m1-backend-handoff.md). M1 **10/10/2026** awaits independent review/rehearsal/final acceptance; Week 4–7 PLANNED.
 
 ## 1. Nguyên tắc triển khai

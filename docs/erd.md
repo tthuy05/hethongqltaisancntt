@@ -1,11 +1,8 @@
-# ERD — Enterprise IT Asset & Infrastructure Management System
+# ERD — Hệ thống Quản lý & Tối ưu Hạ tầng CNTT
 
-> Snapshot 11/10/2026: shared 18 bảng/41 FK/3 migrations; ghi chú 10/19 dưới đây là lịch sử. Source mới thêm 4 attributes users và asset-code sequence/trigger, không đổi 18 entities/41 relationships. Migration chỉ apply isolated, chưa shared. [Báo cáo](lecturer-feedback-remediation-report.md).
+Cập nhật 03/11/2026: **19 bảng nghiệp vụ /44 quan hệ FK**. Schema gốc Tuần2 gồm18/41; RBAC v2 bổ sung user_permissions và3FK. Không vẽ ef_migrations_history như entity nghiệp vụ. Sơ đồ rút gọn thuộc tính; [database-design](database-design.md) và M1Model/migrations là nơi đối chiếu đầy đủ.
 
-
-> Trạng thái: **FULL LOGICAL DESIGN DOCUMENTED / UNDER REVIEW**; M1 physical subset 10 tables/19 FKs CREATED / VERIFIED 02/10/2026. Các bảng/quan hệ ngoài M1 vẫn PLANNED. [Implementation evidence](neon-database-setup.md).
-
-> Database Engine: **PostgreSQL**, hosting **Neon** — M1 setup CONNECTED / VERIFIED (ADR-022). Schema Baseline V1 vẫn **18 tables / 41 relationships**; Mermaid block giữ nguyên. `binary row_version` map app-managed bytea, `json` map jsonb, `datetime` map timestamptz UTC. Không thêm EF migration metadata vào logical diagram.
+PostgreSQL trên Neon: binary tương ứng bytea, datetime tương ứng timestamptz UTC, JSON audit lưu jsonb. Mã loại tài sản LTS do Backend sinh, thay cho mã ngữ nghĩa; Id và quan hệ không đổi. Không chỉnh các file draw.io xuất trước đây trong đợt đồng bộ Markdown này.
 
 ## 1. Sơ đồ quan hệ
 
@@ -40,6 +37,7 @@ erDiagram
         boolean is_active
         boolean is_admin_locked
         int token_version
+        boolean has_custom_permissions
         binary row_version
     }
 
@@ -73,6 +71,14 @@ erDiagram
         bigint permission_id FK
         bigint granted_by_user_id FK
         datetime granted_at_utc
+    }
+
+    user_permissions {
+        bigint id PK
+        bigint user_id FK
+        bigint permission_id FK
+        datetime granted_at_utc
+        bigint granted_by_user_id FK
     }
 
     asset_types {
@@ -234,6 +240,9 @@ erDiagram
     users ||--o{ user_roles : "has"
     roles ||--o{ user_roles : "is_assigned"
     users o|--o{ user_roles : "assigns_role"
+    users ||--o{ user_permissions : "has_permission_limit"
+    permissions ||--o{ user_permissions : "limits_to_permission"
+    users o|--o{ user_permissions : "grants_user_limit"
     roles ||--o{ role_permissions : "grants"
     permissions ||--o{ role_permissions : "is_granted"
     users o|--o{ role_permissions : "grants_permission"

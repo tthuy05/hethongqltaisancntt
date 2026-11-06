@@ -1,8 +1,26 @@
+# Thiết kế cơ sở dữ liệu
+
+## Schema đang triển khai — 03/11/2026
+
+Neon shared hiện có **19 bảng nghiệp vụ /44 FK /86 CHECK /6 migrations**, ngoài bảng ef_migrations_history. Baseline Tuần2 18/41 được bảo toàn như lịch sử thiết kế; RBAC v2 thêm user_permissions với 3 FK. Sáu migrations: InitialM1, AddAssignmentMaintenance, CompleteBaselineV1, LecturerFeedbackIdentityAndAssetCodes, AddUserPermissions, AddReplacementRuleSeverity (tên đầy đủ trong source migrations).
+
+### Bảng bổ sung user_permissions (RBAC v2)
+
+| Cột | Kiểu | Ràng buộc |
+|---|---|---|
+| id | bigint | PK |
+| user_id | bigint | NOT NULL, FK users.id |
+| permission_id | bigint | NOT NULL, FK permissions.id |
+| granted_at_utc | timestamptz | NOT NULL, default clock_timestamp() |
+| granted_by_user_id | bigint | NULL được phép, FK users.id |
+
+UNIQUE(user_id,permission_id), index(permission_id,user_id). Users có has_custom_permissions để bật allow-list quyền riêng; quyền riêng không tự cấp quyền ngoài nhóm. Severity nullable của replacement_rules đã được migration hiện có bổ sung; quy tắc phải được cấu hình mức độ theo nghiệp vụ trước sử dụng. Mã loại tài sản dùng sequence asset_type_code_sequence, không thêm migration EF/cột/FK; chuyển 8 mã cũ giữ Id và có audit.
+
+[ERD hiện tại](erd.md) có 19 entities/44 quan hệ; các mục physical10/19,18/41 và migrations chưa apply bên dưới là snapshot lịch sử. Chi tiết source: M1Model và migrations; evidence phát hành tại PROJECT_STATUS. Không dùng ghi chú bootstrap cũ để thiết lập lại shared DB.
+
 ## 02/11/2026 — Asset type auto code
 
 AssetType.Code dùng sequence `asset_type_code_sequence`, prefix LTS. Không thay bảng/cột/FK; chuyển mã cũ qua audited operator task, giữ Id và token concurrency. Xem business-code-generation.md.
-
-# Thiết kế cơ sở dữ liệu
 
 ## 27/10/2026 — Allocation persistence protocol
 

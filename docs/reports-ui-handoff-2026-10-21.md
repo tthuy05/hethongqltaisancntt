@@ -1,5 +1,11 @@
 # Thủy — Giao diện và Bộ lọc Reports (Hoàn thiện tiếp quản từ Codex), 21/10/2026
 
+## Trạng thái hiện tại — 03/11/2026
+
+Reports/Dashboard V2 đã rollout; source mới có các workbook báo cáo bổ sung. Giao diện production opt-in Reporting, Backend dùng Features:ReportingV2:Enabled và các policy hiện có; không tự bật theo query/localStorage. Cost/key masking và quyền riêng RBAC v2 vẫn áp dụng. Rollout IN PROGRESS ở mục01/11 là checkpoint trước publication; không phải gate còn chặn code hiện tại.
+
+Bản ứng dụng đối chiếu: `e7f61b405c0efedf6f3f6f7724e59bd554d6a643`; xem [README](../README.md) và [PROJECT_STATUS](../PROJECT_STATUS.md) cho evidence và các phần chưa kiểm chứng. Nội dung theo ngày bên dưới giữ làm lịch sử; không tự chạy lại các bước rollout cũ.
+
 ## 01/11/2026 — Rollout production đã được phê duyệt, IN PROGRESS
 
 Người dùng phê duyệt tiếp tục và xác nhận phối hợp. Backup snapshot07:13:54UTC/14:13:54UTC+7, dump136490bytes SHA256 F65AB0A6F84359D535D385DB55B484D4A7DE91A48B2351CC987402977525366D, restore drill so toàn bộ table hashes/row counts, columns/constraints/indexes/history PASS trên database local mới. Lưu ngoàiGit tại LocalAppData/ItAssetManagement/Backups/reports-20261101_071353_bacbd242. PITR UNVERIFIED.

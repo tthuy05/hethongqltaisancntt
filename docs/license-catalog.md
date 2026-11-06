@@ -1,5 +1,11 @@
 # Phân hệ Quản lý Bản quyền (License Catalog) — Tài liệu kỹ thuật và Nghiệm thu
 
+## Trạng thái hiện tại — 03/11/2026
+
+License CRUD, mã hóa/key reveal theo quyền, phân bổ/thu hồi/điều chuyển seat đã có trong source phát hành trên Render. Bản vá giữ notes/purchasedAt/purchaseCost đã nằm trong lịch sử main. Nút Gia hạn yêu cầu quản lý xác nhận và nhập ngày hết hạn mới; không có tác vụ tự kéo dài quyền sử dụng hoặc tự mua gia hạn. Các giới hạn nghiệm thu theo vai trò vẫn phải ghi nhận riêng.
+
+Bản ứng dụng đối chiếu: `e7f61b405c0efedf6f3f6f7724e59bd554d6a643`; xem [README](../README.md) và [PROJECT_STATUS](../PROJECT_STATUS.md) cho evidence và các phần chưa kiểm chứng. Nội dung theo ngày bên dưới giữ làm lịch sử; không tự chạy lại các bước rollout cũ.
+
 ## Bản vá giữ dữ liệu form sửa License — 28/10/2026
 
 **FIXED LOCALLY / PENDING PUBLICATION.** Nghiệm thu production bằng System Manager phát hiện `licenseView` (dùng trong adapter và trang) bỏ `notes`, `purchasedAt`, `purchaseCost` đã được Backend trả về. Mở form sửa làm ghi chú/ngày mua trống; submit có thể xóa chúng ngoài ý muốn, giá không hiển thị đúng. Đã đóng form QA trước khi lưu; chưa sửa dữ liệu cũ để khắc phục.

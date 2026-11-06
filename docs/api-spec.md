@@ -1,5 +1,11 @@
 # API Specification
 
+## Trạng thái contract — 03/11/2026
+
+Source phát hành e7f61b4 có các module MVP; các mục disabled/chưa deploy theo ngày bên dưới là lịch sử. Route thực tế của danh mục là /api/v1/departments và /api/v1/asset-types (không có segment masters). POST loại tài sản do Backend cấp LTS; PUT không đổi mã. Các endpoint workbook bổ sung và bộ lọc tài sản dùng contract ở các addendum mới, không suy từ bảng baseline Tuần2.
+
+/health/live và /health/version mở trên production; /health/ready chỉ map trong Development, nên production404 không phải lỗi database. Những API nghiệp vụ yêu cầu JWT/policy; anonymous401 không chứng minh authenticated acceptance. Xem README/PROJECT_STATUS cho trạng thái runtime và evidence; đợt này không đổi API code.
+
 ## Runtime 27/10/2026 — License allocation (local acceptance; production PLANNED)
 
 EP-057–062 đã nối Controller/Service và tab allocation trong License detail. Contract, DTO, paging/sort, UTC, ETag/version, mã lỗi và rollout gates ở [license-catalog.md](license-catalog.md). Assign201; list/detail/revoke/transfer200. Chặn400 target XOR/type/time/filter/If-Match mismatch; 403 thiếu effective grants; 404 license/assignment không tồn tại; 409 LICENSE_CAPACITY_EXHAUSTED, DUPLICATE_ASSIGNMENT, USER_NOT_ELIGIBLE, ASSET_NOT_ELIGIBLE, SOFTWARE_INACTIVE, LICENSE_INACTIVE/EXPIRED/NOT_EFFECTIVE, ALREADY_REVOKED hoặc CONCURRENCY_CONFLICT. Quantity/archive tiếp tục các lỗi capacity hiện có.
@@ -106,11 +112,11 @@ GET detail200+ETag; DTO có assetCode/assetName/assignedToName, title/priority/r
   - `POST /api/v1/users`: Không nhận `employeeCode` từ client; mã nhân viên luôn do hệ thống tự động sinh theo định dạng chuẩn `NVxxxxxx`.
   - `PUT /api/v1/users/{id}`: `employeeCode` là trường bất biến (`EMPLOYEE_CODE_IMMUTABLE` - 400 khi thay đổi). Đối với tài khoản cũ chưa có mã nhân viên, hệ thống tự động cấp phát mã chuẩn khi cập nhật, từ chối mọi trường hợp client tự chỉ định mã.
 - **Phòng ban (Departments):**
-  - `POST /api/v1/masters/departments`: Client không cần gửi mã phòng ban; hệ thống tự động sinh mã chuẩn theo định dạng `PBxxxxxx`.
-  - `PUT /api/v1/masters/departments/{id}`: Mã phòng ban là bất biến (400 khi thay đổi); có thể bỏ trống trong request cập nhật để giữ nguyên mã hiện tại.
+  - `POST /api/v1/departments`: Client không cần gửi mã phòng ban; hệ thống tự động sinh mã chuẩn theo định dạng `PBxxxxxx`.
+  - `PUT /api/v1/departments/{id}`: Mã phòng ban là bất biến (400 khi thay đổi); có thể bỏ trống trong request cập nhật để giữ nguyên mã hiện tại.
 - **Loại tài sản (Asset Types):**
-  - `POST /api/v1/masters/asset-types`: Mã loại tài sản (`Code`, ví dụ: `LTS000001`) do Backend tự sinh; không bắt buộc gửi `code`, giá trị client tự gửi bị bỏ qua khi tạo mới.
-  - `PUT /api/v1/masters/asset-types/{id}`: Mã loại tài sản là bất biến (400 khi thay đổi); có thể bỏ trống trong request cập nhật để giữ nguyên mã hiện tại.
+  - `POST /api/v1/asset-types`: Mã loại tài sản (`Code`, ví dụ: `LTS000001`) do Backend tự sinh; không bắt buộc gửi `code`, giá trị client tự gửi bị bỏ qua khi tạo mới.
+  - `PUT /api/v1/asset-types/{id}`: Mã loại tài sản là bất biến (400 khi thay đổi); có thể bỏ trống trong request cập nhật để giữ nguyên mã hiện tại.
 - **Phiếu bảo trì (Maintenance):**
   - `POST /api/v1/asset-maintenance`: Mã phiếu được tự sinh chuẩn hóa theo định dạng `BTxxxxxx` (thay thế tiền tố `MT-<guid>`).
 - **Tài sản (Assets):**

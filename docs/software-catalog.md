@@ -1,5 +1,11 @@
 # Danh mục phần mềm — nghiệm thu và hướng dẫn tiếp quản
 
+## Trạng thái hiện tại — 03/11/2026
+
+Danh mục phần mềm đã được đưa vào source phát hành trên Render: CRUD, tìm kiếm/lọc, ngừng hoạt động, mã PM tự sinh và kiểm tra quyền/version/audit. Các mục local-only/chưa deploy bên dưới là checkpoint26/10; không phải cờ runtime hiện tại.
+
+Bản ứng dụng đối chiếu: `e7f61b405c0efedf6f3f6f7724e59bd554d6a643`; xem [README](../README.md) và [PROJECT_STATUS](../PROJECT_STATUS.md) cho evidence và các phần chưa kiểm chứng. Nội dung theo ngày bên dưới giữ làm lịch sử; không tự chạy lại các bước rollout cũ.
+
 Ngày 26/10/2026. Nhánh `codex/software-catalog`, kế thừa main `281fe2f`.
 Trạng thái: hoàn thiện source và nghiệm thu local; **production rollout PLANNED**.
 
