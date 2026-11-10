@@ -4,6 +4,10 @@
 
 Demo: [hethongqltaisancntt.onrender.com](https://hethongqltaisancntt.onrender.com/).
 
+## Cập nhật giao diện theo nghiệm thu
+
+Bản tích hợp từ nhánh Thiện gom báo cáo thành bốn nhóm, giữ các giá trị tab trong URL và các mẫu Excel hiện có. Chi tiết tài sản hiển thị lịch sử cấp phát và bảo trì theo quyền, chi tiết phần mềm và bản quyền bổ sung liên kết tới bản quyền và phân bổ seat. Các form tra cứu có phản hồi kết quả và báo lỗi tại trường. Định dạng tiền giữ nguyên giá trị nhập để kiểm tra trước khi gửi API.
+
 ## Trạng thái hiện tại — 03/11/2026
 
 Bản ứng dụng đã xác minh trên Render: `e7f61b405c0efedf6f3f6f7724e59bd554d6a643` ([PR #20](https://github.com/tthuy05/hethongqltaisancntt/pull/20)). `/health/version` có artifact/render revision khớp nhau; `/health/live` trả 200. Đây là bản demo; kiểm thử tự động và deploy thành công không thay thế nghiệm thu thủ công của người dùng.

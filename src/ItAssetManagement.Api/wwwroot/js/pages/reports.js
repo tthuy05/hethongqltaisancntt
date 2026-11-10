@@ -4,6 +4,7 @@ import { can, date, money, moneyExact, moneyCompact, moneyCell, route, setQuery 
 import { ServiceError } from '../services/service-error.js';
 import { readReportQuery, validateReportQuery, reportNumber, reportUtc } from './reports-query.js';
 import { reportExcelActions } from '../components/report-excel.js';
+import { openAssetDetail, openMaintenanceDetail } from '../components/record-detail.js';
 
 export async function reportsPage(services) {
   if (services.reportingEnabled !== true) throw new ServiceError(404, 'MODULE_UNAVAILABLE', 'Báo cáo chưa được mở.');
@@ -38,19 +39,36 @@ export async function reportsPage(services) {
   const navigate = values => { if (viewRoot?.isConnected && validView()) setQuery('/reports', validateReportQuery(values)); };
   const assetCell = (code, id) => can(services, 'assets.read') && Number.isSafeInteger(id) && id > 0
     ? button(code, { kind: 'ghost', onClick: () => { if (viewRoot?.isConnected && validView() && can(services, 'assets.read')) route('/assets/' + id); } }) : code;
+  // Pick departments / asset types by name when the catalog is readable; otherwise keep the ID box.
+  const catalog = async (service, permission) => {
+    if (!service?.list || !can(services, permission)) return null;
+    try { return (await service.list({ page: 1, pageSize: 100 })).items.map(item => [String(item.id), item.name]); } catch { return null; }
+  };
+  // Loaded alongside the report data, never before it; an ID box is upgraded to a picker once names arrive.
+  const catalogsPending = Promise.all([catalog(services.departments, 'departments.read'), catalog(services.assetTypes, 'asset-types.read')]);
   let filterCount = 0;
   function filters(label, specs, state, reset = {}) {
     const prefix = 'report-filter-' + ++filterCount;
     const controls = specs.map(spec => {
       const id = prefix + '-' + spec.name;
+      const options = spec.options && state[spec.name] && !spec.options.some(([value]) => value === String(state[spec.name])) ? [...spec.options, [String(state[spec.name]), 'ID ' + state[spec.name]]] : spec.options;
       const input = spec.options ? h('select', { id, name: spec.name, className: 'select', value: state[spec.name] || '' },
-        spec.options.map(([value, text]) => h('option', { value }, text)))
+        options.map(([value, text]) => h('option', { value }, text)))
         : h('input', { id, name: spec.name, className: 'input', type: spec.type || 'number', value: state[spec.name] || '',
           maxLength: spec.type === 'search' ? 200 : undefined, placeholder: spec.placeholder,
           min: spec.type ? undefined : (spec.name === 'year' || spec.name === 'plannedYear' ? 2000 : 1),
           max: spec.name === 'year' || spec.name === 'plannedYear' ? 2100 : spec.name === 'pageSize' ? 100 : undefined,
           step: spec.type === 'datetime-local' ? '0.001' : 1, required: spec.required || false });
-      return { spec, input, element: h('div', { className: 'filter-field' }, h('label', { htmlFor: id }, spec.label), input) };
+      const caption = h('label', { htmlFor: id }, spec.label);
+      const control = { spec, input, element: h('div', { className: 'filter-field' }, caption, input) };
+      if (spec.catalog !== undefined) void catalogsPending.then(lists => {
+        const names = lists[spec.catalog], value = String(control.input.value || '');
+        if (!names || typeof control.input.replaceWith !== 'function') return;
+        const picker = h('select', { id, name: spec.name, className: 'select' }, h('option', { value: '' }, spec.all),
+          names.map(([key, text]) => h('option', { value: key }, text)), value && !names.some(([key]) => key === value) ? h('option', { value }, 'ID ' + value) : null);
+        picker.value = value; control.input.replaceWith(picker); control.input = picker; caption.textContent = spec.friendly;
+      });
+      return control;
     });
     const error = h('p', { className: 'field-error report-filter-error', role: 'alert' });
     return h('form', { className: 'filters report-filters', 'aria-label': label, onSubmit: event => {
@@ -69,54 +87,29 @@ export async function reportsPage(services) {
   }
   const priorities = [['', 'Tất cả mức ưu tiên'], ['LOW', 'Thấp'], ['MEDIUM', 'Trung bình'], ['HIGH', 'Cao'], ['CRITICAL', 'Khẩn cấp']];
   const pageSizeFilter = { name: 'pageSize', label: 'Số dòng mỗi trang' };
-  const departmentFilter = { name: 'departmentId', label: 'ID phòng ban (tùy chọn)' };
-  const typeFilter = { name: 'assetTypeId', label: 'ID loại tài sản (tùy chọn)' };
+  const departmentFilter = { name: 'departmentId', label: 'ID phòng ban (tùy chọn)', catalog: 0, friendly: 'Phòng ban', all: 'Tất cả phòng ban' };
+  const typeFilter = { name: 'assetTypeId', label: 'ID loại tài sản (tùy chọn)', catalog: 1, friendly: 'Loại tài sản', all: 'Tất cả loại' };
   const assetFilter = { name: 'assetId', label: 'ID tài sản (tùy chọn)' };
   const assetStatuses = [['', 'Tất cả trạng thái'], ['IN_STOCK', 'Trong kho'], ['IN_USE', 'Đang sử dụng'],
     ['MAINTENANCE', 'Đang bảo trì'], ['BROKEN', 'Hỏng'], ['RETIRED', 'Ngừng sử dụng']];
 
-  const tabButtons = [];
-  if (canAssets) {
-    tabButtons.push(button('Kiểm kê tài sản', {
-      kind: currentTab === 'inventory' ? 'primary' : 'secondary',
-      iconName: 'laptop',
-      onClick: () => navigate({ tab: 'inventory', page: 1 })
-    }));
-    tabButtons.push(button('Tổng hợp tài sản', { kind: currentTab === 'groups' ? 'primary' : 'secondary',
-      iconName: 'chart', onClick: () => navigate({ tab: 'groups' }) }));
-  }
-  if (canAssignments) {
-    tabButtons.push(button('Lịch sử phân bổ', {
-      kind: currentTab === 'assignments' ? 'primary' : 'secondary',
-      iconName: 'assignment',
-      onClick: () => navigate({ tab: 'assignments', page: 1 })
-    }));
-  }
-  if (canMaintenance) {
-    tabButtons.push(button('Lịch sử bảo trì', {
-      kind: currentTab === 'maintenance' ? 'primary' : 'secondary',
-      iconName: 'maintenance',
-      onClick: () => navigate({ tab: 'maintenance', page: 1 })
-    }));
-  }
-  if (canAssets || canLicenses) {
-    tabButtons.push(button('Hạn bảo hành & License', {
-      kind: currentTab === 'expiry' ? 'primary' : 'secondary',
-      iconName: 'license',
-      onClick: () => navigate({ tab: 'expiry' })
-    }));
-  }
-  if (canCost) {
-    tabButtons.push(button('Chi phí & Ngân sách', {
-      kind: currentTab === 'cost' ? 'primary' : 'secondary',
-      iconName: 'chart',
-      onClick: () => navigate({ tab: 'cost' })
-    }));
-  }
-  if (canReplacement) tabButtons.push(button('Đề xuất thay thế', { kind: currentTab === 'replacement' ? 'primary' : 'secondary',
-    iconName: 'laptop', onClick: () => navigate({ tab: 'replacement', page: 1 }) }));
-
-  const tabBar = h('div', { className: 'tab-bar' }, ...tabButtons);
+  // Mentor feedback: 7 tabs were too many. Four groups; groups with two reports get a sub-switch.
+  // URL `tab` values stay the same so bookmarks, Excel export and filters keep working.
+  const groups = [
+    { label: 'Tài sản', iconName: 'laptop', tabs: [['inventory', 'Kiểm kê tài sản', canAssets], ['groups', 'Tổng hợp tài sản', canAssets]] },
+    { label: 'Cấp phát & Bảo trì', iconName: 'assignment', tabs: [['assignments', 'Lịch sử phân bổ', canAssignments], ['maintenance', 'Lịch sử bảo trì', canMaintenance]] },
+    { label: 'Hạn bảo hành & License', iconName: 'license', tabs: [['expiry', 'Hạn bảo hành & License', canAssets || canLicenses]] },
+    { label: canCost ? 'Chi phí & Thay thế' : 'Đề xuất thay thế', iconName: 'chart', tabs: [['cost', 'Chi phí & Ngân sách', canCost], ['replacement', 'Đề xuất thay thế', canReplacement]] }
+  ].map(group => ({ ...group, tabs: group.tabs.filter(([, , allowed]) => allowed) })).filter(group => group.tabs.length);
+  const activeGroup = groups.find(group => group.tabs.some(([tab]) => tab === currentTab));
+  const firstPage = tab => ['inventory', 'assignments', 'maintenance', 'replacement'].includes(tab) ? { tab, page: 1 } : { tab };
+  const tabBar = h('div', { className: 'tab-bar', role: 'tablist', 'aria-label': 'Nhóm báo cáo' }, ...groups.map(group => button(group.label, {
+    kind: group === activeGroup ? 'primary' : 'secondary', iconName: group.iconName, role: 'tab', 'aria-selected': String(group === activeGroup),
+    onClick: () => navigate(firstPage(group.tabs[0][0])) })));
+  const subTabs = activeGroup && activeGroup.tabs.length > 1 ? h('div', { className: 'report-subtabs', role: 'tablist', 'aria-label': activeGroup.label },
+    ...activeGroup.tabs.map(([tab, label]) => button(label, { kind: tab === currentTab ? 'primary' : 'secondary', role: 'tab', 'aria-selected': String(tab === currentTab), onClick: () => navigate(firstPage(tab)) }))) : null;
+  const rowHint = h('p', { className: 'meta report-note' }, 'Bấm vào một dòng để xem chi tiết: người đang dùng, lịch sử cấp phát và bảo trì.');
+  const assetRow = (id, pairs) => row => { if (viewRoot?.isConnected && validView()) openAssetDetail(services, id(row), pairs(row)); };
 
   let tabContent = null;
   const page = reportNumber(query.page, 1);
@@ -148,7 +141,7 @@ export async function reportsPage(services) {
 
     const columns = [
       { key: 'assetCode', label: 'Mã tài sản', render: row => assetCell(row.assetCode, row.id) },
-      { key: 'name', label: 'Tên tài sản' },
+      { key: 'name', label: 'Tên tài sản', render: row => h('div', { className: 'asset-name' }, h('strong', {}, row.name), h('span', { className: 'meta' }, row.serialNumber || 'Chưa có serial')) },
       { key: 'assetTypeName', label: 'Loại' },
       { key: 'departmentName', label: 'Phòng ban' },
       { key: 'currentStatus', label: 'Trạng thái', render: row => badge(row.currentStatus) },
@@ -160,7 +153,8 @@ export async function reportsPage(services) {
     tabContent = h('div', {},
       h('section', { className: 'card filters-card' }, filterForm),
       h('section', { className: 'card' },
-        dataTable({ columns, rows: res.items, label: 'Kiểm kê tài sản' }),
+        rowHint,
+        dataTable({ columns, rows: res.items, label: 'Kiểm kê tài sản', onRowClick: assetRow(row => row.id, row => [['Mã tài sản', row.assetCode], ['Tên', row.name], ['Loại', row.assetTypeName], ['Phòng ban', row.departmentName], ['Ngày mua', date(row.purchaseDate)], ['Hết bảo hành', date(row.warrantyEndDate)]]) }),
         pagination(res, p => navigate({ ...state, page: p }))
       )
     );
@@ -203,7 +197,8 @@ export async function reportsPage(services) {
         { name: 'assignmentFrom', label: 'Cấp phát từ (UTC)', type: 'datetime-local' },
         { name: 'assignmentTo', label: 'Cấp phát đến (UTC)', type: 'datetime-local' }, pageSizeFilter], state, { page: 1 }),
       h('p', { className: 'meta report-note' }, 'Khoảng thời gian lọc theo lúc cấp phát (UTC), không phải ngày thu hồi. Phòng ban là bên nhận; không phải phòng ban sở hữu tài sản. Chỉ đọc lịch sử, không thực hiện cấp phát/thu hồi.'),
-      dataTable({ columns, rows: res.items, label: 'Báo cáo phân bổ' }),
+      rowHint,
+      dataTable({ columns, rows: res.items, label: 'Báo cáo phân bổ', onRowClick: assetRow(row => row.assetId, row => [['Mã tài sản', row.assetCode], ['Thiết bị', row.assetName], ['Người nhận', row.assignedUserName || '—'], ['Phòng ban nhận', row.assignedDepartmentName || '—'], ['Ngày giao', date(row.assignedAtUtc)], ['Ngày trả', date(row.returnedAtUtc)]]) }),
       pagination(res, p => navigate({ ...state, page: p }))
     );
   }
@@ -216,7 +211,7 @@ export async function reportsPage(services) {
       fromUtc: reportUtc(query.maintenanceFrom), toUtc: reportUtc(query.maintenanceTo) });
     const columns = [
       { key: 'ticketCode', label: 'Mã phiếu' },
-      { key: 'assetCode', label: 'Mã tài sản' },
+      { key: 'assetCode', label: 'Mã tài sản', render: row => assetCell(row.assetCode, row.assetId) },
       { key: 'title', label: 'Tiêu đề' },
       { key: 'priority', label: 'Ưu tiên', render: row => badge(row.priority) },
       { key: 'status', label: 'Trạng thái', render: row => badge(row.status) },
@@ -233,7 +228,8 @@ export async function reportsPage(services) {
         { name: 'maintenanceFrom', label: 'Mở phiếu từ (UTC)', type: 'datetime-local' },
         { name: 'maintenanceTo', label: 'Mở phiếu đến (UTC)', type: 'datetime-local' }, pageSizeFilter], state, { page: 1 }),
       h('p', { className: 'meta report-note' }, 'Bộ lọc thời gian dùng lúc mở phiếu (UTC). Mỗi dòng là trạng thái hiện tại của một phiếu, không phải mọi sự kiện trong nhật ký bảo trì.'),
-      dataTable({ columns, rows: res.items, label: 'Lịch sử bảo trì' }),
+      h('p', { className: 'meta report-note' }, 'Bấm vào một dòng để xem chi tiết phiếu và quá trình xử lý.'),
+      dataTable({ columns, rows: res.items, label: 'Lịch sử bảo trì', onRowClick: row => { if (viewRoot?.isConnected && validView()) openMaintenanceDetail(services, row.id, row.assetId); } }),
       pagination(res, p => navigate({ ...state, page: p }))
     );
   }
@@ -250,7 +246,7 @@ export async function reportsPage(services) {
     ]);
 
     const warrantyColumns = [
-      { key: 'assetCode', label: 'Mã tài sản' },
+      { key: 'assetCode', label: 'Mã tài sản', render: row => assetCell(row.assetCode, row.id) },
       { key: 'name', label: 'Thiết bị' },
       { key: 'departmentName', label: 'Phòng ban' },
       { key: 'warrantyEndDate', label: 'Ngày hết hạn', render: row => date(row.warrantyEndDate) },
@@ -259,7 +255,8 @@ export async function reportsPage(services) {
     ];
 
     const licenseColumns = [
-      { key: 'licenseCode', label: 'Mã license' },
+      { key: 'licenseCode', label: 'Mã license', render: row => services.licenseEnabled === true && can(services, 'licenses.read') ? h('a', { href: '#/licenses/' + row.id }, row.licenseCode) : row.licenseCode },
+      { label: 'Seat đang dùng', className: 'nowrap', render: row => `${row.activeSeats}/${row.totalQuantity}` },
       { key: 'softwareName', label: 'Phần mềm' },
       { key: 'licenseType', label: 'Loại' },
       { key: 'licenseKeyLast4', label: 'Key', render: row => row.licenseKeyLast4 ? `••••-${row.licenseKeyLast4}` : '—' },
@@ -274,7 +271,7 @@ export async function reportsPage(services) {
         filters('Lọc hạn bảo hành', [{ name: 'warrantyFrom', label: 'Hết hạn từ ngày', type: 'date' },
           { name: 'warrantyTo', label: 'Hết hạn đến ngày', type: 'date' }, departmentFilter, typeFilter, pageSizeFilter], expiryState, { warrantyPage: 1, licensePage: 1 }),
         h('p', { className: 'meta report-note' }, 'Không chọn ngày: hiển thị tất cả tài sản có hạn bảo hành, không chỉ thiết bị sắp hết hạn.'),
-        dataTable({ columns: warrantyColumns, rows: warranties.items, label: 'Hạn bảo hành' }),
+        dataTable({ columns: warrantyColumns, rows: warranties.items, label: 'Hạn bảo hành', onRowClick: assetRow(row => row.id, row => [['Mã tài sản', row.assetCode], ['Thiết bị', row.name], ['Phòng ban', row.departmentName], ['Hết bảo hành', date(row.warrantyEndDate)]]) }),
         pagination(warranties, p => navigate({ ...expiryState, warrantyPage: p, licensePage }))
       ) : null,
       canLicenses ? h('section', { className: 'card', 'aria-label': 'Báo cáo thời hạn License' },
@@ -353,7 +350,8 @@ export async function reportsPage(services) {
         { name: 'plannedYear', label: 'Năm dự kiến (tùy chọn)' }, { name: 'generatedFrom', label: 'Đề xuất từ (UTC)', type: 'datetime-local' },
         { name: 'generatedTo', label: 'Đề xuất đến (UTC)', type: 'datetime-local' }, pageSizeFilter], state, { page: 1 }),
       h('p', { className: 'meta report-note' }, 'Báo cáo chỉ đọc, gồm các bản hiện hành/lịch sử khớp bộ lọc; không chạy đánh giá hoặc sửa đề xuất.'),
-      dataTable({ columns, rows: res.items, label: 'Báo cáo đề xuất thay thế' }),
+      rowHint,
+      dataTable({ columns, rows: res.items, label: 'Báo cáo đề xuất thay thế', onRowClick: assetRow(row => row.assetId, row => [['Mã tài sản', row.assetCode], ['Tài sản', row.assetName], ['Phòng ban', row.departmentName], ['Quy tắc', row.ruleCode], ['Năm dự kiến', row.plannedYear ?? '—']]) }),
       pagination(res, p => navigate({ ...state, page: p })));
   }
 
@@ -362,6 +360,7 @@ export async function reportsPage(services) {
   viewRoot = h('div', { className: 'reports-page' },
     pageHeader('Báo cáo hệ thống', 'Tra cứu số liệu kiểm kê, phân bổ, bảo trì, hạn bản quyền và ngân sách.', { eyebrow: 'Báo cáo & Thống kê' }),
     tabBar,
+    subTabs,
     reportExcelActions(services, currentTab, query, () => viewRoot?.isConnected && validView()),
     tabContent
   );
