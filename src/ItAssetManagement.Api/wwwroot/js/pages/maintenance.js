@@ -1,7 +1,7 @@
 import { h } from '../utils/dom.js';
 import { button, pageHeader, dataTable, pagination, showToast } from '../components.js';
 import { ServiceError } from '../services/service-error.js';
-import { can, route, queryFrom, setQuery, field, formAlert, openDialog, modulePermissions, money, moneyCell } from './shared.js';
+import { can, route, queryFrom, setQuery, field, formAlert, openDialog, modulePermissions, displayErrors, FieldError, showFormError, liveSearch, showChoices, money, moneyCell } from './shared.js';
 
 const states = { PENDING: 'Chờ xử lý', IN_PROGRESS: 'Đang xử lý', RESOLVED: 'Đã sửa xong', FAILED: 'Không sửa được', CANCELLED: 'Đã hủy' };
 const priorities = { LOW: 'Thấp', MEDIUM: 'Trung bình', HIGH: 'Cao', CRITICAL: 'Khẩn cấp' };
@@ -39,10 +39,10 @@ export async function maintenancePage(services, id = null) {
       if (alive() && can(services, grants[mode])) maintenanceDialog(services, mode, fresh, alive);
     } catch (error) { if (alive() && error.code !== 'SESSION_CHANGED') feedback.replaceChildren(formAlert(error.message)); }
   }
-  function actions(item) {
-    const list = [button('Chi tiết', { kind: 'ghost', onClick: () => { if (alive()) route('/maintenance/' + item.id); } })];
+  function actions(item, withDetail = true) {
+    const list = withDetail ? [button('Chi tiết', { kind: 'ghost', onClick: () => { if (alive()) route('/maintenance/' + item.id); } })] : [];
     for (const mode of ['update', 'assign', 'start', 'resolve', 'fail', 'cancel', 'cost']) {
-      const eligible = mode === 'cost' ? terminal(item) && policy().writeCost : !terminal(item) &&
+      const eligible = mode === 'cost' ? ['RESOLVED', 'FAILED'].includes(item.status) && policy().writeCost : !terminal(item) &&
         (mode !== 'assign' || policy().globalScope) && (mode !== 'cancel' || policy().globalScope) &&
         (mode !== 'start' || item.status === 'PENDING' && item.assignedToUserId > 0) &&
         (!['resolve', 'fail'].includes(mode) || item.status === 'IN_PROGRESS');
@@ -55,32 +55,37 @@ export async function maintenancePage(services, id = null) {
       can(services, 'maintenance.create') && can(services, 'assets.read') ? button(names.create, { onClick: () => edit('create') }) : null].filter(Boolean)
   }), feedback);
   if (selected) {
-    root.append(h('section', { className: 'card' }, h('div', { className: 'card-body' },
-      h('h2', {}, selected.ticketCode + ' — ' + selected.title), h('p', {}, (selected.assetCode || '') + ' — ' + (selected.assetName || 'Tài sản')),
-      h('p', {}, states[selected.status], ' · Ưu tiên: ', priorities[selected.priority]),
-      h('p', {}, 'Kỹ thuật viên: ', selected.assignedToName || (selected.assignedToUserId ? 'Chưa có tên kỹ thuật viên' : 'Chưa được giao')),
-      h('p', {}, 'Mở: ', time(selected.openedAtUtc), ' · Hạn xử lý: ', time(selected.dueAtUtc)),
-      h('p', {}, 'Bắt đầu: ', time(selected.startedAtUtc), ' · Kết thúc: ', time(selected.completedAtUtc)),
-      h('p', {}, selected.description), selected.resolution ? h('p', {}, 'Kết quả: ', selected.resolution) : null,
-      policy().readCost ? h('p', {}, 'Dự kiến: ', money(selected.estimatedCost), ' · Thực tế: ', money(selected.actualCost)) : null,
-      actions(selected))));
-    root.append(h('h2', {}, 'Lịch sử xử lý'), dataTable({ label: 'Lịch sử bảo trì', rows: data.items, columns: [
+    const item = (label, value, wide = false) => h('div', { className: wide ? 'record-wide' : '' }, h('dt', {}, label), h('dd', {}, value || '—'));
+    const ticketActions = actions(selected, false);
+    root.append(h('section', { className: 'card record-card' },
+      h('div', { className: 'record-head' }, h('div', {}, h('h2', {}, selected.ticketCode + ' — ' + selected.title),
+        h('p', { className: 'meta' }, 'Tài sản: ', can(services, 'assets.read') ? h('a', { href: '#/assets/' + selected.assetId }, (selected.assetCode || '') + ' — ' + (selected.assetName || 'Tài sản')) : (selected.assetCode || '') + ' — ' + (selected.assetName || 'Tài sản'))),
+        h('span', { className: 'badge ' + ({ RESOLVED: 'green', FAILED: 'red', IN_PROGRESS: 'blue', PENDING: 'amber' }[selected.status] || 'neutral') }, h('span', { className: 'badge-dot' }), states[selected.status])),
+      h('dl', { className: 'record-grid' },
+        item('Mức ưu tiên', priorities[selected.priority]), item('Kỹ thuật viên', selected.assignedToName || (selected.assignedToUserId ? 'Chưa có tên kỹ thuật viên' : 'Chưa được giao')),
+        item('Mở phiếu lúc', time(selected.openedAtUtc)), item('Hạn xử lý', time(selected.dueAtUtc)),
+        item('Bắt đầu xử lý', time(selected.startedAtUtc)), item('Kết thúc', time(selected.completedAtUtc)),
+        ...(policy().readCost ? [item('Chi phí dự kiến', money(selected.estimatedCost)), item('Chi phí thực tế', money(selected.actualCost))] : []),
+        item('Mô tả sự cố', selected.description, true), selected.resolution ? item('Kết quả xử lý', selected.resolution, true) : null),
+      ticketActions.children.length ? h('div', { className: 'record-actions' }, ticketActions) : null));
+    root.append(h('div', { className: 'section-heading' }, h('h2', {}, 'Lịch sử xử lý')), h('section', { className: 'card' }, dataTable({ label: 'Lịch sử bảo trì', rows: data.items, columns: [
       { label: 'Thời điểm', render: row => time(row.performedAtUtc) }, { key: 'eventType', label: 'Sự kiện' },
       { label: 'Trạng thái', render: row => states[row.toStatus] || '—' }, { key: 'comment', label: 'Nội dung' },
       ...(policy().readCost ? [{ label: 'Chi phí', render: row => moneyCell(row.cost) }] : [])
-    ] }), pagination(data, page => navigate({ historyPage: page })));
+    ] }), pagination(data, page => navigate({ historyPage: page }))));
   } else {
     const keyword = field({ name: 'maintenanceKeyword', label: 'Tìm phiếu', type: 'search', maxLength: 200, value: query.keyword || '' });
     const status = field({ name: 'maintenanceStatus', label: 'Trạng thái', value: query.status || '', options: [{ value: '', label: 'Tất cả' }, ...options(states)] });
     const priority = field({ name: 'maintenancePriority', label: 'Ưu tiên', value: query.priority || '', options: [{ value: '', label: 'Tất cả' }, ...options(priorities)] });
-    root.append(h('form', { className: 'filters', onSubmit: event => { event.preventDefault(); navigate({ ...query, page: 1, keyword: keyword.input.value.trim() || undefined, status: status.input.value || undefined, priority: priority.input.value || undefined }); } },
-      keyword.element, status.element, priority.element, button('Lọc', { type: 'submit' }), button('Xóa bộ lọc', { kind: 'secondary', onClick: () => navigate({}) })),
-    dataTable({ label: 'Phiếu bảo trì', rows: data.items, columns: [
+    keyword.input.placeholder = 'Mã phiếu hoặc tiêu đề…';
+    root.append(h('section', { className: 'card filters-card' }, h('form', { className: 'filters', onSubmit: event => { event.preventDefault(); navigate({ ...query, page: 1, keyword: keyword.input.value.trim() || undefined, status: status.input.value || undefined, priority: priority.input.value || undefined }); } },
+      keyword.element, status.element, priority.element, h('div', { className: 'actions' }, button('Lọc', { type: 'submit', iconName: 'search' }), button('Xóa bộ lọc', { kind: 'secondary', onClick: () => navigate({}) })))),
+    h('section', { className: 'card' }, dataTable({ label: 'Phiếu bảo trì', rows: data.items, columns: [
       { key: 'ticketCode', label: 'Mã phiếu' }, { key: 'title', label: 'Tiêu đề' }, { label: 'Tài sản', render: row => `${row.assetCode || ''} — ${row.assetName || 'Tài sản'}` },
       { label: 'Trạng thái', render: row => states[row.status] }, { label: 'Ưu tiên', render: row => priorities[row.priority] },
       { label: 'Kỹ thuật viên', render: row => row.assignedToName || (row.assignedToUserId ? 'Chưa có tên' : 'Chưa giao') },
       { label: 'Thao tác', render: actions }
-    ] }), pagination(data, page => navigate({ ...query, page })));
+    ] }), pagination(data, page => navigate({ ...query, page }))));
   }
   return root;
 }
@@ -93,39 +98,62 @@ function maintenanceDialog(services, mode, row, ownerAlive) {
   const finance = () => modulePermissions(services.auth.session).maintenance.writeCost;
   const body = h('div', { className: 'dialog-body' }), feedback = h('div', { 'aria-live': 'polite' });
   const add = (key, label, props = {}) => { const control = field({ name: 'maint-' + key, label, ...props }); fields[key] = control; body.append(control.element); return control; };
-  const resetChoices = (control, rows, label) => { control.input.replaceChildren(h('option', { value: '' }, label), ...rows.map(item => h('option', { value: item.id }, item.label))); control.input.value = ''; };
-  if (row) body.append(h('p', {}, row.ticketCode + ' — ' + row.title));
+  const resetChoices = (control, rows, label) => { control.input.replaceChildren(h('option', { value: '' }, label), ...rows.map(item => h('option', { value: item.id }, item.label))); control.input.value = ''; showChoices(control.input, rows.length); };
+  if (row) body.append(h('p', { className: 'info-note' }, row.ticketCode + ' — ' + row.title));
   if (mode === 'create' || mode === 'assign') {
-    add('search', mode === 'create' ? 'Tìm tài sản' : 'Tìm kỹ thuật viên', { type: 'search', maxLength: 200 });
-    if (mode === 'create') add('assetStatus', 'Trạng thái tài sản', { value: 'InStock', options: [{ value: 'InStock', label: 'Trong kho' }, { value: 'InUse', label: 'Đang sử dụng' }, { value: 'Broken', label: 'Hỏng' }] });
-    add('target', mode === 'create' ? 'Tài sản' : 'Kỹ thuật viên', { required: true, options: [{ value: '', label: 'Chọn kết quả' }] });
+    const search = field({ name: 'maint-search', label: mode === 'create' ? 'Tìm tài sản' : 'Tìm kỹ thuật viên', type: 'search', maxLength: 200,
+      placeholder: mode === 'create' ? 'Gõ mã, tên hoặc serial… (kết quả hiện ngay khi gõ)' : 'Gõ một phần tên… (để trống để xem tất cả)' });
+    fields.search = search;
+    if (mode === 'create') fields.assetStatus = field({ name: 'maint-assetStatus', label: 'Trạng thái tài sản', value: '', options: [{ value: '', label: 'Tất cả (Trong kho, Đang sử dụng, Hỏng)' }, { value: 'InStock', label: 'Trong kho' }, { value: 'InUse', label: 'Đang sử dụng' }, { value: 'Broken', label: 'Hỏng' }],
+      hint: 'Tài sản đang bảo trì hoặc đã ngừng sử dụng thì không mở thêm phiếu được.' });
     const lookup = async () => {
       if (!current() || mode === 'create' && !can(services, 'assets.read')) return;
-      const revision = ++lookupRevision;
-      resetChoices(fields.target, [], 'Đang tìm…');
+      const revision = ++lookupRevision, keyword = search.input.value.trim();
       try {
-        const result = mode === 'create' ? await services.assets.list({ keyword: fields.search.input.value.trim(), status: fields.assetStatus.input.value, page: 1, pageSize: 20 }) :
-          await services.maintenance.technicians({ keyword: fields.search.input.value.trim(), page: 1, pageSize: 20 });
+        let items;
+        if (mode === 'create') {
+          const statuses = fields.assetStatus.input.value ? [fields.assetStatus.input.value] : ['InStock', 'InUse', 'Broken'];
+          const pages = await Promise.all(statuses.map(status => services.assets.list({ keyword, status, page: 1, pageSize: 20 })));
+          items = pages.flatMap(page => page.items).filter(item => !item.isArchived).sort((a, b) => String(a.assetCode).localeCompare(String(b.assetCode))).slice(0, 30)
+            .map(item => ({ id: item.id, label: `${item.assetCode} — ${item.name}` }));
+        } else {
+          items = (await services.maintenance.technicians({ keyword, page: 1, pageSize: 20 })).items.map(item => ({ id: item.id, label: item.displayName }));
+        }
         if (!current() || revision !== lookupRevision || mode === 'create' && !can(services, 'assets.read')) return;
-        resetChoices(fields.target, result.items.map(item => ({ id: item.id, label: mode === 'create' ? `${item.assetCode} — ${item.name}` : item.displayName })), 'Chọn kết quả');
+        resetChoices(fields.target, items, mode === 'create' ? 'Chọn tài sản' : 'Chọn kỹ thuật viên');
+        fields.target.error.textContent = ''; fields.target.input.setAttribute('aria-invalid', 'false');
+        fields.target.hint.textContent = items.length ? `Tìm thấy ${items.length} kết quả${keyword ? ` cho «${keyword}»` : ''}${items.length === 1 ? ' — đã tự chọn.' : '. Bấm để chọn.'}` :
+          mode === 'create' ? `Không có tài sản phù hợp${keyword ? ` với «${keyword}»` : ''}. Kiểm tra lại từ khoá hoặc trạng thái tài sản.` : `Không có kỹ thuật viên${keyword ? ` khớp «${keyword}»` : ''}.`;
       } catch (error) { if (current() && revision === lookupRevision && error.code !== 'SESSION_CHANGED') feedback.replaceChildren(formAlert(error.message)); }
     };
-    body.append(button('Tìm', { kind: 'secondary', onClick: lookup }));
+    search.input.addEventListener('input', () => {
+      lookupRevision++;
+      resetChoices(fields.target, [], 'Chọn kết quả');
+      fields.target.hint.textContent = '';
+    });
+    liveSearch(search.input, lookup);
+    body.append(h('div', { className: 'lookup-row' }, search.element, button('Tìm', { kind: 'secondary', iconName: 'search', onClick: lookup })));
+    if (mode === 'create') body.append(fields.assetStatus.element);
+    add('target', mode === 'create' ? 'Tài sản' : 'Kỹ thuật viên', { required: true, options: [{ value: '', label: 'Chọn kết quả' }] });
     fields.assetStatus?.input.addEventListener('change', () => { void lookup(); });
     // Start only after the dialog is connected; no eager lookup on hidden/disabled pages.
     fields.target.load = lookup;
   }
   if (mode === 'create' || mode === 'update') {
-    add('title', 'Tiêu đề', { required: true, maxLength: 200, value: row?.title || '' });
-    add('description', 'Mô tả sự cố', { type: 'textarea', required: true, maxLength: 2000, value: row?.description || '' });
+    add('title', 'Tiêu đề', { required: true, maxLength: 200, value: row?.title || '', placeholder: 'VD: Màn hình chập chờn' });
+    add('description', 'Mô tả sự cố', { type: 'textarea', required: true, maxLength: 2000, value: row?.description || '', placeholder: 'Mô tả hiện tượng, khi nào xảy ra, đã thử gì…' });
     add('priority', 'Mức ưu tiên', { value: row?.priority || 'MEDIUM', options: options(priorities) });
-    add('dueAt', 'Hạn xử lý', { type: 'datetime-local', value: row?.dueAtUtc ? localTime(row.dueAtUtc) : '' });
-    if (finance()) add('estimatedCost', 'Chi phí dự kiến', { type: 'number', value: '', hint: row ? 'Để trống để giữ nguyên.' : 'Để trống nếu chưa xác định.' });
+    add('dueAt', 'Hạn xử lý', { type: 'datetime-local', value: row?.dueAtUtc ? localTime(row.dueAtUtc) : '', hint: 'Không bắt buộc.' });
+    if (finance()) add('estimatedCost', 'Chi phí dự kiến', { type: 'money', value: '', hint: row ? 'Để trống để giữ nguyên.' : 'Để trống nếu chưa xác định.' });
   }
   if (['resolve', 'fail', 'cost', 'update'].includes(mode) && finance()) {
-    add('actualCost', 'Chi phí thực tế', { type: 'number', value: '', hint: 'Để trống để giữ nguyên; số 0 có nghĩa đã xác nhận không phát sinh.' });
-    const clear = h('input', { type: 'checkbox', id: 'maint-clear-cost' }); fields.clearCost = { input: clear };
-    body.append(h('label', { htmlFor: 'maint-clear-cost' }, clear, ' Đặt lại chi phí thực tế về chưa xác định'));
+    add('actualCost', 'Chi phí thực tế', { type: 'money', value: '', hint: mode === 'cost' && row?.actualCost != null ? `Hiện đang ghi: ${money(row.actualCost)}. Nhập số mới để sửa.` : 'Để trống để giữ nguyên; nhập 0 nghĩa là đã xác nhận không tốn chi phí.' });
+    if (['cost', 'update'].includes(mode) && row?.actualCost != null) {
+      const clear = h('input', { type: 'checkbox', id: 'maint-clear-cost' }); fields.clearCost = { input: clear };
+      clear.addEventListener('change', () => { fields.actualCost.input.disabled = clear.checked; if (clear.checked) fields.actualCost.input.value = ''; });
+      body.append(h('div', { className: 'checkbox-field' }, h('label', { htmlFor: 'maint-clear-cost' }, clear, 'Xoá chi phí thực tế đã nhập (về "Chưa xác định")'),
+        h('span', { className: 'field-hint' }, 'Chỉ dùng khi lỡ nhập sai mà chưa biết số đúng. Nếu đã biết số đúng thì nhập vào ô Chi phí thực tế ở trên.')));
+    }
   }
   if (mode !== 'create') add('note', ['resolve', 'fail'].includes(mode) ? 'Kết quả xử lý' : 'Lý do / ghi chú', { type: 'textarea', required: true, maxLength: ['resolve', 'fail'].includes(mode) ? 2000 : 1000 });
   body.append(feedback);
@@ -136,28 +164,30 @@ function maintenanceDialog(services, mode, row, ownerAlive) {
     try {
       if (mode === 'create' || mode === 'assign') {
         const target = Number(fields.target.input.value);
-        if (!Number.isSafeInteger(target) || target <= 0) throw new Error(mode === 'create' ? 'Chọn tài sản hợp lệ.' : 'Chọn kỹ thuật viên hợp lệ.');
+        if (!Number.isSafeInteger(target) || target <= 0) throw new FieldError('target', mode === 'create' ? 'Chọn tài sản cần bảo trì.' : 'Chọn kỹ thuật viên.');
         dto[mode === 'create' ? 'assetId' : 'technicianId'] = target;
       }
       if (mode === 'create' || mode === 'update') {
         dto.title = fields.title.input.value.trim(); dto.description = fields.description.input.value.trim(); dto.priority = fields.priority.input.value;
-        if (!dto.title || !dto.description) throw new Error('Nhập tiêu đề và mô tả sự cố.');
+        if (!dto.title) throw new FieldError('title', 'Nhập tiêu đề sự cố.');
+        if (!dto.description) throw new FieldError('description', 'Nhập mô tả sự cố.');
         if (fields.dueAt.input.value) dto.dueAt = new Date(fields.dueAt.input.value).toISOString();
         else if (mode === 'update' && row.dueAtUtc) dto.dueAt = null;
       }
       if (mode !== 'create') {
-        const note = fields.note.input.value.trim(); if (!note) throw new Error('Nhập lý do hoặc kết quả xử lý.');
+        const note = fields.note.input.value.trim(); if (!note) throw new FieldError('note', ['resolve', 'fail'].includes(mode) ? 'Nhập kết quả xử lý.' : 'Nhập lý do / ghi chú.');
         dto[mode === 'resolve' ? 'resolution' : ['fail', 'cancel'].includes(mode) ? 'reason' : 'note'] = note;
       }
       for (const key of ['estimatedCost', 'actualCost']) if (fields[key]) {
         if (!finance()) throw new Error('Quyền chi phí đã thay đổi. Vui lòng tải lại.');
         const value = fields[key].input.value.trim();
-        if (value !== '') { const cost = Number(value); if (!Number.isFinite(cost) || cost < 0 || !Number.isSafeInteger(Math.round(cost * 100))) throw new Error('Chi phí không hợp lệ hoặc vượt giới hạn nhập chính xác.'); dto[key === 'actualCost' && mode === 'fail' ? 'cost' : key] = cost; }
+        if (value !== '') { const cost = Number(value); if (!/^\d+(\.\d{1,2})?$/.test(value) || !Number.isFinite(cost) || cost < 0 || !Number.isSafeInteger(Math.round(cost * 100))) throw new FieldError(key, 'Chi phí không hợp lệ hoặc quá lớn.'); dto[key === 'actualCost' && mode === 'fail' ? 'cost' : key] = cost; }
       }
       if (fields.clearCost?.input.checked) { if (!finance()) throw new Error('Quyền chi phí đã thay đổi.'); dto[mode === 'fail' ? 'cost' : 'actualCost'] = null; }
-      if (mode === 'cost' && !Object.hasOwn(dto, 'actualCost')) throw new Error('Nhập chi phí hoặc chọn đặt lại về chưa xác định.');
+      if (mode === 'cost' && !Object.hasOwn(dto, 'actualCost')) throw new FieldError('actualCost', 'Nhập chi phí thực tế mới' + (fields.clearCost ? ' hoặc tích ô xoá chi phí.' : '.'));
       if (mode === 'create' && !can(services, 'assets.read')) throw new Error('Quyền xem tài sản đã thay đổi.');
-    } catch (error) { feedback.replaceChildren(formAlert(error.message)); return; }
+    } catch (error) { showFormError(fields, feedback, error); return; }
+    displayErrors(fields, {});
     pending = true; confirm.disabled = true; confirm.setAttribute('aria-busy', 'true'); feedback.replaceChildren();
     try {
       if (mode === 'create') await services.maintenance.create(dto);
@@ -166,7 +196,7 @@ function maintenanceDialog(services, mode, row, ownerAlive) {
       modal.close(); showToast('Đã cập nhật phiếu bảo trì.'); window.dispatchEvent(new Event('frontend-refresh'));
     } catch (error) {
       if (!current() || !modal.dialog.isConnected || error.code === 'SESSION_CHANGED') return;
-      if (error.status === 400) feedback.replaceChildren(formAlert(error.message));
+      if (error.status === 400) { displayErrors(fields, error.errors || {}); feedback.replaceChildren(formAlert(error.message)); }
       else { blocked = true; feedback.replaceChildren(formAlert('Chưa xác nhận được kết quả hoặc dữ liệu đã thay đổi. Hãy đóng và tải lại trước khi thao tác tiếp.'),
         button('Đóng và tải lại', { kind: 'secondary', onClick: () => { if (current()) { modal.close(); window.dispatchEvent(new Event('frontend-refresh')); } } })); }
     } finally { pending = false; confirm.removeAttribute('aria-busy'); if (!closed) confirm.disabled = blocked || !current(); }

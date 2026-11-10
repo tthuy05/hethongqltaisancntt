@@ -21,22 +21,88 @@ export function setQuery(path, values) {
   for (const [key, value] of Object.entries(values)) if (value !== '' && value != null) query.set(key, String(value));
   route(path + (query.size ? '?' + query.toString() : ''));
 }
-export function field({ name, label, type = 'text', value = '', required = false, maxLength, options, readOnly = false, hint = '', rows = 3 }) {
+// Money is typed as "20.000.000" (vi-VN) but `input.value` still reads/writes the
+// plain machine value ("20000000" / "1500.5"), so callers keep parsing with Number().
+const moneyParts = text => {
+  const match = /^(\d+|\d{1,3}(?:\.\d{3})+)(?:,(\d*))?$/.exec(String(text));
+  return match ? { whole: match[1].replace(/\./g, ''), fraction: match[2] } : null;
+};
+const formatMoney = text => {
+  const parts = moneyParts(text);
+  if (!parts) return text;
+  const grouped = parts.whole.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return parts.fraction === undefined ? grouped : grouped + ',' + parts.fraction;
+};
+function moneyInput(input) {
+  let owner = input, descriptor;
+  while (owner && !(descriptor = Object.getOwnPropertyDescriptor(owner, 'value'))) owner = Object.getPrototypeOf(owner);
+  let store = descriptor && 'value' in descriptor ? descriptor.value : '';
+  const read = descriptor?.get ? () => descriptor.get.call(input) : () => store;
+  const write = descriptor?.set ? text => descriptor.set.call(input, text) : text => { store = text; };
+  Object.defineProperty(input, 'value', { configurable: true,
+    get: () => { const raw = read(), parts = moneyParts(raw); return !parts ? raw : parts.fraction ? `${parts.whole}.${parts.fraction}` : parts.whole; },
+    set: raw => write(raw == null || raw === '' ? '' : formatMoney(String(raw).replace(/^(\d+)\.(\d+)$/, '$1,$2'))) });
+  // Keep editing ungrouped so appending digits never creates malformed separators.
+  input.addEventListener('focus', () => {
+    const parts = moneyParts(read());
+    if (parts) write(parts.whole + (parts.fraction === undefined ? '' : ',' + parts.fraction));
+  });
+  input.addEventListener('blur', () => write(formatMoney(read())));
+  return input;
+}
+// Non-negative numeric inputs: block "-", "+" and exponent keys instead of rejecting later.
+function guardNumber(input, min) {
+  if (!(min >= 0)) return;
+  input.addEventListener('keydown', event => { if (['-', '+', 'e', 'E'].includes(event.key)) event.preventDefault(); });
+}
+export function field({ name, label, type = 'text', value = '', required = false, maxLength, options, readOnly = false, hint = '', rows = 3, placeholder, min, max, step }) {
   const id = 'field-' + name;
-  const props = { id, name, value: value ?? '', required, readOnly, maxLength, className: type === 'textarea' ? 'textarea' : options ? 'select' : 'input', 'aria-describedby': id + '-error' };
-  const input = options ? h('select', props, options.map(item => option(item.value, item.label, String(item.value) === String(value)))) : type === 'textarea' ? h('textarea', { ...props, rows }, value ?? '') : h('input', { ...props, type });
+  const props = { id, name, value: value ?? '', required, readOnly, maxLength, placeholder, className: type === 'textarea' ? 'textarea' : options ? 'select' : 'input', 'aria-describedby': id + '-error' };
+  const money = type === 'money';
+  const input = options ? h('select', props, options.map(item => option(item.value, item.label, String(item.value) === String(value)))) : type === 'textarea' ? h('textarea', { ...props, rows }, value ?? '') :
+    h('input', { ...props, value: money ? '' : props.value, type: money ? 'text' : type, inputMode: money ? 'decimal' : undefined, autocomplete: money ? 'off' : undefined,
+      placeholder: placeholder ?? (money ? 'VD: 20.000.000' : undefined), min: type === 'number' ? min : undefined, max: type === 'number' ? max : undefined, step: type === 'number' ? step : undefined });
+  if (money) { moneyInput(input); input.value = value ?? ''; }
+  if (type === 'number') guardNumber(input, min);
   if (options) input.value = String(value ?? '');
   const error = h('span', { id: id + '-error', className: 'field-error', 'aria-live': 'polite' });
-  return { element: h('div', { className: 'field' }, h('label', { htmlFor: id }, label, required ? h('span', { 'aria-hidden': 'true', className: 'required' }, ' *') : null), input, hint ? h('span', { className: 'field-hint' }, hint) : null, error), input, error };
+  const suffix = money ? h('span', { className: 'input-suffix', 'aria-hidden': 'true' }, '₫') : null;
+  const hintNode = h('span', { className: 'field-hint', 'aria-live': 'polite' }, hint || '');
+  return { element: h('div', { className: 'field' }, h('label', { htmlFor: id }, label, required ? h('span', { 'aria-hidden': 'true', className: 'required' }, ' *') : null),
+    suffix ? h('div', { className: 'input-affix' }, input, suffix) : input, hintNode, error), input, error, hint: hintNode };
 }
 export function displayErrors(fields, errors = {}) {
   for (const [key, item] of Object.entries(fields)) {
+    if (!item?.error || !item.input) continue;
     const value = errors[key];
     item.error.textContent = Array.isArray(value) ? value.join(' ') : value || '';
     item.input.setAttribute('aria-invalid', value ? 'true' : 'false');
   }
-  const first = Object.keys(errors).map(key => fields[key]).find(Boolean);
+  const first = Object.keys(errors).map(key => fields[key]).find(item => item?.input);
   first?.input.focus();
+}
+/** A validation error that belongs to one form field; shown in red under that field. */
+export class FieldError extends Error {
+  constructor(field, message) { super(message); this.field = field; }
+}
+/** Show `error` under its field when it has one; otherwise in the form-level feedback area. */
+export function showFormError(fields, feedback, error) {
+  if (error?.field && fields[error.field]?.error) { feedback?.replaceChildren(); displayErrors(fields, { [error.field]: error.message }); return; }
+  displayErrors(fields, {});
+  feedback?.replaceChildren(formAlert(error?.message || 'Dữ liệu chưa hợp lệ.'));
+}
+/** Run `search` while typing (debounced) and immediately on Enter. */
+export function liveSearch(input, search, delay = 300) {
+  let timer = 0;
+  input.addEventListener('input', () => { window.clearTimeout?.(timer); timer = window.setTimeout(() => { if (input.isConnected) void search(); }, delay); });
+  input.addEventListener('keydown', event => { if (event.key !== 'Enter') return; event.preventDefault(); window.clearTimeout?.(timer); void search(); });
+  return input;
+}
+/** Show lookup results as an open list (no need to expand the dropdown); auto-pick a single match. */
+export function showChoices(select, count) {
+  select.size = count > 0 ? Math.min(count + 1, 7) : 1;
+  select.classList.toggle('select-list', count > 0);
+  if (count === 1 && select.options?.length === 2) select.value = select.options[1].value;
 }
 export function formAlert(message) { return h('div', { className: 'error-state', role: 'alert' }, message); }
 export async function busy(control, work) {
@@ -51,7 +117,11 @@ export function openDialog({ title, body, footer, onClose, className = '' }) {
   const close = () => { dialog.close(); dialog.remove(); onClose?.(); };
   dialog.append(h('div', { className: 'dialog-header' }, h('h2', {}, title), button('Đóng', { kind: 'ghost', iconName: 'x', onClick: close, 'aria-label': 'Đóng hộp thoại' })), body, h('div', { className: 'dialog-footer' }, footer));
   dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
-  dialog.addEventListener('click', event => { if (event.target === dialog) close(); });
+  // Close on a real backdrop click only. Selecting text inside an input and releasing the
+  // mouse outside the box also yields click.target === dialog; that must not close it.
+  let pressed = null;
+  dialog.addEventListener('pointerdown', event => { pressed = event.target; });
+  dialog.addEventListener('click', event => { if (event.target === dialog && (pressed === null || pressed === dialog)) close(); pressed = null; });
   document.body.append(dialog);
   dialog.showModal();
   return { dialog, close };

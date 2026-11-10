@@ -1,3 +1,9 @@
+## Tích hợp nghiệm thu giao diện 10/11/2026
+
+Đã tích hợp source từ feat/thien-continue tại 4231fd9. Giữ bộ lọc Asset và Excel, LTS, cảnh báo giá thiếu trên Dashboard, Gia hạn License và quyền xem chi phí của main. Bổ sung tra cứu trực tiếp, lịch sử ngay trong chi tiết, nhóm báo cáo và mở chi tiết từ dòng báo cáo. Hai lệnh seed Reports/Replacement chỉ dùng qua CLI Development. Không đổi schema hoặc quyền runtime.
+
+Kiểm tra trên nhánh tích hợp: Release 0 warning/error, 927 unit PASS, 229 integration offline PASS, 208 opt-in SKIP, 460 frontend PASS, 61 JavaScript và 65 CSP PASS. Publication sẽ được đối chiếu qua CI và Render.
+
 ## Trạng thái phát hành — 03/11/2026
 
 Bản ứng dụng đã xác minh trên Render là `e7f61b405c0efedf6f3f6f7724e59bd554d6a643` (PR #20), artifact/render revision Matched. CI main41488143321 và Docker Linux PASS; source: 927 unit, 280 integration, 460 frontend PASS, 163 integration opt-in SKIP; Release 0 warnings/errors, 59 JS/63 CSP, bundle 58 assets. Đây là kết quả lượt phát hành, không phải chạy lại toàn bộ suite khi chỉ sửa tài liệu.

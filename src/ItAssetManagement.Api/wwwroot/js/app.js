@@ -37,6 +37,35 @@ const menuItems = [
 ];
 let generation = 0;
 let pendingPath = '/dashboard';
+let activeLayout = null, activePath = null, activeIdentity = null;
+// The shell shows the user's name and permission-filtered menu; reuse it only for the same session view.
+const identity = () => { const user = services.auth.session; return user ? JSON.stringify([user.id, user.displayName, user.roles, user.permissions]) : null; };
+// List filters search while typing: a text box inside form.filters submits itself
+// after a short pause, and render() puts the caret back in that box afterwards.
+let liveTimer = 0;
+document.addEventListener?.('input', event => {
+  const input = event.target;
+  if (input?.tagName !== 'INPUT' || !['text', 'search'].includes(input.type) || input.closest('dialog')) return;
+  const form = input.closest('form.filters');
+  if (!form) return;
+  window.clearTimeout(liveTimer);
+  liveTimer = window.setTimeout(() => { if (input.isConnected && document.activeElement === input) form.requestSubmit(); }, 450);
+});
+function focusedFilter() {
+  const element = document.activeElement;
+  if (element?.tagName !== 'INPUT' || !element.closest('form.filters')) return null;
+  const key = element.id ? ['id', element.id] : element.name ? ['name', element.name] : element.getAttribute('aria-label') ? ['aria-label', element.getAttribute('aria-label')] : null;
+  return key && { key, value: element.value, caret: element.selectionStart ?? element.value.length };
+}
+function restoreFilter(content, saved) {
+  if (!saved) return false;
+  const [attribute, value] = saved.key;
+  const element = [...content.querySelectorAll('form.filters input')].find(item => item.getAttribute(attribute) === value);
+  if (!element) return false;
+  element.focus({ preventScroll: true });
+  try { const end = Math.min(saved.caret, element.value.length); element.setSelectionRange(end, end); } catch { /* type without selection */ }
+  return true;
+}
 function parsedRoute() {
   const raw = window.location.hash.slice(1) || '/dashboard';
   return raw.split('?')[0].replace(/\/$/, '') || '/dashboard';
@@ -77,14 +106,19 @@ async function render() {
   for (const dialog of document.querySelectorAll('dialog.dialog')) { dialog.close(); dialog.remove(); }
   const ownGeneration = ++generation;
   const path = parsedRoute();
-  if (path === '/activate') { app.replaceChildren(activationPage(services)); return; }
+  if (path === '/activate') { activePath = null; app.replaceChildren(activationPage(services)); return; }
   if (!services.auth.session || path === '/login') {
+    activePath = null;
     if (path !== '/login') pendingPath = window.location.hash.slice(1) || '/dashboard';
     app.replaceChildren(loginPage(services, pendingPath));
     return;
   }
-  const layout = shell(path);
-  app.replaceChildren(layout.root);
+  // Same page again (filter, paging, refresh): keep the current view until the new one is ready.
+  const saved = focusedFilter();
+  const reuse = path === activePath && activeIdentity === identity() && activeLayout?.root.isConnected;
+  const layout = reuse ? activeLayout : shell(path);
+  if (!reuse) app.replaceChildren(layout.root);
+  activeLayout = layout; activePath = path; activeIdentity = identity();
   try {
     let page;
     if (path === '/dashboard') page = await dashboardPage(services);
@@ -115,10 +149,13 @@ async function render() {
       page = h('div', {}, pageHeader(item ? item[1] : 'Không tìm thấy trang', item ? 'Module được lên kế hoạch cho các giai đoạn tiếp theo.' : 'Đường dẫn không tồn tại.'), h('section', { className: 'card' }, h('div', { className: 'card-body empty-state' }, icon(item?.[2] || 'search', 40), h('h2', {}, item ? 'PLANNED — Chưa triển khai' : '404 — Không tìm thấy'), h('p', { className: 'meta' }, item ? 'Chưa có nghiệp vụ, dữ liệu hoặc backend cho module này. Không phải màn hình chức năng đã hoàn thành.' : 'Bạn có thể quay lại danh sách tài sản.'), button('Về tài sản', { kind: 'secondary', onClick: () => route('/assets') }))));
     }
     if (ownGeneration !== generation) return;
+    const latest = reuse && focusedFilter();
+    if (saved && latest && saved.key[0] === latest.key[0] && saved.key[1] === latest.key[1] && saved.value !== latest.value) return;
     layout.content.replaceChildren(page);
+    if (restoreFilter(layout.content, reuse ? saved : null)) return;
     layout.content.querySelector('h1')?.setAttribute('tabindex', '-1');
     layout.content.querySelector('h1')?.focus({ preventScroll: true });
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    if (!reuse) window.scrollTo({ top: 0, behavior: 'instant' });
   } catch (error) {
     if (ownGeneration !== generation) return;
     if (error.status === 401) {
@@ -126,7 +163,7 @@ async function render() {
       // The API adapter owns invalidation; never logout a newer valid session.
       if (services.auth.session) { void render(); return; }
       pendingPath = window.location.hash.slice(1) || path;
-      app.replaceChildren(loginPage(services, pendingPath)); return;
+      activePath = null; app.replaceChildren(loginPage(services, pendingPath)); return;
     }
     layout.content.replaceChildren(pageHeader(error.status === 404 ? 'Không tìm thấy tài sản' : 'Không thể tải nội dung', ''), errorState(error, () => render()), button('Về danh sách', { kind: 'secondary', onClick: () => route('/assets') }));
   }

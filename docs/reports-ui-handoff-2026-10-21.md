@@ -1,5 +1,9 @@
 # Thủy — Giao diện và Bộ lọc Reports (Hoàn thiện tiếp quản từ Codex), 21/10/2026
 
+## Tích hợp giao diện nghiệm thu 10/11/2026
+
+Bảy nội dung báo cáo nằm trong bốn nhóm giao diện. Giá trị tab trong URL giữ nguyên, phân quyền theo từng tab và các workbook hiện có tiếp tục áp dụng. Bộ lọc có thể chọn tên phòng ban hoặc loại tài sản khi danh mục đọc được. Dòng kiểm kê, cấp phát, bảo trì, bảo hành và thay thế mở chi tiết theo quyền đọc tương ứng. Chi phí trên chi tiết giữ theo quyền của module nguồn. Đợt tích hợp không đổi hợp đồng API hoặc seed shared.
+
 ## Trạng thái hiện tại — 03/11/2026
 
 Reports/Dashboard V2 đã rollout; source mới có các workbook báo cáo bổ sung. Giao diện production opt-in Reporting, Backend dùng Features:ReportingV2:Enabled và các policy hiện có; không tự bật theo query/localStorage. Cost/key masking và quyền riêng RBAC v2 vẫn áp dụng. Rollout IN PROGRESS ở mục01/11 là checkpoint trước publication; không phải gate còn chặn code hiện tại.
