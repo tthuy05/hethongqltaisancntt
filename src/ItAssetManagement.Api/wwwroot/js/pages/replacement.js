@@ -1,6 +1,6 @@
 import { h } from '../utils/dom.js';
 import { button, pageHeader, dataTable, pagination, showToast } from '../components.js';
-import { can, route, queryFrom, setQuery, option, field, displayErrors, formAlert, openDialog, money, moneyCell, date } from './shared.js';
+import { can, route, queryFrom, setQuery, option, field, displayErrors, formAlert, openDialog, money, moneyCell, date, liveSearch } from './shared.js';
 import { severities, validateRule } from '../services/replacement-service.js';
 
 const labels = { LOW: 'Thấp', MEDIUM: 'Trung bình', HIGH: 'Cao', CRITICAL: 'Khẩn cấp', ACTIVE: 'Đang xem xét', PLANNED: 'Đã lập kế hoạch', DISMISSED: 'Đã bỏ qua', SUPERSEDED: 'Đã được thay thế' };
@@ -12,6 +12,12 @@ export async function replacementPage(services, rules = false) {
   const current = () => services.auth.session?.id === actor && services.replacementEnabled === true && can(services, read) && (rules || can(services, 'assets.read'));
   const query = { page: 1, pageSize: 20, ...queryFrom() };
   const result = await (rules ? services.replacement.rules(query) : services.replacement.list(query));
+  if (!current()) throw Object.assign(new Error('Phiên đã thay đổi.'), { status: 401 });
+  // Recommendations carry only assetId; show the code and name people actually recognise.
+  const assetNames = new Map();
+  if (!rules) await Promise.all([...new Set(result.items.map(row => row.assetId))].map(async assetId => {
+    try { const asset = await services.assets.get(assetId); assetNames.set(assetId, `${asset.assetCode} — ${asset.name}`); } catch { /* keep the id */ }
+  }));
   if (!current()) throw Object.assign(new Error('Phiên đã thay đổi.'), { status: 401 });
   const root = h('div', {}), feedback = h('div', { 'aria-live': 'polite' });
   const alive = () => root.isConnected && current() && window.location.hash === hash;
@@ -59,13 +65,13 @@ export async function replacementPage(services, rules = false) {
         add('name', 'Tên quy tắc', item?.name || '', { required: true, maxLength: 250 }),
         add('severity', 'Mức ưu tiên của đề xuất', item?.severity || '', { required: true, options: [{ value: '', label: 'Chọn mức ưu tiên' }, ...severities.map(value => ({ value, label: labels[value] }))] }),
         add('assetTypeId', 'Áp dụng cho loại tài sản', item?.assetTypeId ?? '', { options: [{ value: '', label: 'Tất cả loại tài sản' }, ...types.filter(x => x.isActive || x.id === item?.assetTypeId).map(x => ({ value: x.id, label: x.name })), ...(item?.assetTypeId && !types.some(x => x.id === item.assetTypeId) ? [{ value: item.assetTypeId, label: 'Giữ loại tài sản hiện tại' }] : [])] }),
-        add('minimumAgeMonths', 'Tuổi tài sản tối thiểu (tháng)', item?.minimumAgeMonths ?? '', { type: 'number' }),
-        add('minimumMaintenanceCount', 'Số lần bảo trì đã kết thúc tối thiểu', item?.minimumMaintenanceCount ?? '', { type: 'number', hint: 'Chỉ tính phiếu đã giải quyết hoặc thất bại, kể cả đã lưu trữ.' }),
-        add('maximumMaintenanceCostRatio', 'Tỷ lệ chi phí bảo trì / giá mua', item?.maximumMaintenanceCostRatio ?? '', { type: 'number', hint: 'Từ 0 đến 1; ví dụ 0,5 tương ứng 50%.' }),
+        add('minimumAgeMonths', 'Tuổi tài sản tối thiểu (tháng)', item?.minimumAgeMonths ?? '', { type: 'number', min: 1, step: 1, placeholder: 'VD: 36', hint: 'Để trống nếu không dùng điều kiện này.' }),
+        add('minimumMaintenanceCount', 'Số lần bảo trì đã kết thúc tối thiểu', item?.minimumMaintenanceCount ?? '', { type: 'number', min: 1, step: 1, placeholder: 'VD: 3', hint: 'Chỉ tính phiếu đã sửa xong hoặc không sửa được, kể cả đã lưu trữ.' }),
+        add('maximumMaintenanceCostRatio', 'Tỷ lệ chi phí bảo trì / giá mua', item?.maximumMaintenanceCostRatio ?? '', { type: 'number', min: 0, max: 1, step: 0.05, placeholder: 'VD: 0.5', hint: 'Từ 0 đến 1, mỗi nấc 0,05. Ví dụ 0,5 = tiền sửa đã bằng 50% giá mua.' }),
         add('requireWarrantyExpired', 'Điều kiện hết bảo hành', String(item?.requireWarrantyExpired ?? false), { options: [{ value: 'false', label: 'Không sử dụng' }, { value: 'true', label: 'Hết bảo hành và đạt số lần thất bại' }] }),
-        add('minimumFailureCount', 'Số lần xử lý thất bại tối thiểu', item?.minimumFailureCount ?? '', { type: 'number' }),
-        ...(costAllowed ? [add('estimatedUnitCost', 'Giá thay thế ước tính (VNĐ)', item?.estimatedUnitCost ?? '', { type: 'number' })] : []),
-        add('priority', 'Thứ tự khi cùng mức ưu tiên', item?.priority ?? 100, { type: 'number', hint: 'Số nhỏ được chọn trước. Các điều kiện trong một quy tắc kết hợp HOẶC.' }),
+        add('minimumFailureCount', 'Số lần xử lý thất bại tối thiểu', item?.minimumFailureCount ?? '', { type: 'number', min: 1, step: 1 }),
+        ...(costAllowed ? [add('estimatedUnitCost', 'Giá thay thế ước tính (VNĐ)', item?.estimatedUnitCost ?? '', { type: 'money', hint: 'Giá mua thiết bị mới để thay; dùng cho dự toán ngân sách.' })] : []),
+        add('priority', 'Thứ tự khi cùng mức ưu tiên', item?.priority ?? 100, { type: 'number', min: 0, step: 1, hint: 'Số nhỏ được chọn trước. Các điều kiện trong một quy tắc kết hợp HOẶC.' }),
         add('description', 'Mô tả', item?.description || '', { type: 'textarea', maxLength: 2000 })
       ], async fields => {
         if (costAllowed && !financial()) throw Object.assign(new Error('Quyền xem giá đã thay đổi.'), { status: 403 });
@@ -122,7 +128,7 @@ export async function replacementPage(services, rules = false) {
       formDialog('Xử lý đề xuất', 'replacement-recommendations.update', add => [
         h('p', {}, 'Đây là ghi nhận kế hoạch; không tự ngừng tài sản hoặc tạo khoản chi.'),
         add('disposition', 'Quyết định', 'PLANNED', { options: [{ value: 'PLANNED', label: 'Lập kế hoạch' }, ...(item.disposition === 'ACTIVE' ? [{ value: 'DISMISSED', label: 'Bỏ qua đề xuất' }] : [])] }),
-        add('year', 'Năm dự kiến thay thế', item.plannedReplacementYear ?? new Date().getUTCFullYear(), { type: 'number' }),
+        add('year', 'Năm dự kiến thay thế', item.plannedReplacementYear ?? new Date().getUTCFullYear(), { type: 'number', min: 2000, max: 2100, step: 1 }),
         add('note', 'Lý do', '', { required: true, type: 'textarea', maxLength: 2000 })
       ], fields => services.replacement.disposition(item.id, { disposition: fields.disposition.input.value,
         ...(fields.disposition.input.value === 'PLANNED' ? { plannedReplacementYear: Number(fields.year.input.value) } : {}),
@@ -135,7 +141,7 @@ export async function replacementPage(services, rules = false) {
     let searchId = 0;
     const dialog = formDialog('Đánh giá tài sản thay thế', 'replacement-recommendations.evaluate', add => [
       h('p', {}, 'Chọn tối đa 100 tài sản. Kết quả mới giữ lịch sử cũ; tài sản không tự ngừng sử dụng.'),
-      add('keyword', 'Tìm mã hoặc tên tài sản'), button('Tìm tài sản', { type: 'button', kind: 'secondary', onClick: () => load(document.getElementById('field-replacement-keyword')?.value || '') }), summary, list
+      add('keyword', 'Tìm mã hoặc tên tài sản', '', { placeholder: 'Gõ mã hoặc tên… (kết quả hiện ngay khi gõ)' }), button('Tìm tài sản', { type: 'button', kind: 'secondary', iconName: 'search', onClick: () => load(document.getElementById('field-replacement-keyword')?.value || '') }), summary, list
     ], async () => {
       if (!can(services, 'assets.cost.read')) throw Object.assign(new Error('Quyền đánh giá đã thay đổi.'), { status: 403 });
       const result = await services.replacement.evaluate([...selected]);
@@ -156,14 +162,17 @@ export async function replacementPage(services, rules = false) {
           } }), item.assetCode + ' — ' + item.name)));
       } catch (error) { if (dialog.active() && revision === searchId) list.replaceChildren(formAlert(error.message)); }
     }
+    const keywordInput = document.getElementById('field-replacement-keyword');
+    if (keywordInput) liveSearch(keywordInput, () => load(keywordInput.value.trim()));
     load();
   }
-  const keyword = h('input', { className: 'input', value: query.keyword || '', 'aria-label': 'Tìm quy tắc' });
+  const keyword = h('input', { className: 'input', value: query.keyword || '', 'aria-label': 'Tìm quy tắc', placeholder: 'Mã hoặc tên quy tắc…' });
   const status = h('select', { className: 'select', 'aria-label': 'Trạng thái thay thế' }, option('', 'Tất cả trạng thái'),
     ...(rules ? [['Active', 'Đang bật'], ['Inactive', 'Đã ngừng']] : ['ACTIVE', 'PLANNED', 'DISMISSED', 'SUPERSEDED'].map(value => [value, labels[value]])).map(([value, label]) => option(value, label, query.status === value)));
   root.append(pageHeader(rules ? 'Quy tắc thay thế' : 'Đề xuất thay thế', 'Đánh giá có căn cứ, giữ lịch sử và không tự ngừng tài sản.', { actions: rules ? admin() && can(services, 'replacement-rules.create') ? [button('Tạo quy tắc', { onClick: () => editRule() })] : [] : can(services, 'replacement-recommendations.evaluate') && can(services, 'assets.cost.read') ? [button('Đánh giá tài sản', { onClick: evaluate })] : [] }),
     h('nav', { className: 'actions', 'aria-label': 'Các phần thay thế' }, can(services, 'replacement-recommendations.read') ? h('a', { href: '#/replacement' }, 'Đề xuất') : null, can(services, 'replacement-rules.read') ? h('a', { href: '#/replacement/rules' }, 'Quy tắc') : null), feedback,
-    h('form', { className: 'filters', onSubmit: event => { event.preventDefault(); if (alive()) setQuery(path, { ...query, page: 1, status: status.value, ...(rules ? { keyword: keyword.value.trim() } : {}) }); } }, rules ? keyword : null, status, button('Lọc', { type: 'submit' }), button('Đặt lại', { kind: 'secondary', onClick: () => { if (alive()) route(path); } })),
+    h('section', { className: 'card filters-card' }, h('form', { className: 'filters', onSubmit: event => { event.preventDefault(); if (alive()) setQuery(path, { ...query, page: 1, status: status.value, ...(rules ? { keyword: keyword.value.trim() } : {}) }); } }, rules ? keyword : null, status, h('div', { className: 'actions' }, button('Lọc', { type: 'submit', iconName: 'search' }), button('Đặt lại', { kind: 'secondary', onClick: () => { if (alive()) route(path); } })))),
+    ...(!rules ? [h('p', { className: 'info-note' }, 'Mỗi lần đánh giá lại, đề xuất cũ của tài sản chuyển sang "Đã được thay thế" (vẫn giữ trong danh sách làm lịch sử) và tạo một đề xuất mới là bản "Hiện hành".')] : []),
     h('section', { className: 'card' }, dataTable({ rows: result.items, columns: rules ? [
       { key: 'code', label: 'Mã' }, { key: 'name', label: 'Quy tắc' }, { key: 'version', label: 'Phiên bản' },
       { label: 'Ưu tiên', render: row => labels[row.severity] || 'Chưa cấu hình' }, { label: 'Trạng thái', render: row => row.isActive ? 'Đang bật' : 'Đã ngừng' },
@@ -171,8 +180,10 @@ export async function replacementPage(services, rules = false) {
         admin() && can(services, 'replacement-rules.update') && !row.effectiveTo ? button('Tạo phiên bản mới', { kind: 'ghost', onClick: () => editRule(row) }) : null,
         admin() && can(services, 'replacement-rules.update') && !row.effectiveTo && row.severity ? button('Đổi trạng thái', { kind: 'ghost', onClick: () => statusRule(row) }) : null) }
     ] : [
-      { label: 'Tài sản', render: row => h('a', { href: '#/assets/' + row.assetId }, 'Tài sản #' + row.assetId) }, { label: 'Ưu tiên', render: row => labels[row.priority] || row.priority },
-      { label: 'Trạng thái', render: row => labels[row.disposition] || row.disposition }, { key: 'plannedReplacementYear', label: 'Năm kế hoạch' },
+      { label: 'Tài sản', render: row => h('a', { href: '#/assets/' + row.assetId }, assetNames.get(row.assetId) || 'Tài sản #' + row.assetId) }, { label: 'Ưu tiên', render: row => labels[row.priority] || row.priority },
+      { label: 'Trạng thái', render: row => labels[row.disposition] || row.disposition },
+      { label: 'Bản', render: row => h('span', { className: 'badge ' + (row.isCurrent ? 'green' : 'neutral') }, h('span', { className: 'badge-dot' }), row.isCurrent ? 'Hiện hành' : 'Lịch sử') },
+      { key: 'plannedReplacementYear', label: 'Năm kế hoạch' },
       ...(financial() ? [{ label: 'Ước tính', render: row => moneyCell(row.estimatedReplacementCost) }] : []),
       { label: 'Ngày đánh giá', render: row => date(row.recommendedAt) },
       { label: 'Thao tác', render: row => h('div', { className: 'actions' }, button('Căn cứ', { kind: 'ghost', onClick: () => detail(row) }), row.isCurrent && ['ACTIVE', 'PLANNED'].includes(row.disposition) && can(services, 'replacement-recommendations.update') ? button(row.disposition === 'PLANNED' ? 'Điều chỉnh kế hoạch' : 'Lập kế hoạch / bỏ qua', { kind: 'ghost', onClick: () => disposition(row) }) : null) }

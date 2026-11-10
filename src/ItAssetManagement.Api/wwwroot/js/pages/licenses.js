@@ -89,8 +89,8 @@ export async function licenseListPage(services, { enabled = false, query = { pag
     const typeSelect = h('select', { id: 'field-license-type', className: 'select', name: 'licenseType', value: item?.licenseType || 'PER_USER' },
       ...Object.entries(licenseTypeLabels).map(([val, lbl]) => option(val, lbl, item?.licenseType === val)));
 
-    const addField = (name, label, val = '', type = 'text', max = 250, req = false) => {
-      const f = field({ name: 'license-' + name, label, maxLength: max, type, value: val ?? '', required: req });
+    const addField = (name, label, val = '', type = 'text', max = 250, req = false, extra = {}) => {
+      const f = field({ name: 'license-' + name, label, maxLength: type === 'number' ? undefined : max, type, value: val ?? '', required: req, ...extra });
       fields[name] = f;
       return f.element;
     };
@@ -161,14 +161,14 @@ export async function licenseListPage(services, { enabled = false, query = { pag
     } },
     h('div', { className: 'dialog-body form-grid' },
       h('p', { className: 'info-note' }, item?.licenseCode ? `Mã bản quyền: ${item.licenseCode}` : 'Mã BQxxxxxx sẽ được hệ thống tự động sinh khi lưu.'),
-      h('div', { className: 'field' }, h('label', { className: 'label' }, 'Phần mềm *'), softwareSelect),
-      h('div', { className: 'field' }, h('label', { className: 'label' }, 'Loại bản quyền *'), typeSelect),
-      addField('totalQuantity', 'Tổng số lượng seat *', item?.totalQuantity ?? '1', 'number', 10, true),
+      h('div', { className: 'field' }, h('label', { className: 'label', htmlFor: 'field-license-software' }, 'Phần mềm', h('span', { 'aria-hidden': 'true', className: 'required' }, ' *')), softwareSelect),
+      h('div', { className: 'field' }, h('label', { className: 'label', htmlFor: 'field-license-type' }, 'Loại bản quyền', h('span', { 'aria-hidden': 'true', className: 'required' }, ' *')), typeSelect),
+      addField('totalQuantity', 'Tổng số lượng seat', item?.totalQuantity ?? '1', 'number', 10, true, { min: 1, step: 1, hint: 'Số người/máy được dùng cùng lúc. Không được nhỏ hơn số seat đang cấp.' }),
       addField('vendor', 'Nhà cung cấp', item?.vendor ?? '', 'text', 250),
       addField('startsAt', 'Ngày hiệu lực', item?.startsAt ? item.startsAt.slice(0, 10) : '', 'date'),
       addField('expiresAt', 'Ngày hết hạn', item?.expiresAt ? item.expiresAt.slice(0, 10) : '', 'date'),
       addField('purchasedAt', 'Ngày mua', item?.purchasedAt ? item.purchasedAt.slice(0, 10) : '', 'date'),
-      canCost ? addField('purchaseCost', 'Chi phí mua (VNĐ)', item?.purchaseCost != null ? String(item.purchaseCost) : '', 'number', 20) : null,
+      canCost ? addField('purchaseCost', 'Chi phí mua (VNĐ)', item?.purchaseCost != null ? String(item.purchaseCost) : '', 'money', 20) : null,
       canManageKey ? addField('licenseKey', item ? 'Cập nhật Key (để trống nếu giữ nguyên)' : 'Khóa bản quyền (Key)', '', 'text', 4096) : null,
       addField('notes', 'Ghi chú', item?.notes ?? '', 'textarea', 2000),
       renewal ? h('p', { className: 'meta' }, 'Chỉ xác nhận sau khi đã gia hạn với nhà cung cấp. Hệ thống không tự mua hoặc tự kéo dài thời hạn; nhập ngày hết hạn mới và ghi chú xác nhận.') : null,
@@ -226,9 +226,11 @@ export async function licenseListPage(services, { enabled = false, query = { pag
   async function openDetailDialog(row) {
     try {
       const fresh = await services.licenses.get(row.id);
+      const allocation = await licenseAllocationPanel(services, licenseView(fresh)).catch(() => null);
       openDialog({
-        title: `Chi tiết bản quyền — ${fresh.licenseCode}`,
-        body: h('div', { className: 'dialog-body detail-grid' },
+        title: `Chi tiết bản quyền — ${fresh.licenseCode}`, className: 'dialog--wide detail-dialog',
+        onClose: () => allocation?.dispose?.(),
+        body: h('div', { className: 'dialog-body' }, h('dl', { className: 'detail-grid' },
           h('div', { className: 'detail-item' }, h('dt', {}, 'Phần mềm'), h('dd', {}, fresh.software?.name || 'Chưa có dữ liệu')),
           h('div', { className: 'detail-item' }, h('dt', {}, 'Loại bản quyền'), h('dd', {}, licenseTypeLabels[fresh.licenseType] || fresh.licenseType)),
           h('div', { className: 'detail-item' }, h('dt', {}, 'Trạng thái'), h('dd', {}, statusBadge(fresh.status, fresh.isActive))),
@@ -239,7 +241,10 @@ export async function licenseListPage(services, { enabled = false, query = { pag
           h('div', { className: 'detail-item' }, h('dt', {}, 'Khóa bản quyền (Key)'), h('dd', {}, fresh.maskedKey ?? 'Chưa có thông tin key')),
           h('div', { className: 'detail-item' }, h('dt', {}, 'Hiệu lực từ'), h('dd', {}, date(fresh.startsAt))),
           h('div', { className: 'detail-item' }, h('dt', {}, 'Hết hạn'), h('dd', {}, date(fresh.expiresAt))),
-          fresh.notes ? h('div', { className: 'detail-item span-full' }, h('dt', {}, 'Ghi chú'), h('dd', {}, fresh.notes)) : null)
+          fresh.notes ? h('div', { className: 'detail-item span-full' }, h('dt', {}, 'Ghi chú'), h('dd', {}, fresh.notes)) : null),
+          h('h3', {}, 'Phân bổ seat'),
+          allocation?.element || h('p', { className: 'meta' }, 'Bạn chưa có quyền xem phân bổ seat của bản quyền này.'),
+          h('div', { className: 'record-actions' }, button('Mở trang bản quyền', { kind: 'secondary', iconName: 'arrow-right', onClick: () => route('/licenses/' + fresh.id) })))
       });
     } catch (err) { showToast(err.message || 'Không thể tải chi tiết bản quyền.'); }
   }
@@ -335,8 +340,7 @@ export async function licenseDetailPage(services, id, { enabled = false, allocat
     } },
     h('div', { className: 'dialog-body form-grid' },
       h('p', {}, `Yêu cầu quyền Admin IT và ghi nhật ký kiểm toán cho thao tác giải mã khóa của bản quyền ${value.licenseCode}.`),
-      h('div', { className: 'field' }, h('label', { className: 'label' }, 'Lý do truy cập *'), reasonInput),
-
+      h('div', { className: 'field' }, h('label', { className: 'label', htmlFor: 'field-reveal-reason' }, 'Lý do truy cập', h('span', { 'aria-hidden': 'true', className: 'required' }, ' *')), reasonInput),
       message),
     h('div', { className: 'dialog-footer' }, button('Hủy', { kind: 'secondary', onClick: () => modal.close() }), confirm));
     modal = openDialog({ title: 'Xác thực xem khóa bản quyền', body: form });
