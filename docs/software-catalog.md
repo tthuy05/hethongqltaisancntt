@@ -7,7 +7,7 @@ Danh mục phần mềm đã được đưa vào source phát hành trên Render
 Bản ứng dụng đối chiếu: `e7f61b405c0efedf6f3f6f7724e59bd554d6a643`; xem [README](../README.md) và [PROJECT_STATUS](../PROJECT_STATUS.md) cho evidence và các phần chưa kiểm chứng. Nội dung theo ngày bên dưới giữ làm lịch sử; không tự chạy lại các bước rollout cũ.
 
 Ngày 26/10/2026. Nhánh `codex/software-catalog`, kế thừa main `281fe2f`.
-Trạng thái: hoàn thiện source và nghiệm thu local; **production rollout PLANNED**.
+Trạng thái hiện tại29/10/2026: **DEPLOYED / MANAGER PRODUCTION ACCEPTANCE PASS** tại main `bfb3657`. Tạo mã PM/sửa/tìm kiếm/lọc và guard active-License đã nghiệm thu trên QA riêng. PM000001 đã ngừng dùng sau khi đóng License; không xóa lịch sử. Các ghi chú PLANNED bên dưới là checkpoint lịch sử. Kết quả rollout/giới hạn và evidence tập trung tại [license-catalog.md](license-catalog.md).
 
 ## 1. Chức năng và cách hoạt động
 
