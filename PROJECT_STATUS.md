@@ -121,6 +121,12 @@ Tiếp tục WIP codex/replacement-rule-catalog: EP-064/066/067 create/backend c
 
 Nhánh codex/replacement-rule-catalog từ origin/main bfb3657. Thêm EP-063/065 danh sách/chi tiết, paging/filter/stable sort, financial projection, gate/readiness/ingress. Source catalog57 (thêm quyền đọc); production vẫn56, không seed/migration/deploy và không bật flag. Create/revision/status/evaluation/UI PLANNED. Kiểm thử cuối:878unit/255integration/436frontend PASS,0FAIL;163cloudSKIP;Release0warnings/errors;57JS/61CSP PASS. PostgreSQL local + JWT thật PASS; readiness probe thật trên Neon/browser/Docker CI head này NOT VERIFIED. Logs ở test-results/replacement-rule (ignored). Handoff: [rule policy](docs/week-05-rule-policy-handoff.md).
 
+## 29/10/2026 — Software/License/Allocation: nghiệm thu production
+
+**DEPLOYED / MANAGER ACCEPTANCE PASS** tại main `bfb3657c3d6439ec1735994699f37dfaf881c28e` (PR13), Render `dep-dbgubm6i0phs73csqueg` Live; health/version Matched. CI PR/main và Docker Linux PASS. Đã xác minh form sửa giữ notes/purchasedAt/purchaseCost qua lần lưu tiếp theo. Software/License QA tạo/sửa/tìm kiếm, seat assign→transfer→revoke PASS. Đã ngừng dùng PM000001/BQ000001; DB READ ONLY xác nhận giữ hai history,0 active allocation, không xóa dữ liệu.
+
+Regression cuối867unit/249integration/436frontend PASS;163cloudSKIP;Release0warnings/errors;57JS/61CSP;build56assets PASS. Neon19business tables/44FK/5migrations,56permissions/108grants. Không migration/seed/credential/config mới. Admin reveal và Support login production còn UNVERIFIED; PITR UNVERIFIED. Chi tiết/evidence tại [license-catalog.md](docs/license-catalog.md).
+
 ## License edit data preservation — 28/10/2026
 
 Nhánh `codex/license-edit-data-preservation` từ main3e5d8c9. Đã đăng nhập lại bằng Manager credential lưu local theo ủy quyền người dùng. Production Software create/generatedPM/update/search và License create/generatedBQ PASS trên bản ghi QA riêng. Phát hiện adapter bỏnotes/purchasedAt/purchaseCost, đã đóng form trước submit; bản vá projection và end-to-end adapter/form regression **LOCAL PASS / PUBLICATION PENDING**. Frontend436PASS,57JS/61CSP và production build PASS; Release0warnings/errors. Backend regression cuối867unit/249integration PASS,163cloudSKIP sau khi khởi động PostgreSQL local; lần lỗi môi trường ban đầu giữ là FAIL, không cộng vào PASS. Production Manager allocationQA đã assign1/1→transfer1/1→revoke0/1, lịch sử giữ hai hàng; không sửa bản ghi nghiệp vụ cũ. Không migration/seed/config/credential mới. Chi tiết trong docs/license-catalog.md.
