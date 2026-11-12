@@ -1,3 +1,7 @@
+## Bố cục xuất Excel trong Báo cáo 12/11/2026
+
+Khung xuất Excel có khoảng đệm riêng. Các nút và dòng mô tả tự xuống hàng khi thiếu chỗ. Đã kiểm tra bằng trình duyệt với khung 920 px và 280 px trên bản dựng local, gồm cả trường hợp có ba nút.
+
 ## Tích hợp nghiệm thu giao diện 10/11/2026
 
 Đã tích hợp source từ feat/thien-continue tại 4231fd9. Giữ bộ lọc Asset và Excel, LTS, cảnh báo giá thiếu trên Dashboard, Gia hạn License và quyền xem chi phí của main. Bổ sung tra cứu trực tiếp, lịch sử ngay trong chi tiết, nhóm báo cáo và mở chi tiết từ dòng báo cáo. Hai lệnh seed Reports/Replacement chỉ dùng qua CLI Development. Không đổi schema hoặc quyền runtime.
