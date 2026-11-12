@@ -1,5 +1,7 @@
 # Thủy — Giao diện và Bộ lọc Reports (Hoàn thiện tiếp quản từ Codex), 21/10/2026
 
+Khung xuất Excel dùng chung bố cục cho báo cáo có một nút và nhiều nút. Khoảng đệm giữ nút cách mép thẻ, hàng nút tự ngắt và ghi chú xuống dòng khi khung hẹp.
+
 ## Tích hợp giao diện nghiệm thu 10/11/2026
 
 Bảy nội dung báo cáo nằm trong bốn nhóm giao diện. Giá trị tab trong URL giữ nguyên, phân quyền theo từng tab và các workbook hiện có tiếp tục áp dụng. Bộ lọc có thể chọn tên phòng ban hoặc loại tài sản khi danh mục đọc được. Dòng kiểm kê, cấp phát, bảo trì, bảo hành và thay thế mở chi tiết theo quyền đọc tương ứng. Chi phí trên chi tiết giữ theo quyền của module nguồn. Đợt tích hợp không đổi hợp đồng API hoặc seed shared.

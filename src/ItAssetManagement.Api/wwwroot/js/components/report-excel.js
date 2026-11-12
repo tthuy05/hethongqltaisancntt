@@ -2,6 +2,13 @@ import { h } from '../utils/dom.js';
 import { excelAvailable, excelDownloadButton } from './asset-excel.js';
 import { reportUtc } from '../pages/reports-query.js';
 
+function exportPanel(controls, note) {
+  if (!controls.length) return null;
+  return h('section', { className: 'card report-export', 'aria-label': 'Xuất báo cáo Excel' },
+    h('div', { className: 'toolbar report-export-actions' }, ...controls),
+    h('p', { className: 'meta' }, note));
+}
+
 // Only existing export APIs. Never pretend an unsupported report filter was applied.
 export function reportExcelActions(services, tab, query, active) {
   if (!excelAvailable(services)) return null;
@@ -9,8 +16,7 @@ export function reportExcelActions(services, tab, query, active) {
   const shared = { departmentId: id('departmentId') };
   const multiple = specs => {
     const controls = specs.map(spec => excelDownloadButton(services, { ...spec, active })).filter(Boolean);
-    return controls.length ? h('section', { className: 'card card-body', 'aria-label': 'Xuất báo cáo Excel' }, ...controls,
-      h('p', { className: 'meta' }, 'Xuất toàn bộ dữ liệu khớp bộ lọc, tối đa 5000 dòng; mỗi nút tải một tệp.')) : null;
+    return exportPanel(controls, 'Xuất toàn bộ dữ liệu khớp bộ lọc, tối đa 5000 dòng; mỗi nút tải một tệp.');
   };
   if (tab === 'groups') return multiple(['department', 'type', 'status'].map((groupBy, i) => ({
     label: ['Xuất theo phòng ban', 'Xuất theo loại', 'Xuất theo trạng thái'][i], method: 'exportAssetGroups', permission: 'export.assets.execute',
@@ -48,5 +54,5 @@ export function reportExcelActions(services, tab, query, active) {
   }
   if (!spec) return null;
   const control = excelDownloadButton(services, { ...spec, active });
-  return control ? h('section', { className: 'card card-body', 'aria-label': 'Xuất báo cáo Excel' }, control, h('p', { className: 'meta' }, note)) : null;
+  return exportPanel(control ? [control] : [], note);
 }
