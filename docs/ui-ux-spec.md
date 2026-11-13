@@ -82,6 +82,8 @@ Các mô tả dưới đây là acceptance baseline cho **REAL API INTEGRATION �
 
 ### UI-12 Replacement/Reports — Weeks 5–6
 
+- Hộp thoại đánh giá có một ô tìm theo mã hoặc tên, tự lọc khi gõ. **Chọn tất cả kết quả** thêm các dòng đang hiển thị vào danh sách đã chọn. **Bỏ chọn tất cả** xóa toàn bộ lựa chọn, kể cả ở lượt tìm trước. Tối đa 100 tài sản mỗi lượt và chỉ gửi các ID đã chọn.
+
 - Mục tiêu/actor: xem khuyến nghị, dashboard/report và budget; Admin/Manager cho chi phí, Support chỉ phần được cấp quyền. Cột: asset, reason, priority, disposition, plannedYear, estimatedCost theo quyền; report columns theo EP-076–086. Buttons: Evaluate/Plan/Dismiss theo quyền, Apply filters, Export khi Week 7 sẵn. Filters: department/type/status/date/year/page.
 - Validation: year range, date order, allowed sort; cost không chỉ ẩn bằng CSS mà server loại khỏi DTO. Loading/empty/error chung. API: EP-063–086; Week 7 export EP-088–092.
 

@@ -101,3 +101,41 @@ test('evaluation picker submits only explicitly selected assets and shows summar
     assert.ok(dom.body.textContent.includes('tạo 1 đề xuất mới'));
   } finally { dom.restore(); }
 });
+
+test('evaluation picker selects visible results, clears selections and enforces the batch limit', async () => {
+  const dom = installDom('/replacement'); const writes = [];
+  try {
+    window.setTimeout = globalThis.setTimeout;
+    window.clearTimeout = globalThis.clearTimeout;
+    const svc = services(['replacement-recommendations.read', 'replacement-recommendations.evaluate', 'assets.read', 'assets.cost.read'], {
+      list: async () => page([]),
+      evaluate: async ids => { writes.push(ids); return { evaluated: ids.length, created: 0, results: [] }; }
+    });
+    const asset = id => ({ id, assetCode: 'AST-' + id, name: 'Laptop ' + id });
+    svc.assets = { list: async ({ keyword }) => page(keyword ? [asset(101)] : Array.from({ length: 100 }, (_, i) => asset(i + 1))) };
+    const root = await replacementPage(svc); dom.body.append(root);
+    button(root, 'Đánh giá tài sản').fire('click');
+    const picker = dialog(dom.body);
+    const all = button(picker, 'Chọn tất cả kết quả'), clear = button(picker, 'Bỏ chọn tất cả');
+    const search = descendants(picker).filter(n => n.getAttribute('type') === 'search');
+    assert.equal(search.length, 1);
+    assert.equal(button(picker, 'Tìm tài sản'), undefined);
+    assert.doesNotMatch(picker.textContent, /Kết quả mới giữ lịch sử cũ/);
+    await until(() => !all.disabled);
+    all.fire('click');
+    assert.match(picker.textContent, /100\/100/);
+    assert.equal(descendants(picker).filter(n => n.getAttribute('type') === 'checkbox' && n.checked).length, 100);
+    search[0].value = 'Laptop 101'; search[0].fire('input');
+    assert.equal(all.disabled, true);
+    await until(() => !all.disabled && picker.textContent.includes('AST-101'));
+    all.fire('click');
+    assert.match(picker.textContent, /Bỏ bớt tài sản/);
+    assert.match(picker.textContent, /100\/100/);
+    clear.fire('click');
+    assert.match(picker.textContent, /Chưa chọn tài sản/);
+    all.fire('click');
+    picker.querySelector('form').fire('submit');
+    await until(() => writes.length === 1 && !dialog(dom.body));
+    assert.deepEqual(writes[0], [101]);
+  } finally { dom.restore(); }
+});

@@ -137,13 +137,46 @@ export async function replacementPage(services, rules = false) {
   }
   function evaluate() {
     if (!alive() || !can(services, 'replacement-recommendations.evaluate') || !can(services, 'assets.cost.read')) return;
+    const limit = 100;
     const selected = new Set(), list = h('div', {}), summary = h('p', { 'aria-live': 'polite' }, 'Chưa chọn tài sản.');
-    let searchId = 0;
+    const selectionError = h('p', { className: 'field-error', role: 'alert', hidden: true });
+    let searchId = 0, visible = [];
+    const showSelectionError = (message = '') => {
+      selectionError.textContent = message;
+      selectionError.hidden = !message;
+    };
+    const limitMessage = 'Tối đa 100 tài sản mỗi lượt. Bỏ bớt tài sản đã chọn rồi thử lại.';
+    const refreshSelection = () => {
+      summary.textContent = selected.size ? `Đã chọn ${selected.size}/${limit} tài sản.` : 'Chưa chọn tài sản.';
+      for (const { id, input } of visible) input.checked = selected.has(id);
+      selectAll.disabled = visible.every(({ id }) => selected.has(id));
+      clearSelection.disabled = selected.size === 0;
+    };
+    const selectAll = button('Chọn tất cả kết quả', { kind: 'secondary', disabled: true, onClick: () => {
+      if (!dialog.active()) return;
+      const combined = new Set([...selected, ...visible.map(({ id }) => id)]);
+      if (combined.size > limit) {
+        showSelectionError(limitMessage);
+        return;
+      }
+      for (const id of combined) selected.add(id);
+      showSelectionError();
+      refreshSelection();
+    } });
+    const clearSelection = button('Bỏ chọn tất cả', { kind: 'secondary', disabled: true, onClick: () => {
+      if (!dialog.active()) return;
+      selected.clear();
+      showSelectionError();
+      refreshSelection();
+    } });
     const dialog = formDialog('Đánh giá tài sản thay thế', 'replacement-recommendations.evaluate', add => [
-      h('p', {}, 'Chọn tối đa 100 tài sản. Kết quả mới giữ lịch sử cũ; tài sản không tự ngừng sử dụng.'),
-      add('keyword', 'Tìm mã hoặc tên tài sản', '', { placeholder: 'Gõ mã hoặc tên… (kết quả hiện ngay khi gõ)' }), button('Tìm tài sản', { type: 'button', kind: 'secondary', iconName: 'search', onClick: () => load(document.getElementById('field-replacement-keyword')?.value || '') }), summary, list
+      h('div', { className: 'span-2 replacement-picker' },
+        add('keyword', 'Tìm mã hoặc tên tài sản', '', { type: 'search', placeholder: 'Ví dụ: AST-000012 hoặc laptop' }),
+        h('div', { className: 'toolbar replacement-picker-actions' }, selectAll, clearSelection),
+        summary, selectionError, list)
     ], async () => {
       if (!can(services, 'assets.cost.read')) throw Object.assign(new Error('Quyền đánh giá đã thay đổi.'), { status: 403 });
+      if (!selected.size) throw Object.assign(new Error('Hãy chọn ít nhất một tài sản để đánh giá.'), { status: 400 });
       const result = await services.replacement.evaluate([...selected]);
       if (!Number.isSafeInteger(result?.evaluated) || !Number.isSafeInteger(result?.created) || !Array.isArray(result?.results))
         throw Object.assign(new Error('Chưa xác nhận được kết quả đánh giá. Hãy tải lại.'), { status: 502 });
@@ -152,18 +185,39 @@ export async function replacementPage(services, rules = false) {
     });
     async function load(keyword = '') {
       const revision = ++searchId;
+      visible = [];
+      refreshSelection();
+      list.replaceChildren(h('p', {}, 'Đang tìm tài sản…'));
       try {
-        const rows = await services.assets.list({ page: 1, pageSize: 100, keyword });
+        const rows = await services.assets.list({ page: 1, pageSize: limit, keyword });
         if (!dialog.active() || revision !== searchId) return;
-        list.replaceChildren(h('p', {}, 'Hiển thị tối đa 100 kết quả. Tìm cụ thể hơn nếu chưa thấy tài sản.'), ...rows.items.map(item => h('label', { className: 'field' },
-          h('input', { type: 'checkbox', checked: selected.has(item.id), onChange: event => {
-            if (event.target.checked) selected.add(item.id); else selected.delete(item.id);
-            summary.textContent = 'Đã chọn ' + selected.size + ' tài sản.';
-          } }), item.assetCode + ' — ' + item.name)));
+        visible = rows.items.map(item => {
+          const input = h('input', { type: 'checkbox', onChange: event => {
+            if (!dialog.active()) return;
+            showSelectionError();
+            if (!event.target.checked) selected.delete(item.id);
+            else if (selected.size < limit) selected.add(item.id);
+            else showSelectionError(limitMessage);
+            refreshSelection();
+          } });
+          return { id: item.id, input, label: h('label', { className: 'replacement-picker-row' }, input,
+            h('span', {}, item.assetCode + ' — ' + item.name)) };
+        });
+        list.replaceChildren(h('p', {}, visible.length ? 'Chọn tất cả chỉ áp dụng cho các kết quả đang hiển thị (tối đa 100).' : 'Không tìm thấy tài sản.'),
+          ...visible.map(({ label }) => label));
+        refreshSelection();
       } catch (error) { if (dialog.active() && revision === searchId) list.replaceChildren(formAlert(error.message)); }
     }
     const keywordInput = document.getElementById('field-replacement-keyword');
-    if (keywordInput) liveSearch(keywordInput, () => load(keywordInput.value.trim()));
+    if (keywordInput) {
+      keywordInput.addEventListener('input', () => {
+        searchId++;
+        visible = [];
+        refreshSelection();
+        list.replaceChildren(h('p', {}, 'Đang tìm tài sản…'));
+      });
+      liveSearch(keywordInput, () => load(keywordInput.value.trim()));
+    }
     load();
   }
   const keyword = h('input', { className: 'input', value: query.keyword || '', 'aria-label': 'Tìm quy tắc', placeholder: 'Mã hoặc tên quy tắc…' });
