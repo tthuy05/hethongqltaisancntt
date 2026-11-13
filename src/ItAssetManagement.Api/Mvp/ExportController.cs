@@ -21,7 +21,7 @@ public sealed class ExportController(AssetExportService exportService) : Control
     [HttpGet("maintenance"), Authorize(Policy = Permissions.ExportMaintenance)]
     public async Task<IActionResult> ExportMaintenance([FromQuery] MaintenanceExportQuery query, CancellationToken ct)
     {
-        Errors.Query(Request, "fromUtc", "toUtc", "assetId", "technicianId", "status");
+        Errors.Query(Request, "fromUtc", "toUtc", "assetId", "assetCode", "technicianId", "status");
         var (bytes, filename) = await exportService.ExportMaintenanceAsync(query, ct);
         return File(bytes, ExportSecurityLimits.ContentType, filename);
     }
@@ -30,7 +30,7 @@ public sealed class ExportController(AssetExportService exportService) : Control
     [HttpGet("assignment-history"), Authorize(Policy = Permissions.ExportAssignments)]
     public async Task<IActionResult> ExportAssignments([FromQuery] AssignmentExportQuery query, CancellationToken ct)
     {
-        Errors.Query(Request, "fromUtc", "toUtc", "assetId", "userId", "departmentId");
+        Errors.Query(Request, "fromUtc", "toUtc", "assetId", "assetCode", "userId", "departmentId");
         var (bytes, filename) = await exportService.ExportAssignmentsAsync(query, ct);
         return File(bytes, ExportSecurityLimits.ContentType, filename);
     }

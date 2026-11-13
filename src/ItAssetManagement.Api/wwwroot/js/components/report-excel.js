@@ -43,9 +43,9 @@ export function reportExcelActions(services, tab, query, active) {
     spec = { method: 'exportAssets', permission: 'export.assets.execute', query: { ...shared, keyword: query.keyword, status: statuses[query.status],
       assetTypeId: id('assetTypeId'), purchasedFrom: query.purchasedFrom, purchasedTo: query.purchasedTo, includeArchived: query.includeArchived === 'true', sortBy: query.sortBy || 'createdAt', sortDirection: query.sortDirection || 'desc' } };
   } else if (tab === 'assignments') spec = { method: 'exportAssignments', permission: 'export.assignments.execute', query: {
-    ...shared, assetId: id('assetId'), userId: id('userId'), fromUtc: reportUtc(query.assignmentFrom), toUtc: reportUtc(query.assignmentTo) } };
+    ...shared, assetId: id('assetId'), assetCode: query.assetCode, userId: id('userId'), fromUtc: reportUtc(query.assignmentFrom), toUtc: reportUtc(query.assignmentTo) } };
   else if (tab === 'maintenance') spec = { method: 'exportMaintenance', permission: 'export.maintenance.execute', query: {
-    assetId: id('assetId'), technicianId: id('technicianId'), status: query.maintenanceStatus, fromUtc: reportUtc(query.maintenanceFrom), toUtc: reportUtc(query.maintenanceTo) } };
+    assetId: id('assetId'), assetCode: query.assetCode, technicianId: id('technicianId'), status: query.maintenanceStatus, fromUtc: reportUtc(query.maintenanceFrom), toUtc: reportUtc(query.maintenanceTo) } };
   else if (tab === 'replacement') {
     spec = { label: 'Xuất lịch sử đề xuất', method: 'exportReplacementHistory', permission: 'export.replacement.execute', query: {
       ...shared, plannedYear: id('plannedYear'), priority: query.priority, disposition: query.disposition,

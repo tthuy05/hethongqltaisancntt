@@ -55,7 +55,7 @@ export async function reportsPage(services) {
       const input = spec.options ? h('select', { id, name: spec.name, className: 'select', value: state[spec.name] || '' },
         options.map(([value, text]) => h('option', { value }, text)))
         : h('input', { id, name: spec.name, className: 'input', type: spec.type || 'number', value: state[spec.name] || '',
-          maxLength: spec.type === 'search' ? 200 : undefined, placeholder: spec.placeholder,
+          maxLength: spec.type === 'search' ? (spec.maxLength ?? 200) : undefined, placeholder: spec.placeholder,
           min: spec.type ? undefined : (spec.name === 'year' || spec.name === 'plannedYear' ? 2000 : 1),
           max: spec.name === 'year' || spec.name === 'plannedYear' ? 2100 : spec.name === 'pageSize' ? 100 : undefined,
           step: spec.type === 'datetime-local' ? '0.001' : 1, required: spec.required || false });
@@ -89,7 +89,7 @@ export async function reportsPage(services) {
   const pageSizeFilter = { name: 'pageSize', label: 'Số dòng mỗi trang' };
   const departmentFilter = { name: 'departmentId', label: 'ID phòng ban (tùy chọn)', catalog: 0, friendly: 'Phòng ban', all: 'Tất cả phòng ban' };
   const typeFilter = { name: 'assetTypeId', label: 'ID loại tài sản (tùy chọn)', catalog: 1, friendly: 'Loại tài sản', all: 'Tất cả loại' };
-  const assetFilter = { name: 'assetId', label: 'ID tài sản (tùy chọn)' };
+  const assetFilter = { name: 'assetCode', label: 'Mã tài sản (tùy chọn)', type: 'search', maxLength: 50, placeholder: 'Ví dụ: AST-000012' };
   const assetStatuses = [['', 'Tất cả trạng thái'], ['IN_STOCK', 'Trong kho'], ['IN_USE', 'Đang sử dụng'],
     ['MAINTENANCE', 'Đang bảo trì'], ['BROKEN', 'Hỏng'], ['RETIRED', 'Ngừng sử dụng']];
 
@@ -179,7 +179,7 @@ export async function reportsPage(services) {
   // Tab 2: Lịch sử phân bổ (EP-080)
   else if (currentTab === 'assignments') {
     const state = { ...query, tab: 'assignments', pageSize };
-    const res = await services.reports.assignmentHistory({ page, pageSize, assetId: reportNumber(query.assetId),
+    const res = await services.reports.assignmentHistory({ page, pageSize, assetId: reportNumber(query.assetId), assetCode: query.assetCode,
       userId: reportNumber(query.userId), departmentId: reportNumber(query.departmentId),
       fromUtc: reportUtc(query.assignmentFrom), toUtc: reportUtc(query.assignmentTo) });
     const columns = [
@@ -195,7 +195,7 @@ export async function reportsPage(services) {
     tabContent = h('section', { className: 'card' },
       filters('Lọc lịch sử cấp phát', [assetFilter, { name: 'userId', label: 'ID người nhận (tùy chọn)' }, departmentFilter,
         { name: 'assignmentFrom', label: 'Cấp phát từ (UTC)', type: 'datetime-local' },
-        { name: 'assignmentTo', label: 'Cấp phát đến (UTC)', type: 'datetime-local' }, pageSizeFilter], state, { page: 1 }),
+        { name: 'assignmentTo', label: 'Cấp phát đến (UTC)', type: 'datetime-local' }, pageSizeFilter], state, { page: 1, assetId: undefined }),
       h('p', { className: 'meta report-note' }, 'Khoảng thời gian lọc theo lúc cấp phát (UTC), không phải ngày thu hồi. Phòng ban là bên nhận; không phải phòng ban sở hữu tài sản. Chỉ đọc lịch sử, không thực hiện cấp phát/thu hồi.'),
       rowHint,
       dataTable({ columns, rows: res.items, label: 'Báo cáo phân bổ', onRowClick: assetRow(row => row.assetId, row => [['Mã tài sản', row.assetCode], ['Thiết bị', row.assetName], ['Người nhận', row.assignedUserName || '—'], ['Phòng ban nhận', row.assignedDepartmentName || '—'], ['Ngày giao', date(row.assignedAtUtc)], ['Ngày trả', date(row.returnedAtUtc)]]) }),
@@ -206,7 +206,7 @@ export async function reportsPage(services) {
   // Tab 3: Lịch sử bảo trì (EP-081)
   else if (currentTab === 'maintenance') {
     const state = { ...query, tab: 'maintenance', pageSize };
-    const res = await services.reports.maintenanceHistory({ page, pageSize, assetId: reportNumber(query.assetId),
+    const res = await services.reports.maintenanceHistory({ page, pageSize, assetId: reportNumber(query.assetId), assetCode: query.assetCode,
       technicianId: reportNumber(query.technicianId), status: query.maintenanceStatus,
       fromUtc: reportUtc(query.maintenanceFrom), toUtc: reportUtc(query.maintenanceTo) });
     const columns = [
@@ -226,7 +226,7 @@ export async function reportsPage(services) {
         { name: 'maintenanceStatus', label: 'Trạng thái phiếu', options: [['', 'Tất cả trạng thái'], ['PENDING', 'Chờ xử lý'],
           ['IN_PROGRESS', 'Đang xử lý'], ['RESOLVED', 'Đã xử lý'], ['FAILED', 'Không khắc phục được'], ['CANCELLED', 'Đã hủy']] },
         { name: 'maintenanceFrom', label: 'Mở phiếu từ (UTC)', type: 'datetime-local' },
-        { name: 'maintenanceTo', label: 'Mở phiếu đến (UTC)', type: 'datetime-local' }, pageSizeFilter], state, { page: 1 }),
+        { name: 'maintenanceTo', label: 'Mở phiếu đến (UTC)', type: 'datetime-local' }, pageSizeFilter], state, { page: 1, assetId: undefined }),
       h('p', { className: 'meta report-note' }, 'Bộ lọc thời gian dùng lúc mở phiếu (UTC). Mỗi dòng là trạng thái hiện tại của một phiếu, không phải mọi sự kiện trong nhật ký bảo trì.'),
       h('p', { className: 'meta report-note' }, 'Bấm vào một dòng để xem chi tiết phiếu và quá trình xử lý.'),
       dataTable({ columns, rows: res.items, label: 'Lịch sử bảo trì', onRowClick: row => { if (viewRoot?.isConnected && validView()) openMaintenanceDetail(services, row.id, row.assetId); } }),

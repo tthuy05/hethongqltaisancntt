@@ -349,7 +349,9 @@ Không trả giá mua, email, password hoặc grants. Controller kiểm `assets.
 
 ### 2.8 Dashboard
 
-EP-072–075 aggregate dashboard đầy đủ được lên kế hoạch Week 6. Dashboard M1 ngày 10/10 dùng EP-023 (totalItems + vài Asset gần nhất) trên dữ liệu thật; UI không gọi EP-072–075 khi chúng chưa được implement và không hiển thị số 0 giả cho metric Ticket/License/Replacement. Đây là sequencing implementation, không đổi contract EP-072–075.
+EP-072–075 aggregate dashboard đầy đủ được lên kế hoạch Week 6.
+
+Các endpoint lịch sử và xuất Excel EP-080/081/089/090 nhận `assetCode` tùy chọn (tối đa 50 ký tự sau khi bỏ khoảng trắng hai đầu). So khớp mã đầy đủ, không phân biệt hoa thường. Nếu gửi cùng `assetId`, cả hai điều kiện đều áp dụng. Dashboard M1 ngày 10/10 dùng EP-023 (totalItems + vài Asset gần nhất) trên dữ liệu thật; UI không gọi EP-072–075 khi chúng chưa được implement và không hiển thị số 0 giả cho metric Ticket/License/Replacement. Đây là sequencing implementation, không đổi contract EP-072–075.
 
 | ID | Method & endpoint | Purpose | Required permission | Query | Request body | Response | Success | Errors | Business rules |
 |---|---|---|---|---|---|---|---|---|---|
@@ -366,8 +368,8 @@ EP-072–075 aggregate dashboard đầy đủ được lên kế hoạch Week 6.
 | EP-077 | `GET /reports/assets-by-department` | Count/value theo owning department hiện tại | `reports.assets.read` | `status?,assetTypeId?` | — | `ReportSeries[]`; value theo cost permission | 200 | 400, 401, 403 | BR-032, BR-033 |
 | EP-078 | `GET /reports/assets-by-type` | Count/value theo asset type hiện tại | `reports.assets.read` | `status?,departmentId?` | — | `ReportSeries[]`; value theo cost permission | 200 | 400, 401, 403 | BR-032, BR-033 |
 | EP-079 | `GET /reports/asset-status` | Count theo status hiện tại | `reports.assets.read` | `departmentId?,assetTypeId?` | — | `ReportSeries[]` | 200 | 400, 401, 403 | BR-033 |
-| EP-080 | `GET /reports/assignment-history` | Assignment history report | `reports.assignments.read` | paging; `from,to,assetId,userId,departmentId,status`; sort | — | `Paged<AssignmentReportRow>` | 200 | 400, 401, 403 | BR-006, BR-034, BR-053 |
-| EP-081 | `GET /reports/maintenance-history` | Maintenance event/result report | `reports.maintenance.read` | paging; `from,to,assetId,technicianId,status`; sort | — | `Paged<MaintenanceReportRow>`; cost theo permission | 200 | 400, 401, 403 | BR-014, BR-032, BR-034, BR-047, BR-053 |
+| EP-080 | `GET /reports/assignment-history` | Assignment history report | `reports.assignments.read` | paging; `fromUtc,toUtc,assetId,assetCode,userId,departmentId,includeArchived` | — | `Paged<AssignmentReportRow>` | 200 | 400, 401, 403 | BR-006, BR-034, BR-053 |
+| EP-081 | `GET /reports/maintenance-history` | Maintenance event/result report | `reports.maintenance.read` | paging; `fromUtc,toUtc,assetId,assetCode,technicianId,status,includeArchived` | — | `Paged<MaintenanceReportRow>`; cost theo permission | 200 | 400, 401, 403 | BR-014, BR-032, BR-034, BR-047, BR-053 |
 | EP-082 | `GET /reports/maintenance-cost` | Aggregate maintenance cost | `reports.cost.read` | `from,to,departmentId?,assetTypeId?,groupBy` | — | `CostReport` | 200 | 400, 401, 403 | BR-032, BR-033, BR-047, BR-053 |
 | EP-083 | `GET /reports/warranty-expiration` | Warranty expired/expiring | `reports.assets.read` | paging; `from,to,departmentId,assetTypeId`; sort | — | `Paged<WarrantyReportRow>` | 200 | 400, 401, 403 | BR-034, BR-049, BR-053 |
 | EP-084 | `GET /reports/license-expiration` | License expired/expiring | `reports.licenses.read` | paging; `from,to,softwareId,status`; sort | — | `Paged<LicenseExpiryRow>`; key masked | 200 | 400, 401, 403 | BR-017, BR-018, BR-034, BR-049, BR-053 |
@@ -381,8 +383,8 @@ EP-072–075 aggregate dashboard đầy đủ được lên kế hoạch Week 6.
 | EP-087-template | `GET /import/assets/template` | Blank parser-compatible XLSX; no client AssetCode; cost header requires assets.cost.read | `import.assets.execute` | Không query | — | XLSX asset-import-template.xlsx; no DB writes | 200 | 400, 401, 403, 404 (gate closed) | BR-028, BR-032 |
 | EP-087 | `POST /import/assets` | Validate rồi import assets all-or-nothing | `import.assets.execute` | `dryRun=false` | Multipart `file` + `ImportOptions` | `AssetImportResult` with row errors; no commit on any error | 200 | 400, 401, 403, 409, 413, 415 | BR-008, BR-028, BR-029, BR-030, BR-031, BR-035 |
 | EP-088 | `GET /export/assets` | Export filtered assets | `export.assets.execute` | asset filters/date range/sort | — | Excel stream + safe filename | 200 | 400, 401, 403, 413 | BR-032, BR-034, BR-052, BR-053 |
-| EP-089 | `GET /export/maintenance` | Export maintenance | `export.maintenance.execute` | `from,to,assetId?,technicianId?,status?` | — | Excel stream | 200 | 400, 401, 403, 413 | BR-014, BR-032, BR-047, BR-052, BR-053 |
-| EP-090 | `GET /export/assignment-history` | Export assignment history | `export.assignments.execute` | `from,to,assetId?,userId?,departmentId?` | — | Excel stream | 200 | 400, 401, 403, 413 | BR-006, BR-032, BR-052, BR-053 |
+| EP-089 | `GET /export/maintenance` | Export maintenance | `export.maintenance.execute` | `fromUtc,toUtc,assetId?,assetCode?,technicianId?,status?` | — | Excel stream | 200 | 400, 401, 403, 413 | BR-014, BR-032, BR-047, BR-052, BR-053 |
+| EP-090 | `GET /export/assignment-history` | Export assignment history | `export.assignments.execute` | `fromUtc,toUtc,assetId?,assetCode?,userId?,departmentId?` | — | Excel stream | 200 | 400, 401, 403, 413 | BR-006, BR-032, BR-052, BR-053 |
 | EP-091 | `GET /export/warranty-expiration` | Export warranty report | `export.assets.execute` | `from,to,departmentId?,assetTypeId?` | — | Excel stream | 200 | 400, 401, 403, 413 | BR-032, BR-049, BR-052, BR-053 |
 | EP-092 | `GET /export/replacement-report` | Export recommendations/budget | `export.replacement.execute` | `year?,departmentId?,priority?,status?` | — | Excel stream | 200 | 400, 401, 403, 413 | BR-021, BR-022, BR-032, BR-047, BR-051, BR-052 |
 

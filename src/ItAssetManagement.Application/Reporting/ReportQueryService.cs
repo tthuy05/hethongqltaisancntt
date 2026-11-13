@@ -238,6 +238,11 @@ public sealed class ReportQueryService(IRepository repo, IActor actor, TimeProvi
 
         if (query.AssetId.HasValue)
             q = q.Where(a => a.AssetId == query.AssetId.Value);
+        if (query.AssetCode is { } code)
+        {
+            var matchingAssets = repo.Query<Asset>().Where(a => a.AssetCode.ToLower() == code).Select(a => a.Id);
+            q = q.Where(a => matchingAssets.Contains(a.AssetId));
+        }
         if (query.UserId.HasValue)
             q = q.Where(a => a.AssignedUserId == query.UserId.Value);
         if (query.DepartmentId.HasValue)
@@ -307,6 +312,11 @@ public sealed class ReportQueryService(IRepository repo, IActor actor, TimeProvi
 
         if (query.AssetId.HasValue)
             q = q.Where(t => t.AssetId == query.AssetId.Value);
+        if (query.AssetCode is { } code)
+        {
+            var matchingAssets = repo.Query<Asset>().Where(a => a.AssetCode.ToLower() == code).Select(a => a.Id);
+            q = q.Where(t => matchingAssets.Contains(t.AssetId));
+        }
         if (query.TechnicianId.HasValue)
             q = q.Where(t => t.AssignedToUserId == query.TechnicianId.Value);
         if (!string.IsNullOrWhiteSpace(query.Status))

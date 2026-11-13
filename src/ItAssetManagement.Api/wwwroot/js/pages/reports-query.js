@@ -13,7 +13,7 @@ const choices = { licenseStatus: ['Expired', 'Expiring', 'Valid'], priority: ['L
 const dates = ['warrantyFrom', 'warrantyTo', 'purchasedFrom', 'purchasedTo'];
 const times = ['licenseFrom', 'licenseTo', 'generatedFrom', 'generatedTo', 'assignmentFrom', 'assignmentTo',
   'maintenanceFrom', 'maintenanceTo', 'costFrom', 'costTo'];
-const allowed = new Set(['tab', 'keyword', ...Object.keys(numeric), ...Object.keys(choices), ...dates, ...times]);
+const allowed = new Set(['tab', 'keyword', 'assetCode', ...Object.keys(numeric), ...Object.keys(choices), ...dates, ...times]);
 const invalid = message => new ServiceError(400, 'VALIDATION_ERROR', message);
 
 export function reportNumber(value, fallback) { return value === undefined || value === '' ? fallback : Number(value); }
@@ -33,7 +33,11 @@ export function validateReportQuery(values) {
     if (!allowed.has(name)) throw invalid('Bộ lọc không được hỗ trợ.');
     if (value === undefined || value === '') continue;
     if (!['string', 'number'].includes(typeof value) || String(value).length > 200) throw invalid('Bộ lọc không hợp lệ hoặc quá dài.');
-    const text = String(value);
+    const text = name === 'assetCode' ? String(value).trim() : String(value);
+    if (name === 'assetCode') {
+      if (text.length > 50) throw invalid('Mã tài sản tối đa 50 ký tự.');
+      if (!text) continue;
+    }
     if (numeric[name]) {
       const [min, max] = numeric[name], number = Number(text);
       if (!/^[1-9][0-9]*$/u.test(text) || !Number.isSafeInteger(number) || number < min || number > max)

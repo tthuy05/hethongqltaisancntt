@@ -123,6 +123,11 @@ public sealed class AssetExportService(
         var q = repo.Query<MaintenanceTicket>().Where(t => !t.IsArchived);
         if (query.Status != null) q = q.Where(t => t.Status == query.Status);
         if (query.AssetId.HasValue) q = q.Where(t => t.AssetId == query.AssetId.Value);
+        if (query.AssetCode is { } code)
+        {
+            var matchingAssets = repo.Query<Asset>().Where(a => a.AssetCode.ToLower() == code).Select(a => a.Id);
+            q = q.Where(t => matchingAssets.Contains(t.AssetId));
+        }
         if (query.TechnicianId.HasValue) q = q.Where(t => t.AssignedToUserId == query.TechnicianId.Value);
         if (query.FromUtc.HasValue) q = q.Where(t => t.OpenedAtUtc >= query.FromUtc.Value);
         if (query.ToUtc.HasValue) q = q.Where(t => t.OpenedAtUtc <= query.ToUtc.Value);
@@ -170,6 +175,11 @@ public sealed class AssetExportService(
 
         var q = repo.Query<AssetAssignment>().Where(a => !a.IsArchived);
         if (query.AssetId.HasValue) q = q.Where(a => a.AssetId == query.AssetId.Value);
+        if (query.AssetCode is { } code)
+        {
+            var matchingAssets = repo.Query<Asset>().Where(a => a.AssetCode.ToLower() == code).Select(a => a.Id);
+            q = q.Where(a => matchingAssets.Contains(a.AssetId));
+        }
         if (query.UserId.HasValue) q = q.Where(a => a.AssignedUserId == query.UserId.Value);
         if (query.DepartmentId.HasValue) q = q.Where(a => a.AssignedDepartmentId == query.DepartmentId.Value);
         if (query.FromUtc.HasValue) q = q.Where(a => a.AssignedAtUtc >= query.FromUtc.Value);

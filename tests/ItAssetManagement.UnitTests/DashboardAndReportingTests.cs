@@ -121,6 +121,28 @@ public sealed class DashboardAndReportingTests
         Assert.Contains((await financial.GetReplacementReportAsync(new())).Items, row => row.EstimatedCost is > 0);
     }
 
+    [Fact]
+    public async Task History_reports_filter_exact_asset_code_before_paging()
+    {
+        var assets = new[] {
+            new Asset { Id = 40, AssetCode = "AST-000012", IsArchived = true },
+            new Asset { Id = 12, AssetCode = "AST-0000120" }
+        };
+        var assignments = assets.Select(a => new AssetAssignment { Id = a.Id, AssetId = a.Id }).ToArray();
+        var tickets = assets.Select(a => new MaintenanceTicket { Id = a.Id, AssetId = a.Id }).ToArray();
+        var reader = new ReportQueryService(new InMemoryRepo(assets, assignments, tickets),
+            new TestActor(1, Permissions.ReportAssignments, Permissions.ReportMaintenance));
+
+        var assignment = await reader.GetAssignmentReportAsync(new() { AssetCode = " ast-000012 ", PageSize = 1 });
+        Assert.Equal(1, assignment.TotalItems);
+        Assert.Equal(40, Assert.Single(assignment.Items).AssetId);
+        var maintenance = await reader.GetMaintenanceReportAsync(new() { AssetCode = "AST-000012", PageSize = 1 });
+        Assert.Equal(1, maintenance.TotalItems);
+        Assert.Equal(40, Assert.Single(maintenance.Items).AssetId);
+        Assert.Empty((await reader.GetAssignmentReportAsync(new() { AssetCode = "AST-000999" })).Items);
+        Assert.Empty((await reader.GetMaintenanceReportAsync(new() { AssetCode = "AST-000012", AssetId = 12 })).Items);
+    }
+
     private sealed class TestActor(long? userId, params string[] permissions) : IActor
     {
         public long? UserId => userId;

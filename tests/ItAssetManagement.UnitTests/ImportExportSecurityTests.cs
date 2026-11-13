@@ -566,6 +566,28 @@ public sealed class ImportExportSecurityTests
     }
 
     [Fact]
+    public async Task History_workbooks_filter_exact_asset_code()
+    {
+        var actor = new FakeActor();
+        actor.Grants.UnionWith([Permissions.ExportAssignments, Permissions.ExportMaintenance]);
+        var repo = new FakeRepository();
+        repo.Seed(new Asset { Id = 40, AssetCode = "AST-000012" }, new Asset { Id = 12, AssetCode = "AST-0000120" });
+        repo.Seed(new AssetAssignment { Id = 1, AssetId = 40 }, new AssetAssignment { Id = 2, AssetId = 12 });
+        repo.Seed(new MaintenanceTicket { Id = 1, AssetId = 40 }, new MaintenanceTicket { Id = 2, AssetId = 12 });
+        var service = new AssetExportService(repo, actor);
+        var assignments = await service.ExportAssignmentsAsync(new() { AssetCode = " ast-000012 " });
+        var maintenance = await service.ExportMaintenanceAsync(new() { AssetCode = "AST-000012" });
+        foreach (var file in new[] { assignments, maintenance })
+        {
+            using var zip = new ZipArchive(new MemoryStream(file.Bytes));
+            using var reader = new StreamReader(zip.GetEntry("xl/worksheets/sheet1.xml")!.Open());
+            var xml = reader.ReadToEnd();
+            Assert.Contains("AST-000012</t>", xml);
+            Assert.DoesNotContain("AST-0000120", xml);
+        }
+    }
+
+    [Fact]
     public async Task Export_redacts_cost_when_user_lacks_cost_permission()
     {
         var actor = new FakeActor();

@@ -1,3 +1,7 @@
+## Lọc lịch sử theo mã tài sản
+
+Lịch sử phân bổ và bảo trì nhận mã hiển thị như `AST-000012`. Xuất Excel sử dụng cùng bộ lọc. API giữ hỗ trợ `assetId`. Không đổi schema hoặc quyền.
+
 ## Bố cục xuất Excel trong Báo cáo 12/11/2026
 
 Khung xuất Excel có khoảng đệm riêng. Các nút và dòng mô tả tự xuống hàng khi thiếu chỗ. Đã kiểm tra bằng trình duyệt với khung 920 px và 280 px trên bản dựng local, gồm cả trường hợp có ba nút.

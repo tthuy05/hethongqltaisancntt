@@ -17,6 +17,14 @@ public static class ReportingValidation
             throw new BusinessException(400, "INVALID_QUERY", $"{paramName} phải là số nguyên dương (> 0).");
     }
 
+    public static string? NormalizeAssetCode(string? code)
+    {
+        code = code?.Trim();
+        if (code?.Length > 50)
+            throw Validation.Invalid("assetCode", "Mã tài sản tối đa 50 ký tự.");
+        return string.IsNullOrEmpty(code) ? null : code.ToLowerInvariant();
+    }
+
     public static void ValidateDateRange(DateTime? fromUtc, DateTime? toUtc)
     {
         if (fromUtc.HasValue && fromUtc.Value.Kind != DateTimeKind.Utc || toUtc.HasValue && toUtc.Value.Kind != DateTimeKind.Utc)
@@ -237,6 +245,7 @@ public sealed class AssignmentReportQuery
     public DateTime? FromUtc { get; set; }
     public DateTime? ToUtc { get; set; }
     public long? AssetId { get; set; }
+    public string? AssetCode { get; set; }
     public long? UserId { get; set; }
     public long? DepartmentId { get; set; }
     public bool IncludeArchived { get; set; }
@@ -245,6 +254,7 @@ public sealed class AssignmentReportQuery
     {
         ReportingValidation.ValidatePage(Page, PageSize);
         ReportingValidation.ValidatePositiveId(AssetId, nameof(AssetId));
+        AssetCode = ReportingValidation.NormalizeAssetCode(AssetCode);
         ReportingValidation.ValidatePositiveId(UserId, nameof(UserId));
         ReportingValidation.ValidatePositiveId(DepartmentId, nameof(DepartmentId));
         ReportingValidation.ValidateDateRange(FromUtc, ToUtc);
@@ -270,6 +280,7 @@ public sealed class MaintenanceReportQuery
     public DateTime? FromUtc { get; set; }
     public DateTime? ToUtc { get; set; }
     public long? AssetId { get; set; }
+    public string? AssetCode { get; set; }
     public long? TechnicianId { get; set; }
     public string? Status { get; set; }
     public bool IncludeArchived { get; set; }
@@ -278,6 +289,7 @@ public sealed class MaintenanceReportQuery
     {
         ReportingValidation.ValidatePage(Page, PageSize);
         ReportingValidation.ValidatePositiveId(AssetId, nameof(AssetId));
+        AssetCode = ReportingValidation.NormalizeAssetCode(AssetCode);
         ReportingValidation.ValidatePositiveId(TechnicianId, nameof(TechnicianId));
         ReportingValidation.ValidateDateRange(FromUtc, ToUtc);
         ReportingValidation.Choice(Status, "PENDING", "IN_PROGRESS", "RESOLVED", "FAILED", "CANCELLED");

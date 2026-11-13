@@ -115,8 +115,8 @@ export function createImportExportService({ fetchImpl = globalThis.fetch?.bind(g
     exportReplacementBudget(query = {}) { return download('/reports/export/replacement-budget', 'export.replacement.execute', query, ['year', 'departmentId', 'priority']); },
     exportReplacementHistory(query = {}) { return download('/reports/export/replacement-history', 'export.replacement.execute', query, ['generatedFromUtc', 'generatedToUtc', 'departmentId', 'priority', 'disposition', 'plannedYear']); },
     exportAssets(query = {}) { return download('/export/assets', 'export.assets.execute', query, ['keyword', 'status', 'assetTypeId', 'departmentId', 'fromUtc', 'toUtc', 'purchasedFrom', 'purchasedTo', 'includeArchived', 'purchaseYear', 'warrantyStatus', 'assignedUserId', 'sortBy', 'sortDirection']); },
-    exportMaintenance(query = {}) { return download('/export/maintenance', 'export.maintenance.execute', query, ['fromUtc', 'toUtc', 'assetId', 'technicianId', 'status']); },
-    exportAssignments(query = {}) { return download('/export/assignment-history', 'export.assignments.execute', query, ['fromUtc', 'toUtc', 'assetId', 'userId', 'departmentId']); },
+    exportMaintenance(query = {}) { return download('/export/maintenance', 'export.maintenance.execute', query, ['fromUtc', 'toUtc', 'assetId', 'assetCode', 'technicianId', 'status']); },
+    exportAssignments(query = {}) { return download('/export/assignment-history', 'export.assignments.execute', query, ['fromUtc', 'toUtc', 'assetId', 'assetCode', 'userId', 'departmentId']); },
     exportWarranty(query = {}) { return download('/export/warranty-expiration', 'export.assets.execute', query, ['fromUtc', 'toUtc', 'departmentId', 'assetTypeId']); },
     exportReplacement(query = {}) { return download('/export/replacement-report', 'export.replacement.execute', query, ['year', 'departmentId', 'priority', 'status', 'generatedFromUtc', 'generatedToUtc']); }
   });

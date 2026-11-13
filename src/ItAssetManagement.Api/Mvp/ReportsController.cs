@@ -44,7 +44,7 @@ public sealed class ReportsController(ReportQueryService service) : ControllerBa
     [HttpGet("assignment-history"), Authorize]
     public Task<PagedResponse<AssignmentReportRowDto>> AssignmentHistory([FromQuery] AssignmentReportQuery query, CancellationToken ct)
     {
-        Errors.Query(Request, "page", "pageSize", "assetId", "userId", "departmentId", "fromUtc", "toUtc", "includeArchived");
+        Errors.Query(Request, "page", "pageSize", "assetId", "assetCode", "userId", "departmentId", "fromUtc", "toUtc", "includeArchived");
         return service.GetAssignmentReportAsync(query, ct);
     }
 
@@ -52,7 +52,7 @@ public sealed class ReportsController(ReportQueryService service) : ControllerBa
     [HttpGet("maintenance-history"), Authorize]
     public Task<PagedResponse<MaintenanceReportRowDto>> MaintenanceHistory([FromQuery] MaintenanceReportQuery query, CancellationToken ct)
     {
-        Errors.Query(Request, "page", "pageSize", "assetId", "technicianId", "status", "fromUtc", "toUtc", "includeArchived");
+        Errors.Query(Request, "page", "pageSize", "assetId", "assetCode", "technicianId", "status", "fromUtc", "toUtc", "includeArchived");
         return service.GetMaintenanceReportAsync(query, ct);
     }
 

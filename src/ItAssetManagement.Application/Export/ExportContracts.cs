@@ -81,6 +81,7 @@ public sealed class MaintenanceExportQuery
     public DateTime? FromUtc { get; set; }
     public DateTime? ToUtc { get; set; }
     public long? AssetId { get; set; }
+    public string? AssetCode { get; set; }
     public long? TechnicianId { get; set; }
     public string? Status { get; set; }
 
@@ -88,6 +89,7 @@ public sealed class MaintenanceExportQuery
     {
         ReportingValidation.ValidateDateRange(FromUtc, ToUtc);
         ReportingValidation.Choice(Status, "PENDING", "IN_PROGRESS", "RESOLVED", "FAILED", "CANCELLED");
+        AssetCode = ReportingValidation.NormalizeAssetCode(AssetCode);
         if (AssetId.HasValue && AssetId.Value <= 0)
             throw new BusinessException(400, "INVALID_QUERY", "AssetId phải là số nguyên dương.");
         if (TechnicianId.HasValue && TechnicianId.Value <= 0)
@@ -105,12 +107,14 @@ public sealed class AssignmentExportQuery
     public DateTime? FromUtc { get; set; }
     public DateTime? ToUtc { get; set; }
     public long? AssetId { get; set; }
+    public string? AssetCode { get; set; }
     public long? UserId { get; set; }
     public long? DepartmentId { get; set; }
 
     public void Validate()
     {
         ReportingValidation.ValidateDateRange(FromUtc, ToUtc);
+        AssetCode = ReportingValidation.NormalizeAssetCode(AssetCode);
         if (AssetId.HasValue && AssetId.Value <= 0)
             throw new BusinessException(400, "INVALID_QUERY", "AssetId phải là số nguyên dương.");
         if (UserId.HasValue && UserId.Value <= 0)

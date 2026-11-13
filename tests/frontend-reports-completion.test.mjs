@@ -98,7 +98,19 @@ for (const [tab, formName, from, to, idName, permission] of [
     // Old view callbacks must be inert once its hash changes.
     const form = byLabel(root, 'form', formName); field(form, idName).value = '8'; form.fire('submit'); assert.equal(params().get(idName), '7');
     root.remove(); const current = await reportsPage(services); dom.body.append(current);
-    byLabel(current, 'form', formName).fire('submit'); assert.equal(params().get('page'), '1');
+    const currentForm = byLabel(current, 'form', formName);
+    const assetCode = field(currentForm, 'assetCode');
+    assert.equal(assetCode.getAttribute('type'), 'search');
+    assetCode.value = '  AST-000012  ';
+    currentForm.fire('submit');
+    assert.equal(params().get('page'), '1');
+    assert.equal(params().get('assetId'), null);
+    assert.equal(params().get('assetCode'), 'AST-000012');
+    current.remove();
+    const filtered = await reportsPage(services); dom.body.append(filtered);
+    assert.equal(calls.at(-1).query.assetCode, 'AST-000012');
+    byLabel(filtered, 'button', 'Trang sau').fire('click');
+    assert.equal(params().get('assetCode'), 'AST-000012');
   } finally { dom.restore(); }
 });
 

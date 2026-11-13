@@ -110,7 +110,7 @@ export function createReportsReader({ request, queryString, getSession }) {
     },
 
     // EP-080: GET /reports/assignment-history
-    assignmentHistory({ page = 1, pageSize = 20, fromUtc, toUtc, assetId, userId, departmentId, includeArchived } = {}) {
+    assignmentHistory({ page = 1, pageSize = 20, fromUtc, toUtc, assetId, assetCode, userId, departmentId, includeArchived } = {}) {
       requireGrant('reports.assignments.read');
       const from = utc(fromUtc, 'fromUtc'), to = utc(toUtc, 'toUtc');
       if (from && to && Date.parse(from) > Date.parse(to))
@@ -121,7 +121,8 @@ export function createReportsReader({ request, queryString, getSession }) {
         pageSize: pageSizeParam(pageSize),
         fromUtc: from,
         toUtc: to,
-        assetId: positiveId(assetId, 'assetId', 'Mã tài sản'),
+        assetId: positiveId(assetId, 'assetId', 'ID tài sản'),
+        assetCode,
         userId: positiveId(userId, 'userId', 'Người dùng'),
         departmentId: positiveId(departmentId, 'departmentId', 'Phòng ban'),
         includeArchived: includeArchived ? true : undefined
@@ -129,7 +130,7 @@ export function createReportsReader({ request, queryString, getSession }) {
     },
 
     // EP-081: GET /reports/maintenance-history
-    maintenanceHistory({ page = 1, pageSize = 20, fromUtc, toUtc, assetId, technicianId, status, includeArchived } = {}) {
+    maintenanceHistory({ page = 1, pageSize = 20, fromUtc, toUtc, assetId, assetCode, technicianId, status, includeArchived } = {}) {
       requireGrant('reports.maintenance.read');
       const from = utc(fromUtc, 'fromUtc'), to = utc(toUtc, 'toUtc');
       if (from && to && Date.parse(from) > Date.parse(to))
@@ -140,7 +141,8 @@ export function createReportsReader({ request, queryString, getSession }) {
         pageSize: pageSizeParam(pageSize),
         fromUtc: from,
         toUtc: to,
-        assetId: positiveId(assetId, 'assetId', 'Mã tài sản'),
+        assetId: positiveId(assetId, 'assetId', 'ID tài sản'),
+        assetCode,
         technicianId: positiveId(technicianId, 'technicianId', 'Kỹ thuật viên'),
         status: status || undefined,
         includeArchived: includeArchived ? true : undefined
