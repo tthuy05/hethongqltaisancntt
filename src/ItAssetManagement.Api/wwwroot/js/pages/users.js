@@ -24,6 +24,14 @@ const moduleLabels = {
   export: 'Xuất Excel',
 };
 
+// The basic role catalog can omit the role code.
+const defaultRoleLabels = new Map([
+  ['ADMIN_IT', 'Quản trị IT'], ['Admin IT', 'Quản trị IT'],
+  ['SYSTEM_MANAGER', 'Quản lý hệ thống'], ['System Manager', 'Quản lý hệ thống'],
+  ['TECHNICAL_SUPPORT', 'Hỗ trợ kỹ thuật'], ['Technical Support', 'Hỗ trợ kỹ thuật'],
+]);
+const roleLabel = role => defaultRoleLabels.get(role.code ?? role.name) ?? role.name;
+
 const permissionLabels = {
   'assets.read': 'Xem tài sản',
   'assets.create': 'Thêm tài sản',
@@ -33,7 +41,10 @@ const permissionLabels = {
   'assets.history.read': 'Xem lịch sử tài sản',
   'assets.cost.read': 'Xem giá mua & thông tin tài chính',
   'import.assets.execute': 'Nhập dữ liệu Excel tài sản',
-  'export.assets.execute': 'Xuất dữ liệu Excel tài sản',
+  'export.assets.execute': 'Xuất Excel tài sản',
+  'export.maintenance.execute': 'Xuất Excel bảo trì',
+  'export.assignments.execute': 'Xuất Excel cấp phát',
+  'export.replacement.execute': 'Xuất Excel đề xuất thay thế',
   'departments.read': 'Xem danh sách phòng ban',
   'departments.create': 'Thêm phòng ban',
   'departments.update': 'Sửa phòng ban',
@@ -42,8 +53,8 @@ const permissionLabels = {
   'asset-types.create': 'Thêm loại tài sản',
   'asset-types.update': 'Sửa loại tài sản',
   'asset-types.archive': 'Lưu trữ loại tài sản',
-  'dashboard.read': 'Xem dashboard tổng quan',
-  'dashboard.cost.read': 'Xem giá trị tài chính trên dashboard',
+  'dashboard.read': 'Xem trang tổng quan',
+  'dashboard.cost.read': 'Xem chi phí trên trang tổng quan',
   'users.lookup': 'Tra cứu nhân viên',
   'users.read': 'Xem danh sách người dùng',
   'users.create': 'Tạo tài khoản & gửi email kích hoạt',
@@ -52,7 +63,7 @@ const permissionLabels = {
   'roles.read': 'Xem danh sách vai trò',
   'roles.assign': 'Phân quyền & gán vai trò',
   'roles.permissions.read': 'Xem ma trận quyền hệ thống',
-  'audit-logs.read': 'Xem nhật ký kiểm toán (Audit Logs)',
+  'audit-logs.read': 'Xem nhật ký thao tác',
   'assignments.read': 'Xem danh sách cấp phát',
   'assignments.assign': 'Cấp phát tài sản cho nhân viên',
   'assignments.return': 'Thu hồi tài sản từ nhân viên',
@@ -64,7 +75,7 @@ const permissionLabels = {
   'maintenance.work': 'Bắt đầu xử lý bảo trì',
   'maintenance.resolve': 'Ghi kết quả bảo trì',
   'maintenance.cancel': 'Hủy phiếu bảo trì',
-  'maintenance.cost.write': 'Xem và cập nhật chi phí bảo trì',
+  'maintenance.cost.write': 'Cập nhật chi phí bảo trì',
   'licenses.read': 'Xem bản quyền',
   'licenses.create': 'Thêm bản quyền',
   'licenses.update': 'Sửa bản quyền',
@@ -72,9 +83,9 @@ const permissionLabels = {
   'licenses.key.manage': 'Quản lý khóa bản quyền',
   'licenses.key.reveal': 'Xem khóa bản quyền',
   'license-assignments.read': 'Xem phân bổ bản quyền',
-  'license-assignments.assign': 'Cấp seat bản quyền',
-  'license-assignments.revoke': 'Thu hồi seat bản quyền',
-  'license-assignments.transfer': 'Điều chuyển seat bản quyền',
+  'license-assignments.assign': 'Cấp suất bản quyền',
+  'license-assignments.revoke': 'Thu hồi suất bản quyền',
+  'license-assignments.transfer': 'Điều chuyển suất bản quyền',
   'software.read': 'Xem phần mềm',
   'replacement-rules.read': 'Xem quy tắc thay thế',
   'replacement-rules.create': 'Tạo quy tắc thay thế',
@@ -92,6 +103,8 @@ const permissionLabels = {
   'reports.replacement.read': 'Báo cáo thay thế',
   'reports.cost.read': 'Báo cáo tài chính & chi phí',
 };
+
+const permissionLabel = (code, name) => Object.hasOwn(permissionLabels, code) ? permissionLabels[code] : (name || `Quyền chưa có nhãn (${code})`);
 
 const permissionDependencies = {
   'assets.create': 'assets.read',
@@ -185,7 +198,7 @@ function createUserPermissionMatrix({ roleDetail, initialSelectedCodes = null, h
         h('div', { className: 'preview-tags' },
           selected.size === 0
             ? h('span', { className: 'meta' }, 'Không có quyền nào')
-            : Array.from(selected).sort().map(c => h('span', { className: 'preview-tag' }, permissionLabels[c] || c))
+            : Array.from(selected).sort().map(c => h('span', { className: 'preview-tag' }, permissionLabel(c)))
         )
       )
     );
@@ -280,7 +293,7 @@ function createUserPermissionMatrix({ roleDetail, initialSelectedCodes = null, h
         h('div', { className: 'permission-checkboxes-list' },
           perms.map(p => {
             const req = permissionDependencies[p.code];
-            const reqName = req ? (permissionLabels[req] || req) : null;
+            const reqName = req ? permissionLabel(req) : null;
             const input = h('input', {
               type: 'checkbox',
               checked: selected.has(p.code),
@@ -290,7 +303,7 @@ function createUserPermissionMatrix({ roleDetail, initialSelectedCodes = null, h
             return h('label', { className: 'permission-item-label' },
               input,
               h('div', { className: 'permission-info' },
-                h('span', { className: 'permission-name' }, permissionLabels[p.code] || p.name || p.code),
+                h('span', { className: 'permission-name' }, permissionLabel(p.code, p.name)),
                 reqName ? h('span', { className: 'permission-req' }, `(Cần: ${reqName})`) : null
               )
             );
@@ -515,7 +528,7 @@ export async function userPage(services) {
           h('fieldset', { className: 'role-choices-box' },
             h('legend', {}, 'Vai trò người dùng (chọn một vai trò duy nhất)'),
             h('div', { className: 'radio-group role-radio-group' },
-              choices.map(({ role, input }) => h('label', { className: 'role-radio-card' }, input, h('span', { className: 'role-radio-name' }, role.name)))
+              choices.map(({ role, input }) => h('label', { className: 'role-radio-card' }, input, h('span', { className: 'role-radio-name' }, roleLabel(role))))
             ),
             h('p', { className: 'field-hint mt-2' }, 'Người dùng tự đặt mật khẩu qua liên kết email có hiệu lực 30 phút. Mỗi người dùng chỉ sở hữu một vai trò.')
           ),
@@ -534,11 +547,14 @@ export async function userPage(services) {
       let modal;
       const pairs = [['Tên đăng nhập', item.username], ['Email', item.email], ['Mã nhân viên', item.employeeCode], ['Số điện thoại', item.phone],
         ['Phòng ban', item.departmentName || departments.find(d => d.id === item.departmentId)?.name || (item.departmentId ? 'Phòng ban không còn khả dụng' : 'Không có')],
-        ['Vai trò', state.roleIds.map(id => roles.find(role => role.id === id)?.name || '#' + id).join(', ') || 'Chưa có vai trò'],
+        ['Vai trò', state.roleIds.map(id => {
+          const role = roles.find(role => role.id === id);
+          return role ? roleLabel(role) : 'Vai trò #' + id;
+        }).join(', ') || 'Chưa có vai trò'],
         ['Quyền riêng', state.hasCustomPermissions ? (state.customPermissions?.length + ' quyền được cấp riêng') : 'Sử dụng toàn bộ quyền mặc định của vai trò'],
         ['Hoạt động', item.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động'], ['Khóa quản trị', state.isAdminLocked ? 'Đang khóa' : 'Không khóa'],
         ['Xác nhận email', item.isEmailConfirmed ? 'Đã kích hoạt' : 'Chờ kích hoạt'], ['Gửi lời mời', emailStatus(item.invitationEmailStatus)],
-        ['Quyền hiệu lực', state.effectivePermissions?.join(', ') || 'Chưa có quyền'],
+        ['Quyền hiệu lực', state.effectivePermissions?.map(code => permissionLabel(code)).join(', ') || 'Chưa có quyền'],
         ['Ngày tạo', date(item.createdAt)], ['Cập nhật', item.updatedAt ? date(item.updatedAt) : 'Chưa có']];
       modal = openDialog({ title: item.displayName, body: h('div', { className: 'dialog-body' }, h('dl', { className: 'user-details' }, pairs.map(([name, value]) => h('div', {}, h('dt', {}, name), h('dd', {}, value || '—')))), h('p', { className: 'meta' }, 'Khóa quản trị độc lập với trạng thái hoạt động. Không hiển thị mật khẩu, token hoặc dữ liệu bảo mật.')), footer: button('Đóng', { kind: 'secondary', onClick: () => modal.close() }) });
     } catch (error) { report(error); }
@@ -707,7 +723,7 @@ export async function userPage(services) {
           h('fieldset', { className: 'role-choices-box' },
             h('legend', {}, 'Vai trò người dùng (chọn một vai trò duy nhất)'),
             h('div', { className: 'radio-group role-radio-group' },
-              choices.map(({ role, input }) => h('label', { className: 'role-radio-card' }, input, h('span', { className: 'role-radio-name' }, role.name)))
+              choices.map(({ role, input }) => h('label', { className: 'role-radio-card' }, input, h('span', { className: 'role-radio-name' }, roleLabel(role))))
             ),
             h('p', { className: 'field-hint mt-2' }, 'Mỗi người dùng chỉ sở hữu một vai trò. Bạn có thể cấp hoặc bỏ bớt các quyền riêng trong giới hạn vai trò đã chọn. Backend bảo vệ Admin cuối cùng.')
           ),
@@ -728,7 +744,7 @@ export async function userPage(services) {
   }
   const keyword = h('input', { className: 'input', type: 'search', maxLength: 200, value: query.keyword || '', placeholder: 'Tên, email, mã nhân viên…', 'aria-label': 'Tìm kiếm người dùng' });
   const department = h('select', { className: 'select', 'aria-label': 'Lọc phòng ban' }, option('', 'Tất cả phòng ban'), departments.map(d => option(d.id, d.name, String(d.id) === String(query.departmentId))));
-  const role = h('select', { className: 'select', 'aria-label': 'Lọc vai trò', disabled: !can(services, 'roles.read') }, option('', 'Tất cả vai trò'), roles.map(r => option(r.id, r.name, String(r.id) === String(query.roleId))));
+  const role = h('select', { className: 'select', 'aria-label': 'Lọc vai trò', disabled: !can(services, 'roles.read') }, option('', 'Tất cả vai trò'), roles.map(r => option(r.id, roleLabel(r), String(r.id) === String(query.roleId))));
   const status = h('select', { className: 'select', 'aria-label': 'Lọc trạng thái người dùng' }, option('', 'Tất cả trạng thái'), option('Active', 'Đang hoạt động', query.status === 'Active'), option('Inactive', 'Ngừng hoạt động', query.status === 'Inactive'));
   const sort = h('select', { className: 'select', 'aria-label': 'Sắp xếp người dùng' }, [['displayName', 'Họ và tên'], ['username', 'Tên đăng nhập'], ['email', 'Email'], ['createdAt', 'Ngày tạo']].map(([value, label]) => option(value, label, query.sortBy === value)));
   root.append(pageHeader('Người dùng', 'Quản lý hồ sơ, trạng thái tài khoản và vai trò đăng nhập. Không xóa tài khoản hoặc lịch sử.', { eyebrow: 'Quản trị', actions: can(services, 'users.create') && can(services, 'roles.assign') && can(services, 'roles.read') ? [button('Thêm người dùng', { iconName: 'plus', onClick: () => profileDialog() })] : [] }),

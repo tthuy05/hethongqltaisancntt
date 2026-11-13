@@ -48,7 +48,7 @@ test('create user form selects groups, contains no admin password and list/detai
     const services={...base(),users:{list:async()=>page([user]),get:async()=>user,account:async()=>({roleIds:[7],rowVersion:version,effectivePermissions:['assets.read']})},roles:{list:async()=>page([{id:7,name:'Technical Support',isActive:true}])}};
     const root=await userPage(services);dom.body.append(root);assert.ok(root.textContent.includes('Kỹ thuật'));assert.equal(root.textContent.includes('#91'),false);
     root.querySelectorAll('button').find(n=>n.textContent==='Thêm người dùng').fire('click');await until(()=>dom.body.querySelector('dialog'));
-    const dialog=dom.body.querySelector('dialog');assert.equal(dialog.querySelectorAll('input').some(n=>n.getAttribute('name')==='password'),false);assert.ok(dialog.textContent.includes('Technical Support'));assert.ok(dialog.textContent.includes('30 phút'));
+    const dialog=dom.body.querySelector('dialog');assert.equal(dialog.querySelectorAll('input').some(n=>n.getAttribute('name')==='password'),false);assert.ok(dialog.textContent.includes('Hỗ trợ kỹ thuật'));assert.ok(dialog.textContent.includes('30 phút'));
   }finally{dom.restore();}
 });
 test('audit removes entity column/detail/filters and strips old entity query while preserving backend audit identities',async()=>{

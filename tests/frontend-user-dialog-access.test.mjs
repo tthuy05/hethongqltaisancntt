@@ -18,6 +18,23 @@ function source() {
 const button = (root, name) => descendants(root).find(n => n.tagName === 'BUTTON' && n.textContent === name);
 const dialogs = dom => descendants(dom.body).filter(n => n.tagName === 'DIALOG');
 
+test('user detail displays Vietnamese labels for effective permissions and built-in roles', async () => {
+  const dom = installDom('/users');
+  try {
+    const services = source();
+    services.roles.list = async () => page([{ id: 7, name: 'Technical Support', isActive: true }]);
+    services.users.account = async () => ({ ...state, effectivePermissions: ['assets.read', 'maintenance.resolve', 'export.maintenance.execute'] });
+    const root = await userPage(services);
+    dom.body.append(root);
+    button(root, 'Xem').fire('click');
+    await until(() => dialogs(dom).length === 1);
+    const detail = dialogs(dom)[0].textContent;
+    assert.match(detail, /Hỗ trợ kỹ thuật/);
+    assert.match(detail, /Xem tài sản, Ghi kết quả bảo trì, Xuất Excel bảo trì/);
+    assert.doesNotMatch(detail, /Technical Support|assets\.read|maintenance\.resolve|export\.maintenance\.execute/);
+  } finally { dom.restore(); }
+});
+
 test('late user detail cannot open or render private detail after navigation, detach, actor or read-grant change', async () => {
   const dom = installDom('/users'); try {
     for (const change of ['hash', 'detach', 'actor', 'revoke']) {

@@ -1,3 +1,7 @@
+## Nhãn quyền trong chi tiết người dùng
+
+Chi tiết người dùng hiển thị quyền hiệu lực bằng tiếng Việt. Danh mục và bộ chọn vai trò hiển thị tên tiếng Việt cho ba vai trò mặc định. Tên vai trò tùy chỉnh do quản trị viên đặt được giữ nguyên.
+
 ## Chọn tài sản để đánh giá thay thế
 
 Hộp thoại dùng một ô tìm kiếm tự lọc, danh sách một cột và ô chọn cùng hàng với mã, tên tài sản. Có thể chọn toàn bộ kết quả hiển thị hoặc bỏ chọn tất cả. Giới hạn 100 tài sản mỗi lượt.
